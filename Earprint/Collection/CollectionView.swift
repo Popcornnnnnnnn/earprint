@@ -727,7 +727,7 @@ struct CardDetail: View {
                         .fill(.black.opacity(0.30))
                         .frame(width: 146, height: 16)
                         .blur(radius: 10)
-                        .offset(x: -activeTilt.width * 8, y: 20)
+                        .offset(x: -activeTilt.width * 8, y: 29)
                         .opacity(is3DReady ? 1 : 0)
                         .allowsHitTesting(false)
                     HeadphoneModelView(
@@ -736,7 +736,7 @@ struct CardDetail: View {
                         finishID: itemFinishID,
                         modelKey: item.modelKey,
                         assetName: assetName,
-                        modelSize: 0.16,
+                        modelSize: 0.17,
                         tint: item.foilTint,
                         tilt: activeTilt,
                         onManipulationChanged: { manipulating in
@@ -749,7 +749,7 @@ struct CardDetail: View {
                         }
                     )
                     .frame(width: 300, height: 230)
-                    .offset(y: -64)
+                    .offset(y: -55)
                     .opacity(is3DReady ? 1 : 0)
                     .allowsHitTesting(is3DReady)
                 }
