@@ -20,7 +20,11 @@ struct DeviceDossierView: View {
 
     init(card: HeadphoneCard, dossier: DeviceDossier? = nil, onClose: (() -> Void)? = nil) {
         self.card = card
-        self.dossier = dossier ?? DeviceDossier.sample(for: card)
+        // Keep fixed referenceNow for deterministic demo launches; use current date for live cards.
+        let args = ProcessInfo.processInfo.arguments
+        let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
+        let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
+        self.dossier = dossier ?? DeviceDossier.sample(for: card, now: referenceDate)
         self.onClose = onClose
     }
 

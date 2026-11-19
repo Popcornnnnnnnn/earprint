@@ -127,7 +127,13 @@ enum EarprintLink {
         case probe
     }
 
-    static func card(_ id: String) -> URL { URL(string: "\(scheme)://card/\(id)")! }
+    static func card(_ id: String) -> URL {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = "card"
+        components.queryItems = [URLQueryItem(name: "id", value: id)]
+        return components.url ?? collection
+    }
     static let collection = URL(string: "\(scheme)://collection")!
     static let rings = URL(string: "\(scheme)://rings")!
     static let probe = URL(string: "\(scheme)://probe")!
@@ -136,8 +142,13 @@ enum EarprintLink {
         guard url.scheme == scheme else { return nil }
         switch url.host {
         case "card":
-            let id = url.pathComponents.dropFirst().first ?? ""
-            return id.isEmpty ? .collection : .card(id)
+            if let queryID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "id" })?.value,
+               !queryID.isEmpty {
+                return .card(queryID)
+            }
+            let pathID = url.pathComponents.dropFirst().first ?? ""
+            return pathID.isEmpty ? .collection : .card(pathID)
         case "collection": return .collection
         case "rings": return .rings
         case "probe": return .probe

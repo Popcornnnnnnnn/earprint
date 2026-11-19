@@ -56,6 +56,7 @@ struct CollectionView: View {
                 }) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
                 }
+                .id(card.id)
                 .zIndex(1)
             }
         }
@@ -66,17 +67,20 @@ struct CollectionView: View {
         .task { await runDemoIfNeeded() }
         .onAppear(perform: openPendingCard)
         .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
+        .onChange(of: cards.map(\.id)) { _, _ in openPendingCard() }
+        .onChange(of: isLoading) { _, _ in openPendingCard() }
     }
 
     /// Opens the card a widget asked for, then clears the request.
+    /// Keeps the request pending while HealthKit is still loading so cold-launch deep links resolve once real cards arrive.
     private func openPendingCard() {
         guard let router, let id = router.pendingCardID else { return }
-        router.pendingCardID = nil
-        guard let card = cards.first(where: { $0.id == id }) else { return }
-        if selected != nil, selected != card {
-            selected = nil
+        if let card = cards.first(where: { $0.id == id }) {
+            router.pendingCardID = nil
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        } else if !isLoading && !isSampleData {
+            router.pendingCardID = nil
         }
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
     }
 
     private var header: some View {
@@ -260,7 +264,8 @@ struct CardDetail: View {
             let scale = min(1.25, (fold.minY - 24) / design.height, (size.width - 40) / design.width)
             VStack(spacing: 0) {
                 interactiveCard(scale: scale)
-                    .frame(maxWidth: .infinity, maxHeight: fold.minY)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(0, fold.minY))
                 Color.clear.frame(height: fold.height)
                 VStack(spacing: 16) {
                     hint

@@ -57,6 +57,12 @@ struct EarprintApp: App {
             .onChange(of: library.cards) { _, _ in
                 publishWidgets()
             }
+            .onChange(of: library.lastSyncDate) { _, _ in
+                publishWidgets()
+            }
+            .onChange(of: library.snapshot?.generatedAt) { _, _ in
+                publishWidgets()
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { publishWidgets() }
             }

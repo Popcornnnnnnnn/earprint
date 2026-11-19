@@ -32,12 +32,14 @@ extension DeviceDossier {
         let calendar = Calendar.current
         var rng = SplitMix64(seed: card.id.utf8.reduce(5381) { ($0 &* 33) &+ UInt64($1) })
 
-        let today = calendar.startOfDay(for: now)
-        let first = parse(card.firstMet, format: "yyyy.MM.dd", calendar: calendar) ?? calendar.date(byAdding: .day, value: -30, to: today)!
-        let last = lastDay(card.lastUsed, now: now, calendar: calendar)
+        let baseToday = calendar.startOfDay(for: now)
+        let first = parse(card.firstMet, format: "yyyy.MM.dd", calendar: calendar) ?? calendar.date(byAdding: .day, value: -30, to: baseToday)!
+        let effectiveNow = max(now, first)
+        let today = calendar.startOfDay(for: effectiveNow)
+        let last = lastDay(card.lastUsed, now: effectiveNow, calendar: calendar)
         let firstDay = calendar.startOfDay(for: first)
         let lastDay = max(firstDay, min(today, calendar.startOfDay(for: last)))
-        let dayCount = (calendar.dateComponents([.day], from: firstDay, to: lastDay).day ?? 0) + 1
+        let dayCount = max(1, (calendar.dateComponents([.day], from: firstDay, to: lastDay).day ?? 0) + 1)
 
         // 1. Which days are active, and how heavy each is.
         let sessionTarget = max(card.sessions, 1)
@@ -155,7 +157,7 @@ extension DeviceDossier {
         return DeviceDossier(id: card.id, nickname: card.nickname, symbol: card.symbol, serial: card.serial,
                              hardware: DossierSample.hardware(for: card), sessions: sessions,
                              otherDevicesDailyMinutes: others, sampleCount: Int(total * 1.08),
-                             lastSynced: now.addingTimeInterval(-120), now: now, calendar: calendar)
+                             lastSynced: effectiveNow.addingTimeInterval(-120), now: effectiveNow, calendar: calendar)
     }
 
     private static func parse(_ text: String, format: String, calendar: Calendar) -> Date? {

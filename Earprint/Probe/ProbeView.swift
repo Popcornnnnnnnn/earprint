@@ -49,7 +49,9 @@ struct ProbeView: View {
                     }
                 }
 
-                WidgetDebugSection()
+                #if DEBUG
+                WidgetDebugSection(library: library)
+                #endif
 
                 if !probe.rawLines.isEmpty {
                     Section("Raw samples") {

@@ -1,7 +1,9 @@
+#if DEBUG
 import SwiftUI
 
 /// Debug controls on the Data probe tab: Live Activity start/stop and widget snapshot publishing.
 struct WidgetDebugSection: View {
+    @ObservedObject var library: HeadphoneLibrary
     @State private var live = LiveActivityController.shared
     @State private var published: Date?
 
@@ -25,15 +27,22 @@ struct WidgetDebugSection: View {
                 }
             } else {
                 Button {
-                    let card = SampleCards.all[0]
-                    live.start(deviceName: card.nickname, symbol: card.symbol, cardID: card.id,
-                               startedAt: Date().addingTimeInterval(-18 * 60))
+                    if let card = library.cards.first {
+                        live.start(deviceName: card.nickname, symbol: card.symbol, cardID: card.id,
+                                   startedAt: Date().addingTimeInterval(-18 * 60))
+                    }
                 } label: {
                     Label("Start \"Listening now\" Live Activity", systemImage: "dot.radiowaves.left.and.right")
                 }
+                .disabled(library.cards.isEmpty)
             }
             Button {
-                WidgetPublisher.publishSample()
+                let snapshot = WidgetSnapshot(
+                    summary: library.homeSummary,
+                    cards: library.cards,
+                    isSample: library.isShowingSampleData
+                )
+                WidgetPublisher.publish(snapshot)
                 published = Date()
             } label: {
                 Label(published == nil ? "Publish widget snapshot" : "Snapshot published", systemImage: "square.grid.2x2")
@@ -44,8 +53,9 @@ struct WidgetDebugSection: View {
             if let error = live.lastError {
                 Text(error).foregroundStyle(.red)
             } else {
-                Text("Starts the Lock Screen / Dynamic Island session with sample data. Real sessions will start from headphone route changes.")
+                Text("Debug-only controls for testing Lock Screen / Dynamic Island sessions and App Group snapshots using current library data.")
             }
         }
     }
 }
+#endif

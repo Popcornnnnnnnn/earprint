@@ -356,8 +356,9 @@ struct DeviceDossier: Identifiable {
     private static func buildDays(sessions: [WearSession], others: [Date: Double], now: Date, calendar: Calendar) -> [DayStat] {
         guard let first = sessions.first else { return [] }
         let start = calendar.startOfDay(for: first.start)
-        let today = calendar.startOfDay(for: now)
-        let count = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+        let lastSessionDay = sessions.map { calendar.startOfDay(for: $0.end) }.max() ?? start
+        let today = max(start, max(lastSessionDay, calendar.startOfDay(for: now)))
+        let count = max(1, (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1)
         var days = (0..<count).map { DayStat(date: calendar.date(byAdding: .day, value: $0, to: start)!) }
         func index(_ date: Date) -> Int? {
             let i = calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: date)).day ?? -1
@@ -388,8 +389,9 @@ struct DeviceDossier: Identifiable {
     }
 
     private static func stats(_ period: DossierPeriod, days: [DayStat], sessions: [WearSession], now: Date, calendar: Calendar) -> PeriodStats {
-        let today = calendar.startOfDay(for: now)
-        let firstDay = days.first?.date ?? today
+        let firstDay = days.first?.date ?? calendar.startOfDay(for: now)
+        let lastDay = days.last?.date ?? firstDay
+        let today = max(lastDay, calendar.startOfDay(for: now))
         let start = period.days.map { calendar.date(byAdding: .day, value: -($0 - 1), to: today)! } ?? firstDay
         let inRange = days.filter { $0.date >= start }
         let total = inRange.reduce(0) { $0 + $1.minutes }
