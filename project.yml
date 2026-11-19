@@ -1,0 +1,38 @@
+name: Earprint
+options:
+  bundleIdPrefix: com.popcornnn
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: R26X7B8XDT
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Earprint:
+    type: application
+    platform: iOS
+    sources:
+      - Earprint
+    entitlements:
+      path: Earprint/Earprint.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    info:
+      path: Earprint/Info.plist
+      properties:
+        CFBundleDisplayName: Earprint
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSHealthShareUsageDescription: Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
+        TARGETED_DEVICE_FAMILY: "1"
