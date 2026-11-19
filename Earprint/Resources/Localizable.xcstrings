@@ -871,6 +871,16 @@
         }
       }
     },
+    "Generic 3D preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用 3D 预览"
+          }
+        }
+      }
+    },
     "GOLD": {
       "localizations": {
         "zh-Hans": {
@@ -1291,6 +1301,16 @@
         }
       }
     },
+    "Model Gallery": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耳机型号预览"
+          }
+        }
+      }
+    },
     "Moderate": {
       "localizations": {
         "zh-Hans": {
@@ -1447,6 +1467,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "粉色"
+          }
+        }
+      }
+    },
+    "Preview cards use sample listening stats.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览卡片使用示例聆听数据。"
           }
         }
       }
@@ -1767,6 +1797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置"
+          }
+        }
+      }
+    },
+    "Shared 3D artwork": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共用 3D 模型"
           }
         }
       }

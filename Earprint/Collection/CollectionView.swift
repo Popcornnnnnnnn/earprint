@@ -299,6 +299,80 @@ struct CollectionView: View {
     }
 }
 
+#if DEBUG || EARPRINT_MODEL_GALLERY
+struct ModelGalleryView: View {
+    private struct Preview: Identifiable {
+        let card: HeadphoneCard
+        let productID: String?
+
+        var id: String { card.id }
+    }
+
+    private static let previews: [Preview] = {
+        let products = HeadphoneModelCatalog.byProductID.values.sorted {
+            ($0.marketingName, $0.productID ?? 0) < ($1.marketingName, $1.productID ?? 0)
+        }
+        let genericEarbuds = HeadphoneModelInfo(productID: nil, marketingName: "Generic earbuds", shortName: "Earbuds",
+                                                key: .earbudsGeneric, symbol: "earbuds", fallbackSymbol: "headphones",
+                                                isApple: false)
+        return (products + [genericEarbuds, HeadphoneModelCatalog.unknownHeadphones]).enumerated().map { index, model in
+            let card = HeadphoneCard(
+                id: "preview-\(model.productIDText ?? model.key.rawValue)", nickname: model.shortName,
+                model: model.marketingName, symbol: model.resolvedSymbol,
+                lifetimeMinutes: 24 * 60 + 15, sessions: 32, longestMinutes: 90, averageDecibels: 65,
+                firstMet: "2025.09.01", lastUsed: "Today", serial: index + 1, grid: SampleData.summary.grid,
+                modelKey: model.key, kind: model.key.kind
+            )
+            return Preview(card: card, productID: model.productIDText)
+        }
+    }()
+    private static let cards = previews.map(\.card)
+
+    @Namespace private var hero
+    @State private var selection: HeadphoneCard?
+    @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
+
+    var body: some View {
+        ZStack {
+            List {
+                Section {
+                    ForEach(Self.previews) { preview in
+                        Button {
+                            selection = preview.card
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(preview.card.model)
+                                HStack {
+                                    Text(LocalizedStringKey(preview.card.modelAssetName == nil ? "Generic 3D preview" : "Shared 3D artwork"))
+                                    if let productID = preview.productID {
+                                        Text(productID).monospaced()
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    }
+                } footer: {
+                    Text("Preview cards use sample listening stats.")
+                }
+            }
+            .accessibilityHidden(selection != nil)
+
+            if let selection {
+                CardDetail(card: selection, cards: Self.cards, namespace: hero, isModelPreview: true,
+                           colorStore: colors, onSelectCard: { self.selection = $0 }) {
+                    self.selection = nil
+                }
+            }
+        }
+        .navigationTitle("Model Gallery")
+        .toolbar(selection == nil ? .visible : .hidden, for: .navigationBar)
+    }
+}
+#endif
+
 /// Pure helper for switching between cards in `CardDetail`.
 enum CardDeckNavigation {
     static func index(of card: HeadphoneCard, in cards: [HeadphoneCard]) -> Int? {
@@ -396,12 +470,14 @@ struct CardDetail: View {
     let card: HeadphoneCard
     var cards: [HeadphoneCard] = []
     let namespace: Namespace.ID
+    var isModelPreview = false
     var colorStore: DeviceColorStore? = nil
     var routeMonitor: ActiveAudioRouteMonitor? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
     let close: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("cardDetail.hasSeenFlipHint") private var hasSeenFlipHint = false
     @State private var showsFlipHintThisVisit = false
     @StateObject private var motion = TiltMotion()
@@ -413,11 +489,8 @@ struct CardDetail: View {
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
-    /// Only the settled centered card mounts a live `RealityView`, keeping swipes locked at 120fps.
-    @State private var settledCardID: String? = nil
     /// Set when the live 3D model has finished attaching so 2D artwork crossfades smoothly away.
     @State private var ready3DCardID: String? = nil
-    @State private var settleTask: Task<Void, Never>? = nil
     @State private var appeared = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
@@ -509,41 +582,25 @@ struct CardDetail: View {
                 dragAngle = 0
             }
         }
-        .onChange(of: card.id) { _, newID in
+        .onChange(of: card.id) { _, _ in
             flipped = false
             angle = 0
             dragAngle = 0
             dragTilt = .zero
             modelInteractionTilt = nil
+            ready3DCardID = nil
             showColorBar = false
             withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
                 deckPosition = CGFloat(activeIndex)
             }
-            scheduleSettle(for: newID, delayMs: 260)
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
-            settledCardID = card.id
             motion.start()
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
             Task { await runDemoIfNeeded() }
         }
-        .onDisappear {
-            settleTask?.cancel()
-            motion.stop()
-        }
-    }
-
-    private func scheduleSettle(for cardID: String, delayMs: Int) {
-        settleTask?.cancel()
-        settleTask = Task {
-            if delayMs > 0 {
-                try? await Task.sleep(for: .milliseconds(delayMs))
-            }
-            guard !Task.isCancelled else { return }
-            settledCardID = cardID
-            motion.start()
-        }
+        .onDisappear { motion.stop() }
     }
 
     private var topCloseButton: some View {
@@ -574,9 +631,7 @@ struct CardDetail: View {
 
                 if dragStartPosition == nil {
                     dragStartPosition = CGFloat(activeIndex)
-                    // Pause 3D overlay + CoreMotion during the swipe so the card deal runs at a locked 120fps.
-                    settleTask?.cancel()
-                    settledCardID = nil
+                    // Keep the live view out of the deck while it is tracking the finger.
                     ready3DCardID = nil
                     motion.stop()
                 }
@@ -598,8 +653,9 @@ struct CardDetail: View {
                 }
             }
             .onEnded { value in
-                let origin = dragStartPosition ?? CGFloat(activeIndex)
+                guard let origin = dragStartPosition else { return }
                 dragStartPosition = nil
+                motion.start()
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 let dy = value.translation.height
@@ -617,7 +673,6 @@ struct CardDetail: View {
                 withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
                     deckPosition = CGFloat(activeIndex)
                 }
-                scheduleSettle(for: card.id, delayMs: 220)
             }
     }
 
@@ -689,8 +744,13 @@ struct CardDetail: View {
     /// mid-flight) driven by `CardStackEffect` (`Animatable`) for locked 120Hz spring curves.
     private func cardStack(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
+        // The preview catalog is much larger than a listening collection. Only lay out the exposed cards.
+        let indices = isModelPreview
+            ? max(0, activeIndex - 2)..<min(deckCards.count, activeIndex + 5)
+            : deckCards.indices
         return ZStack {
-            ForEach(Array(deckCards.enumerated()), id: \.element.id) { idx, item in
+            ForEach(Array(deckCards[indices].enumerated()), id: \.element.id) { offset, item in
+                let idx = indices.lowerBound + offset
                 deckCard(item, index: idx, scale: scale)
                     .modifier(CardStackEffect(cardIndex: CGFloat(idx), deckPosition: deckPosition, cardScale: scale, appeared: appeared))
             }
@@ -705,8 +765,10 @@ struct CardDetail: View {
         let itemFinish = itemColor?.modelFinish ?? item.finish
         let itemFinishID = itemColor?.id ?? "default"
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
-        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && item.modelAssetName != nil
+        let assetName = item.modelAssetName ?? (isModelPreview ? "" : nil)
+        let show3D = isTop && dragStartPosition == nil && assetName != nil
         let is3DReady = show3D && ready3DCardID == item.id
+        let revealLift: CGFloat = item.kind == .earbuds ? 12 : 4
         let activeAngle = isTop ? angle + dragAngle : 0
         let activeTilt = isTop ? tilt : .zero
 
@@ -717,17 +779,18 @@ struct CardDetail: View {
                     tilt: activeTilt,
                     showSymbol: !is3DReady,
                     colorOption: itemColor,
-                    isCurrentlyWorn: itemWorn
+                    isCurrentlyWorn: itemWorn,
+                    usesProductArtwork: !isModelPreview || item.modelAssetName != nil
                 )
                 .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                 .gesture(isTop ? cardDrag : nil)
 
-                if show3D, let assetName = item.modelAssetName {
+                if show3D, let assetName {
                     Ellipse()
                         .fill(.black.opacity(0.30))
                         .frame(width: 146, height: 16)
                         .blur(radius: 10)
-                        .offset(x: -activeTilt.width * 8, y: 29)
+                        .offset(x: -activeTilt.width * 8, y: 37)
                         .opacity(is3DReady ? 1 : 0)
                         .allowsHitTesting(false)
                     HeadphoneModelView(
@@ -736,22 +799,24 @@ struct CardDetail: View {
                         finishID: itemFinishID,
                         modelKey: item.modelKey,
                         assetName: assetName,
-                        modelSize: 0.17,
+                        modelSize: 0.18,
                         tint: item.foilTint,
                         tilt: activeTilt,
                         onManipulationChanged: { manipulating in
                             modelInteractionTilt = manipulating ? tilt : nil
                         },
                         onModelReady: {
-                            withAnimation(.easeOut(duration: 0.22)) {
+                            withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
                                 ready3DCardID = item.id
                             }
                         }
                     )
                     .frame(width: 300, height: 230)
-                    .offset(y: -55)
+                    .scaleEffect(is3DReady || reduceMotion ? 1 : 0.96)
+                    .offset(y: -47 + (is3DReady || reduceMotion ? 0 : revealLift))
                     .opacity(is3DReady ? 1 : 0)
                     .allowsHitTesting(is3DReady)
+                    .accessibilityHidden(!is3DReady)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
@@ -763,7 +828,7 @@ struct CardDetail: View {
             .modifier(CardFaceRotation(angle: activeAngle))
 
             if isTop {
-                CardBack(card: item, openDossier: flipped ? openDossier : nil, flip: { flip() })
+                CardBack(card: item, openDossier: flipped && !isModelPreview ? openDossier : nil, flip: { flip() })
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                     .simultaneousGesture(cardDrag)
                     .allowsHitTesting(flipped)
@@ -787,7 +852,7 @@ struct CardDetail: View {
 
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        return CardBack(card: card, openDossier: openDossier)
+        return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier)
             .id(card.id)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)

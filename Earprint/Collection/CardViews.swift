@@ -77,8 +77,10 @@ struct HeadphoneArtwork: View {
     let card: HeadphoneCard
     var colorOption: DeviceColorOption? = nil
     var showsChargingCase = true
+    var usesProductArtwork = true
 
     private var assetName: String? {
+        guard usesProductArtwork else { return nil }
         if let custom = colorOption?.cardAssetName, UIImage(named: custom) != nil {
             return custom
         }
@@ -178,6 +180,7 @@ struct CardFront: View {
     var colorOption: DeviceColorOption? = nil
     var isCurrentlyWorn: Bool = false
     var showsChargingCase = true
+    var usesProductArtwork = true
 
     var body: some View {
         let ink = card.rarity.ink
@@ -197,7 +200,8 @@ struct CardFront: View {
 
             Spacer()
 
-            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase)
+            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
+                             usesProductArtwork: usesProductArtwork)
                 .frame(height: 165)
                 .opacity(showSymbol ? 1 : 0)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)

@@ -270,7 +270,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    private enum Destination: Hashable { case appIcon }
+    private enum Destination: Hashable {
+        case appIcon
+        #if DEBUG || EARPRINT_MODEL_GALLERY
+        case modelGallery
+        #endif
+    }
 
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
@@ -293,6 +298,11 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.navigationLink)
+                #if DEBUG || EARPRINT_MODEL_GALLERY
+                NavigationLink(value: Destination.modelGallery) {
+                    Label("Model Gallery", systemImage: "cube.transparent")
+                }
+                #endif
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -301,8 +311,15 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .navigationDestination(for: Destination.self) { _ in
-                AppIconPickerView(manager: iconManager)
+            .navigationDestination(for: Destination.self) { destination in
+                switch destination {
+                case .appIcon:
+                    AppIconPickerView(manager: iconManager)
+                #if DEBUG || EARPRINT_MODEL_GALLERY
+                case .modelGallery:
+                    ModelGalleryView()
+                #endif
+                }
             }
         }
         .interactiveDismissDisabled(iconManager.isUpdating)

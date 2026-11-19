@@ -59,3 +59,5 @@ Useful launch arguments: `-demo`, `-demoIndex <n>`, `-cardDetail`, `-dossier`, `
 Use the gear in Collection to choose the app icon and switch between English and Simplified Chinese. Swipe below a detail card to browse. The flip hint appears on the first visit in standard Release builds and on every visit in Debug builds. Add `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) EARPRINT_REPEAT_CARD_HINT'` for a signed Release test build that also repeats the hint. Use the Debug launch argument `-cardHintOnce` to test first-visit behavior. See [supported headphone artwork](docs/ASSETS.md#collectible-support).
 
 In Debug builds, press and hold the Collection gear, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.
+
+**Settings → Model Gallery** previews every entry in the headphone catalog using sample stats. Models without bundled 3D artwork use labeled generic shapes. The gallery is available in Debug builds. For a signed Release test build that also repeats the flip hint, use `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) EARPRINT_REPEAT_CARD_HINT EARPRINT_MODEL_GALLERY'`.

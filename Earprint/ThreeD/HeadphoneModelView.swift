@@ -72,16 +72,15 @@ final class ModelRig {
     var iblReceiver: ImageBasedLightReceiverComponent?
     private var subscription: EventSubscription?
     private var lastTranslation: CGSize = .zero
-    private var appear: Float = 0
 
     init() {
         root.addChild(tiltPivot)
         tiltPivot.addChild(zoomPivot)
         zoomPivot.addChild(spinPivot)
-        zoomPivot.scale = .zero
     }
 
     func attach(to content: RealityViewCameraContent) {
+        step(0)
         subscription = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
             MainActor.assumeIsolated { self?.step(Float(event.deltaTime)) }
         }
@@ -89,17 +88,8 @@ final class ModelRig {
 
     func step(_ dt: Float) {
         let dt = min(dt, 1 / 20)
-        // Pop-in with a little overshoot when the card opens.
-        if appear < 1 {
-            appear = min(1, appear + dt * 1.8)
-            let t = appear
-            let overshoot = 1 + sin(t * .pi) * 0.12 * (1 - t)
-            let eased = 1 - pow(1 - t, 3)
-            zoomPivot.scale = SIMD3(repeating: eased * overshoot * zoom)
-        } else {
-            let current = zoomPivot.scale.x
-            zoomPivot.scale = SIMD3(repeating: current + (zoom - current) * min(1, dt * 10))
-        }
+        let current = zoomPivot.scale.x
+        zoomPivot.scale = SIMD3(repeating: current + (zoom - current) * min(1, dt * 10))
 
         if !dragging {
             yaw += velocity.x * dt
@@ -152,6 +142,7 @@ struct HeadphoneModelView: View {
     var onManipulationChanged: (Bool) -> Void = { _ in }
     var onModelReady: () -> Void = {}
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rig = ModelRig()
     @State private var twirls = 0
     @GestureState private var isManipulating = false
@@ -182,24 +173,28 @@ struct HeadphoneModelView: View {
             rim.look(at: .zero, from: [-0.5, 0.2, -0.6], relativeTo: nil)
             content.add(rim)
 
-            content.add(rig.root)
-            rig.attach(to: content)
-
+            async let environment = try? StudioEnvironment.make(tint: tint)
             let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, modelKey: modelKey, size: modelSize)
+            let studioLighting = await environment
+            guard !Task.isCancelled else { return }
+
+            content.add(rig.root)
             rig.loadedModel = model
             rig.appliedFinishID = finishID
             rig.spinPivot.addChild(model)
 
-            if let environment = try? await StudioEnvironment.make(tint: tint) {
+            if let studioLighting {
                 let light = Entity()
-                light.components.set(ImageBasedLightComponent(source: .single(environment), intensityExponent: 1.3))
+                light.components.set(ImageBasedLightComponent(source: .single(studioLighting), intensityExponent: 1.3))
                 content.add(light)
                 let receiver = ImageBasedLightReceiverComponent(imageBasedLight: light)
                 rig.iblReceiver = receiver
                 applyReceiver(receiver, to: model)
             }
+            rig.attach(to: content)
             onModelReady()
         } update: { _ in
+            rig.idleSpin = reduceMotion ? 0 : 0.45
             rig.applyTilt(tilt)
             if let currentModel = rig.loadedModel, rig.appliedFinishID != finishID {
                 rig.appliedFinishID = finishID
@@ -241,6 +236,7 @@ struct HeadphoneModelView: View {
             twirls += 1
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: twirls)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("3D model. Drag to spin, pinch to zoom, long press to twirl.")
     }
 
