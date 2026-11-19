@@ -47,7 +47,7 @@ struct ShareCardView: View {
             Spacer(minLength: 16)
 
             HStack {
-                Image(systemName: "airpodspro")
+                Image(systemName: summary.deviceSymbol)
                 Text(summary.deviceModel)
                 Spacer()
                 Text("Earprint").fontWeight(.semibold)

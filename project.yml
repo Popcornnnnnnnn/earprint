@@ -52,9 +52,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
         TARGETED_DEVICE_FAMILY: "1"
-    scheme:
-      testTargets:
-        - EarprintWidgetRenders
+      configs:
+        Debug:
+          # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).
+          # Release builds omit this key and never request write authorization.
+          INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Debug builds can write sample headphone audio data into the simulator's Apple Health store for local testing."
 
   # Home Screen + Lock Screen widgets and the "Listening now" Live Activity.
   EarprintWidgets:
@@ -85,6 +87,20 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
 
+  # Fast unit tests for HealthKit aggregation, grid bucketing, and device-ID catalog.
+  EarprintTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - EarprintTests
+    dependencies:
+      - target: Earprint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.tests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+
   # Renders every widget view to PNG with ImageRenderer (writes docs/widgets/*.png).
   # Run: xcodebuild test -scheme Earprint -only-testing:EarprintWidgetRenders ...
   EarprintWidgetRenders:
@@ -100,3 +116,19 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.widget-renders
         GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Earprint:
+    build:
+      targets:
+        Earprint: all
+        EarprintTests: [test]
+        EarprintWidgetRenders: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EarprintTests
+    archive:
+      config: Release

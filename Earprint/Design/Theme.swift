@@ -48,3 +48,60 @@ struct CardBackground: ViewModifier {
 extension View {
     func card() -> some View { modifier(CardBackground()) }
 }
+
+/// Compact badge shown when the app is displaying fallback sample data instead of Apple Health records.
+struct SampleDataBanner: View {
+    var badgeText: String = "Sample data"
+    var detail: String?
+    var isLoading: Bool = false
+    var onConnect: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.caption2.weight(.bold))
+                    Text(badgeText)
+                        .font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(Theme.moderate.color)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Theme.moderate.color.opacity(0.14), in: Capsule())
+                .overlay(Capsule().stroke(Theme.moderate.color.opacity(0.32), lineWidth: 1))
+
+                Spacer()
+
+                if let onConnect {
+                    Button(action: onConnect) {
+                        HStack(spacing: 5) {
+                            if isLoading {
+                                ProgressView().controlSize(.mini).tint(.white)
+                            } else {
+                                Image(systemName: "heart.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.loud.color)
+                            }
+                            Text(isLoading ? "Syncing…" : "Connect Health")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.10), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isLoading)
+                }
+            }
+
+            if let detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
