@@ -26,20 +26,21 @@ extension WidgetSnapshot {
         }
         let heatmap = Heatmap(minutes: minutes, decibels: decibels)
         let grid = heatmap.grid
+        let week = grid.totalMinutes(lastDays: 7)
         return WidgetSnapshot(
             generatedAt: Date(),
             isSample: true,
             day: Calendar.current.startOfDay(for: Date()),
             today: Today(minutes: 72, decibels: 63, deviceName: "🧸's AirPods Pro", deviceSymbol: "airpodspro"),
-            week: Week(minutes: grid.totalMinutes(lastDays: 7), budgetUsed: 0.38,
+            week: Week(minutes: week, budgetUsed: 0.38,
                        decibels: grid.averageDecibels(lastDays: 7), label: "Nov 12 – 18"),
             cards: [
                 Card(id: "pro2", nickname: "🧸's AirPods Pro", model: "AirPods Pro 2 · USB-C", symbol: "airpodspro",
-                     lifetimeMinutes: 188 * 60 + 22, weekMinutes: 9 * 60 + 12, sessions: 269, serial: 1),
+                     lifetimeMinutes: 188 * 60 + 22, weekMinutes: (week * 0.64).rounded(), sessions: 269, serial: 1),
                 Card(id: "max", nickname: "Studio Max", model: "AirPods Max", symbol: "airpodsmax",
-                     lifetimeMinutes: 64 * 60 + 10, weekMinutes: 3 * 60 + 5, sessions: 88, serial: 2),
+                     lifetimeMinutes: 64 * 60 + 10, weekMinutes: (week * 0.28).rounded(), sessions: 88, serial: 2),
                 Card(id: "fit", nickname: "Gym buds", model: "Beats Fit Pro", symbol: "beats.earphones",
-                     lifetimeMinutes: 9 * 60 + 40, weekMinutes: 50, sessions: 21, serial: 3),
+                     lifetimeMinutes: 9 * 60 + 40, weekMinutes: (week * 0.08).rounded(), sessions: 21, serial: 3),
             ],
             heatmap: heatmap
         )

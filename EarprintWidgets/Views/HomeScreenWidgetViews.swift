@@ -165,6 +165,8 @@ struct EarprintRingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            Spacer(minLength: 0)
+
             WeekByHeadphone(cards: Array(snapshot.cards.prefix(3)))
 
             Spacer(minLength: 0)

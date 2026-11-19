@@ -9,3 +9,5 @@ Earprint.xcodeproj/
 Earprint/Info.plist
 Earprint/Earprint.entitlements
 build-*/
+EarprintWidgets/Info.plist
+EarprintWidgets/EarprintWidgets.entitlements

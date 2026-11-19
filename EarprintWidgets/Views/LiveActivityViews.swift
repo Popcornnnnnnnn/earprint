@@ -98,9 +98,13 @@ struct RestCountdown: View {
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(WidgetPalette.secondary)
             if let staticProgress {
-                ProgressView(value: staticProgress)
-                    .progressViewStyle(.linear)
-                    .tint(color)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(WidgetPalette.track)
+                        Capsule().fill(color).frame(width: geo.size.width * staticProgress)
+                    }
+                }
+                .frame(height: 4)
             } else {
                 ProgressView(timerInterval: state.startedAt...max(state.startedAt.addingTimeInterval(1), state.restAt), countsDown: false) {
                     EmptyView()

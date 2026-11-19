@@ -198,7 +198,7 @@ struct DayHeatmap: View {
                     ForEach(0..<7, id: \.self) { col in
                         let i = row * 7 + col
                         if i < days.count {
-                            let t = days[i] / maxMinutes
+                            let t = (days[i] / maxMinutes).squareRoot()
                             let db = averageDecibels(grid, day: offset + i)
                             RoundedRectangle(cornerRadius: cell * 0.28, style: .continuous)
                                 .fill(days[i] > 0 ? Theme.levelColor(db: db).opacity(0.18 + 0.82 * t) : WidgetPalette.track)
