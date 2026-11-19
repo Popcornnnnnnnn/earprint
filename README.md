@@ -26,7 +26,7 @@ An iPhone app that turns your AirPods and headphone listening history from Apple
 
 ## Stage 1 Completion Criteria
 
-1. Data probe & real HealthKit pipeline verified on a real iPhone (currently verified via 21 unit tests + simulator seeder; blocked on Xcode Apple ID sign-in for device install).
+1. Verify the HealthKit pipeline and listening experience on a real iPhone. Follow [physical device acceptance](https://github.com/Popcornnnnnnnn/earprint/issues/2) for progress.
 2. Collectible 3D cards, Device Dossier, Widgets & Live Activity, and iPhone Duo layouts built and visually verified in simulators.
 3. Connect full per-session HealthKit history into `DeviceDossier` (currently hydrates card totals and uses deterministic sample sessions when in sample mode) and add bilingual Chinese + English localization (String Catalog).
 4. Ship TestFlight build and daily-drive for one week.
@@ -34,7 +34,7 @@ An iPhone app that turns your AirPods and headphone listening history from Apple
 ## Current Status (2026-11-19)
 
 - **Done:** All 5 core tracks integrated, 21/21 unit tests passing, Debug + Release simulator builds passing, verified on iPhone 17 Pro and iPhone Duo simulators.
-- **Blocked (device testing):** Device builds fail with "No Accounts". Sign in to **Xcode → Settings → Accounts** (team `R26X7B8XDT`) to install on a physical iPhone for real HealthKit data, CoreMotion tilt, and haptics.
+- **Device testing:** Signed Release builds install and launch on iPhone 17. See [physical device acceptance](https://github.com/Popcornnnnnnnn/earprint/issues/2) for the remaining checks.
 
 ## Build & Test
 
