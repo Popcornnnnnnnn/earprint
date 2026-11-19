@@ -1,0 +1,13 @@
+AirPods 4 artwork and 3D model
+
+“AirPods 4” by Falah3D (3dFalah)
+https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e
+https://sketchfab.com/3dFalah
+
+Licensed under Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Earprint cropped and masked the published render. Earprint normalized and
+simplified the original FBX geometry, converted it to USDZ, and compressed
+its opaque textures. The source FBX is also distributed with attribution at
+https://github.com/andre94/clawd-airpods4-anc-case/tree/0a7b262a535ec8239ec12de62d506d94d206db8b/assets/reference/airpods-4

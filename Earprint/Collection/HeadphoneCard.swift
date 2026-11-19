@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One collectible card per headphone device found in Health.
+/// One collectible card per headphone in the listening library.
 struct HeadphoneCard: Identifiable, Equatable {
     let id: String
     var nickname: String
@@ -18,8 +18,11 @@ struct HeadphoneCard: Identifiable, Equatable {
     var modelKey: HeadphoneModelKey = .overEarGeneric
     /// Which 3D model the card shows.
     var kind: HeadphoneKind = .overEar
+    var aliasIDs: [String] = []
 
     var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
+
+    func matches(id: String) -> Bool { self.id == id || aliasIDs.contains(id) }
 
     static func == (a: HeadphoneCard, b: HeadphoneCard) -> Bool { a.id == b.id }
 }
@@ -39,7 +42,7 @@ enum SampleCards {
             HeadphoneCard(id: "airpods4", nickname: "AirPods 4", model: "AirPods 4 (ANC)", symbol: "airpods.gen4",
                           lifetimeMinutes: 9 * 60 + 40, sessions: 21, longestMinutes: 64, averageDecibels: 71,
                           firstMet: "2025.03.08", lastUsed: "Nov 2", serial: 3, grid: scaled(base.grid, 0.15),
-                          modelKey: .airpods3, kind: .earbuds),
+                          modelKey: .airpods4, kind: .earbuds),
         ]
     }()
 

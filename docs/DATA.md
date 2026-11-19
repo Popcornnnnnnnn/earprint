@@ -22,6 +22,8 @@ HeadphoneLibrary (@MainActor ObservableObject)
   └── Hydrates from disk cache on init; falls back to SampleData with badge when empty/denied/simulator
 ```
 
+The library combines known AirPods records that share a model and current Bluetooth nickname. It combines recorded listening time and merges overlapping or nearby sessions using the existing five-minute gap. The original accessory IDs remain in the on-device cache, and older card links resolve to the combined card.
+
 ### Source Files (`Earprint/Data/`)
 
 | File | Responsibility |

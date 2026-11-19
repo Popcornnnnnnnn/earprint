@@ -8,10 +8,10 @@ An iPhone app that turns your AirPods and headphone listening history from Apple
 
 - **3D Collectible Cards (`Earprint/Collection/`, `Earprint/ThreeD/`):**
   - Rarity tiers by lifetime listening hours: `BRONZE` → `SILVER` → `GOLD` → `HOLO · LEGENDARY`.
-  - Real-time RealityKit 3D models (`AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`, plus procedural fallback) floating above the card surface: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, tilt phone for foil shine & parallax, tap to flip for counting stats.
+  - Real-time RealityKit 3D models (`AirPods4.usdz`, `AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`, plus procedural fallback) floating above the card surface: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, tilt phone for foil shine & parallax, tap to flip for counting stats.
   - See [docs/ASSETS.md](docs/ASSETS.md) for CC-BY 4.0 attributions and trademark notes.
 - **Device Dossier (`Earprint/Dossier/`):**
-  - Tap **Dossier** or swipe up on any card to open its PSA-style acrylic grading slab (`EAR GRADE` from hearing safety), period switcher (`Week` / `Month` / `Year` / `All`), interactive 30-day scrub bar chart, 24-hour peak clock, 6-tile habits & hearing bento, lifetime ledger, milestone timeline, and guilloché hardware certificate (`Apple Inc. · 0x2024`, firmware, sample count, history range).
+  - Flip a card and tap **Dossier** on the reverse to open its PSA-style acrylic grading slab (`EAR GRADE` from hearing safety), period switcher (`Week` / `Month` / `Year` / `All`), interactive 30-day scrub bar chart, 24-hour peak clock, 6-tile habits & hearing bento, lifetime ledger, milestone timeline, and guilloché hardware certificate (`Apple Inc. · 0x2024`, firmware, sample count, history range).
   - See [docs/DOSSIER.md](docs/DOSSIER.md).
 - **HealthKit Data Pipeline (`Earprint/Data/`, `EarprintTests/`):**
   - Incremental anchored sync of `HKQuantityType(.headphoneAudioExposure)` off the main actor, disk cache for instant startup, `HKObserverQuery` live updates, 34-device Apple Bluetooth product ID catalog, rename merging via `localIdentifier`, WHO weekly hearing budget, and 28×24 local-time/DST grid bucketing.

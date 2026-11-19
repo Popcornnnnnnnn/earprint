@@ -6,7 +6,8 @@ import UIKit
 /// Which 3D model / illustration a card should use. Raw values are stable (used in the cache and by the 3D card).
 enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     case airpods            // AirPods 1, 2 (stem)
-    case airpods3           // AirPods 3, 4, 4 ANC, 5 (short stem, no tips)
+    case airpods3           // Shared open-ear artwork for AirPods 3 and 5
+    case airpods4           // AirPods 4 and AirPods 4 (ANC), with charging case
     case airpodsPro         // AirPods Pro 1, 2, 3 (tips)
     case airpodsMax         // AirPods Max (all)
     case beatsEarbuds       // Beats in-ear: Studio Buds, Fit Pro, Solo Buds, Flex, X
@@ -19,6 +20,7 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     var collectibleArtwork: String? {
         switch self {
         case .airpods, .airpods3: "CardRenderAirPodsOpen"
+        case .airpods4: "CardRenderAirPods4"
         case .airpodsPro: "CardRenderAirPodsPro"
         case .airpodsMax: "CardRenderAirPodsMax"
         default: nil
@@ -27,6 +29,7 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
 
     var collectibleModel: String? {
         switch self {
+        case .airpods4: "AirPods4"
         case .airpodsPro: "AirPodsPro"
         case .airpodsMax: "AirPodsMax"
         default: nil
@@ -37,7 +40,7 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     var kind: HeadphoneKind {
         switch self {
         case .airpodsMax, .beatsOverEar, .overEarGeneric: .overEar
-        case .airpods, .airpods3, .airpodsPro, .earbudsGeneric: .earbuds
+        case .airpods, .airpods3, .airpods4, .airpodsPro, .earbudsGeneric: .earbuds
         case .beatsEarbuds, .beatsEarhook: .sportBuds
         }
     }
@@ -45,7 +48,7 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     /// Closest of the five base shapes, for a 3D renderer that only has the basic set.
     var baseShape: HeadphoneModelKey {
         switch self {
-        case .airpods, .airpods3: .airpods
+        case .airpods, .airpods3, .airpods4: .airpods
         case .airpodsPro: .airpodsPro
         case .airpodsMax: .airpodsMax
         case .beatsEarbuds, .beatsEarhook: .beatsEarbuds
@@ -110,11 +113,11 @@ enum HeadphoneModelCatalog {
             entry(0x2002, "AirPods (1st generation)", "AirPods", .airpods, "airpods", "airpods"),            // I M O T S
             entry(0x200F, "AirPods (2nd generation)", "AirPods 2", .airpods, "airpods", "airpods"),          // M O T S
             entry(0x2013, "AirPods (3rd generation)", "AirPods 3", .airpods3, "airpods.gen3", "airpods"),    // I M O T S
-            entry(0x2019, "AirPods 4", "AirPods 4", .airpods3, "airpods.gen4", "airpods.gen3"),              // M O T S
-            entry(0x201B, "AirPods 4 (ANC)", "AirPods 4 ANC", .airpods3, "airpods.gen4", "airpods.gen3"),   // I M O T S
-            entry(0x201C, "AirPods 4", "AirPods 4", .airpods3, "airpods.gen4", "airpods.gen3"),              // T S (variant)
-            entry(0x201E, "AirPods 4", "AirPods 4", .airpods3, "airpods.gen4", "airpods.gen3"),              // T S (variant)
-            entry(0x2020, "AirPods 4", "AirPods 4", .airpods3, "airpods.gen4", "airpods.gen3"),              // T S (variant)
+            entry(0x2019, "AirPods 4", "AirPods 4", .airpods4, "airpods.gen4", "airpods.gen3"),              // M O T S
+            entry(0x201B, "AirPods 4 (ANC)", "AirPods 4 ANC", .airpods4, "airpods.gen4", "airpods.gen3"),   // I M O T S
+            entry(0x201C, "AirPods 4", "AirPods 4", .airpods4, "airpods.gen4", "airpods.gen3"),              // T S (variant)
+            entry(0x201E, "AirPods 4", "AirPods 4", .airpods4, "airpods.gen4", "airpods.gen3"),              // T S (variant)
+            entry(0x2020, "AirPods 4", "AirPods 4", .airpods4, "airpods.gen4", "airpods.gen3"),              // T S (variant)
             entry(0x2030, "AirPods 5", "AirPods 5", .airpods3, "airpods.gen4", "airpods.gen3"),              // M S ("airpods5wcc")
             entry(0x2036, "AirPods 5", "AirPods 5", .airpods3, "airpods.gen4", "airpods.gen3"),              // M S
             // AirPods Pro

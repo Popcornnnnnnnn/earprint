@@ -8,7 +8,7 @@ The **Device Dossier** is the deep-dive view for a single headphone card in Earp
 
 ## Entry Points
 
-- **Card Detail (`CollectionView.swift`)**: Tap the foil **Dossier** pill button next to **Share card** / **Close**, or **swipe up** on the card detail view.
+- **Card Detail (`CollectionView.swift`)**: Flip the card and tap **Dossier** beside tier progress on the reverse. When both faces are visible side by side, use the same button on the back face.
 - **Launch arguments (Simulator / QA)**:
   - `-dossier` — opens the dossier directly on launch (combine with `-demoIndex <n>` to pick a card; defaults to `0`).
   - `-dossierPeriod <week|month|year|all>` — selects the initial period window.

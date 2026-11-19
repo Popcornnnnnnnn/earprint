@@ -157,12 +157,12 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertNil(cache.load())
     }
 
-    func testCollectiblesRequireMatchingArtworkWithoutMergingRealDevices() {
+    func testCollectiblesRequireMatchingArtworkAndKeepDifferentlyNamedDevices() {
         let now = Date(timeIntervalSince1970: 1_795_000_000)
         let models = [
             DeviceDescriptor(name: "AirPods Pro", manufacturer: "Apple Inc.", model: "0x2027", localIdentifier: "one"),
-            DeviceDescriptor(name: "AirPods Pro", manufacturer: "0x004C", model: "0x2027", localIdentifier: "two"),
-            DeviceDescriptor(name: "Third-party headset", manufacturer: "0x009E", model: "0x2027", localIdentifier: "three"),
+            DeviceDescriptor(name: "Spare AirPods Pro", manufacturer: "0x004C", model: "0x2027", localIdentifier: "two"),
+            DeviceDescriptor(name: "AirPods Pro", manufacturer: "0x009E", model: "0x2027", localIdentifier: "three"),
             DeviceDescriptor(name: "Redmi Buds", manufacturer: "0x0094", model: "0x04", localIdentifier: "four"),
             DeviceDescriptor(name: "AirPods 4", manufacturer: "Apple Inc.", model: "0x201B", localIdentifier: "five"),
         ]
@@ -177,7 +177,8 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertFalse(HeadphoneModelCatalog.resolve(models[2]).isApple)
         XCTAssertEqual(snapshot.lifetimeSeconds, 3000, accuracy: 0.001)
         XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five"]))
-        XCTAssertNil(cards.first { $0.id == "lid:five" }?.modelAssetName)
+        XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelKey.collectibleArtwork, "CardRenderAirPods4")
+        XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelAssetName, "AirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
 
         guard let summary = snapshot.homeSummary(now: now, calendar: utcCalendar) else {
@@ -188,6 +189,62 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(widget.today.minutes, 50, accuracy: 0.001)
         XCTAssertEqual(widget.today.decibels ?? 0, 62, accuracy: 0.001)
         XCTAssertEqual(Set(widget.cards.map(\.id)), Set(cards.map(\.id)))
+    }
+
+    func testMatchingAirPodsAccessoryIDsCombineHistoryAndKeepEarlierCardIdentity() throws {
+        let now = utcCalendar.startOfDay(for: Date(timeIntervalSince1970: 1_795_000_000)).addingTimeInterval(3600)
+        let pro = DeviceDescriptor(name: "Alex’s AirPods", manufacturer: "Apple Inc.", model: "0x2027",
+                                   localIdentifier: "first-tacl")
+        let proAlias = DeviceDescriptor(name: " ALEX'S AIRPODS ", manufacturer: "0x004C", model: "0x2028",
+                                        localIdentifier: "alias")
+        let otherGeneration = DeviceDescriptor(name: "Alex’s AirPods", manufacturer: "Apple Inc.", model: "0x2024",
+                                               localIdentifier: "other")
+        var aggregate = ListeningAggregate()
+        aggregate.ingest([
+            RawListeningSample(start: now.addingTimeInterval(-900), end: now.addingTimeInterval(-480),
+                               decibels: 60, device: pro, source: "Watch"),
+            RawListeningSample(start: now.addingTimeInterval(-600), end: now.addingTimeInterval(-300),
+                               decibels: 70, device: proAlias, source: "Phone"),
+            RawListeningSample(start: now.addingTimeInterval(-400), end: now,
+                               decibels: 65, device: otherGeneration),
+        ], now: now, calendar: utcCalendar)
+
+        let snapshot = LibrarySnapshot(aggregate: aggregate, now: now, calendar: utcCalendar)
+        let combined = try XCTUnwrap(snapshot.devices.first { $0.id == "lid:first" })
+        let cards = snapshot.cards(now: now, calendar: utcCalendar)
+        let linkedCard = try XCTUnwrap(cards.first { $0.matches(id: "lid:alias") })
+
+        XCTAssertEqual(aggregate.devices.count, 3)
+        XCTAssertEqual(snapshot.totalSamples, 3)
+        XCTAssertEqual(snapshot.devices.count, 2)
+        XCTAssertEqual(snapshot.lifetimeSeconds, 1120, accuracy: 0.001)
+        XCTAssertEqual(combined.nickname, "ALEX'S AIRPODS")
+        XCTAssertEqual(combined.otherNames, ["Alex’s AirPods"])
+        XCTAssertEqual(combined.sources, ["Phone", "Watch"])
+        XCTAssertEqual(combined.first, now.addingTimeInterval(-900))
+        XCTAssertEqual(combined.last, now.addingTimeInterval(-300))
+        XCTAssertEqual(combined.activeDays, 1)
+        XCTAssertEqual(combined.sampleCount, 2)
+        XCTAssertEqual(combined.sessionCount, 1)
+        XCTAssertEqual(combined.longestSession, 600, accuracy: 0.001)
+        XCTAssertEqual(combined.weekSeconds, 720, accuracy: 0.001)
+        XCTAssertEqual(combined.grid.minutes[27][0], 12, accuracy: 0.001)
+        let energy = HearingBudget.energy(decibels: 60, seconds: 420) + HearingBudget.energy(decibels: 70, seconds: 300)
+        XCTAssertEqual(combined.weeklyBudget, HearingBudget.dose(energy: energy), accuracy: 0.00001)
+        XCTAssertEqual(linkedCard.id, "lid:first")
+        XCTAssertEqual(linkedCard.serial, 1)
+        XCTAssertEqual(cards.first { $0.id == "lid:other" }?.serial, 3)
+    }
+
+    func testAirPods4CaseArtworkIsSpecificToFourthGenerationVariants() {
+        let fourthGeneration = [0x2019, 0x201B, 0x201C, 0x201E, 0x2020]
+        for id in fourthGeneration {
+            XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleArtwork, "CardRenderAirPods4")
+            XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleModel, "AirPods4")
+        }
+        XCTAssertNotNil(Bundle.main.url(forResource: "AirPods4", withExtension: "usdz"))
+        XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2013]?.key.collectibleArtwork, "CardRenderAirPodsOpen")
+        XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2030]?.key.collectibleArtwork, "CardRenderAirPodsOpen")
     }
 
     #if DEBUG
