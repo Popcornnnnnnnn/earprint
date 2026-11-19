@@ -1,49 +1,62 @@
 import SwiftUI
 import UIKit
 
-/// Selectable Home Screen app icons bundled in `Assets.xcassets`.
-/// Covers Auto Light/Dark, all 10 official Apple AirPods Max retail colors (USB-C & Lightning), and Holo Foil.
-enum AppIconOption: String, CaseIterable, Identifiable, Equatable {
+/// Background style for the Earprint Home Screen icon (independent of headphone finish).
+enum IconBackground: String, CaseIterable, Identifiable, Equatable {
     case auto
-    // 2024 USB-C finishes
+    case light
+    case dark
+    case holo
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .auto: return "Auto"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .holo: return "Holo"
+        }
+    }
+
+    var caption: String {
+        switch self {
+        case .auto: return "White in Light Mode · Obsidian in Dark Mode"
+        case .light: return "Clean Apple off-white background"
+        case .dark: return "Clean matte obsidian background"
+        case .holo: return "Pastel collector foil background"
+        }
+    }
+
+    var assetSuffix: String {
+        switch self {
+        case .auto: return "Auto"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .holo: return "Holo"
+        }
+    }
+}
+
+/// All 10 official Apple AirPods Max retail finishes (2024 USB-C & 2020 Lightning).
+enum IconFinish: String, CaseIterable, Identifiable, Equatable {
+    // 2024 USB-C
     case midnight
     case starlight
     case blue
     case purple
     case orange
-    // 2020 Lightning finishes
+    // 2020 Lightning
     case spaceGray
     case silver
     case skyBlue
     case green
     case pink
-    // Collector edition
-    case holoFoil
 
     var id: String { rawValue }
 
-    /// Asset catalog `.appiconset` name passed to `UIApplication.setAlternateIconName(_:)`.
-    /// `nil` selects the primary `AppIcon` (Midnight on White in Light Mode, Sky Blue on Black in Dark Mode).
-    var alternateIconName: String? {
-        switch self {
-        case .auto: return nil
-        case .midnight: return "AppIconMidnight"
-        case .spaceGray: return "AppIconSpaceGray"
-        case .blue: return "AppIconBlue"
-        case .silver: return "AppIconSilver"
-        case .starlight: return "AppIconStarlight"
-        case .skyBlue: return "AppIconSkyBlue"
-        case .purple: return "AppIconPurple"
-        case .green: return "AppIconGreen"
-        case .orange: return "AppIconOrange"
-        case .pink: return "AppIconPink"
-        case .holoFoil: return "AppIconHoloFoil"
-        }
-    }
-
     var title: String {
         switch self {
-        case .auto: return "Auto"
         case .midnight: return "Midnight"
         case .starlight: return "Starlight"
         case .blue: return "Blue"
@@ -54,62 +67,91 @@ enum AppIconOption: String, CaseIterable, Identifiable, Equatable {
         case .skyBlue: return "Sky Blue"
         case .green: return "Green"
         case .pink: return "Pink"
-        case .holoFoil: return "Holo Foil"
         }
     }
 
-    var subtitle: String {
+    var assetSuffix: String {
         switch self {
-        case .auto: return "Midnight (Light) · Sky Blue (Dark)"
-        case .midnight, .starlight, .blue, .purple, .orange: return "USB-C"
-        case .spaceGray, .silver, .skyBlue, .green, .pink: return "Lightning"
-        case .holoFoil: return "Collector Edition"
+        case .midnight: return "Midnight"
+        case .starlight: return "Starlight"
+        case .blue: return "Blue"
+        case .purple: return "Purple"
+        case .orange: return "Orange"
+        case .spaceGray: return "SpaceGray"
+        case .silver: return "Silver"
+        case .skyBlue: return "SkyBlue"
+        case .green: return "Green"
+        case .pink: return "Pink"
         }
     }
 
-    var previewAssetName: String {
+    var cutoutAssetName: String { "IconCutout\(assetSuffix)" }
+
+    /// Two-tone metallic hardware swatch colors matching Apple's anodized earcups + cushions.
+    var swatchColors: (top: Color, bottom: Color) {
         switch self {
-        case .auto: return "IconPreviewMidnight"
-        case .midnight: return "IconPreviewMidnight"
-        case .spaceGray: return "IconPreviewSpaceGray"
-        case .blue: return "IconPreviewBlue"
-        case .silver: return "IconPreviewSilver"
-        case .starlight: return "IconPreviewStarlight"
-        case .skyBlue: return "IconPreviewSkyBlue"
-        case .purple: return "IconPreviewPurple"
-        case .green: return "IconPreviewGreen"
-        case .orange: return "IconPreviewOrange"
-        case .pink: return "IconPreviewPink"
-        case .holoFoil: return "IconPreviewHoloFoil"
+        case .midnight:  return (Color(red: 0.16, green: 0.19, blue: 0.25), Color(red: 0.08, green: 0.10, blue: 0.14))
+        case .starlight: return (Color(red: 0.90, green: 0.86, blue: 0.78), Color(red: 0.78, green: 0.74, blue: 0.65))
+        case .blue:      return (Color(red: 0.34, green: 0.47, blue: 0.62), Color(red: 0.22, green: 0.32, blue: 0.45))
+        case .purple:    return (Color(red: 0.76, green: 0.66, blue: 0.80), Color(red: 0.56, green: 0.46, blue: 0.60))
+        case .orange:    return (Color(red: 0.94, green: 0.54, blue: 0.36), Color(red: 0.82, green: 0.38, blue: 0.22))
+        case .spaceGray: return (Color(red: 0.46, green: 0.47, blue: 0.50), Color(red: 0.27, green: 0.28, blue: 0.30))
+        case .silver:    return (Color(red: 0.92, green: 0.93, blue: 0.95), Color(red: 0.75, green: 0.77, blue: 0.80))
+        case .skyBlue:   return (Color(red: 0.66, green: 0.79, blue: 0.88), Color(red: 0.48, green: 0.62, blue: 0.74))
+        case .green:     return (Color(red: 0.73, green: 0.82, blue: 0.70), Color(red: 0.55, green: 0.65, blue: 0.53))
+        case .pink:      return (Color(red: 0.92, green: 0.51, blue: 0.48), Color(red: 0.78, green: 0.36, blue: 0.34))
         }
     }
 
-    static let usbcFinishes: [AppIconOption] = [.midnight, .starlight, .blue, .purple, .orange]
-    static let lightningFinishes: [AppIconOption] = [.spaceGray, .silver, .skyBlue, .green, .pink]
+    static let usbcFinishes: [IconFinish] = [.midnight, .starlight, .blue, .purple, .orange]
+    static let lightningFinishes: [IconFinish] = [.spaceGray, .silver, .skyBlue, .green, .pink]
+}
 
-    static func from(alternateIconName: String?) -> AppIconOption {
-        guard let name = alternateIconName else { return .auto }
-        return allCases.first { $0.alternateIconName == name } ?? .auto
+/// Complete Home Screen icon choice combining an independent finish and background.
+struct AppIconChoice: Equatable, Hashable {
+    var finish: IconFinish
+    var background: IconBackground
+
+    static let `default` = AppIconChoice(finish: .midnight, background: .auto)
+
+    /// `.appiconset` name passed to `UIApplication.setAlternateIconName(_:)`.
+    /// `nil` selects the primary `AppIcon` (Midnight + Auto Light/Dark).
+    var alternateIconName: String? {
+        if self == .default { return nil }
+        return "AppIcon\(finish.assetSuffix)\(background.assetSuffix)"
+    }
+
+    static var allChoices: [AppIconChoice] {
+        IconFinish.allCases.flatMap { finish in
+            IconBackground.allCases.map { bg in
+                AppIconChoice(finish: finish, background: bg)
+            }
+        }
+    }
+
+    static func from(alternateIconName: String?) -> AppIconChoice {
+        guard let name = alternateIconName else { return .default }
+        return allChoices.first { $0.alternateIconName == name } ?? .default
     }
 }
 
 @MainActor
 @Observable
 final class AppIconManager {
-    private(set) var current: AppIconOption
+    private(set) var current: AppIconChoice
     private(set) var isUpdating = false
     var errorMessage: String?
 
     init() {
-        self.current = AppIconOption.from(alternateIconName: UIApplication.shared.alternateIconName)
+        self.current = AppIconChoice.from(alternateIconName: UIApplication.shared.alternateIconName)
     }
 
     func refresh() {
-        current = AppIconOption.from(alternateIconName: UIApplication.shared.alternateIconName)
+        current = AppIconChoice.from(alternateIconName: UIApplication.shared.alternateIconName)
     }
 
-    func select(_ option: AppIconOption) async {
-        guard option != current, !isUpdating else { return }
+    func apply(_ choice: AppIconChoice) async {
+        guard choice != current, !isUpdating else { return }
         guard UIApplication.shared.supportsAlternateIcons else {
             errorMessage = "Alternate app icons are not supported on this device."
             return
@@ -120,8 +162,8 @@ final class AppIconManager {
         defer { isUpdating = false }
 
         do {
-            try await UIApplication.shared.setAlternateIconName(option.alternateIconName)
-            current = option
+            try await UIApplication.shared.setAlternateIconName(choice.alternateIconName)
+            current = choice
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         } catch {
             errorMessage = error.localizedDescription
@@ -129,40 +171,73 @@ final class AppIconManager {
     }
 }
 
-/// Squircle thumbnail for an `AppIconOption`. `.auto` renders a diagonal Light/Dark split.
+/// Live composited squircle preview of any `(IconFinish, IconBackground)` pair.
 struct AppIconThumbnail: View {
-    let option: AppIconOption
+    let finish: IconFinish
+    let background: IconBackground
     var size: CGFloat = 64
+
+    init(choice: AppIconChoice, size: CGFloat = 64) {
+        self.finish = choice.finish
+        self.background = choice.background
+        self.size = size
+    }
+
+    init(finish: IconFinish, background: IconBackground, size: CGFloat = 64) {
+        self.finish = finish
+        self.background = background
+        self.size = size
+    }
 
     private var cornerRadius: CGFloat { size * 0.2237 }
 
     var body: some View {
         ZStack {
-            if option == .auto {
-                Image("IconPreviewMidnight")
-                    .resizable()
-                    .scaledToFill()
-                Image("IconPreviewSkyBlue")
-                    .resizable()
-                    .scaledToFill()
-                    .mask(DiagonalBottomRightTriangle())
-                Path { path in
-                    path.move(to: CGPoint(x: size, y: 0))
-                    path.addLine(to: CGPoint(x: 0, y: size))
-                }
-                .stroke(.white.opacity(0.45), lineWidth: max(1, size * 0.018))
-            } else {
-                Image(option.previewAssetName)
-                    .resizable()
-                    .scaledToFill()
-            }
+            backgroundFill
+            Image(finish.cutoutAssetName)
+                .resizable()
+                .scaledToFit()
+                .shadow(color: .black.opacity(background == .dark ? 0.45 : 0.22), radius: size * 0.04, y: size * 0.03)
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(.white.opacity(0.16), lineWidth: 1)
+                .strokeBorder(.white.opacity(background == .light ? 0.25 : 0.14), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private var backgroundFill: some View {
+        switch background {
+        case .light:
+            Color(red: 0.96, green: 0.96, blue: 0.97)
+        case .dark:
+            RadialGradient(
+                colors: [Color(red: 0.10, green: 0.11, blue: 0.14), Color(red: 0.04, green: 0.04, blue: 0.06)],
+                center: .center,
+                startRadius: 0,
+                endRadius: size * 0.72
+            )
+        case .holo:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.71, green: 0.70, blue: 0.97),
+                    Color(red: 0.60, green: 0.88, blue: 0.96),
+                    Color(red: 0.69, green: 0.94, blue: 0.87),
+                    Color(red: 0.97, green: 0.91, blue: 0.73),
+                    Color(red: 0.96, green: 0.73, blue: 0.88),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .auto:
+            ZStack {
+                Color(red: 0.96, green: 0.96, blue: 0.97)
+                Color(red: 0.06, green: 0.07, blue: 0.09)
+                    .mask(DiagonalBottomRightTriangle())
+            }
+        }
     }
 }
 
@@ -180,12 +255,14 @@ private struct DiagonalBottomRightTriangle: Shape {
 struct AppIconPickerSheet: View {
     @Bindable var manager: AppIconManager
     @Environment(\.dismiss) private var dismiss
+    @State private var draft: AppIconChoice
 
-    private let gridColumns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-    ]
+    init(manager: AppIconManager) {
+        self.manager = manager
+        self._draft = State(initialValue: manager.current)
+    }
+
+    private let fiveColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
     var body: some View {
         NavigationStack {
@@ -193,37 +270,22 @@ struct AppIconPickerSheet: View {
                 Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        autoHeroRow
-
-                        sectionHeader("AirPods Max · USB-C", detail: "5 colors")
-                        LazyVGrid(columns: gridColumns, spacing: 14) {
-                            ForEach(AppIconOption.usbcFinishes) { option in
-                                iconTile(option)
-                            }
-                        }
-
-                        sectionHeader("AirPods Max · Lightning", detail: "5 colors")
-                        LazyVGrid(columns: gridColumns, spacing: 14) {
-                            ForEach(AppIconOption.lightningFinishes) { option in
-                                iconTile(option)
-                            }
-                        }
-
-                        sectionHeader("Collector Edition", detail: nil)
-                        LazyVGrid(columns: gridColumns, spacing: 14) {
-                            iconTile(.holoFoil)
-                        }
+                    VStack(spacing: 22) {
+                        previewStage
+                        backgroundSection
+                        finishSection
+                        applyButton
 
                         if let error = manager.errorMessage {
                             Text(error)
                                 .font(.footnote)
                                 .foregroundStyle(.red.opacity(0.9))
+                                .multilineTextAlignment(.center)
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    .padding(.bottom, 34)
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
                 }
                 .scrollIndicators(.hidden)
             }
@@ -240,104 +302,219 @@ struct AppIconPickerSheet: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
-        .onAppear { manager.refresh() }
-    }
-
-    private var autoHeroRow: some View {
-        let isSelected = manager.current == .auto
-        return Button {
-            Task { await manager.select(.auto) }
-        } label: {
-            HStack(spacing: 14) {
-                AppIconThumbnail(option: .auto, size: 60)
-                    .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 7) {
-                        Text("Auto")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text("LIGHT & DARK")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .tracking(0.6)
-                            .foregroundStyle(Color(red: 0.62, green: 0.94, blue: 0.85))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.white.opacity(0.1), in: Capsule())
-                    }
-                    Text("Midnight on white in Light · Sky Blue on black in Dark")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.58))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                selectionIndicator(isSelected)
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.10) : Color.white.opacity(0.045))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(
-                        isSelected ? Color(red: 0.50, green: 0.92, blue: 0.80).opacity(0.55) : Color.white.opacity(0.08),
-                        lineWidth: isSelected ? 1.25 : 1
-                    )
-            )
+        .onAppear {
+            manager.refresh()
+            draft = manager.current
         }
-        .buttonStyle(.plain)
-        .disabled(manager.isUpdating)
     }
 
-    private func iconTile(_ option: AppIconOption) -> some View {
-        let isSelected = manager.current == option
-        return Button {
-            Task { await manager.select(option) }
-        } label: {
-            VStack(spacing: 8) {
-                ZStack(alignment: .topTrailing) {
-                    AppIconThumbnail(option: option, size: 74)
-                        .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
+    // MARK: - Live Hero Preview
 
+    private var previewStage: some View {
+        VStack(spacing: 14) {
+            if draft.background == .auto {
+                HStack(spacing: 26) {
+                    previewTile(bg: .light, label: "Light Mode", size: 96)
+                    previewTile(bg: .dark, label: "Dark Mode", size: 96)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else {
+                previewTile(bg: draft.background, label: "Earprint", size: 112)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+
+            Text("\(draft.finish.title) · \(draft.background.title)")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 22)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: draft)
+    }
+
+    private func previewTile(bg: IconBackground, label: String, size: CGFloat) -> some View {
+        VStack(spacing: 8) {
+            AppIconThumbnail(finish: draft.finish, background: bg, size: size)
+                .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.75))
+        }
+    }
+
+    // MARK: - Setting 1: Background
+
+    private var backgroundSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Background")
+
+            HStack(spacing: 8) {
+                ForEach(IconBackground.allCases) { bg in
+                    let isSelected = draft.background == bg
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        draft.background = bg
+                    } label: {
+                        HStack(spacing: 6) {
+                            backgroundDot(bg)
+                            Text(bg.title)
+                                .font(.footnote.weight(isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? .white : .white.opacity(0.72))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.045))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(isSelected ? Color.white.opacity(0.45) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.2 : 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Text(draft.background.caption)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.48))
+        }
+    }
+
+    @ViewBuilder
+    private func backgroundDot(_ bg: IconBackground) -> some View {
+        let sz: CGFloat = 14
+        switch bg {
+        case .auto:
+            ZStack {
+                Circle().fill(Color(red: 0.95, green: 0.95, blue: 0.97))
+                Circle().fill(Color(red: 0.08, green: 0.09, blue: 0.12))
+                    .mask(DiagonalBottomRightTriangle())
+            }
+            .frame(width: sz, height: sz)
+            .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.8))
+        case .light:
+            Circle()
+                .fill(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .frame(width: sz, height: sz)
+                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.8))
+        case .dark:
+            Circle()
+                .fill(Color(red: 0.07, green: 0.08, blue: 0.10))
+                .frame(width: sz, height: sz)
+                .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.9))
+        case .holo:
+            Circle()
+                .fill(LinearGradient(colors: [.cyan, .mint, .yellow, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: sz, height: sz)
+                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.8))
+        }
+    }
+
+    // MARK: - Setting 2: Headphone Finish
+
+    private var finishSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("AirPods Max Color", detail: "USB-C")
+            LazyVGrid(columns: fiveColumns, spacing: 12) {
+                ForEach(IconFinish.usbcFinishes) { finish in
+                    finishSwatch(finish)
+                }
+            }
+
+            sectionTitle("Classic Finishes", detail: "Lightning")
+                .padding(.top, 2)
+            LazyVGrid(columns: fiveColumns, spacing: 12) {
+                ForEach(IconFinish.lightningFinishes) { finish in
+                    finishSwatch(finish)
+                }
+            }
+        }
+    }
+
+    private func finishSwatch(_ finish: IconFinish) -> some View {
+        let isSelected = draft.finish == finish
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            draft.finish = finish
+        } label: {
+            VStack(spacing: 7) {
+                ZStack {
                     if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Color(red: 0.50, green: 0.92, blue: 0.80), Color(red: 0.07, green: 0.07, blue: 0.10))
-                            .offset(x: 6, y: -6)
+                        Circle()
+                            .strokeBorder(.white, lineWidth: 2)
+                            .frame(width: 48, height: 48)
                     }
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [finish.swatchColors.top, finish.swatchColors.bottom],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 38, height: 38)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
                 }
+                .frame(width: 50, height: 50)
 
-                Text(option.title)
-                    .font(.caption.weight(isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.78))
+                Text(finish.title)
+                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.75)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.11) : Color.white.opacity(0.04))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(
-                        isSelected ? Color(red: 0.50, green: 0.92, blue: 0.80).opacity(0.6) : Color.white.opacity(0.07),
-                        lineWidth: isSelected ? 1.3 : 1
-                    )
-            )
         }
         .buttonStyle(.plain)
-        .disabled(manager.isUpdating)
-        .accessibilityLabel("\(option.title), \(option.subtitle)")
+        .accessibilityLabel(finish.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func sectionHeader(_ title: String, detail: String?) -> some View {
+    // MARK: - Apply CTA
+
+    private var applyButton: some View {
+        let isCurrent = draft == manager.current
+        return Button {
+            Task { await manager.apply(draft) }
+        } label: {
+            HStack(spacing: 8) {
+                if manager.isUpdating {
+                    ProgressView().tint(.black)
+                } else if isCurrent {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Current App Icon")
+                } else {
+                    Text("Apply App Icon")
+                }
+            }
+            .font(.body.weight(.bold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isCurrent ? Color.white.opacity(0.10) : Color.white)
+            )
+            .foregroundStyle(isCurrent ? .white.opacity(0.65) : .black)
+        }
+        .buttonStyle(.plain)
+        .disabled(isCurrent || manager.isUpdating)
+        .padding(.top, 4)
+    }
+
+    private func sectionTitle(_ title: String, detail: String? = nil) -> some View {
         HStack {
             Text(title)
                 .font(.footnote.weight(.bold))
@@ -350,20 +527,6 @@ struct AppIconPickerSheet: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.38))
             }
-        }
-        .padding(.top, 2)
-    }
-
-    @ViewBuilder
-    private func selectionIndicator(_ isSelected: Bool) -> some View {
-        if isSelected {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title3)
-                .foregroundStyle(Color(red: 0.50, green: 0.92, blue: 0.80))
-        } else {
-            Circle()
-                .strokeBorder(.white.opacity(0.22), lineWidth: 1.5)
-                .frame(width: 22, height: 22)
         }
     }
 }

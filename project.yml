@@ -59,7 +59,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconMidnight AppIconSpaceGray AppIconBlue AppIconSilver AppIconStarlight AppIconSkyBlue AppIconPurple AppIconGreen AppIconOrange AppIconPink AppIconHoloFoil"
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconMidnightLight AppIconMidnightDark AppIconMidnightHolo AppIconStarlightAuto AppIconStarlightLight AppIconStarlightDark AppIconStarlightHolo AppIconBlueAuto AppIconBlueLight AppIconBlueDark AppIconBlueHolo AppIconPurpleAuto AppIconPurpleLight AppIconPurpleDark AppIconPurpleHolo AppIconOrangeAuto AppIconOrangeLight AppIconOrangeDark AppIconOrangeHolo AppIconSpaceGrayAuto AppIconSpaceGrayLight AppIconSpaceGrayDark AppIconSpaceGrayHolo AppIconSilverAuto AppIconSilverLight AppIconSilverDark AppIconSilverHolo AppIconSkyBlueAuto AppIconSkyBlueLight AppIconSkyBlueDark AppIconSkyBlueHolo AppIconGreenAuto AppIconGreenLight AppIconGreenDark AppIconGreenHolo AppIconPinkAuto AppIconPinkLight AppIconPinkDark AppIconPinkHolo"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
       configs:
         Debug:

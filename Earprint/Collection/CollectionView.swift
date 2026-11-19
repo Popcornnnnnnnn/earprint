@@ -115,7 +115,7 @@ struct CollectionView: View {
                 showIconPicker = true
             } label: {
                 HStack(spacing: 8) {
-                    AppIconThumbnail(option: iconManager.current, size: 30)
+                    AppIconThumbnail(choice: iconManager.current, size: 30)
                     Text("Icon")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.85))

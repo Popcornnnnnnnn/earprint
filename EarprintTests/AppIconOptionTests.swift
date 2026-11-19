@@ -2,20 +2,25 @@ import XCTest
 @testable import Earprint
 
 final class AppIconOptionTests: XCTestCase {
-    func testAlternateIconNameRoundTrip() {
-        XCTAssertEqual(AppIconOption.from(alternateIconName: nil), .auto)
-        XCTAssertEqual(AppIconOption.from(alternateIconName: "UnknownIcon"), .auto)
+    func testAlternateIconChoiceRoundTripsAllFortyCombinations() {
+        XCTAssertEqual(AppIconChoice.from(alternateIconName: nil), .default)
+        XCTAssertEqual(AppIconChoice.from(alternateIconName: "UnknownIcon"), .default)
 
-        for option in AppIconOption.allCases {
-            XCTAssertEqual(AppIconOption.from(alternateIconName: option.alternateIconName), option)
+        let all = AppIconChoice.allChoices
+        XCTAssertEqual(all.count, 40)
+
+        for choice in all {
+            XCTAssertEqual(AppIconChoice.from(alternateIconName: choice.alternateIconName), choice)
         }
     }
 
-    func testAllTenOfficialAirPodsMaxColorsArePresent() {
-        XCTAssertEqual(AppIconOption.usbcFinishes.count, 5)
-        XCTAssertEqual(AppIconOption.lightningFinishes.count, 5)
-        let nonNilNames = AppIconOption.allCases.compactMap(\.alternateIconName)
-        XCTAssertEqual(nonNilNames.count, 11)
-        XCTAssertEqual(Set(nonNilNames).count, 11)
+    func testAlternateIconNamesAreUniqueForNonDefaultChoices() {
+        XCTAssertEqual(IconFinish.usbcFinishes.count, 5)
+        XCTAssertEqual(IconFinish.lightningFinishes.count, 5)
+        XCTAssertEqual(IconBackground.allCases.count, 4)
+
+        let nonNilNames = AppIconChoice.allChoices.compactMap(\.alternateIconName)
+        XCTAssertEqual(nonNilNames.count, 39)
+        XCTAssertEqual(Set(nonNilNames).count, 39)
     }
 }
