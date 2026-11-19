@@ -66,7 +66,7 @@ struct CollectionView: View {
                     cards: cards,
                     namespace: hero,
                     colorStore: colorStore,
-                    isCurrentlyWorn: routeMonitor?.isCurrentlyWorn(card) ?? false,
+                    routeMonitor: routeMonitor,
                     onSelectCard: { next in
                         selected = next
                     },
@@ -321,12 +321,37 @@ struct CardStackPose: Equatable {
     }
 }
 
+/// Evaluates `CardStackPose` on every 120Hz frame of a spring animation instead of linearly interpolating start/end values.
+private struct CardStackEffect: ViewModifier, Animatable {
+    let cardIndex: CGFloat
+    var deckPosition: CGFloat
+    let cardScale: CGFloat
+    let appeared: Bool
+
+    var animatableData: CGFloat {
+        get { deckPosition }
+        set { deckPosition = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let delta = cardIndex - deckPosition
+        let pose = CardStackPose.pose(forDelta: delta)
+        let effectiveOpacity = abs(delta) < 0.01 ? pose.opacity : (appeared ? pose.opacity : 0)
+        content
+            .scaleEffect(pose.scale)
+            .rotationEffect(.degrees(pose.rotationDegrees))
+            .offset(x: pose.offsetX * cardScale, y: pose.offsetY * cardScale)
+            .opacity(effectiveOpacity)
+            .zIndex(pose.zIndex)
+    }
+}
+
 struct CardDetail: View {
     let card: HeadphoneCard
     var cards: [HeadphoneCard] = []
     let namespace: Namespace.ID
     var colorStore: DeviceColorStore? = nil
-    var isCurrentlyWorn: Bool = false
+    var routeMonitor: ActiveAudioRouteMonitor? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
     let close: () -> Void
@@ -338,6 +363,11 @@ struct CardDetail: View {
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
+    /// Only the settled centered card mounts a live `RealityView`, keeping swipes locked at 120fps.
+    @State private var settledCardID: String? = nil
+    /// Set when the live 3D model has finished attaching so 2D artwork crossfades smoothly away.
+    @State private var ready3DCardID: String? = nil
+    @State private var settleTask: Task<Void, Never>? = nil
     @State private var appeared = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
@@ -356,14 +386,6 @@ struct CardDetail: View {
 
     private var selectedColor: DeviceColorOption? {
         colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
-    }
-
-    private var resolvedFinish: HeadphoneFinish {
-        selectedColor?.modelFinish ?? card.finish
-    }
-
-    private var resolvedFinishID: String {
-        selectedColor?.id ?? "default"
     }
 
     private var currentCardIndex: Int? {
@@ -420,24 +442,41 @@ struct CardDetail: View {
             // Side by side already shows the back, so keep the left card on its front.
             if newMode == .sideBySide && flipped { flip(force: true) }
         }
-        .onChange(of: card.id) { _, _ in
+        .onChange(of: card.id) { _, newID in
             flipped = false
             angle = 0
             dragTilt = .zero
             showColorBar = false
             if dragStartPosition == nil {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.80)) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
                     deckPosition = CGFloat(activeIndex)
                 }
+                scheduleSettle(for: newID, delayMs: 260)
             }
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
+            settledCardID = card.id
             motion.start()
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
             Task { await runDemoIfNeeded() }
         }
-        .onDisappear { motion.stop() }
+        .onDisappear {
+            settleTask?.cancel()
+            motion.stop()
+        }
+    }
+
+    private func scheduleSettle(for cardID: String, delayMs: Int) {
+        settleTask?.cancel()
+        settleTask = Task {
+            if delayMs > 0 {
+                try? await Task.sleep(for: .milliseconds(delayMs))
+            }
+            guard !Task.isCancelled else { return }
+            settledCardID = cardID
+            motion.start()
+        }
     }
 
     private var topCloseButton: some View {
@@ -459,40 +498,54 @@ struct CardDetail: View {
 
     /// Horizontal swipe on the backdrop outside the card deals the top card away or pulls the previous card back.
     private var backdropSwipe: some Gesture {
-        DragGesture(minimumDistance: 16)
+        DragGesture(minimumDistance: 12)
             .onChanged { value in
                 guard deckCards.count > 1 else { return }
                 let dx = value.translation.width
                 let dy = value.translation.height
                 guard dragStartPosition != nil || abs(dx) > abs(dy) * 1.05 else { return }
-                let origin = dragStartPosition ?? CGFloat(activeIndex)
-                if dragStartPosition == nil { dragStartPosition = origin }
 
-                let raw = origin - dx / 225
+                if dragStartPosition == nil {
+                    dragStartPosition = CGFloat(activeIndex)
+                    // Pause 3D overlay + CoreMotion during the swipe so the card deal runs at a locked 120fps.
+                    settleTask?.cancel()
+                    settledCardID = nil
+                    ready3DCardID = nil
+                    motion.stop()
+                }
+                let origin = dragStartPosition ?? CGFloat(activeIndex)
+                let raw = origin - dx / 220
                 let maxIdx = CGFloat(deckCards.count - 1)
+                let clamped: CGFloat
                 if raw < 0 {
-                    deckPosition = raw * 0.20
+                    clamped = raw * 0.22
                 } else if raw > maxIdx {
-                    deckPosition = maxIdx + (raw - maxIdx) * 0.20
+                    clamped = maxIdx + (raw - maxIdx) * 0.22
                 } else {
-                    deckPosition = raw
+                    clamped = raw
+                }
+                var instant = Transaction()
+                instant.disablesAnimations = true
+                withTransaction(instant) {
+                    deckPosition = clamped
                 }
             }
             .onEnded { value in
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
                 dragStartPosition = nil
                 guard deckCards.count > 1 else {
-                    withAnimation(.spring(response: 0.40, dampingFraction: 0.80)) { deckPosition = CGFloat(activeIndex) }
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { deckPosition = CGFloat(activeIndex) }
+                    scheduleSettle(for: card.id, delayMs: 220)
                     return
                 }
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 let dy = value.translation.height
-                let isHorizontal = abs(dx) > abs(dy) * 1.05 || abs(deckPosition - origin) > 0.12
+                let isHorizontal = abs(dx) > abs(dy) * 1.05 || abs(deckPosition - origin) > 0.10
 
-                let step: Int? = if isHorizontal && (dx < -50 || predicted < -140) {
+                let step: Int? = if isHorizontal && (dx < -48 || predicted < -135) {
                     1
-                } else if isHorizontal && (dx > 50 || predicted > 140) {
+                } else if isHorizontal && (dx > 48 || predicted > 135) {
                     -1
                 } else {
                     nil
@@ -502,13 +555,15 @@ struct CardDetail: View {
                    let nextIdx = CardDeckNavigation.index(of: next, in: deckCards) {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     onSelectCard(next)
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.80)) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
                         deckPosition = CGFloat(nextIdx)
                     }
+                    scheduleSettle(for: next.id, delayMs: 260)
                 } else {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
                         deckPosition = CGFloat(activeIndex)
                     }
+                    scheduleSettle(for: card.id, delayMs: 220)
                 }
             }
     }
@@ -569,60 +624,91 @@ struct CardDetail: View {
         }
     }
 
-    /// Physical trading-card stack: active card sits on top with live 3D model, while upcoming cards peek behind
-    /// and the outgoing/incoming card flies off or returns with wrist tilt during outside-the-card swipes.
+    /// Physical trading-card stack: every card keeps a single stable view identity (no structural if/else swap
+    /// mid-flight) driven by `CardStackEffect` (`Animatable`) for locked 120Hz spring curves.
     private func cardStack(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        let centerIdx = Int(deckPosition.rounded())
-        let lo = max(0, min(activeIndex, centerIdx) - 1)
-        let hi = min(deckCards.count - 1, max(activeIndex, centerIdx) + 2)
-
         return ZStack {
-            ForEach(lo...hi, id: \.self) { idx in
-                let item = deckCards[idx]
-                let delta = CGFloat(idx) - deckPosition
-                let pose = CardStackPose.pose(forDelta: delta)
-                let isTop = idx == activeIndex
-
-                Group {
-                    if isTop {
-                        interactiveCard(scale: scale)
-                    } else {
-                        stackedNeighborCard(item, scale: scale)
-                    }
-                }
-                .scaleEffect(pose.scale)
-                .rotationEffect(.degrees(pose.rotationDegrees))
-                .offset(x: pose.offsetX * scale, y: pose.offsetY * scale)
-                .opacity(isTop ? pose.opacity : (appeared ? pose.opacity : 0))
-                .zIndex(pose.zIndex)
+            ForEach(Array(deckCards.enumerated()), id: \.element.id) { idx, item in
+                deckCard(item, index: idx, scale: scale)
+                    .modifier(CardStackEffect(cardIndex: CGFloat(idx), deckPosition: deckPosition, cardScale: scale, appeared: appeared))
             }
         }
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+        .matchedGeometryEffect(id: card.id, in: namespace)
     }
 
-    private func stackedNeighborCard(_ neighbor: HeadphoneCard, scale: CGFloat) -> some View {
-        let neighborColor = colorStore?.selectedColor(for: neighbor) ?? DeviceColorOption.defaultOption(for: neighbor.modelKey)
-        return CardFront(card: neighbor, tilt: .zero, showSymbol: true, colorOption: neighborColor, isCurrentlyWorn: false)
-            .scaleEffect(scale)
-            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-            .shadow(color: .black.opacity(0.45), radius: 22, y: 12)
-            .allowsHitTesting(false)
-    }
+    private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
+        let isTop = index == activeIndex
+        let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
+        let itemFinish = itemColor?.modelFinish ?? item.finish
+        let itemFinishID = itemColor?.id ?? "default"
+        let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
+        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && !flipped
+        let is3DReady = show3D && ready3DCardID == item.id
+        let activeAngle = isTop ? angle : 0
+        let activeTilt = isTop ? tilt : .zero
+        let frontVisible = activeAngle.truncatingRemainder(dividingBy: 360) < 90 || activeAngle.truncatingRemainder(dividingBy: 360) > 270
 
-    private func interactiveCard(scale: CGFloat) -> some View {
-        let scale = max(scale, 0.3)
-        return flipCard
-            .id(card.id)
-            .scaleEffect(scale)
-            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-            .matchedGeometryEffect(id: card.id, in: namespace)
-            .rotation3DEffect(.degrees(Double(tilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-            .rotation3DEffect(.degrees(Double(-tilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-            .shadow(color: card.rarity.glow.opacity(0.55), radius: 30, x: -tilt.width * 14, y: 18 - tilt.height * 10)
-            .gesture(dragToTilt)
-            .onTapGesture { flip() }
-            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
+        return ZStack {
+            ZStack {
+                CardFront(
+                    card: item,
+                    tilt: activeTilt,
+                    showSymbol: !is3DReady,
+                    colorOption: itemColor,
+                    isCurrentlyWorn: itemWorn
+                )
+                if show3D {
+                    Ellipse()
+                        .fill(.black.opacity(0.30))
+                        .frame(width: 136, height: 16)
+                        .blur(radius: 10)
+                        .offset(x: -activeTilt.width * 8, y: 20)
+                        .opacity(is3DReady ? 1 : 0)
+                    HeadphoneModelView(
+                        kind: item.kind,
+                        finish: itemFinish,
+                        finishID: itemFinishID,
+                        modelKey: item.modelKey,
+                        assetName: item.modelAssetName,
+                        modelSize: 0.145,
+                        tint: item.foilTint,
+                        tilt: activeTilt,
+                        onModelReady: {
+                            withAnimation(.easeOut(duration: 0.22)) {
+                                ready3DCardID = item.id
+                            }
+                        }
+                    )
+                    .frame(width: 300, height: 230)
+                    .offset(y: -64)
+                    .opacity(is3DReady ? 1 : 0)
+                }
+            }
+            .opacity(frontVisible ? 1 : 0)
+
+            if isTop {
+                CardBack(card: item, revealed: flipped)
+                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    .opacity(frontVisible ? 0 : 1)
+            }
+        }
+        .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+        .scaleEffect(scale)
+        .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+        .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+        .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+        .shadow(
+            color: isTop ? item.rarity.glow.opacity(0.52) : .black.opacity(0.45),
+            radius: isTop ? 28 : 20,
+            x: isTop ? -activeTilt.width * 14 : 0,
+            y: isTop ? 18 - activeTilt.height * 10 : 12
+        )
+        .allowsHitTesting(isTop)
+        .gesture(isTop ? dragToTilt : nil)
+        .onTapGesture { if isTop { flip() } }
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
     private func backCard(scale: CGFloat) -> some View {
@@ -732,42 +818,6 @@ struct CardDetail: View {
         .frame(maxWidth: 330)
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
-    }
-
-    private var flipCard: some View {
-        ZStack {
-            frontWithModel
-                .opacity(angle.truncatingRemainder(dividingBy: 360) < 90 || angle.truncatingRemainder(dividingBy: 360) > 270 ? 1 : 0)
-            CardBack(card: card, revealed: flipped)
-                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                .opacity(angle.truncatingRemainder(dividingBy: 360) >= 90 && angle.truncatingRemainder(dividingBy: 360) <= 270 ? 1 : 0)
-        }
-        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
-    }
-
-    /// The card front with a live 3D model framed cleanly in the upper stage, clear of name & hours below.
-    private var frontWithModel: some View {
-        ZStack {
-            CardFront(card: card, tilt: tilt, showSymbol: false, colorOption: selectedColor, isCurrentlyWorn: isCurrentlyWorn)
-            Ellipse()
-                .fill(.black.opacity(0.30))
-                .frame(width: 136, height: 16)
-                .blur(radius: 10)
-                .offset(x: -tilt.width * 8, y: 20)
-            HeadphoneModelView(
-                kind: card.kind,
-                finish: resolvedFinish,
-                finishID: resolvedFinishID,
-                modelKey: card.modelKey,
-                assetName: card.modelAssetName,
-                modelSize: 0.145,
-                tint: card.foilTint,
-                tilt: tilt
-            )
-            .id(card.id)
-            .frame(width: 300, height: 230)
-            .offset(y: -64)
-        }
     }
 
     private var dragToTilt: some Gesture {

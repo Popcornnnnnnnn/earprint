@@ -207,6 +207,9 @@ enum ProceduralHeadphones {
 }
 
 enum HeadphoneModelLoader {
+    /// In-memory cache of parsed USDZ templates so switching cards clones in <1ms instead of re-reading MBs from disk.
+    @MainActor private static var templateCache: [String: Entity] = [:]
+
     /// AirPodsMax.usdz material name buckets discovered via `usdcat`.
     /// Neutral chrome stems, gold pins, and pure-black acoustic vents are intentionally excluded.
     private static let airPodsMaxShellMaterials: Set<String> = [
@@ -220,17 +223,25 @@ enum HeadphoneModelLoader {
         "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
     ]
 
-    /// Loads the bundled USDZ if present (matching `assetName`, or `kind.assetName` if omitted), otherwise the procedural model.
+    /// Loads the bundled USDZ if present (cached & cloned for instant card switching), otherwise the procedural model.
     @MainActor
     static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, assetName: String? = nil, modelKey: HeadphoneModelKey = .overEarGeneric, size: Float = 0.2) async -> Entity {
         let model: Entity
         let resolvedName = assetName ?? kind.assetName
         let loadedFromUSDZ: Bool
         if !resolvedName.isEmpty,
-           Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil,
-           let asset = try? await Entity(named: resolvedName, in: .main) {
-            model = asset
-            loadedFromUSDZ = true
+           Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil {
+            if let cached = templateCache[resolvedName] {
+                model = cached.clone(recursive: true)
+                loadedFromUSDZ = true
+            } else if let asset = try? await Entity(named: resolvedName, in: .main) {
+                templateCache[resolvedName] = asset
+                model = asset.clone(recursive: true)
+                loadedFromUSDZ = true
+            } else {
+                model = ProceduralHeadphones.make(kind, finish: finish)
+                loadedFromUSDZ = false
+            }
         } else {
             model = ProceduralHeadphones.make(kind, finish: finish)
             loadedFromUSDZ = false

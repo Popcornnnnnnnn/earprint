@@ -5,10 +5,20 @@ import UIKit
 /// Generates a soft "photo studio" equirectangular image for image-based lighting.
 /// Tint colors add colored reflections (e.g. holo pink/cyan) on metal surfaces.
 enum StudioEnvironment {
+    @MainActor private static var cache: [String: EnvironmentResource] = [:]
+
     @MainActor
     static func make(tint: [UIColor]) async throws -> EnvironmentResource {
+        let key = tint.prefix(4).map { color -> String in
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return "\(Int(r * 255))-\(Int(g * 255))-\(Int(b * 255))"
+        }.joined(separator: "_")
+        if let cached = cache[key] { return cached }
         let image = render(tint: tint)
-        return try await EnvironmentResource(equirectangular: image, withName: "studio-\(tint.count)")
+        let resource = try await EnvironmentResource(equirectangular: image, withName: "studio-\(key)")
+        cache[key] = resource
+        return resource
     }
 
     static func render(tint: [UIColor], size: CGSize = CGSize(width: 1024, height: 512)) -> CGImage {
@@ -139,6 +149,7 @@ struct HeadphoneModelView: View {
     var modelSize: Float = 0.145
     var tint: [UIColor] = []
     var tilt: CGSize = .zero
+    var onModelReady: () -> Void = {}
 
     @State private var rig = ModelRig()
     @State private var twirls = 0
@@ -185,6 +196,7 @@ struct HeadphoneModelView: View {
                 rig.iblReceiver = receiver
                 applyReceiver(receiver, to: model)
             }
+            onModelReady()
         } update: { _ in
             rig.applyTilt(tilt)
             if let currentModel = rig.loadedModel, rig.appliedFinishID != finishID {
