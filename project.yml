@@ -58,6 +58,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconSpaceBlack AppIconMidnightBlue AppIconSkyBlue AppIconHoloFoil"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
       configs:
         Debug:
           # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).

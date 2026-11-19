@@ -11,6 +11,8 @@ struct CollectionView: View {
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
+    @State private var showIconPicker = false
+    @State private var iconManager = AppIconManager()
     @State private var demoStarted = false
     /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
@@ -64,6 +66,11 @@ struct CollectionView: View {
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(card: card) { dossierCard = nil }
         }
+        .sheet(isPresented: $showIconPicker) {
+            AppIconPickerSheet(manager: iconManager)
+                .presentationDetents([.fraction(0.78), .large])
+                .presentationDragIndicator(.visible)
+        }
         .task { await runDemoIfNeeded() }
         .onAppear(perform: openPendingCard)
         .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
@@ -85,11 +92,31 @@ struct CollectionView: View {
 
     private var header: some View {
         let total = cards.reduce(0) { $0 + $1.lifetimeMinutes }
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("My headphones").font(.system(size: 30, weight: .heavy))
-            Text("\(cards.count) cards · \(total.minutesText) together")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.55))
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("My headphones").font(.system(size: 30, weight: .heavy))
+                Text("\(cards.count) cards · \(total.minutesText) together")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            Spacer(minLength: 8)
+            Button {
+                showIconPicker = true
+            } label: {
+                HStack(spacing: 8) {
+                    AppIconThumbnail(option: iconManager.current, size: 30)
+                    Text("Icon")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(.leading, 5)
+                .padding(.trailing, 11)
+                .padding(.vertical, 5)
+                .background(.white.opacity(0.08), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Change app icon")
         }
         .padding(.top, 12)
     }
@@ -140,6 +167,11 @@ struct CollectionView: View {
         if args.contains("-dossier") || args.contains("-dossierDemo") {
             demoStarted = true
             dossierCard = cards[index]
+            return
+        }
+        if args.contains("-iconPicker") {
+            demoStarted = true
+            showIconPicker = true
             return
         }
         if args.contains("-cardDetail") {
