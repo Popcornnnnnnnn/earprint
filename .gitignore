@@ -8,3 +8,4 @@ DerivedData/
 Earprint.xcodeproj/
 Earprint/Info.plist
 Earprint/Earprint.entitlements
+build-*/

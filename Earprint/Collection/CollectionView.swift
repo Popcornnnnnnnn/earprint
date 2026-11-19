@@ -5,6 +5,8 @@ struct CollectionView: View {
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var demoStarted = false
+    /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
+    @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
 
     private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
 
@@ -36,6 +38,19 @@ struct CollectionView: View {
         }
         .foregroundStyle(.white)
         .task { await runDemoIfNeeded() }
+        .onAppear(perform: openPendingCard)
+        .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
+    }
+
+    /// Opens the card a widget asked for, then clears the request.
+    private func openPendingCard() {
+        guard let router, let id = router.pendingCardID else { return }
+        router.pendingCardID = nil
+        guard let card = cards.first(where: { $0.id == id }) else { return }
+        if selected != nil, selected != card {
+            selected = nil
+        }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
     }
 
     private var header: some View {
