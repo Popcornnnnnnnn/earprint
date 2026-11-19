@@ -57,6 +57,13 @@ struct DeviceDescriptor: Codable, Hashable, Sendable {
         return false
     }
 
+    /// HealthKit may omit the vendor or use Apple's Bluetooth company identifier.
+    var hasCompatibleAppleManufacturer: Bool {
+        guard let manufacturer = Self.clean(manufacturer)?.lowercased() else { return true }
+        return manufacturer == "apple" || manufacturer == "apple inc." || manufacturer == "apple inc"
+            || (manufacturer.hasPrefix("0x") && Int(manufacturer.dropFirst(2), radix: 16) == 0x004c)
+    }
+
     var displayName: String {
         Self.clean(name) ?? HeadphoneModelCatalog.resolve(self).marketingName
     }

@@ -2,6 +2,16 @@
 
 Earprint bundles three optimized `.usdz` models in `Earprint/Resources/Models/` for interactive RealityKit display inside headphone collection cards (iOS 18+). Each model is normalized to unit bounding size (largest dimension = `1.0`, centered at the origin, Y-up, facing `+Z`) and verified with Apple's `usdzip -c` compliance checker and live iOS Simulator RealityKit rendering.
 
+## Collectible support
+
+| Identified product family | Card artwork | Interactive 3D |
+| --- | --- | --- |
+| AirPods (1st and 2nd generation), AirPods 3, AirPods 4 and 4 (ANC), and mapped AirPods 5 variants | Shared open-ear AirPods artwork | Card tilt and flip |
+| AirPods Pro 1, 2 (Lightning and USB-C), and 3 | Shared AirPods Pro artwork | Shared AirPods Pro USDZ model |
+| AirPods Max (Lightning, USB-C) and AirPods Max 2 | Shared AirPods Max artwork and finish choices | Shared AirPods Max USDZ model |
+
+Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Beats, Bose, Redmi, sanag, and other devices without supported collectible artwork remain in the listening history. They are excluded when publishing Collection cards and widget shelves. Collectibles preserve each source accessory identifier.
+
 ## Attribution Table (CC-BY 4.0)
 
 | Bundled Asset | Source Title | Author | Source URL | License | Polycount (Raw → Final) | File Size | Max Texture | Modifications Made |

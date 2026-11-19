@@ -36,10 +36,10 @@ enum SampleCards {
                           lifetimeMinutes: 64 * 60 + 10, sessions: 88, longestMinutes: 185, averageDecibels: 63,
                           firstMet: "2024.12.25", lastUsed: "Sep 2", serial: 2, grid: scaled(base.grid, 0.45),
                           modelKey: .airpodsMax, kind: .overEar),
-            HeadphoneCard(id: "fit", nickname: "Gym buds", model: "Beats Fit Pro", symbol: "beats.earphones",
+            HeadphoneCard(id: "airpods4", nickname: "AirPods 4", model: "AirPods 4 (ANC)", symbol: "airpods.gen4",
                           lifetimeMinutes: 9 * 60 + 40, sessions: 21, longestMinutes: 64, averageDecibels: 71,
                           firstMet: "2025.03.08", lastUsed: "Nov 2", serial: 3, grid: scaled(base.grid, 0.15),
-                          modelKey: .beatsEarbuds, kind: .sportBuds),
+                          modelKey: .airpods3, kind: .earbuds),
         ]
     }()
 

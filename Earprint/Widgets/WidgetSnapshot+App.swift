@@ -1,36 +1,28 @@
 import Foundation
 
-// App-side producer for `WidgetSnapshot`.
-// Today the snapshot is built from sample data. The HealthKit pipeline should replace
-// `WidgetSnapshot.sample()` with its own builder and call `WidgetPublisher.publish(_:)`
-// after each refresh (see docs/WIDGETS.md).
-
 extension WidgetSnapshot {
-    /// Builds a snapshot from the app's models. Works for sample data and for real data alike.
-    init(summary: ListeningSummary, cards: [HeadphoneCard], isSample: Bool, now: Date = Date(), calendar: Calendar = .current) {
+    /// Collectible cards feed the shelf. Today uses the full listening library when available.
+    init(summary: ListeningSummary, cards: [HeadphoneCard], isSample: Bool,
+         listening: LibrarySnapshot? = nil, now: Date = Date(), calendar: Calendar = .current) {
         let grid = summary.grid
         let sorted = cards.sorted { $0.lifetimeMinutes > $1.lifetimeMinutes }
-        let todayCard = sorted.max { $0.grid.totalMinutes(lastDays: 1) < $1.grid.totalMinutes(lastDays: 1) }
-        // Sum today's minutes & energy-averaged dB across all cards so the Today widget stays consistent
-        // even when a secondary headphone was worn today instead of the primary lifetime device.
-        let cardTodayMinutes = sorted.reduce(0.0) { $0 + $1.grid.totalMinutes(lastDays: 1) }
-        let todayMinutes = cardTodayMinutes > 0 ? cardTodayMinutes : (grid.minutes.last?.reduce(0, +) ?? 0)
-        let todayDB: Double? = {
-            if cardTodayMinutes > 0 {
-                var energy = 0.0
-                var weight = 0.0
-                for card in sorted {
-                    let mins = card.grid.totalMinutes(lastDays: 1)
-                    guard mins > 0 else { continue }
-                    let db = card.grid.averageDecibels(lastDays: 1)
-                    energy += pow(10, db / 10) * mins
-                    weight += mins
-                }
-                return weight > 0 ? 10 * log10(energy / weight) : nil
-            }
-            return todayMinutes > 0 ? grid.averageDecibels(lastDays: 1) : nil
-        }()
-        let activeTodayCard = (todayCard?.grid.totalMinutes(lastDays: 1) ?? 0) > 0 ? todayCard : nil
+        let devices: [(name: String, symbol: String, grid: ListeningGrid)] =
+            listening?.devices.map { ($0.nickname, $0.model.resolvedSymbol, $0.grid) }
+            ?? sorted.map { ($0.nickname, $0.symbol, $0.grid) }
+        let todayDevices = devices.compactMap { device -> (name: String, symbol: String, minutes: Double, energy: Double)? in
+            let minutes = device.grid.totalMinutes(lastDays: 1)
+            guard minutes > 0 else { return nil }
+            let decibels = device.grid.averageDecibels(lastDays: 1)
+            return (device.name, device.symbol, minutes, pow(10, decibels / 10) * minutes)
+        }
+        let combinedMinutes = todayDevices.reduce(0) { $0 + $1.minutes }
+        let todayMinutes = combinedMinutes > 0 ? combinedMinutes : grid.totalMinutes(lastDays: 1)
+        let todayDB: Double? = if combinedMinutes > 0 {
+            10 * log10(todayDevices.reduce(0) { $0 + $1.energy } / combinedMinutes)
+        } else {
+            todayMinutes > 0 ? grid.averageDecibels(lastDays: 1) : nil
+        }
+        let activeTodayDevice = todayDevices.max { $0.minutes < $1.minutes }
         let weekDB = summary.weekMinutes > 0 ? summary.weekDecibels : nil
 
         self.init(
@@ -39,8 +31,8 @@ extension WidgetSnapshot {
             day: calendar.startOfDay(for: now),
             today: Today(minutes: todayMinutes,
                          decibels: todayDB,
-                         deviceName: todayMinutes > 0 ? (activeTodayCard?.nickname ?? summary.deviceName) : nil,
-                         deviceSymbol: activeTodayCard?.symbol ?? summary.deviceSymbol),
+                         deviceName: todayMinutes > 0 ? (activeTodayDevice?.name ?? summary.deviceName) : nil,
+                         deviceSymbol: activeTodayDevice?.symbol ?? summary.deviceSymbol),
             week: Week(minutes: summary.weekMinutes, budgetUsed: summary.weeklyBudgetUsed,
                        decibels: weekDB, label: summary.periodLabel),
             cards: sorted.map { card in

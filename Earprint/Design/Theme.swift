@@ -51,8 +51,8 @@ extension View {
 
 /// Compact badge shown when the app is displaying fallback sample data instead of Apple Health records.
 struct SampleDataBanner: View {
-    var badgeText: String = "Sample data"
-    var detail: String?
+    var badgeText: LocalizedStringKey = "Sample data"
+    var detail: LocalizedStringKey?
     var isLoading: Bool = false
     var onConnect: (() -> Void)?
 
@@ -96,7 +96,7 @@ struct SampleDataBanner: View {
                 }
             }
 
-            if let detail, !detail.isEmpty {
+            if let detail {
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)

@@ -55,4 +55,6 @@ xcodebuild build -project Earprint.xcodeproj -scheme Earprint \
 
 Useful launch arguments: `-demo`, `-demoIndex <n>`, `-cardDetail`, `-dossier`, `-dossierDemo`, `-rings`, `-showShare`, `-tab <collection|rings|probe>`, `-seedHealth` (Debug), `-startLiveActivity`.
 
-In Debug builds, press and hold the app icon in Collection, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.
+Use the gear in Collection to choose the app icon and switch between English and Simplified Chinese. The controls below the detail card handle previous and next navigation. See [supported headphone artwork](docs/ASSETS.md#collectible-support).
+
+In Debug builds, press and hold the Collection gear, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.

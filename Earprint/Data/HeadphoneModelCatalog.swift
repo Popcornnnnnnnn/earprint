@@ -15,6 +15,24 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     case earbudsGeneric     // unknown in-ear headphones
     case overEarGeneric     // unknown over-ear headphones, also the final fallback
 
+    /// Artwork used for collectible cards. Unknown and third-party models stay in Health totals.
+    var collectibleArtwork: String? {
+        switch self {
+        case .airpods, .airpods3: "CardRenderAirPodsOpen"
+        case .airpodsPro: "CardRenderAirPodsPro"
+        case .airpodsMax: "CardRenderAirPodsMax"
+        default: nil
+        }
+    }
+
+    var collectibleModel: String? {
+        switch self {
+        case .airpodsPro: "AirPodsPro"
+        case .airpodsMax: "AirPodsMax"
+        default: nil
+        }
+    }
+
     /// The 3D model family used by `HeadphoneModelView`.
     var kind: HeadphoneKind {
         switch self {
@@ -148,17 +166,18 @@ enum HeadphoneModelCatalog {
 
     static func resolve(_ device: DeviceDescriptor?) -> HeadphoneModelInfo {
         guard let device else { return unknownHeadphones }
-        let isApple = device.manufacturer?.lowercased().contains("apple") ?? false
-        // 1. Product ID in model / hardware fields.
-        for field in [device.model, device.hardwareVersion] {
-            if let id = productID(from: field) {
-                if let known = byProductID[id] { return known }
-                if isApple { return unknownApple(id: id, name: device.name) }
-            }
-        }
-        // 2. Product words in the model or nickname ("Teddy's AirPods Pro", "Beats Studio Buds").
         let text = [device.model, device.name].compactMap { $0?.lowercased() }.joined(separator: " ")
-        if let guess = guess(from: text) { return guess }
+        let isApple = device.hasCompatibleAppleManufacturer && DeviceDescriptor.clean(device.manufacturer) != nil
+        if device.hasCompatibleAppleManufacturer {
+            // The model identifiers are vendor-scoped. Other vendors may use the same numbers.
+            for field in [device.model, device.hardwareVersion] {
+                if let id = productID(from: field) {
+                    if let known = byProductID[id] { return known }
+                    if isApple { return unknownApple(id: id, name: device.name) }
+                }
+            }
+            if let guess = guess(from: text) { return guess }
+        }
         // 3. Unknown: guess the shape from common over-ear words, else in-ear.
         let overEarWords = ["wh-", "headphone", "qc", "quietcomfort", "momentum", "studio", "solo", "max", "over-ear", "xm"]
         let overEar = overEarWords.contains { text.contains($0) } && !text.contains("wf-") && !text.contains("buds")

@@ -32,7 +32,7 @@ struct ShareCardView: View {
 
             HStack(spacing: 10) {
                 Text(summary.persona.emoji)
-                Text(summary.persona.title).fontWeight(.semibold)
+                Text(LocalizedStringKey(summary.persona.title)).fontWeight(.semibold)
             }
             .font(.title3)
             .padding(.top, 16)
@@ -67,7 +67,7 @@ struct ShareCardView: View {
         .foregroundStyle(.white)
     }
 
-    private func mini(_ value: String, _ label: String) -> some View {
+    private func mini(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.system(.headline, design: .rounded)).monospacedDigit()
             Text(label).font(.caption2).foregroundStyle(Theme.secondaryText)
@@ -79,6 +79,7 @@ struct ShareCardView: View {
 struct ShareSheet: View {
     let summary: ListeningSummary
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.locale) private var locale
 
     var body: some View {
         // The share card keeps its 360×640 design size (it is also the exported image);
@@ -120,7 +121,7 @@ struct ShareSheet: View {
 
     @ViewBuilder private var shareButton: some View {
         if let image = renderImage() {
-            ShareLink(item: image, preview: SharePreview("My Earprint", image: image)) {
+            ShareLink(item: image, preview: SharePreview(Text("My Earprint"), image: image)) {
                 Label("Share image", systemImage: "square.and.arrow.up")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -132,7 +133,7 @@ struct ShareSheet: View {
     }
 
     @MainActor private func renderImage() -> Image? {
-        let renderer = ImageRenderer(content: ShareCardView(summary: summary))
+        let renderer = ImageRenderer(content: ShareCardView(summary: summary).environment(\.locale, locale))
         renderer.scale = max(displayScale, 3)
         guard let ui = renderer.uiImage else { return nil }
         return Image(uiImage: ui)

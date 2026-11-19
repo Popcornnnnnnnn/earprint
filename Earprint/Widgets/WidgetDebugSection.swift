@@ -40,7 +40,8 @@ struct WidgetDebugSection: View {
                 let snapshot = WidgetSnapshot(
                     summary: library.homeSummary,
                     cards: library.cards,
-                    isSample: library.isShowingSampleData
+                    isSample: library.isShowingSampleData,
+                    listening: library.snapshot
                 )
                 WidgetPublisher.publish(snapshot)
                 published = Date()
