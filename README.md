@@ -1,48 +1,56 @@
 # Earprint (codename)
 
-An iPhone app that turns your AirPods / headphone listening history from Apple Health into beautiful, shareable stats. The main hook is the **Earprint**: a picture made from your own listening. Each ring is one day, and each segment is one hour of the day. Color shows how loud you listened.
+An iPhone app that turns your AirPods and headphone listening history from Apple Health into collectible 3D holo trading cards, a collector-grade Device Dossier, native widgets, and Live Activities.
 
-**UI and UX come first.** Every feature must look good enough to post on Xiaohongshu / TikTok.
+**UI and UX come first.** Direction: **C (Headphone Collection with interactive 3D cards) + G (Native Widgets & Live Activity)**, plus a PSA-style **Device Dossier** for deep metadata and **iPhone Duo** foldable adaptation.
 
-## Goal
+## What Is Built
 
-- Read `HKQuantityType(.headphoneAudioExposure)` samples, which iOS logs automatically while audio plays. Nothing leaves the phone.
-- Show listening time, sessions, loudness and a weekly hearing budget for each headphone, using our own design.
-- Make "Wrapped"-style weekly, monthly and yearly cards that people want to share.
-- Chinese and English from day one. TestFlight first. The China App Store needs an ICP filing (备案) first.
+- **3D Collectible Cards (`Earprint/Collection/`, `Earprint/ThreeD/`):**
+  - Rarity tiers by lifetime listening hours: `BRONZE` → `SILVER` → `GOLD` → `HOLO · LEGENDARY`.
+  - Real-time RealityKit 3D models (`AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`, plus procedural fallback) floating above the card surface: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, tilt phone for foil shine & parallax, tap to flip for counting stats.
+  - See [docs/ASSETS.md](docs/ASSETS.md) for CC-BY 4.0 attributions and trademark notes.
+- **Device Dossier (`Earprint/Dossier/`):**
+  - Tap **Dossier** or swipe up on any card to open its PSA-style acrylic grading slab (`EAR GRADE` from hearing safety), period switcher (`Week` / `Month` / `Year` / `All`), interactive 30-day scrub bar chart, 24-hour peak clock, 6-tile habits & hearing bento, lifetime ledger, milestone timeline, and guilloché hardware certificate (`Apple Inc. · 0x2024`, firmware, sample count, history range).
+  - See [docs/DOSSIER.md](docs/DOSSIER.md).
+- **HealthKit Data Pipeline (`Earprint/Data/`, `EarprintTests/`):**
+  - Incremental anchored sync of `HKQuantityType(.headphoneAudioExposure)` off the main actor, disk cache for instant startup, `HKObserverQuery` live updates, 34-device Apple Bluetooth product ID catalog, rename merging via `localIdentifier`, WHO weekly hearing budget, and 28×24 local-time/DST grid bucketing.
+  - Debug-only simulator seeder (`-seedHealth`); Release builds stay strictly read-only.
+  - See [docs/DATA.md](docs/DATA.md).
+- **Widgets & Live Activity (`EarprintWidgets/`, `Shared/`, `Earprint/Widgets/`):**
+  - Home Screen widgets (Small Today, Medium Card Shelf with `earprint://card/<id>` deep links, Large Earprint Ring + heatmap + WHO budget), Lock Screen accessories, Dynamic Island, and "Listening now" Live Activity.
+  - See [docs/WIDGETS.md](docs/WIDGETS.md).
+- **iPhone Duo Foldable Adaptation (`Earprint/Design/AdaptiveLayout.swift`):**
+  - Adaptive grids (even column counts clear of the hinge), 4-mode `CardDetail` (single, beside controls, side-by-side front + back on inner/book display, tabletop fold-stacked), two-column Rings screen, and native App Store screenshot verification across outer/inner/book/tabletop postures.
+  - See [docs/IPHONE_DUO.md](docs/IPHONE_DUO.md).
 
-## Stage 1 completion criteria
+## Stage 1 Completion Criteria
 
-1. A data probe runs on a real iPhone and confirms the fields we get: device name, manufacturer, model / hardware ID, dB(A), sample count and load time.
-2. A home screen and share card built with the agreed visual direction (sample: `docs/samples/`).
-3. The home screen uses real HealthKit data instead of sample data.
-4. A TestFlight build is installed and used for one week.
+1. Data probe & real HealthKit pipeline verified on a real iPhone (currently verified via 21 unit tests + simulator seeder; blocked on Xcode Apple ID sign-in for device install).
+2. Collectible 3D cards, Device Dossier, Widgets & Live Activity, and iPhone Duo layouts built and visually verified in simulators.
+3. Connect full per-session HealthKit history into `DeviceDossier` (currently hydrates card totals and uses deterministic sample sessions when in sample mode) and add bilingual Chinese + English localization (String Catalog).
+4. Ship TestFlight build and daily-drive for one week.
 
-## Status (2026-11-19)
+## Current Status (2026-11-19)
 
-- Done: XcodeGen project, data probe tab, first UI sample (home + 9:16 share card) running in the simulator with sample data.
-- Blocked: device builds fail with "No Accounts". **Xcode needs an Apple ID signed in** (Xcode › Settings › Accounts) so automatic signing can add the HealthKit capability for team `R26X7B8XDT`.
+- **Done:** All 5 core tracks integrated, 21/21 unit tests passing, Debug + Release simulator builds passing, verified on iPhone 17 Pro and iPhone Duo simulators.
+- **Blocked (device testing):** Device builds fail with "No Accounts". Sign in to **Xcode → Settings → Accounts** (team `R26X7B8XDT`) to install on a physical iPhone for real HealthKit data, CoreMotion tilt, and haptics.
 
-## Next steps
-
-1. Sign in to Xcode, run the probe on the iPhone and copy the report.
-2. Review the visual direction, then refine the Earprint glyph and share cards.
-3. Connect the home screen to real data. Add localization (String Catalog) and widgets.
-
-## Build
+## Build & Test
 
 ```sh
 xcodegen generate
-# Simulator (sample data)
-xcodebuild -project Earprint.xcodeproj -scheme Earprint -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build build
-# Device (needs an Apple ID in Xcode)
-xcodebuild -project Earprint.xcodeproj -scheme Earprint -destination 'id=<device-udid>' -derivedDataPath build -allowProvisioningUpdates build
+
+# Unit tests (21 tests, < 1s)
+xcodebuild test -project Earprint.xcodeproj -scheme Earprint \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath build
+
+# Release build check (verifies read-only HealthKit Info.plist)
+xcodebuild build -project Earprint.xcodeproj -scheme Earprint \
+  -configuration Release \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath build
 ```
 
-Launch with `-showShare` to open the share sheet directly (useful for screenshots).
-
-## Landscape (checked 2026-11-19)
-
-- **PodsStats** (Xiaohongshu dev "momo"): same data source. TestFlight only, not on the App Store, and its build is currently expired.
-- App Store: no app with the same features. Nearby apps are EarRest (break reminders based on Bluetooth connection), EarTimer, and decibel meters.
-- Open source: no matching app. An empty repo `MIN202299/airpodsStats` was created on 2026-11-19, so someone else is starting too.
+Useful launch arguments: `-demo`, `-demoIndex <n>`, `-cardDetail`, `-dossier`, `-dossierDemo`, `-rings`, `-showShare`, `-tab <collection|rings|probe>`, `-seedHealth` (Debug), `-startLiveActivity`.

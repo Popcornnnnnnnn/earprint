@@ -330,7 +330,7 @@ struct CardDetail: View {
                 .frame(width: 150, height: 18)
                 .blur(radius: 10)
                 .offset(x: -tilt.width * 10, y: 40)
-            HeadphoneModelView(kind: card.kind, finish: card.finish, tint: card.foilTint, tilt: tilt)
+            HeadphoneModelView(kind: card.kind, finish: card.finish, assetName: card.modelAssetName, tint: card.foilTint, tilt: tilt)
                 .frame(width: 340, height: 300)
                 .offset(y: -62)
         }

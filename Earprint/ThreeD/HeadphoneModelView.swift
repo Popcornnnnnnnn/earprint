@@ -130,6 +130,7 @@ final class ModelRig {
 struct HeadphoneModelView: View {
     let kind: HeadphoneKind
     let finish: HeadphoneFinish
+    var assetName: String? = nil
     var tint: [UIColor] = []
     var tilt: CGSize = .zero
 
@@ -165,7 +166,7 @@ struct HeadphoneModelView: View {
             content.add(rig.root)
             rig.attach(to: content)
 
-            let model = await HeadphoneModelLoader.load(kind, finish: finish, size: 0.17)
+            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, size: 0.17)
             rig.spinPivot.addChild(model)
 
             if let environment = try? await StudioEnvironment.make(tint: tint) {
@@ -210,4 +211,14 @@ extension HeadphoneCard {
     }
 
     var foilTint: [UIColor] { rarity.baseColors.map { UIColor($0) } }
+
+    /// Bundled USDZ resource matching the exact device shape (empty string falls back to procedural sport buds).
+    var modelAssetName: String {
+        switch modelKey {
+        case .airpodsMax: "AirPodsMax"
+        case .airpodsPro, .airpods, .airpods3: "AirPodsPro"
+        case .overEarGeneric, .beatsOverEar: "HeadphoneGeneric"
+        case .beatsEarbuds, .beatsEarhook, .earbudsGeneric: ""
+        }
+    }
 }
