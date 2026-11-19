@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earprint — UI directions</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0c10; color: #e8e8ea; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+  header.top { padding: 40px 32px 8px; max-width: 1280px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.02em; }
+  header.top p { margin: 0; color: #9a9ba3; max-width: 760px; }
+  nav.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 32px 0; max-width: 1280px; margin: 0 auto; position: sticky; top: 0; z-index: 5; background: linear-gradient(#0b0c10 75%, transparent); padding-bottom: 14px; }
+  nav.chips a { color: #e8e8ea; text-decoration: none; border: 1px solid #2a2c33; border-radius: 999px; padding: 6px 14px; font-size: 13px; background: #14151a; }
+  nav.chips a:hover { border-color: #5ce5cc; }
+  section.opt { max-width: 1280px; margin: 0 auto; padding: 36px 32px; border-top: 1px solid #1c1d22; display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 36px; align-items: start; scroll-margin-top: 64px; }
+  @media (max-width: 900px) { section.opt { grid-template-columns: 1fr; } }
+  .info .tag { display: inline-block; font-weight: 700; font-size: 12px; letter-spacing: .12em; color: #0b0c10; background: #5ce5cc; border-radius: 6px; padding: 2px 8px; margin-bottom: 10px; }
+  .info h2 { margin: 0 0 8px; font-size: 24px; letter-spacing: -0.01em; }
+  .info p { color: #b4b5bc; margin: 0 0 12px; }
+  .info ul { margin: 0 0 12px; padding-left: 18px; color: #b4b5bc; }
+  .info li { margin: 3px 0; }
+  .info .pc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; }
+  .info .pc div { background: #14151a; border: 1px solid #22242a; border-radius: 12px; padding: 10px 12px; }
+  .info .pc b { display: block; font-size: 12px; letter-spacing: .08em; color: #8b8c94; margin-bottom: 4px; }
+  .info .score { margin-top: 12px; font-size: 13px; color: #8b8c94; }
+  .info .score span { color: #e8e8ea; }
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; }
+  .phone { width: 300px; height: 640px; border-radius: 46px; padding: 9px; background: #1b1c20; box-shadow: 0 0 0 1px #2c2d33, 0 30px 60px -20px #000; flex: none; }
+  .screen { width: 100%; height: 100%; border-radius: 38px; overflow: hidden; position: relative; }
+  .status { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 13px; font-weight: 600; }
+  .island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 92px; height: 26px; border-radius: 20px; background: #000; z-index: 3; }
+  .cap { text-align: center; color: #8b8c94; font-size: 12px; margin-top: 10px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* A — Rings */
+  .a { background: radial-gradient(120% 70% at 50% 30%, #12223a 0%, #07080d 60%); color: #fff; }
+  .a .pad { padding: 4px 22px; }
+  .a .eyebrow { font-size: 11px; letter-spacing: .14em; color: #8f97a8; font-weight: 600; }
+  .a .card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; padding: 12px 14px; }
+  .a .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .a .k { font-size: 11px; color: #8f97a8; } .a .v { font-size: 20px; font-weight: 700; }
+
+  /* B — Ink Ribbon */
+  .b { background: #f4efe4; color: #1e1b16; font-family: "Songti SC", "Noto Serif SC", Georgia, serif; }
+  .b .pad { padding: 4px 24px; }
+  .b .eyebrow { font-family: -apple-system, sans-serif; font-size: 11px; letter-spacing: .2em; color: #8a8072; }
+  .b .big { font-size: 64px; line-height: 1; letter-spacing: -0.03em; }
+  .b .rule { height: 1px; background: #1e1b16; opacity: .15; margin: 14px 0; }
+  .b .row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px dashed rgba(30,27,22,.15); }
+  .b .row span:first-child { color: #8a8072; }
+
+  /* C — Collection */
+  .c { background: #0e0f13; color: #fff; }
+  .c .pad { padding: 4px 18px; }
+  .c .tcard { border-radius: 22px; padding: 14px; position: relative; overflow: hidden; margin-bottom: 12px; }
+  .c .holo { background: conic-gradient(from 210deg at 70% 30%, #7af5e1, #a78bfa, #f9a8d4, #fde68a, #7af5e1); }
+  .c .silver { background: linear-gradient(135deg, #3a3f4b, #1d2027); }
+  .c .bronze { background: linear-gradient(135deg, #4a3326, #221812); }
+  .c .tcard .shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 45%, transparent 60%); mix-blend-mode: overlay; }
+  .c .rar { font-size: 10px; letter-spacing: .14em; font-weight: 800; background: rgba(0,0,0,.35); padding: 2px 8px; border-radius: 6px; }
+
+  /* D — Ear Buddy */
+  .d { background: linear-gradient(#dff7ee, #fdf6e8); color: #2b3a35; }
+  .d .pad { padding: 4px 20px; }
+  .d .bubble { background: #fff; border-radius: 18px; padding: 10px 14px; font-size: 14px; box-shadow: 0 6px 18px -8px rgba(0,0,0,.2); position: relative; }
+  .d .bubble:after { content: ""; position: absolute; bottom: -8px; left: 50%; border: 8px solid transparent; border-top-color: #fff; border-bottom: 0; transform: translateX(-50%); }
+  .d .pill { background: #fff; border-radius: 16px; padding: 10px 12px; box-shadow: 0 4px 14px -8px rgba(0,0,0,.18); }
+  .d .bar { height: 12px; border-radius: 99px; background: #e6efe9; overflow: hidden; }
+  .d .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #6fd6a8, #ffc56b); }
+
+  /* E — Receipt */
+  .e { background: #d9d4cb; color: #1b1b1b; display: flex; flex-direction: column; }
+  .e .paper { margin: 6px 18px 0; background: #fbfaf6; padding: 18px 18px 22px; font-family: "SF Mono", Menlo, "Courier New", monospace; font-size: 12px; flex: 1;
+    position: relative; margin-bottom: 26px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.4); }
+  .e .paper::after { content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; background: linear-gradient(135deg, #fbfaf6 50%, transparent 50%) 0 0/14px 10px repeat-x, linear-gradient(-135deg, #fbfaf6 50%, transparent 50%) 7px 0/14px 10px repeat-x; }
+  .e .ctr { text-align: center; } .e .li { display: flex; justify-content: space-between; padding: 2px 0; }
+  .e .dash { border-top: 1px dashed #999; margin: 8px 0; }
+
+  /* F — Wrapped story */
+  .f { color: #fff; }
+  .f .bars { display: flex; gap: 4px; padding: 0 14px; }
+  .f .bars i { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.35); }
+  .f .bars i.on { background: #fff; }
+  .f .huge { font-size: 96px; font-weight: 900; line-height: .9; letter-spacing: -0.05em; }
+
+  /* G — Widgets */
+  .g { background: linear-gradient(160deg, #1e3a5f, #6b4c7a 55%, #c97b63); color: #fff; }
+  .g .wgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 8px 18px; }
+  .g .w { background: rgba(20,22,28,.55); backdrop-filter: blur(14px); border-radius: 22px; padding: 12px; }
+  .g .wide { grid-column: span 2; }
+  .g .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 10px 26px; }
+  .g .apps i { aspect-ratio: 1; border-radius: 14px; background: rgba(255,255,255,.22); }
+  .g .live { margin: 8px 14px; background: rgba(0,0,0,.6); border-radius: 26px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  footer { max-width: 1280px; margin: 0 auto; padding: 30px 32px 60px; color: #8b8c94; border-top: 1px solid #1c1d22; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Earprint — 7 UI directions</h1>
+  <p>Every mockup uses the same 4 weeks of sample listening data, so you only compare the look and feel. Each direction has an in-app screen and a share card. Pick one (or mix, e.g. "B + G"). A–F are main styles. G is an add-on that works with any of them.</p>
+</header>
+<nav class="chips">
+  <a href="#A">A · Rings</a><a href="#B">B · Ink Ribbon</a><a href="#C">C · Collection</a><a href="#D">D · Ear Buddy</a><a href="#E">E · Receipt</a><a href="#F">F · Wrapped Story</a><a href="#G">G · Widgets add-on</a>
+</nav>
+
+<section class="opt" id="A">
+  <div class="info">
+    <span class="tag">A</span>
+    <h2>Rings (current sample)</h2>
+    <p>Dark, glowing, a little sci-fi. Your listening becomes a unique "fingerprint": each ring is a day, each segment an hour, color is loudness.</p>
+    <ul><li>Strong signature visual — no one else has it</li><li>Feels premium and Apple-like</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Tech and design fans, guys, Apple fans</div><div><b>RISK</b>Hard to read at first; needs a 1-line legend</div></div>
+    <div class="score">Shareability <span>★★★★☆</span> · Clarity <span>★★★☆☆</span> · Build effort <span>Low (done)</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen a"><div class="island"></div><div class="status"><span>10:28</span><span>●●● 82%</span></div>
+      <div class="pad">
+        <div class="eyebrow">THIS WEEK · NOV 12 – 18</div>
+        <div style="font-weight:600;margin-top:4px">🧸 AirPods Pro 2</div>
+        <div style="position:relative;margin:6px 0"><svg id="a-rings" viewBox="0 0 256 256" width="256" height="256"></svg>
+          <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center"><div><div class="num" style="font-size:26px;font-weight:800" id="a-week"></div><div style="font-size:11px;color:#8f97a8">listened</div></div></div></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:28px">🦉</span><div><div style="font-weight:700;font-size:14px">You're a Night Owl</div><div style="font-size:12px;color:#8f97a8" id="a-night"></div></div></div>
+        <div class="grid2"><div class="card"><div class="k">Sessions</div><div class="v num">269</div></div><div class="card"><div class="k">Avg level</div><div class="v num" id="a-db"></div></div></div>
+      </div></div></div><div class="cap">App screen</div></div>
+    <div><div class="phone"><div class="screen a" style="display:flex;flex-direction:column;padding:26px 24px">
+      <div class="eyebrow">MY EARPRINT</div><div style="color:#8f97a8;font-size:13px">Nov 12 – 18</div>
+      <svg id="a-rings2" viewBox="0 0 256 256" width="252" height="252" style="margin:24px auto 18px"></svg>
+      <div class="num" style="font-size:46px;font-weight:800;letter-spacing:-.03em" id="a-week2"></div>
+      <div style="color:#8f97a8;font-size:13px">in my headphones this week</div>
+      <div style="font-size:18px;font-weight:700;margin-top:14px">🦉 Night Owl</div>
+      <div style="margin-top:auto;display:flex;justify-content:space-between;color:#8f97a8;font-size:11px"><span>AirPods Pro 2</span><b>Earprint</b></div>
+    </div></div><div class="cap">Share card (9:16)</div></div>
+  </div>
+</section>
+
+<section class="opt" id="B">
+  <div class="info">
+    <span class="tag">B</span>
+    <h2>Ink Ribbon (editorial)</h2>
+    <p>Warm paper, serif type, and one flowing ink waveform of your week, like a magazine page. Calm and "文艺". It fits Xiaohongshu's taste very well.</p>
+    <ul><li>Very easy to read — one wave = one week</li><li>Looks great as a photo post; light mode stands out in a dark feed</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Xiaohongshu users, young women, journaling fans</div><div><b>RISK</b>Less "techy"; needs strong typography to feel premium</div></div>
+    <div class="score">Shareability <span>★★★★★</span> · Clarity <span>★★★★★</span> · Build effort <span>Low</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen b"><div class="island"></div><div class="status" style="font-family:-apple-system"><span>10:28</span><span>82%</span></div>
+      <div class="pad">
+        <div class="eyebrow">第 47 周 · 聆听日记</div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:10px"><span class="big num" id="b-h"></span><span style="font-size:20px">小时</span><span class="big num" id="b-m" style="font-size:40px"></span><span style="font-size:16px">分</span></div>
+        <div style="color:#8a8072;font-size:13px;margin-top:4px">这一周，耳朵陪你走过的时间</div>
+        <svg id="b-ribbon" viewBox="0 0 252 120" width="252" height="120" style="margin-top:16px"></svg>
+        <div style="display:flex;justify-content:space-between;font-family:-apple-system;font-size:10px;color:#8a8072"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+        <div class="rule"></div>
+        <div class="row"><span>佩戴次数</span><span class="num">269 次</span></div>
+        <div class="row"><span>最长一次</span><span class="num">3 小时 40 分</span></div>
+        <div class="row"><span>平均音量</span><span class="num" id="b-db"></span></div>
+        <div class="row" style="border:0"><span>你的节奏</span><span>深夜型 🌙</span></div>
+      </div></div></div><div class="cap">App screen</div></div>
+    <div><div class="phone"><div class="screen b" style="padding:30px 26px;display:flex;flex-direction:column">
+      <div class="eyebrow">EARPRINT · WEEKLY</div>
+      <div style="font-size:30px;line-height:1.25;margin-top:18px">这一周，<br>我把 <u id="b-h2" class="num"></u> 小时<br>交给了耳机。</div>
+      <svg id="b-ribbon2" viewBox="0 0 252 120" width="248" height="118" style="margin:26px 0 10px"></svg>
+      <div style="font-size:14px;color:#8a8072;line-height:1.7">最常在 <b style="color:#1e1b16">深夜 11 点</b> 戴上耳机<br>最安静的一天是 <b style="color:#1e1b16">周六</b></div>
+      <div style="margin-top:auto;display:flex;justify-content:space-between;font-family:-apple-system;font-size:11px;color:#8a8072"><span>🧸 AirPods Pro 2</span><span>Nov 12 – 18</span></div>
+    </div></div><div class="cap">Share card (9:16)</div></div>
+  </div>
+</section>
+
+<section class="opt" id="C">
+  <div class="info">
+    <span class="tag">C</span>
+    <h2>Headphone Collection</h2>
+    <p>Every pair of headphones you've owned becomes a collectible card. More hours = rarer card (Bronze → Silver → Holo). Uses the device name and model that Health stores.</p>
+    <ul><li>Fun for people with several AirPods / Beats</li><li>"Lifetime hours" and "first met" dates create emotion</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Gadget collectors, digital bloggers (数码博主)</div><div><b>RISK</b>Weak for people with only one pair</div></div>
+    <div class="score">Shareability <span>★★★★☆</span> · Clarity <span>★★★★☆</span> · Build effort <span>Medium</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen c"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="pad">
+        <div style="font-size:24px;font-weight:800;margin:6px 0 12px">My headphones</div>
+        <div class="tcard holo" style="color:#111"><div class="shine"></div><span class="rar">HOLO · LEGENDARY</span>
+          <div style="display:flex;justify-content:space-between;align-items:end;margin-top:22px"><div><div style="font-size:12px;opacity:.7">🧸 AirPods Pro 2</div><div class="num" style="font-size:34px;font-weight:900">188h</div><div style="font-size:11px;opacity:.7">since Oct 30 · 269 sessions</div></div><div style="font-size:44px">🎧</div></div></div>
+        <div class="tcard silver"><div class="shine"></div><span class="rar">SILVER</span>
+          <div style="display:flex;justify-content:space-between;align-items:end;margin-top:14px"><div><div style="font-size:12px;opacity:.7">AirPods Max</div><div class="num" style="font-size:26px;font-weight:800">64h</div></div><div style="font-size:12px;opacity:.6">2024 – 2025</div></div></div>
+        <div class="tcard bronze"><div class="shine"></div><span class="rar">BRONZE</span>
+          <div style="display:flex;justify-content:space-between;align-items:end;margin-top:14px"><div><div style="font-size:12px;opacity:.7">Beats Fit Pro</div><div class="num" style="font-size:26px;font-weight:800">9h</div></div><div style="font-size:12px;opacity:.6">gym only 🏋️</div></div></div>
+      </div></div></div><div class="cap">App screen</div></div>
+    <div><div class="phone"><div class="screen c" style="display:grid;place-items:center;background:radial-gradient(#1c1530,#08080b)">
+      <div class="tcard holo" style="width:230px;height:360px;color:#111;display:flex;flex-direction:column;border-radius:26px;box-shadow:0 20px 50px -10px rgba(167,139,250,.6)"><div class="shine"></div>
+        <span class="rar" style="align-self:flex-start">HOLO · #0001</span>
+        <div style="font-size:90px;text-align:center;margin:24px 0 6px">🎧</div>
+        <div style="font-weight:800;font-size:18px;text-align:center">🧸 AirPods Pro 2</div>
+        <div class="num" style="font-size:44px;font-weight:900;text-align:center;line-height:1.1">188h 22m</div>
+        <div style="margin-top:auto;display:flex;justify-content:space-between;font-size:11px;font-weight:700"><span>269 sessions</span><span>Night Owl 🦉</span></div></div>
+    </div></div><div class="cap">Share card (9:16)</div></div>
+  </div>
+</section>
+
+<section class="opt" id="D">
+  <div class="info">
+    <span class="tag">D</span>
+    <h2>Ear Buddy (cute pet)</h2>
+    <p>A small character wears your headphones. Its mood follows your weekly hearing budget: happy when you listen safely, sleepy when you overdo it. Gentle health nudges instead of warnings.</p>
+    <ul><li>Emotional and very "可爱" — strong for XHS / Douyin</li><li>Turns hearing health into a daily habit, good for retention</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Students, young women, casual users</div><div><b>RISK</b>Needs a real illustrator for the character; can feel childish</div></div>
+    <div class="score">Shareability <span>★★★★★</span> · Clarity <span>★★★★☆</span> · Build effort <span>High (art)</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen d"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="pad">
+        <div style="font-weight:800;font-size:20px;margin:4px 0 12px">小耳朵 · 第 21 天</div>
+        <div class="bubble">今晚戴了好久呀～休息 20 分钟再听好不好？🎵</div>
+        <svg id="d-buddy" viewBox="0 0 200 170" width="220" height="186" style="display:block;margin:10px auto 6px"></svg>
+        <div class="pill"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><b>本周耳朵能量</b><span class="num" id="d-budget"></span></div><div class="bar"><i id="d-bar"></i></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;text-align:center">
+          <div class="pill"><div class="num" style="font-weight:800" id="d-week"></div><div style="font-size:11px;opacity:.6">本周</div></div>
+          <div class="pill"><div class="num" style="font-weight:800">🔥 6</div><div style="font-size:11px;opacity:.6">安全天数</div></div>
+          <div class="pill"><div class="num" style="font-weight:800" id="d-db"></div><div style="font-size:11px;opacity:.6">平均音量</div></div>
+        </div>
+      </div></div></div><div class="cap">App screen</div></div>
+    <div><div class="phone"><div class="screen d" style="display:flex;flex-direction:column;align-items:center;padding:40px 24px;text-align:center">
+      <div style="font-size:13px;letter-spacing:.2em;opacity:.6">MY EAR BUDDY</div>
+      <svg id="d-buddy2" viewBox="0 0 200 170" width="240" height="204" style="margin:22px 0 10px"></svg>
+      <div style="font-size:21px;font-weight:900">本周陪我听了 <span class="num" id="d-week2"></span></div>
+      <div style="font-size:14px;opacity:.7;margin-top:6px">耳朵状态：有点累 · 但还在安全线内 ✨</div>
+      <div style="display:flex;gap:8px;margin-top:18px"><span class="pill" style="font-size:12px">🦉 深夜型</span><span class="pill" style="font-size:12px">🔥 连续 6 天</span></div>
+      <div style="margin-top:auto;font-size:11px;opacity:.5">Earprint · 🧸 AirPods Pro 2</div>
+    </div></div><div class="cap">Share card (9:16)</div></div>
+  </div>
+</section>
+
+<section class="opt" id="E">
+  <div class="info">
+    <span class="tag">E</span>
+    <h2>Listening Receipt</h2>
+    <p>Your week printed as a shop receipt, with line items, totals and a barcode. A proven viral meme format (like "Receiptify" for Spotify).</p>
+    <ul><li>Instantly understood, funny, very shareable</li><li>Cheap to build; easy to make monthly / yearly versions</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Meme sharing, comment-section posts</div><div><b>RISK</b>Novelty fades; better as a share format than the whole app</div></div>
+    <div class="score">Shareability <span>★★★★★</span> · Clarity <span>★★★★★</span> · Build effort <span>Low</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen e"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="paper">
+        <div class="ctr" style="font-weight:800;font-size:15px">EARPRINT 聆听小票</div>
+        <div class="ctr" style="font-size:11px;color:#666">WEEK 47 · NOV 12–18 · NO.0269</div>
+        <div class="dash"></div>
+        <div id="e-items"></div>
+        <div class="dash"></div>
+        <div class="li" style="font-weight:800;font-size:14px"><span>TOTAL</span><span id="e-total" class="num"></span></div>
+        <div class="li"><span>平均音量</span><span id="e-db"></span></div>
+        <div class="li"><span>人格</span><span>深夜猫头鹰 🦉</span></div>
+        <div class="dash"></div>
+        <div class="ctr" style="font-size:11px">耳朵已签收，谢谢惠顾</div>
+        <svg id="e-bar" viewBox="0 0 220 40" width="220" height="40" style="display:block;margin:8px auto 0"></svg>
+        <div class="ctr" style="font-size:10px;letter-spacing:.3em">0X2024 AIRPODS PRO 2</div>
+      </div></div></div><div class="cap">App screen = share card</div></div>
+  </div>
+</section>
+
+<section class="opt" id="F">
+  <div class="info">
+    <span class="tag">F</span>
+    <h2>Wrapped Story</h2>
+    <p>Full-screen story slides with bold color and huge numbers, tapped through like Instagram stories. Each slide is one fact. Best for monthly and yearly recaps.</p>
+    <ul><li>Big emotional moment — people love "my year in…"</li><li>Every slide is a ready-made post</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Monthly / year-end campaigns (Dec 2026 is close!)</div><div><b>RISK</b>Only special moments; needs an everyday home screen too</div></div>
+    <div class="score">Shareability <span>★★★★★</span> · Clarity <span>★★★★☆</span> · Build effort <span>Medium</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen f" style="background:linear-gradient(160deg,#ff5f6d,#ffc371)"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="bars"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      <div style="padding:60px 26px 0"><div style="font-size:20px;font-weight:700">今年，你和 🧸 一起听了</div>
+        <div class="huge num" style="margin-top:20px">188</div><div style="font-size:40px;font-weight:900">小时</div>
+        <div style="font-size:16px;margin-top:22px;opacity:.9">相当于从上海到乌鲁木齐<br>坐 4 趟高铁 🚄</div></div>
+    </div></div><div class="cap">Story slide 2/5</div></div>
+    <div><div class="phone"><div class="screen f" style="background:linear-gradient(200deg,#1d1446,#4b2aa8 60%,#9b5de5)"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      <div style="padding:46px 26px 0"><div style="font-size:18px;font-weight:700;opacity:.85">你的聆听人格是</div>
+        <div style="font-size:120px;text-align:center;margin:18px 0 0">🦉</div>
+        <div style="font-size:48px;font-weight:900;line-height:1;letter-spacing:-.03em">深夜<br>猫头鹰</div>
+        <div style="font-size:15px;margin-top:16px;opacity:.85" id="f-night"></div></div>
+    </div></div><div class="cap">Story slide 4/5</div></div>
+  </div>
+</section>
+
+<section class="opt" id="G">
+  <div class="info">
+    <span class="tag">G</span>
+    <h2>Native widgets (add-on)</h2>
+    <p>Not a style by itself — it brings any style to the Home Screen, Lock Screen and Dynamic Island. People see the app every day without opening it.</p>
+    <ul><li>Daily visibility = retention</li><li>Home-screen setups (桌面美化) are a big XHS topic</li></ul>
+    <div class="pc"><div><b>GOOD FOR</b>Everyone; pairs with A, B or D</div><div><b>RISK</b>Widgets refresh on Apple's schedule, so not real-time</div></div>
+    <div class="score">Shareability <span>★★★★☆</span> · Clarity <span>★★★★★</span> · Build effort <span>Medium</span></div>
+  </div>
+  <div class="phones">
+    <div><div class="phone"><div class="screen g"><div class="island"></div><div class="status"><span>10:28</span><span>82%</span></div>
+      <div class="wgrid">
+        <div class="w"><svg id="g-ring" viewBox="0 0 256 256" width="100%" style="display:block"></svg></div>
+        <div class="w" style="display:flex;flex-direction:column;justify-content:space-between"><div style="font-size:11px;opacity:.7">今日</div><div><div class="num" style="font-size:30px;font-weight:800" id="g-today"></div><div style="font-size:11px;opacity:.7">🧸 AirPods Pro</div></div><div style="font-size:11px;color:#7af5e1">● 安全音量</div></div>
+        <div class="w wide"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.75;margin-bottom:8px"><span>近 4 周聆听</span><span id="g-total"></span></div><svg id="g-heat" viewBox="0 0 262 70" width="100%" style="display:block"></svg></div>
+      </div>
+      <div class="apps"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div></div><div class="cap">Home Screen widgets</div></div>
+    <div><div class="phone"><div class="screen g" style="background:linear-gradient(180deg,#0f1424,#2b1f3a)"><div class="island" style="width:180px;height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:12px;color:#7af5e1"><span>🎧</span><span class="num">1h 12m</span></div>
+      <div style="text-align:center;margin-top:70px"><div style="font-size:15px;opacity:.8">星期三 11月19日</div><div class="num" style="font-size:86px;font-weight:700;line-height:1">10:28</div></div>
+      <div style="display:flex;justify-content:center;gap:18px;margin-top:6px">
+        <svg id="g-lock" viewBox="0 0 256 256" width="56" height="56"></svg>
+        <div style="text-align:left;font-size:12px;align-self:center"><div style="font-weight:700">本周 <span id="g-week"></span></div><div style="opacity:.7">耳朵能量 <span id="g-energy"></span></div></div></div>
+      <div style="position:absolute;bottom:28px;left:0;right:0"><div class="live"><span style="font-size:22px">🎧</span><div style="flex:1"><div style="font-size:13px;font-weight:700">正在聆听 · 1h 12m</div><div style="font-size:11px;opacity:.7">已连续佩戴，40 分钟后提醒休息</div></div><span style="font-size:12px;color:#7af5e1" class="num">63 dB</span></div></div>
+    </div></div><div class="cap">Lock Screen + Live Activity</div></div>
+  </div>
+</section>
+
+<footer>
+  <b style="color:#e8e8ea">My suggestion:</b> use <b style="color:#e8e8ea">B (Ink Ribbon)</b> or <b style="color:#e8e8ea">A (Rings)</b> as the everyday look, with <b style="color:#e8e8ea">E (Receipt)</b> and <b style="color:#e8e8ea">F (Wrapped)</b> as share formats, and <b style="color:#e8e8ea">G</b> for widgets. <b style="color:#e8e8ea">C</b> and <b style="color:#e8e8ea">D</b> can come later as fun extras.
+</footer>
+
+<script>
+// Same deterministic sample data as the Swift sample.
+function rng(seed){ let s=seed>>>0; return ()=>{ s=(s+0x6D2B79F5)>>>0; let t=s; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+const R = rng(7), DAYS = 28;
+const M = Array.from({length:DAYS},()=>Array(24).fill(0)), D = Array.from({length:DAYS},()=>Array(24).fill(0));
+const rnd = (a,b)=>a+R()*(b-a);
+for (let d=0; d<DAYS; d++) {
+  const wk = d%7<5;
+  const add=(h,a,b,da,db,p=1)=>{ if(R()<p){ M[d][h]=Math.min(60,M[d][h]+rnd(a,b)); D[d][h]=rnd(da,db);} };
+  if (wk) { add(8,25,50,62,70); add(9,5,20,60,66,.6); add(13,10,30,54,60,.5); add(18,25,50,63,72); add(19,10,25,60,66,.7); }
+  else { for (let h=14;h<=17;h++) add(h,10,45,55,64,.55); }
+  for (let h=21;h<=23;h++) add(h,15,55,58,70,.75);
+  add(0,10,45,66,80,.5); add(1,5,30,70,82,.25);
+}
+const last = n => M.slice(-n), lastD = n => D.slice(-n);
+const sum = a => a.flat().reduce((x,y)=>x+y,0);
+const weekMin = sum(last(7));
+const fmt = m => { m=Math.round(m); return m>=60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m}m`; };
+const avgDb = (()=>{ let e=0,w=0; last(7).forEach((r,i)=>r.forEach((m,h)=>{ if(m>0){ e+=Math.pow(10,lastD(7)[i][h]/10)*m; w+=m; } })); return 10*Math.log10(e/w); })();
+const night = (()=>{ let p=0; last(28).forEach(r=>[22,23,0,1,2,3].forEach(h=>p+=r[h])); return p/sum(last(28)); })();
+const budget = (()=>{ let u=0; last(7).forEach((r,i)=>r.forEach((m,h)=>{ if(m>0) u+=m/(2400*Math.pow(2,(80-lastD(7)[i][h])/3)); })); return u; })();
+
+function mix(a,b,t){ t=Math.max(0,Math.min(1,t)); return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
+const Q=[92,229,204], MO=[255,194,84], L=[255,97,102];
+function lvl(db){ const c = db<60?Q: db<72?mix(Q,MO,(db-60)/12): db<82?mix(MO,L,(db-72)/10):L; return `rgb(${c})`; }
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); parent&&parent.appendChild(e); return e; }
+
+function rings(svg, {glow=true, track='rgba(255,255,255,.05)'}={}) {
+  const c=128, outer=124, inner=outer*0.42, step=(outer-inner)/DAYS, max=Math.max(...M.flat());
+  if (glow) { const f=el('filter',{id:svg.id+'g',x:'-20%',y:'-20%',width:'140%',height:'140%'},el('defs',{},svg)); el('feGaussianBlur',{stdDeviation:3},f); }
+  const arc=(d,h)=>{ const r=inner+step*(d+.5), a0=(h*15-90+1.3)*Math.PI/180, a1=((h+1)*15-90-1.3)*Math.PI/180;
+    return `M${c+r*Math.cos(a0)} ${c+r*Math.sin(a0)} A${r} ${r} 0 0 1 ${c+r*Math.cos(a1)} ${c+r*Math.sin(a1)}`; };
+  const gG = glow ? el('g',{filter:`url(#${svg.id}g)`},svg) : null, gS = el('g',{},svg);
+  for (let d=0; d<DAYS; d++) for (let h=0; h<24; h++) {
+    el('path',{d:arc(d,h),stroke:track,'stroke-width':step*.55,fill:'none','stroke-linecap':'round'},gS);
+  }
+  for (let d=0; d<DAYS; d++) for (let h=0; h<24; h++) { const m=M[d][h]; if(!m) continue; const t=Math.min(1,m/max);
+    const a={d:arc(d,h),stroke:lvl(D[d][h]),'stroke-opacity':.3+.7*t,'stroke-width':step*(.3+.55*t),fill:'none','stroke-linecap':'round'};
+    if (gG) el('path',a,gG); el('path',a,gS); }
+}
+
+function ribbon(svg, color='#1e1b16') {
+  const W=252,H=120,mid=60, pts=[];
+  const series = last(7).flat();
+  const sm = series.map((_,i)=>{ let s=0,n=0; for(let k=-2;k<=2;k++){ const v=series[i+k]; if(v!==undefined){ s+=v; n++; } } return s/n; });
+  const max=Math.max(...sm);
+  sm.forEach((v,i)=>pts.push([i/(sm.length-1)*W, v/max*52]));
+  const top=pts.map(([x,y])=>`${x.toFixed(1)},${(mid-y-1).toFixed(1)}`), bot=pts.slice().reverse().map(([x,y])=>`${x.toFixed(1)},${(mid+y+1).toFixed(1)}`);
+  const g=el('linearGradient',{id:svg.id+'grad',x1:0,x2:1},el('defs',{},svg));
+  el('stop',{offset:0,'stop-color':color},g); el('stop',{offset:.6,'stop-color':'#b5543c'},g); el('stop',{offset:1,'stop-color':color},g);
+  for (let d=1; d<7; d++) el('line',{x1:d*W/7,x2:d*W/7,y1:6,y2:H-6,stroke:color,'stroke-opacity':.08},svg);
+  el('polygon',{points:top.concat(bot).join(' '),fill:`url(#${svg.id}grad)`},svg);
+  el('line',{x1:0,x2:W,y1:mid,y2:mid,stroke:color,'stroke-opacity':.25,'stroke-width':.6},svg);
+}
+
+function buddy(svg, mood='tired') {
+  el('ellipse',{cx:100,cy:160,rx:58,ry:7,fill:'rgba(0,0,0,.08)'},svg);
+  el('circle',{cx:56,cy:52,r:20,fill:'#f6c79b'},svg); el('circle',{cx:144,cy:52,r:20,fill:'#f6c79b'},svg);
+  el('circle',{cx:56,cy:52,r:10,fill:'#f3a98a'},svg); el('circle',{cx:144,cy:52,r:10,fill:'#f3a98a'},svg);
+  el('rect',{x:38,y:42,width:124,height:114,rx:56,fill:'#ffd8b0'},svg);
+  el('path',{d:'M40 92 Q100 0 160 92',stroke:'#3b4a5a','stroke-width':9,fill:'none','stroke-linecap':'round'},svg);
+  el('rect',{x:24,y:80,width:26,height:40,rx:12,fill:'#ffffff',stroke:'#3b4a5a','stroke-width':4},svg);
+  el('rect',{x:150,y:80,width:26,height:40,rx:12,fill:'#ffffff',stroke:'#3b4a5a','stroke-width':4},svg);
+  if (mood==='tired') { el('path',{d:'M74 100 q8 6 16 0',stroke:'#2b3a35','stroke-width':4,fill:'none','stroke-linecap':'round'},svg); el('path',{d:'M110 100 q8 6 16 0',stroke:'#2b3a35','stroke-width':4,fill:'none','stroke-linecap':'round'},svg); }
+  else { el('circle',{cx:82,cy:100,r:6,fill:'#2b3a35'},svg); el('circle',{cx:118,cy:100,r:6,fill:'#2b3a35'},svg); }
+  el('ellipse',{cx:70,cy:116,rx:9,ry:5,fill:'#ff9e9e',opacity:.6},svg); el('ellipse',{cx:130,cy:116,rx:9,ry:5,fill:'#ff9e9e',opacity:.6},svg);
+  el('path',{d:'M92 122 q8 7 16 0',stroke:'#2b3a35','stroke-width':4,fill:'none','stroke-linecap':'round'},svg);
+  const z=el('text',{x:150,y:36,'font-size':18,'font-weight':800,fill:'#6fbf9a'},svg); z.textContent = mood==='tired'?'z z':'♪';
+}
+
+function barcode(svg) { let x=0; const r=rng(42); while (x<220) { const w=1+Math.floor(r()*3); if (r()>.35) el('rect',{x,y:0,width:w,height:40,fill:'#1b1b1b'},svg); x+=w+1; } }
+
+function heat(svg) {
+  const totals = M.map(r=>r.reduce((a,b)=>a+b,0)), max=Math.max(...totals), cell=34, gap=4;
+  totals.forEach((t,i)=>{ const col=i%7, row=Math.floor(i/7);
+    el('rect',{x:col*(cell+gap)+2,y:row*16+2,width:cell,height:13,rx:4,fill:`rgba(122,245,225,${.12+.88*t/max})`},svg); });
+}
+
+// Fill
+$('a-week').textContent = fmt(weekMin); $('a-week2').textContent = fmt(weekMin);
+$('a-night').textContent = `${Math.round(night*100)}% of listening after 10 pm`;
+$('a-db').textContent = `${Math.round(avgDb)} dB`;
+rings($('a-rings')); rings($('a-rings2'));
+$('b-h').textContent = Math.floor(weekMin/60); $('b-m').textContent = Math.round(weekMin%60); $('b-h2').textContent = Math.round(weekMin/60);
+$('b-db').textContent = `${Math.round(avgDb)} 分贝`;
+ribbon($('b-ribbon')); ribbon($('b-ribbon2'));
+buddy($('d-buddy'),'tired'); buddy($('d-buddy2'),'happy');
+$('d-budget').textContent = `${Math.round((1-Math.min(budget,1))*100)}%`; $('d-bar').style.width = `${Math.round((1-Math.min(budget,1))*100)}%`;
+$('d-week').textContent = fmt(weekMin); $('d-week2').textContent = `${Math.round(weekMin/60)} 小时`; $('d-db').textContent = `${Math.round(avgDb)}dB`;
+const names=['周一 通勤','周二 通勤','周三 通勤','周四 通勤','周五 通勤','周六 午后','周日 深夜'];
+$('e-items').innerHTML = last(7).map((r,i)=>`<div class="li"><span>${names[i]}</span><span>${fmt(r.reduce((a,b)=>a+b,0))}</span></div>`).join('')
+  + `<div class="li"><span>佩戴次数 ×269</span><span>—</span></div><div class="li"><span>最长一次</span><span>3h 40m</span></div>`;
+$('e-total').textContent = fmt(weekMin); $('e-db').textContent = `${Math.round(avgDb)} dB(A)`;
+barcode($('e-bar'));
+$('f-night').textContent = `${Math.round(night*100)}% 的聆听发生在晚上 10 点以后`;
+rings($('g-ring'),{glow:false}); rings($('g-lock'),{glow:false, track:'rgba(255,255,255,.12)'}); heat($('g-heat'));
+$('g-today').textContent = fmt(sum([M[DAYS-1]])); $('g-total').textContent = fmt(sum(M)); $('g-week').textContent = fmt(weekMin); $('g-energy').textContent = `${Math.round((1-Math.min(budget,1))*100)}%`;
+</script>
+</body>
+</html>
