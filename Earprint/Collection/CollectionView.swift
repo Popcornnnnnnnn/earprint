@@ -402,7 +402,8 @@ struct CardDetail: View {
     var openDossier: () -> Void = {}
     let close: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("cardDetail.hasSeenFlipHint") private var hasSeenFlipHint = false
+    @State private var showsFlipHintThisVisit = false
     @StateObject private var motion = TiltMotion()
     @State private var flipped = false
     @State private var angle: Double = 0
@@ -466,6 +467,20 @@ struct CardDetail: View {
         return .single
     }
 
+    private var canShowFlipHint: Bool {
+        space.size.width > 0 && mode != .sideBySide
+    }
+
+    private var repeatsFlipHint: Bool {
+        #if DEBUG
+        !ProcessInfo.processInfo.arguments.contains("-cardHintOnce")
+        #elseif EARPRINT_REPEAT_CARD_HINT
+        true
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         ZStack {
             Rectangle()
@@ -482,6 +497,11 @@ struct CardDetail: View {
             topCloseButton
         }
         .readLayoutSpace($space)
+        .onChange(of: canShowFlipHint, initial: true) { _, canShow in
+            guard canShow, !repeatsFlipHint, !hasSeenFlipHint else { return }
+            showsFlipHintThisVisit = true
+            hasSeenFlipHint = true
+        }
         .onChange(of: mode) { _, newMode in
             if newMode == .sideBySide {
                 flipped = false
@@ -777,60 +797,29 @@ struct CardDetail: View {
 
     private var cardControls: some View {
         VStack(spacing: 4) {
-            if mode != .sideBySide {
+            if canShowFlipHint && (repeatsFlipHint || showsFlipHintThisVisit) {
                 Text("Tap or swipe the card to flip")
                     .font(.caption)
             }
             if deckCards.count > 1 {
-                swipeGuide
+                Color.clear
+                    .frame(maxWidth: 340)
+                    .frame(height: 48)
+                    .contentShape(Rectangle())
+                    .gesture(cardNavigationSwipe)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text("Swipe here to switch cards"))
+                    .accessibilityAdjustableAction { direction in
+                        switch direction {
+                        case .increment: selectNeighbor(step: 1)
+                        case .decrement: selectNeighbor(step: -1)
+                        @unknown default: break
+                        }
+                    }
             }
         }
         .foregroundStyle(Theme.secondaryText)
         .opacity(appeared ? 1 : 0)
-    }
-
-    private var swipeGuide: some View {
-        let demoOffset: CGFloat = activeIndex == deckCards.count - 1 ? 18 : -18
-        let dragOffset = max(-24, min(24, (CGFloat(activeIndex) - deckPosition) * 34))
-        let isDragging = dragStartPosition != nil
-        let showsDemo = !reduceMotion
-        return ZStack {
-            ForEach([-17.0, 17.0], id: \.self) { offset in
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(.white.opacity(0.20), lineWidth: 1)
-                    .frame(width: 19, height: 24)
-                    .offset(x: offset)
-            }
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(white: 0.22))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(.white.opacity(0.68), lineWidth: 1)
-                }
-                .frame(width: 21, height: 29)
-                .keyframeAnimator(initialValue: CGFloat.zero, trigger: appeared) { card, preview in
-                    card.offset(x: isDragging ? dragOffset : (showsDemo ? preview : 0))
-                } keyframes: { _ in
-                    KeyframeTrack(\.self) {
-                        LinearKeyframe(0, duration: 0.65)
-                        CubicKeyframe(demoOffset, duration: 0.34)
-                        CubicKeyframe(0, duration: 0.36)
-                    }
-                }
-        }
-        .frame(maxWidth: 340)
-        .frame(height: 48)
-        .contentShape(Rectangle())
-        .gesture(cardNavigationSwipe)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Swipe here to switch cards"))
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: selectNeighbor(step: 1)
-            case .decrement: selectNeighbor(step: -1)
-            @unknown default: break
-            }
-        }
     }
 
     @ViewBuilder

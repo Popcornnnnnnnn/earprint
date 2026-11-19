@@ -56,6 +56,6 @@ xcodebuild build -project Earprint.xcodeproj -scheme Earprint \
 
 Useful launch arguments: `-demo`, `-demoIndex <n>`, `-cardDetail`, `-dossier`, `-dossierDemo`, `-rings`, `-showShare`, `-tab <collection|rings|probe>`, `-seedHealth` (Debug), `-startLiveActivity`.
 
-Use the gear in Collection to choose the app icon and switch between English and Simplified Chinese. The controls below the detail card handle previous and next navigation. See [supported headphone artwork](docs/ASSETS.md#collectible-support).
+Use the gear in Collection to choose the app icon and switch between English and Simplified Chinese. Swipe below a detail card to browse. The flip hint appears on the first visit in standard Release builds and on every visit in Debug builds. Add `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) EARPRINT_REPEAT_CARD_HINT'` for a signed Release test build that also repeats the hint. Use the Debug launch argument `-cardHintOnce` to test first-visit behavior. See [supported headphone artwork](docs/ASSETS.md#collectible-support).
 
 In Debug builds, press and hold the Collection gear, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.
