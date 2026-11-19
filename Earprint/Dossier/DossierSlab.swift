@@ -218,10 +218,19 @@ struct CertificateLabel: View {
                     engraved("SAMPLES READ", DossierFormat.grouped(dossier.sampleCount))
                 }
                 GridRow {
+                    engraved("COLLECTION NUMBER", String(format: "#%04d", card.serial))
+                        .gridCellColumns(2)
+                }
+                GridRow {
                     engraved("SOURCE BUNDLE", hw.sourceBundleID)
                         .gridCellColumns(2)
                 }
             }
+
+            Text("Collection numbers follow the order of first listening dates in Apple Health.")
+                .font(.caption2)
+                .foregroundStyle(DossierPalette.dim)
+                .padding(.top, 10)
 
             Perforation().padding(.vertical, 14)
 

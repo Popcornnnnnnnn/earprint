@@ -119,14 +119,8 @@ struct CardHorizontalFront: View {
                     .background(.black.opacity(0.28), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                HStack(spacing: 6) {
-                    if isCurrentlyWorn {
-                        ActiveWearDot()
-                    }
-                    Text(String(format: "#%04d", card.serial))
-                        .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                        .foregroundStyle(ink.opacity(0.55))
-                        .accessibilityLabel(Text("Card number \(card.serial)"))
+                if isCurrentlyWorn {
+                    ActiveWearDot()
                 }
             }
 
@@ -196,14 +190,8 @@ struct CardFront: View {
                     .background(.black.opacity(0.28), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                HStack(spacing: 6) {
-                    if isCurrentlyWorn {
-                        ActiveWearDot()
-                    }
-                    Text(String(format: "#%04d", card.serial))
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(ink.opacity(0.6))
-                        .accessibilityLabel(Text("Card number \(card.serial)"))
+                if isCurrentlyWorn {
+                    ActiveWearDot()
                 }
             }
 

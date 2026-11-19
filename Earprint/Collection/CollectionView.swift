@@ -402,6 +402,7 @@ struct CardDetail: View {
     var openDossier: () -> Void = {}
     let close: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var motion = TiltMotion()
     @State private var flipped = false
     @State private var angle: Double = 0
@@ -704,7 +705,7 @@ struct CardDetail: View {
                 if show3D, let assetName = item.modelAssetName {
                     Ellipse()
                         .fill(.black.opacity(0.30))
-                        .frame(width: 136, height: 16)
+                        .frame(width: 146, height: 16)
                         .blur(radius: 10)
                         .offset(x: -activeTilt.width * 8, y: 20)
                         .opacity(is3DReady ? 1 : 0)
@@ -715,7 +716,7 @@ struct CardDetail: View {
                         finishID: itemFinishID,
                         modelKey: item.modelKey,
                         assetName: assetName,
-                        modelSize: 0.145,
+                        modelSize: 0.16,
                         tint: item.foilTint,
                         tilt: activeTilt,
                         onManipulationChanged: { manipulating in
@@ -775,44 +776,61 @@ struct CardDetail: View {
     }
 
     private var cardControls: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 4) {
             if mode != .sideBySide {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.caption.weight(.medium))
-                    .accessibilityLabel(Text("Tap or swipe the card to flip"))
+                Text("Tap or swipe the card to flip")
+                    .font(.caption)
             }
             if deckCards.count > 1 {
-                HStack(spacing: 4) {
-                    navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
-                    Image(systemName: "hand.draw")
-                        .font(.subheadline)
-                        .frame(width: 28)
-                        .accessibilityLabel(Text("Swipe here to switch cards"))
-                    navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
-                }
-                .frame(maxWidth: 340)
-                .contentShape(Rectangle())
-                .gesture(cardNavigationSwipe)
+                swipeGuide
             }
         }
         .foregroundStyle(Theme.secondaryText)
         .opacity(appeared ? 1 : 0)
     }
 
-    private func navigationButton(step: Int, symbol: String, label: LocalizedStringKey) -> some View {
-        let enabled = CardDeckNavigation.neighbor(of: card, in: deckCards, step: step) != nil
-        return Button {
-            selectNeighbor(step: step)
-        } label: {
-            Image(systemName: symbol)
-                .font(.caption.weight(.semibold))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+    private var swipeGuide: some View {
+        let demoOffset: CGFloat = activeIndex == deckCards.count - 1 ? 18 : -18
+        let dragOffset = max(-24, min(24, (CGFloat(activeIndex) - deckPosition) * 34))
+        let isDragging = dragStartPosition != nil
+        let showsDemo = !reduceMotion
+        return ZStack {
+            ForEach([-17.0, 17.0], id: \.self) { offset in
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(.white.opacity(0.20), lineWidth: 1)
+                    .frame(width: 19, height: 24)
+                    .offset(x: offset)
+            }
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color(white: 0.22))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(.white.opacity(0.68), lineWidth: 1)
+                }
+                .frame(width: 21, height: 29)
+                .keyframeAnimator(initialValue: CGFloat.zero, trigger: appeared) { card, preview in
+                    card.offset(x: isDragging ? dragOffset : (showsDemo ? preview : 0))
+                } keyframes: { _ in
+                    KeyframeTrack(\.self) {
+                        LinearKeyframe(0, duration: 0.65)
+                        CubicKeyframe(demoOffset, duration: 0.34)
+                        CubicKeyframe(0, duration: 0.36)
+                    }
+                }
         }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.35)
-        .accessibilityLabel(Text(label))
+        .frame(maxWidth: 340)
+        .frame(height: 48)
+        .contentShape(Rectangle())
+        .gesture(cardNavigationSwipe)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Swipe here to switch cards"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: selectNeighbor(step: 1)
+            case .decrement: selectNeighbor(step: -1)
+            @unknown default: break
+            }
+        }
     }
 
     @ViewBuilder
