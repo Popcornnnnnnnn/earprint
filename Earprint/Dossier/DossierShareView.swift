@@ -78,7 +78,13 @@ struct DossierShareSheet<LongImage: View>: View {
                 .environment(\.colorScheme, .dark)
                 .dynamicTypeSize(.medium)
         )
-        renderer.scale = format == .simple ? 3 : 2
+        let preferredScale: CGFloat = format == .simple ? 3 : 2
+        // Very tall images can exceed the texture limit when previewed or shared.
+        var scale = preferredScale
+        renderer.render { size, _ in
+            scale = min(preferredScale, 7_200 / max(size.height, 1))
+        }
+        renderer.scale = scale
         renderer.isOpaque = true
         return renderer.uiImage.map { Image(uiImage: $0) }
     }
