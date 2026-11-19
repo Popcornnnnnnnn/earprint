@@ -16,7 +16,11 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Earprint
+      - path: Earprint
+        excludes:
+          - Resources/Models/**
+      - path: Earprint/Resources/Models
+        buildPhase: resources
     entitlements:
       path: Earprint/Earprint.entitlements
       properties:
