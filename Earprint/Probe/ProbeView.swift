@@ -40,6 +40,8 @@ struct ProbeView: View {
                     }
                 }
 
+                WidgetDebugSection()
+
                 if !probe.rawLines.isEmpty {
                     Section("Raw samples") {
                         ForEach(probe.rawLines, id: \.self) { line in
