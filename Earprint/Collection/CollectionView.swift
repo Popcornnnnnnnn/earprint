@@ -10,6 +10,7 @@ struct CollectionView: View {
 
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
+    @State private var dossierCard: HeadphoneCard?
     @State private var demoStarted = false
     /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
@@ -44,13 +45,18 @@ struct CollectionView: View {
             .scrollIndicators(.hidden)
 
             if let card = selected {
-                CardDetail(card: card, namespace: hero) {
+                CardDetail(card: card, namespace: hero, openDossier: {
+                    dossierCard = card
+                }) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
                 }
                 .zIndex(1)
             }
         }
         .foregroundStyle(.white)
+        .fullScreenCover(item: $dossierCard) { card in
+            DeviceDossierView(card: card) { dossierCard = nil }
+        }
         .task { await runDemoIfNeeded() }
         .onAppear(perform: openPendingCard)
         .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
@@ -109,13 +115,26 @@ struct CollectionView: View {
             }
     }
 
-    /// `-demo` launch argument: open the first card so a screen recording shows the motion.
+    /// Launch arguments: `-dossier` / `-dossierDemo` open a card's dossier directly; `-demo` opens card detail.
     private func runDemoIfNeeded() async {
         let args = ProcessInfo.processInfo.arguments
-        guard args.contains("-demo"), !demoStarted, !cards.isEmpty else { return }
-        demoStarted = true
+        guard !demoStarted, !cards.isEmpty else { return }
         var index = 0
-        if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) { index = min(n, cards.count - 1) }
+        if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) {
+            index = min(max(0, n), cards.count - 1)
+        }
+        if args.contains("-dossier") || args.contains("-dossierDemo") {
+            demoStarted = true
+            dossierCard = cards[index]
+            return
+        }
+        if args.contains("-cardDetail") {
+            demoStarted = true
+            selected = cards[index]
+            return
+        }
+        guard args.contains("-demo") else { return }
+        demoStarted = true
         try? await Task.sleep(for: .seconds(1.2))
         withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = cards[index] }
     }
@@ -124,6 +143,7 @@ struct CollectionView: View {
 struct CardDetail: View {
     let card: HeadphoneCard
     let namespace: Namespace.ID
+    var openDossier: () -> Void = {}
     let close: () -> Void
 
     @StateObject private var motion = TiltMotion()
@@ -156,12 +176,13 @@ struct CardDetail: View {
                     .onTapGesture(perform: flip)
                     .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
 
-                Text(flipped ? "Tap to flip back" : "Tap to flip · tilt your phone")
+                Text(flipped ? "Tap to flip back" : "Tap to flip · swipe up for dossier")
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.5))
                     .opacity(appeared ? 1 : 0)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    pillButton("Dossier", "doc.text.magnifyingglass", highlighted: true, action: openDossier)
                     pillButton("Share card", "square.and.arrow.up")
                     pillButton("Close", "xmark", action: close)
                 }
@@ -209,7 +230,9 @@ struct CardDetail: View {
                                   height: max(-1, min(1, value.translation.height / 160)))
             }
             .onEnded { value in
-                if abs(value.translation.width) > 140 {
+                if value.translation.height < -90 && abs(value.translation.height) > abs(value.translation.width) * 1.4 {
+                    openDossier()
+                } else if abs(value.translation.width) > 140 {
                     flip()
                 }
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { dragTilt = .zero }
@@ -223,12 +246,20 @@ struct CardDetail: View {
         }
     }
 
-    private func pillButton(_ title: String, _ icon: String, action: @escaping () -> Void = {}) -> some View {
+    private func pillButton(_ title: String, _ icon: String, highlighted: Bool = false, action: @escaping () -> Void = {}) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 18).padding(.vertical, 12)
-                .background(.white.opacity(0.12), in: Capsule())
+                .lineLimit(1)
+                .padding(.horizontal, 15).padding(.vertical, 12)
+                .foregroundStyle(highlighted ? card.rarity.ink : .white)
+                .background {
+                    if highlighted {
+                        Capsule().fill(card.rarity.foil)
+                    } else {
+                        Capsule().fill(.white.opacity(0.12))
+                    }
+                }
         }
         .buttonStyle(.plain)
     }
