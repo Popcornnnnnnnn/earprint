@@ -407,6 +407,7 @@ struct CardDetail: View {
     @State private var angle: Double = 0
     @State private var dragAngle: Double = 0
     @State private var dragTilt: CGSize = .zero
+    @State private var modelInteractionTilt: CGSize?
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
@@ -436,7 +437,7 @@ struct CardDetail: View {
     }
 
     private var tilt: CGSize {
-        dragTilt == .zero ? motion.tilt : dragTilt
+        modelInteractionTilt ?? (dragTilt == .zero ? motion.tilt : dragTilt)
     }
 
     /// How the detail uses the space (see docs/IPHONE_DUO.md).
@@ -492,6 +493,7 @@ struct CardDetail: View {
             angle = 0
             dragAngle = 0
             dragTilt = .zero
+            modelInteractionTilt = nil
             showColorBar = false
             withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
                 deckPosition = CGFloat(activeIndex)
@@ -696,6 +698,9 @@ struct CardDetail: View {
                     colorOption: itemColor,
                     isCurrentlyWorn: itemWorn
                 )
+                .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+                .gesture(isTop ? cardDrag : nil)
+
                 if show3D, let assetName = item.modelAssetName {
                     Ellipse()
                         .fill(.black.opacity(0.30))
@@ -703,6 +708,7 @@ struct CardDetail: View {
                         .blur(radius: 10)
                         .offset(x: -activeTilt.width * 8, y: 20)
                         .opacity(is3DReady ? 1 : 0)
+                        .allowsHitTesting(false)
                     HeadphoneModelView(
                         kind: item.kind,
                         finish: itemFinish,
@@ -712,6 +718,9 @@ struct CardDetail: View {
                         modelSize: 0.145,
                         tint: item.foilTint,
                         tilt: activeTilt,
+                        onManipulationChanged: { manipulating in
+                            modelInteractionTilt = manipulating ? tilt : nil
+                        },
                         onModelReady: {
                             withAnimation(.easeOut(duration: 0.22)) {
                                 ready3DCardID = item.id
@@ -721,6 +730,7 @@ struct CardDetail: View {
                     .frame(width: 300, height: 230)
                     .offset(y: -64)
                     .opacity(is3DReady ? 1 : 0)
+                    .allowsHitTesting(is3DReady)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
@@ -733,6 +743,8 @@ struct CardDetail: View {
 
             if isTop {
                 CardBack(card: item, openDossier: flipped ? openDossier : nil, flip: { flip() })
+                    .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+                    .simultaneousGesture(cardDrag)
                     .allowsHitTesting(flipped)
                     .accessibilityHidden(!flipped)
                     .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
@@ -749,7 +761,6 @@ struct CardDetail: View {
             y: isTop ? 18 - activeTilt.height * 10 : 12
         )
         .allowsHitTesting(isTop)
-        .simultaneousGesture(isTop ? cardDrag : nil)
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
@@ -764,22 +775,20 @@ struct CardDetail: View {
     }
 
     private var cardControls: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             if mode != .sideBySide {
-                Text("Tap or swipe the card to flip")
-                    .font(.caption2)
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.caption.weight(.medium))
+                    .accessibilityLabel(Text("Tap or swipe the card to flip"))
             }
             if deckCards.count > 1 {
-                VStack(spacing: 0) {
-                    HStack(spacing: 4) {
-                        navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
-                        Text("\(activeIndex + 1) / \(deckCards.count)")
-                            .font(.caption.monospacedDigit())
-                            .accessibilityLabel(Text("Card \(activeIndex + 1) of \(deckCards.count)"))
-                        navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
-                    }
-                    Text("Swipe here to switch cards")
-                        .font(.caption2)
+                HStack(spacing: 4) {
+                    navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
+                    Image(systemName: "hand.draw")
+                        .font(.subheadline)
+                        .frame(width: 28)
+                        .accessibilityLabel(Text("Swipe here to switch cards"))
+                    navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
                 }
                 .frame(maxWidth: 340)
                 .contentShape(Rectangle())

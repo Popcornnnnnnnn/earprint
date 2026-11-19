@@ -149,10 +149,12 @@ struct HeadphoneModelView: View {
     var modelSize: Float = 0.145
     var tint: [UIColor] = []
     var tilt: CGSize = .zero
+    var onManipulationChanged: (Bool) -> Void = { _ in }
     var onModelReady: () -> Void = {}
 
     @State private var rig = ModelRig()
     @State private var twirls = 0
+    @GestureState private var isManipulating = false
 
     var body: some View {
         RealityView { content in
@@ -218,6 +220,8 @@ struct HeadphoneModelView: View {
                 }
             }
         }
+        // Keep the transparent margins available for swiping the card.
+        .contentShape(.interaction, Rectangle().scale(x: 0.64, y: 0.83))
         .gesture(
             DragGesture(minimumDistance: 2)
                 .onChanged { rig.dragChanged($0) }
@@ -226,7 +230,12 @@ struct HeadphoneModelView: View {
                     MagnifyGesture()
                         .onChanged { rig.zoom = Float(max(0.75, min(1.35, $0.magnification))) }
                         .onEnded { _ in rig.zoom = 1 })
+                .updating($isManipulating) { _, active, _ in active = true }
         )
+        .onChange(of: isManipulating) { _, active in onManipulationChanged(active) }
+        .onDisappear {
+            if isManipulating { onManipulationChanged(false) }
+        }
         .onLongPressGesture(minimumDuration: 0.35) {
             rig.twirl()
             twirls += 1
