@@ -29,6 +29,7 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
 
     var collectibleModel: String? {
         switch self {
+        case .airpods4: "AirPods4"
         case .airpodsPro: "AirPodsPro"
         case .airpodsMax: "AirPodsMax"
         default: nil

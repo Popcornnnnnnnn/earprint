@@ -178,7 +178,7 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(snapshot.lifetimeSeconds, 3000, accuracy: 0.001)
         XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five"]))
         XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelKey.collectibleArtwork, "CardRenderAirPods4")
-        XCTAssertNil(cards.first { $0.id == "lid:five" }?.modelAssetName)
+        XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelAssetName, "AirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
 
         guard let summary = snapshot.homeSummary(now: now, calendar: utcCalendar) else {
@@ -240,7 +240,9 @@ final class DeviceCatalogTests: XCTestCase {
         let fourthGeneration = [0x2019, 0x201B, 0x201C, 0x201E, 0x2020]
         for id in fourthGeneration {
             XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleArtwork, "CardRenderAirPods4")
+            XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleModel, "AirPods4")
         }
+        XCTAssertNotNil(Bundle.main.url(forResource: "AirPods4", withExtension: "usdz"))
         XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2013]?.key.collectibleArtwork, "CardRenderAirPodsOpen")
         XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2030]?.key.collectibleArtwork, "CardRenderAirPodsOpen")
     }

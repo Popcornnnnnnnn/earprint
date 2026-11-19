@@ -710,7 +710,7 @@ struct CardDetail: View {
             .accessibilityHidden(!frontVisible || flipped || !isTop)
 
             if isTop {
-                CardBack(card: item, revealed: flipped, openDossier: openDossier, flip: { flip() })
+                CardBack(card: item, revealed: flipped, openDossier: flipped ? openDossier : nil, flip: { flip() })
                     .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
                     .opacity(frontVisible ? 0 : 1)
                     .allowsHitTesting(!frontVisible && flipped)
