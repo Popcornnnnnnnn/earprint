@@ -117,16 +117,30 @@ struct CollectionView: View {
                     .foregroundStyle(.white.opacity(0.55))
             }
             Spacer(minLength: 8)
-            Button {
-                showIconPicker = true
-            } label: {
-                AppIconThumbnail(choice: iconManager.current, size: 38)
-                    .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Change app icon")
+            iconSettingsButton
         }
         .padding(.top, 12)
+    }
+
+    private var iconSettingsButton: some View {
+        let button = Button {
+            showIconPicker = true
+        } label: {
+            AppIconThumbnail(choice: iconManager.current, size: 38)
+                .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Change app icon")
+
+        #if DEBUG
+        return button.contextMenu {
+            Button("Developer Tools", systemImage: "hammer") {
+                router?.developerScreen = .tools
+            }
+        }
+        #else
+        return button
+        #endif
     }
 
     private var emptyCollectionState: some View {

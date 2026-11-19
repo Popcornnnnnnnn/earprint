@@ -10,185 +10,262 @@ struct HomeView: View {
 
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
     @State private var space = LayoutSpace()
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var listeningTimeSize: CGFloat = 43
+
+    private let background = Color(red: 0.05, green: 0.05, blue: 0.07)
+    private let accent = Theme.quiet.color
 
     var body: some View {
         ScrollView {
             Group {
                 if space.isWide || (space.isLandscape && space.size.width >= 520) {
-                    // Wide screens (inner iPhone Duo display, phones in landscape): glyph left, stats right.
-                    // With a book fold, each column stays on its own half.
-                    let split = ColumnSplit(space: space, padding: space.isWide ? 24 : 18, gap: space.isWide ? 28 : 20)
+                    let split = ColumnSplit(space: space, padding: 24, gap: 24)
                     HStack(alignment: .top, spacing: split.gap) {
-                        VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 16) {
                             header
-                            hero(width: split.leading)
-                            legend
+                            healthStatus
+                            weeklyOverview
+                            hearingBudget
                         }
                         .frame(width: split.leading)
-                        VStack(alignment: .leading, spacing: 18) {
-                            personaCard
-                            statsGrid
-                            budgetCard
-                            shareButton
+                        VStack(alignment: .leading, spacing: 16) {
+                            listeningPattern
+                            history
                         }
-                        .padding(.top, 8)
                         .frame(width: split.trailing)
                     }
                     .padding(.horizontal, split.padding)
                 } else {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
                         header
-                        hero(width: max(300, space.size.width - 40))
-                        legend
-                        personaCard
-                        statsGrid
-                        budgetCard
-                        shareButton
+                        healthStatus
+                        weeklyOverview
+                        hearingBudget
+                        listeningPattern
+                        history
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 18)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 12)
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
         .readLayoutSpace($space)
-        .background(Theme.background.ignoresSafeArea())
+        .background(background.ignoresSafeArea())
         .foregroundStyle(.white)
         .sheet(isPresented: $showShare) { ShareSheet(summary: summary) }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("THIS WEEK · \(summary.periodLabel)")
-                .font(.caption.weight(.semibold))
-                .tracking(1.2)
-                .foregroundStyle(Theme.secondaryText)
-            HStack(spacing: 8) {
-                Image(systemName: summary.deviceSymbol)
-                Text(summary.deviceName).font(.headline)
-            }
-            Text(summary.deviceModel).font(.subheadline).foregroundStyle(Theme.secondaryText)
-        }
-        .padding(.top, 8)
-    }
-
-    private func hero(width: CGFloat) -> some View {
-        ZStack {
-            EarprintGlyph(grid: summary.grid)
-            VStack(spacing: 2) {
-                Text(summary.weekMinutes.minutesText)
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.55)
-                Text("listened")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            .frame(maxWidth: max(84, width * 0.32))
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var legend: some View {
-        HStack(spacing: 10) {
-            legendDot(Theme.quiet.color, "Quiet")
-            legendDot(Theme.moderate.color, "Moderate")
-            legendDot(Theme.loud.color, "Loud")
-            Spacer(minLength: 4)
-            Text("4 weeks · rings = days")
-                .font(.caption2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .foregroundStyle(Theme.secondaryText)
-        }
-    }
-
-    private func legendDot(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 7, height: 7)
-            Text(label).font(.caption2).foregroundStyle(Theme.secondaryText)
-        }
-    }
-
-    private var personaCard: some View {
-        HStack(spacing: 14) {
-            Text(summary.persona.emoji).font(.system(size: 40))
-            VStack(alignment: .leading, spacing: 4) {
-                Text("You're a \(summary.persona.title)").font(.headline)
-                Text(summary.persona.detail).font(.subheadline).foregroundStyle(Theme.secondaryText)
-            }
-        }
-        .card()
-    }
-
-    private var statsGrid: some View {
-        Grid(horizontalSpacing: 12, verticalSpacing: 12) {
-            GridRow {
-                stat("Sessions", "\(summary.sessions)", "since \(summary.firstUse)")
-                stat("Avg session", summary.averageSessionMinutes.minutesText, "per wear")
-            }
-            GridRow {
-                stat("Longest", summary.longestSessionMinutes.minutesText, "estimated")
-                stat("Avg level", "\(Int(summary.weekDecibels.rounded())) dB", levelWord(summary.weekDecibels))
-            }
-        }
-    }
-
-    private func stat(_ title: String, _ value: String, _ caption: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption).foregroundStyle(Theme.secondaryText)
-            Text(value).font(.system(.title2, design: .rounded).weight(.semibold)).monospacedDigit()
-            Text(caption).font(.caption2).foregroundStyle(Theme.secondaryText)
-        }
-        .card()
-    }
-
-    private func levelWord(_ db: Double) -> String {
-        db < 65 ? "comfortable" : db < 75 ? "moderate" : "loud"
-    }
-
-    private var budgetCard: some View {
-        let used = summary.weeklyBudgetUsed
-        return VStack(alignment: .leading, spacing: 10) {
+        let name = isSampleData ? summary.deviceModel : summary.deviceName
+        return VStack(alignment: .leading, spacing: 11) {
             HStack {
-                Text("Weekly hearing budget").font(.headline)
+                Text("Rings")
+                    .font(.largeTitle.weight(.heavy))
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
-                Text("\(Int((used * 100).rounded()))% used")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.levelColor(db: 55 + 30 * min(used, 1)))
+                Button { showShare = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 17, weight: .medium))
+                        .frame(width: 44, height: 44)
+                        .background(Theme.card, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Share my Earprint")
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.08))
-                    Capsule()
-                        .fill(LinearGradient(colors: [Theme.quiet.color, Theme.moderate.color, Theme.loud.color],
-                                             startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * min(used, 1))
+            HStack(spacing: 9) {
+                Image(systemName: summary.deviceSymbol)
+                    .foregroundStyle(accent)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name).font(.subheadline.weight(.semibold))
+                    if summary.deviceModel != name {
+                        Text(summary.deviceModel).font(.caption).foregroundStyle(Theme.secondaryText)
+                    }
                 }
             }
-            .frame(height: 10)
-            Text("Based on the WHO safe-listening guide: 40 hours a week at 80 dB(A).")
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    @ViewBuilder private var healthStatus: some View {
+        if isSampleData {
+            SampleDataBanner(badgeText: sampleBadgeText, detail: statusMessage,
+                             isLoading: isLoading, onConnect: onConnectHealth)
+        }
+    }
+
+    private var weeklyOverview: some View {
+        let shape = RoundedRectangle(cornerRadius: 26)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Last 7 days").font(.headline).accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Text(summary.periodLabel).font(.subheadline).foregroundStyle(Theme.secondaryText)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .lastTextBaseline, spacing: 14) {
+                    weeklyListeningTime.fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    weeklyLevel.fixedSize(horizontal: true, vertical: false)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    weeklyListeningTime
+                    weeklyLevel
+                }
+            }
+            dailyListeningBars
+        }
+        .padding(18)
+        .background {
+            shape.fill(Color(red: 0.075, green: 0.11, blue: 0.14))
+                .overlay(alignment: .topTrailing) {
+                    RadialGradient(colors: [accent.opacity(0.16), .clear], center: .topTrailing,
+                                   startRadius: 12, endRadius: 245)
+                        .clipShape(shape)
+                }
+        }
+        .overlay { shape.strokeBorder(accent.opacity(0.16)) }
+    }
+
+    private var weeklyListeningTime: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(summary.weekMinutes.minutesText)
+                .font(.system(size: listeningTimeSize, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+            Text("Listening time").font(.subheadline).foregroundStyle(Theme.secondaryText)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var weeklyLevel: some View {
+        let level = summary.weekDecibels
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(summary.weekMinutes > 0 ? "\(Int(level.rounded())) dB" : "—")
+                .font(.title2.weight(.semibold).monospacedDigit())
+                .foregroundStyle(summary.weekMinutes > 0 ? Theme.levelColor(db: level) : Theme.secondaryText)
+            Text("Avg. level").font(.caption).foregroundStyle(Theme.secondaryText)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var dailyListeningBars: some View {
+        let days = summary.grid.minutes.suffix(7).map { $0.reduce(0, +) }
+        let maxMinutes = max(days.max() ?? 0, 1)
+        return HStack(alignment: .bottom, spacing: 6) {
+            ForEach(days.indices, id: \.self) { index in
+                let minutes = days[index]
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 4).fill(.white.opacity(0.055))
+                    if minutes > 0 {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(index == days.indices.last ? accent : accent.opacity(0.48))
+                            .frame(height: max(3, 42 * minutes / maxMinutes))
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Day \(index + 1) of \(days.count)")
+                .accessibilityValue(Text(minutes.minutesText))
+            }
+        }
+        .frame(height: 42)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Daily listening, earliest to latest")
+    }
+
+    private var hearingBudget: some View {
+        let used = summary.weeklyBudgetUsed
+        let tint = used >= 1 ? Theme.loud.color : (used >= 0.75 ? Theme.moderate.color : accent)
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline) {
+                Label("Hearing budget", systemImage: "ear")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Text("\(Int((used * 100).rounded()))% used")
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(tint)
+            }
+            ProgressView(value: min(used, 1)).tint(tint).accessibilityHidden(true)
+            Text("7-day exposure for this pair · WHO reference: 40 hours at 80 dB(A)")
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
         }
         .card()
     }
 
-    private var shareButton: some View {
-        Button { showShare = true } label: {
-            Label("Share my Earprint", systemImage: "square.and.arrow.up")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(.white, in: Capsule())
-                .foregroundStyle(.black)
+    private var listeningPattern: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+        return VStack(alignment: .leading, spacing: 12) {
+            layout {
+                EarprintGlyph(grid: summary.grid, showHourLabels: false)
+                    .frame(maxWidth: 132)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("28-day pattern").font(.headline).accessibilityAddTraits(.isHeader)
+                    Text("One ring per day, newest on the outside. Midnight is at the top.")
+                        .font(.caption).foregroundStyle(Theme.secondaryText)
+                    VStack(alignment: .leading, spacing: 5) {
+                        legendDot(accent, "Quiet")
+                        legendDot(Theme.moderate.color, "Moderate")
+                        legendDot(Theme.loud.color, "Loud")
+                    }
+                }
+            }
+            if summary.grid.totalMinutes(lastDays: 28) > 0 {
+                Divider()
+                Label(summary.persona.title, systemImage: "waveform")
+                    .font(.subheadline.weight(.semibold))
+            }
         }
-        .padding(.top, 4)
+        .card()
+    }
+
+    private func legendDot(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label).font(.caption).foregroundStyle(Theme.secondaryText)
+        }
+    }
+
+    private var history: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("All-time listening").font(.headline).accessibilityAddTraits(.isHeader)
+                if summary.firstUse != "—" {
+                    Text("Since \(summary.firstUse)").font(.caption).foregroundStyle(Theme.secondaryText)
+                }
+            }
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 13) {
+                GridRow {
+                    stat("Listening time", summary.lifetimeMinutes.minutesText)
+                    stat("Sessions", summary.sessions.formatted())
+                }
+                Divider().gridCellUnsizedAxes(.horizontal)
+                GridRow {
+                    stat("Avg. session", summary.averageSessionMinutes.minutesText)
+                    stat("Longest session", summary.longestSessionMinutes.minutesText)
+                }
+            }
+        }
+        .card()
+    }
+
+    private func stat(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value).font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
+            Text(title).font(.caption).foregroundStyle(Theme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
-    HomeView(summary: SampleData.summary)
+    HomeView(summary: SampleData.summary, isSampleData: true)
 }

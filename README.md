@@ -54,3 +54,5 @@ xcodebuild build -project Earprint.xcodeproj -scheme Earprint \
 ```
 
 Useful launch arguments: `-demo`, `-demoIndex <n>`, `-cardDetail`, `-dossier`, `-dossierDemo`, `-rings`, `-showShare`, `-tab <collection|rings|probe>`, `-seedHealth` (Debug), `-startLiveActivity`.
+
+In Debug builds, press and hold the app icon in Collection, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.

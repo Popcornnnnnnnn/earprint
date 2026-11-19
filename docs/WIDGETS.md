@@ -27,7 +27,7 @@ Native WidgetKit extension (`EarprintWidgets`) + ActivityKit Live Activity and D
    - Ready for the HealthKit pipeline (`HeadphoneLibrary`) to publish real snapshots via `WidgetSnapshotStore.save(_:)`. Identical snapshots (ignoring `generatedAt`) skip disk writes and timeline reloads.
 3. Deep links (`EarprintLink`):
    - `earprint://card/<id>` → opens **Collection** tab and opens that card.
-   - `earprint://collection`, `earprint://rings`, `earprint://probe` → switches tab.
+   - `earprint://collection` and `earprint://rings` switch tabs. `earprint://probe` opens Data Probe in Debug builds.
    - Handled in-app by `DeepLinkRouter`.
 
 ## Visual Previews

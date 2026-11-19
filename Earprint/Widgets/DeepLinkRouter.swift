@@ -3,7 +3,17 @@ import SwiftUI
 /// Routes `earprint://` URLs (from widgets and the Live Activity) to a tab and, for cards, a card id.
 @Observable
 final class DeepLinkRouter {
-    enum Tab: Hashable { case collection, rings, probe }
+    enum Tab: Hashable { case collection, rings }
+
+    #if DEBUG
+    enum DeveloperScreen: Hashable, Identifiable {
+        case tools, probe
+
+        var id: Self { self }
+    }
+
+    var developerScreen: DeveloperScreen?
+    #endif
 
     var tab: Tab = .collection
     /// Card to open in the Collection tab. The Collection view clears it after opening.
@@ -17,7 +27,12 @@ final class DeepLinkRouter {
             pendingCardID = id
         case .collection: tab = .collection
         case .rings: tab = .rings
-        case .probe: tab = .probe
+        case .probe:
+            #if DEBUG
+            developerScreen = .probe
+            #else
+            break
+            #endif
         }
     }
 }

@@ -26,23 +26,22 @@ struct EarprintApp: App {
                     summary: library.homeSummary,
                     isSampleData: library.isShowingSampleData,
                     sampleBadgeText: library.sampleBadgeText,
-                    statusMessage: library.statusMessage,
+                    statusMessage: library.state == .idle ? nil : library.statusMessage,
                     isLoading: library.isLoading,
                     onConnectHealth: { Task { await library.connectAndSync() } }
                 )
                 .tabItem { Label("Rings", systemImage: "circle.hexagongrid") }
                 .tag(DeepLinkRouter.Tab.rings)
-
-                #if DEBUG
-                ProbeView(library: library)
-                    .tabItem { Label("Data probe", systemImage: "waveform") }
-                    .tag(DeepLinkRouter.Tab.probe)
-                #endif
             }
             .environment(router)
             .environment(colorStore)
             .environment(routeMonitor)
             .preferredColorScheme(.dark)
+            #if DEBUG
+            .sheet(item: $router.developerScreen) { screen in
+                DeveloperToolsView(library: library, openProbe: screen == .probe)
+            }
+            #endif
             // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, ...
             .onOpenURL { router.handle($0) }
             .task {
@@ -92,7 +91,9 @@ struct EarprintApp: App {
             switch args[idx + 1].lowercased() {
             case "collection": router.tab = .collection
             case "rings": router.tab = .rings
-            case "probe": router.tab = .probe
+            #if DEBUG
+            case "probe": router.developerScreen = .probe
+            #endif
             default: break
             }
             return

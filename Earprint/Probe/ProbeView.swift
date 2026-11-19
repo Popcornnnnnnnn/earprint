@@ -6,63 +6,61 @@ struct ProbeView: View {
     @State private var copied = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                pipelineSection
+        List {
+            pipelineSection
 
-                #if DEBUG
-                seederSection
-                #endif
+            #if DEBUG
+            seederSection
+            #endif
 
-                Section {
+            Section {
+                Button {
+                    Task { await probe.run() }
+                } label: {
+                    Label(probe.phase == .loading ? "Reading…" : "Read Health data", systemImage: "waveform")
+                }
+                .disabled(probe.phase == .loading)
+
+                if probe.phase == .done {
                     Button {
-                        Task { await probe.run() }
+                        probe.copyReport()
+                        copied = true
                     } label: {
-                        Label(probe.phase == .loading ? "Reading…" : "Read Health data", systemImage: "waveform")
-                    }
-                    .disabled(probe.phase == .loading)
-
-                    if probe.phase == .done {
-                        Button {
-                            probe.copyReport()
-                            copied = true
-                        } label: {
-                            Label(copied ? "Copied" : "Copy report", systemImage: copied ? "checkmark" : "doc.on.doc")
-                        }
-                    }
-                } header: {
-                    Text("Raw Health probe")
-                } footer: {
-                    status
-                }
-
-                ForEach(probe.devices) { device in
-                    Section(device.name) {
-                        row("Listening", device.listeningSeconds.hoursMinutes)
-                        row("Sessions", "\(device.sessionCount)")
-                        row("Avg session", device.averageSession.hoursMinutes)
-                        row("Longest", device.longestSession.hoursMinutes)
-                        row("Avg level", device.averageDecibels.map { String(format: "%.0f dB(A)", $0) } ?? "-")
-                        row("Active days", "\(device.activeDays)")
-                        row("Samples", "\(device.sampleCount)")
-                        row("Model", [device.manufacturer, device.model, device.hardwareVersion].compactMap { $0 }.joined(separator: " · "))
+                        Label(copied ? "Copied" : "Copy report", systemImage: copied ? "checkmark" : "doc.on.doc")
                     }
                 }
+            } header: {
+                Text("Raw Health probe")
+            } footer: {
+                status
+            }
 
-                #if DEBUG
-                WidgetDebugSection(library: library)
-                #endif
+            ForEach(probe.devices) { device in
+                Section(device.name) {
+                    row("Listening", device.listeningSeconds.hoursMinutes)
+                    row("Sessions", "\(device.sessionCount)")
+                    row("Avg session", device.averageSession.hoursMinutes)
+                    row("Longest", device.longestSession.hoursMinutes)
+                    row("Avg level", device.averageDecibels.map { String(format: "%.0f dB(A)", $0) } ?? "-")
+                    row("Active days", "\(device.activeDays)")
+                    row("Samples", "\(device.sampleCount)")
+                    row("Model", [device.manufacturer, device.model, device.hardwareVersion].compactMap { $0 }.joined(separator: " · "))
+                }
+            }
 
-                if !probe.rawLines.isEmpty {
-                    Section("Raw samples") {
-                        ForEach(probe.rawLines, id: \.self) { line in
-                            Text(line).font(.caption.monospaced())
-                        }
+            #if DEBUG
+            WidgetDebugSection(library: library)
+            #endif
+
+            if !probe.rawLines.isEmpty {
+                Section("Raw samples") {
+                    ForEach(probe.rawLines, id: \.self) { line in
+                        Text(line).font(.caption.monospaced())
                     }
                 }
             }
-            .navigationTitle("Earprint probe")
         }
+        .navigationTitle("Data Probe")
     }
 
     private var pipelineSection: some View {
