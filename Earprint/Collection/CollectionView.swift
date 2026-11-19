@@ -2,40 +2,85 @@ import SwiftUI
 
 struct CollectionView: View {
     let cards: [HeadphoneCard]
+    var isSampleData: Bool = false
+    var sampleBadgeText: String = "Sample data"
+    var statusMessage: String? = nil
+    var isLoading: Bool = false
+    var onConnectHealth: (() -> Void)? = nil
+
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
+    @State private var dossierCard: HeadphoneCard?
     @State private var demoStarted = false
-
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+    /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
+    @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
+    @State private var space = LayoutSpace()
 
     var body: some View {
         ZStack {
             Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
 
             ScrollView {
+                // Columns follow the width: 2 on iPhone & inner portrait, 4 on inner landscape, even on a foldable display.
+                let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 170)
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    LazyVGrid(columns: columns, spacing: 14) {
+                        .padding(.horizontal, 18)
+                    if isSampleData {
+                        SampleDataBanner(
+                            badgeText: sampleBadgeText,
+                            detail: statusMessage,
+                            isLoading: isLoading,
+                            onConnect: onConnectHealth
+                        )
+                        .padding(.horizontal, 18)
+                    }
+                    LazyVGrid(columns: grid.columns, spacing: 14) {
                         ForEach(cards) { card in
                             thumbnail(card)
                         }
                         lockedSlot
                     }
+                    .padding(.leading, grid.leadingPadding)
+                    .padding(.trailing, grid.trailingPadding)
                 }
-                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
+            .readLayoutSpace($space)
 
             if let card = selected {
-                CardDetail(card: card, namespace: hero) {
+                CardDetail(card: card, namespace: hero, openDossier: {
+                    dossierCard = card
+                }) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
                 }
+                .id(card.id)
                 .zIndex(1)
             }
         }
         .foregroundStyle(.white)
+        .fullScreenCover(item: $dossierCard) { card in
+            DeviceDossierView(card: card) { dossierCard = nil }
+        }
         .task { await runDemoIfNeeded() }
+        .onAppear(perform: openPendingCard)
+        .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
+        .onChange(of: cards.map(\.id)) { _, _ in openPendingCard() }
+        .onChange(of: isLoading) { _, _ in openPendingCard() }
+    }
+
+    /// Opens the card a widget asked for, then clears the request.
+    /// Keeps the request pending while HealthKit is still loading so cold-launch deep links resolve once real cards arrive.
+    private func openPendingCard() {
+        guard let router, let id = router.pendingCardID else { return }
+        if let card = cards.first(where: { $0.id == id }) {
+            router.pendingCardID = nil
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        } else if !isLoading && !isSampleData {
+            router.pendingCardID = nil
+        }
     }
 
     private var header: some View {
@@ -74,19 +119,36 @@ struct CollectionView: View {
                 VStack(spacing: 6) {
                     Image(systemName: "lock.fill").font(.title2)
                     Text("Next pair").font(.footnote.weight(.semibold))
-                    Text("Connect new headphones\nto unlock a card").font(.caption2).multilineTextAlignment(.center)
+                    Text("Connect new headphones\nto unlock a card")
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.8)
                 }
+                .padding(.horizontal, 12)
                 .foregroundStyle(.white.opacity(0.35))
             }
     }
 
-    /// `-demo` launch argument: open the first card so a screen recording shows the motion.
+    /// Launch arguments: `-dossier` / `-dossierDemo` open a card's dossier directly; `-demo` opens card detail.
     private func runDemoIfNeeded() async {
         let args = ProcessInfo.processInfo.arguments
-        guard args.contains("-demo"), !demoStarted, !cards.isEmpty else { return }
-        demoStarted = true
+        guard !demoStarted, !cards.isEmpty else { return }
         var index = 0
-        if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) { index = min(n, cards.count - 1) }
+        if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) {
+            index = min(max(0, n), cards.count - 1)
+        }
+        if args.contains("-dossier") || args.contains("-dossierDemo") {
+            demoStarted = true
+            dossierCard = cards[index]
+            return
+        }
+        if args.contains("-cardDetail") {
+            demoStarted = true
+            selected = cards[index]
+            return
+        }
+        guard args.contains("-demo") else { return }
+        demoStarted = true
         try? await Task.sleep(for: .seconds(1.2))
         withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = cards[index] }
     }
@@ -95,6 +157,7 @@ struct CollectionView: View {
 struct CardDetail: View {
     let card: HeadphoneCard
     let namespace: Namespace.ID
+    var openDossier: () -> Void = {}
     let close: () -> Void
 
     @StateObject private var motion = TiltMotion()
@@ -102,9 +165,35 @@ struct CardDetail: View {
     @State private var angle: Double = 0
     @State private var dragTilt: CGSize = .zero
     @State private var appeared = false
+    @State private var space = LayoutSpace()
 
     private var tilt: CGSize {
         dragTilt == .zero ? motion.tilt : dragTilt
+    }
+
+    /// How the detail uses the space (see docs/IPHONE_DUO.md).
+    private enum Mode: Equatable {
+        /// One flip card. Phones in portrait and the outer Duo display in portrait.
+        case single
+        /// Short landscape space (phone or outer Duo display on its side): card on the left, controls on the right.
+        case besideControls
+        /// Front (3D) and back (stats) as two cards: the inner Duo display, or a book-folded Duo (one card per half).
+        case sideBySide
+        /// Laptop-folded Duo: card above the fold, controls below it.
+        case foldStacked(CGRect)
+    }
+
+    private var mode: Mode {
+        if let fold = space.horizontalFold { return .foldStacked(fold) }
+        if space.verticalFold != nil { return .sideBySide }
+        if space.isWide {
+            let split = ColumnSplit(space: space, padding: 24, gap: 36)
+            let fits = min(split.leading, split.trailing) / CardMetrics.size.width >= 0.85
+                && (space.size.height - 116) / CardMetrics.size.height >= 0.85
+            if fits { return .sideBySide }
+        }
+        if space.isLandscape && space.size.height < 600 { return .besideControls }
+        return .single
     }
 
     var body: some View {
@@ -116,28 +205,12 @@ struct CardDetail: View {
                 .opacity(appeared ? 1 : 0)
                 .onTapGesture(perform: close)
 
-            VStack(spacing: 22) {
-                flipCard
-                    .matchedGeometryEffect(id: card.id, in: namespace)
-                    .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
-                    .rotation3DEffect(.degrees(Double(tilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-                    .rotation3DEffect(.degrees(Double(-tilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-                    .shadow(color: card.rarity.glow.opacity(0.55), radius: 30, x: -tilt.width * 14, y: 18 - tilt.height * 10)
-                    .gesture(dragToTilt)
-                    .onTapGesture(perform: flip)
-                    .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
-
-                Text(flipped ? "Tap to flip back" : "Tap to flip · tilt your phone")
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.5))
-                    .opacity(appeared ? 1 : 0)
-
-                HStack(spacing: 12) {
-                    pillButton("Share card", "square.and.arrow.up")
-                    pillButton("Close", "xmark", action: close)
-                }
-                .opacity(appeared ? 1 : 0)
-            }
+            layout
+        }
+        .readLayoutSpace($space)
+        .onChange(of: mode) { _, newMode in
+            // Side by side already shows the back, so keep the left card on its front.
+            if newMode == .sideBySide && flipped { flip(force: true) }
         }
         .onAppear {
             motion.start()
@@ -145,6 +218,101 @@ struct CardDetail: View {
             Task { await runDemoIfNeeded() }
         }
         .onDisappear { motion.stop() }
+    }
+
+    @ViewBuilder private var layout: some View {
+        let design = CardMetrics.size
+        let size = space.size
+        switch mode {
+        case .single:
+            // Text + buttons take about 120 pt. Never grow on phones; grow a little on big screens.
+            let scale = min(space.isWide ? 1.35 : 1, (size.height - 120) / design.height, (size.width - 40) / design.width)
+            VStack(spacing: 22) {
+                interactiveCard(scale: scale)
+                hint
+                buttons
+            }
+        case .besideControls:
+            let scale = min(1, (size.height - 24) / design.height, (size.width * 0.6) / design.width)
+            HStack(spacing: 32) {
+                interactiveCard(scale: scale)
+                VStack(spacing: 18) {
+                    hint
+                    buttons
+                }
+            }
+        case .sideBySide:
+            let split = ColumnSplit(space: space, padding: 24, gap: 36)
+            let scale = min(1.35, min(split.leading, split.trailing) / design.width, (size.height - 116) / design.height)
+            HStack(alignment: .top, spacing: split.gap) {
+                VStack(spacing: 18) {
+                    interactiveCard(scale: scale)
+                    hint
+                        .frame(minHeight: 42)
+                }
+                .frame(width: split.leading)
+                VStack(spacing: 18) {
+                    backCard(scale: scale)
+                    buttons
+                }
+                .frame(width: split.trailing)
+            }
+            .padding(.horizontal, split.padding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .foldStacked(let fold):
+            // The fold frame already includes margins; keep the card fully above it.
+            let scale = min(1.25, (fold.minY - 24) / design.height, (size.width - 40) / design.width)
+            VStack(spacing: 0) {
+                interactiveCard(scale: scale)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(0, fold.minY))
+                Color.clear.frame(height: fold.height)
+                VStack(spacing: 16) {
+                    hint
+                    buttons
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private func interactiveCard(scale: CGFloat) -> some View {
+        let scale = max(scale, 0.3)
+        return flipCard
+            .scaleEffect(scale)
+            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .matchedGeometryEffect(id: card.id, in: namespace)
+            .rotation3DEffect(.degrees(Double(tilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+            .rotation3DEffect(.degrees(Double(-tilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .shadow(color: card.rarity.glow.opacity(0.55), radius: 30, x: -tilt.width * 14, y: 18 - tilt.height * 10)
+            .gesture(dragToTilt)
+            .onTapGesture { flip() }
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
+    }
+
+    private func backCard(scale: CGFloat) -> some View {
+        let scale = max(scale, 0.3)
+        return CardBack(card: card, revealed: appeared)
+            .scaleEffect(scale)
+            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .shadow(color: card.rarity.glow.opacity(0.4), radius: 24, y: 14)
+            .opacity(appeared ? 1 : 0)
+    }
+
+    private var hint: some View {
+        Text(mode == .sideBySide ? "Drag or tilt · swipe up for dossier" : flipped ? "Tap to flip back" : "Tap to flip · swipe up for dossier")
+            .font(.footnote)
+            .foregroundStyle(.white.opacity(0.5))
+            .opacity(appeared ? 1 : 0)
+    }
+
+    private var buttons: some View {
+        HStack(spacing: 10) {
+            pillButton("Dossier", "doc.text.magnifyingglass", highlighted: true, action: openDossier)
+            pillButton("Share card", "square.and.arrow.up")
+            pillButton("Close", "xmark", action: close)
+        }
+        .opacity(appeared ? 1 : 0)
     }
 
     private var flipCard: some View {
@@ -167,7 +335,7 @@ struct CardDetail: View {
                 .frame(width: 150, height: 18)
                 .blur(radius: 10)
                 .offset(x: -tilt.width * 10, y: 40)
-            HeadphoneModelView(kind: card.headphoneKind, finish: card.finish, tint: card.foilTint, tilt: tilt)
+            HeadphoneModelView(kind: card.kind, finish: card.finish, assetName: card.modelAssetName, tint: card.foilTint, tilt: tilt)
                 .frame(width: 340, height: 300)
                 .offset(y: -62)
         }
@@ -180,26 +348,38 @@ struct CardDetail: View {
                                   height: max(-1, min(1, value.translation.height / 160)))
             }
             .onEnded { value in
-                if abs(value.translation.width) > 140 {
+                if value.translation.height < -90 && abs(value.translation.height) > abs(value.translation.width) * 1.4 {
+                    openDossier()
+                } else if abs(value.translation.width) > 140 {
                     flip()
                 }
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { dragTilt = .zero }
             }
     }
 
-    private func flip() {
+    private func flip(force: Bool = false) {
+        // Side by side shows both faces at once, so there is nothing to flip.
+        guard force || mode != .sideBySide else { return }
         flipped.toggle()
         withAnimation(.spring(response: 0.7, dampingFraction: 0.72)) {
             angle += 180
         }
     }
 
-    private func pillButton(_ title: String, _ icon: String, action: @escaping () -> Void = {}) -> some View {
+    private func pillButton(_ title: String, _ icon: String, highlighted: Bool = false, action: @escaping () -> Void = {}) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 18).padding(.vertical, 12)
-                .background(.white.opacity(0.12), in: Capsule())
+                .lineLimit(1)
+                .padding(.horizontal, 15).padding(.vertical, 12)
+                .foregroundStyle(highlighted ? card.rarity.ink : .white)
+                .background {
+                    if highlighted {
+                        Capsule().fill(card.rarity.foil)
+                    } else {
+                        Capsule().fill(.white.opacity(0.12))
+                    }
+                }
         }
         .buttonStyle(.plain)
     }

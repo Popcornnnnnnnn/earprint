@@ -47,7 +47,7 @@ struct ShareCardView: View {
             Spacer(minLength: 16)
 
             HStack {
-                Image(systemName: "airpodspro")
+                Image(systemName: summary.deviceSymbol)
                 Text(summary.deviceModel)
                 Spacer()
                 Text("Earprint").fontWeight(.semibold)
@@ -81,29 +81,54 @@ struct ShareSheet: View {
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        VStack(spacing: 20) {
+        // The share card keeps its 360×640 design size (it is also the exported image);
+        // the preview only scales it to fit the sheet, which can be short (landscape) or wide (iPhone Duo).
+        GeometryReader { geo in
+            let wide = geo.size.width >= 600
+            Group {
+                if geo.size.width > geo.size.height * 1.1 {
+                    HStack(spacing: 28) {
+                        preview(maxScale: wide ? 1 : 0.82)
+                        shareButton
+                            .frame(width: min(280, geo.size.width * 0.4))
+                    }
+                    .padding(24)
+                } else {
+                    VStack(spacing: 20) {
+                        preview(maxScale: wide ? 1 : 0.82)
+                        shareButton
+                            .frame(maxWidth: 420)
+                            .padding(.horizontal, 24)
+                    }
+                    .padding(.top, 24)
+                    .padding(.bottom, 16)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .background(Color(red: 0.08, green: 0.08, blue: 0.1).ignoresSafeArea())
+        .presentationDragIndicator(.visible)
+    }
+
+    private func preview(maxScale: CGFloat) -> some View {
+        FittedDesign(designSize: CGSize(width: 360, height: 640), maxScale: maxScale) {
             ShareCardView(summary: summary)
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
-                .scaleEffect(0.82)
-                .frame(height: 540)
+        }
+    }
 
-            if let image = renderImage() {
-                ShareLink(item: image, preview: SharePreview("My Earprint", image: image)) {
-                    Label("Share image", systemImage: "square.and.arrow.up")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(.white, in: Capsule())
-                        .foregroundStyle(.black)
-                }
-                .padding(.horizontal, 24)
+    @ViewBuilder private var shareButton: some View {
+        if let image = renderImage() {
+            ShareLink(item: image, preview: SharePreview("My Earprint", image: image)) {
+                Label("Share image", systemImage: "square.and.arrow.up")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(.white, in: Capsule())
+                    .foregroundStyle(.black)
             }
         }
-        .padding(.top, 24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.1).ignoresSafeArea())
-        .presentationDragIndicator(.visible)
     }
 
     @MainActor private func renderImage() -> Image? {

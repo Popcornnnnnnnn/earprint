@@ -207,12 +207,14 @@ enum ProceduralHeadphones {
 }
 
 enum HeadphoneModelLoader {
-    /// Loads the bundled USDZ if present, otherwise the procedural model. Result fits a `size` cube, centered.
+    /// Loads the bundled USDZ if present (matching `assetName`, or `kind.assetName` if omitted), otherwise the procedural model.
     @MainActor
-    static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, size: Float = 0.2) async -> Entity {
+    static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, assetName: String? = nil, size: Float = 0.2) async -> Entity {
         let model: Entity
-        if Bundle.main.url(forResource: kind.assetName, withExtension: "usdz") != nil,
-           let asset = try? await Entity(named: kind.assetName, in: .main) {
+        let resolvedName = assetName ?? kind.assetName
+        if !resolvedName.isEmpty,
+           Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil,
+           let asset = try? await Entity(named: resolvedName, in: .main) {
             model = asset
         } else {
             model = ProceduralHeadphones.make(kind, finish: finish)

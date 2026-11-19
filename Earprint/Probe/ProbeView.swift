@@ -1,12 +1,19 @@
 import SwiftUI
 
 struct ProbeView: View {
+    @ObservedObject var library: HeadphoneLibrary
     @StateObject private var probe = HealthProbe()
     @State private var copied = false
 
     var body: some View {
         NavigationStack {
             List {
+                pipelineSection
+
+                #if DEBUG
+                seederSection
+                #endif
+
                 Section {
                     Button {
                         Task { await probe.run() }
@@ -23,6 +30,8 @@ struct ProbeView: View {
                             Label(copied ? "Copied" : "Copy report", systemImage: copied ? "checkmark" : "doc.on.doc")
                         }
                     }
+                } header: {
+                    Text("Raw Health probe")
                 } footer: {
                     status
                 }
@@ -40,6 +49,10 @@ struct ProbeView: View {
                     }
                 }
 
+                #if DEBUG
+                WidgetDebugSection(library: library)
+                #endif
+
                 if !probe.rawLines.isEmpty {
                     Section("Raw samples") {
                         ForEach(probe.rawLines, id: \.self) { line in
@@ -51,6 +64,63 @@ struct ProbeView: View {
             .navigationTitle("Earprint probe")
         }
     }
+
+    private var pipelineSection: some View {
+        Section {
+            row("Source", library.isShowingSampleData ? "Sample data (fallback)" : "Apple Health")
+            if let snap = library.snapshot {
+                row("Devices", "\(snap.devices.count)")
+                row("Samples", "\(snap.totalSamples) (\(snap.hostSamples) host, \(snap.invalidSamples) invalid)")
+            }
+            if let synced = library.lastSyncDate {
+                row("Last sync", synced.formatted(date: .omitted, time: .standard))
+            }
+
+            Button {
+                Task { await library.connectAndSync() }
+            } label: {
+                Label(library.isLoading ? "Syncing…" : "Sync Apple Health", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(library.isLoading)
+
+            Button(role: .destructive) {
+                Task { await library.resetCacheAndResync() }
+            } label: {
+                Label("Reset cache & resync", systemImage: "trash")
+            }
+            .disabled(library.isLoading)
+        } header: {
+            Text("Library pipeline")
+        } footer: {
+            if let message = library.statusMessage {
+                Text(message)
+            }
+        }
+    }
+
+    #if DEBUG
+    private var seederSection: some View {
+        Section {
+            Button {
+                Task { await library.seedSimulatorHealth() }
+            } label: {
+                Label(library.isSeeding ? "Seeding HealthKit…" : "Seed simulator Health data", systemImage: "wand.and.stars")
+            }
+            .disabled(library.isSeeding || library.isLoading)
+
+            Button(role: .destructive) {
+                Task { await library.clearSeededHealth() }
+            } label: {
+                Label("Clear seeded Health data", systemImage: "xmark.circle")
+            }
+            .disabled(library.isSeeding || library.isLoading)
+        } header: {
+            Text("Simulator seeder (Debug)")
+        } footer: {
+            Text(library.seedStatus ?? "Writes 3 realistic headphones (AirPods Pro 2 USB-C, AirPods Max USB-C, Beats Fit Pro) into HealthKit so the real anchored-query pipeline runs end to end. Also triggered by launch arg -seedHealth.")
+        }
+    }
+    #endif
 
     @ViewBuilder private var status: some View {
         switch probe.phase {

@@ -1,9 +1,10 @@
 import Foundation
 
-/// Everything the home screen shows. Built from sample data now, from HealthKit later.
+/// Everything the home screen shows. Built from HealthKit via `LibrarySnapshot`, or `SampleData` as fallback.
 struct ListeningSummary {
     var deviceName: String
     var deviceModel: String
+    var deviceSymbol: String = "airpodspro"
     var periodLabel: String
     var grid: ListeningGrid
     var lifetimeMinutes: Double
@@ -11,6 +12,8 @@ struct ListeningSummary {
     var averageSessionMinutes: Double
     var longestSessionMinutes: Double
     var firstUse: String
+    /// Exact WHO weekly dose computed directly from raw 15-min slot energy when available.
+    var weeklyBudgetOverride: Double? = nil
 
     var weekMinutes: Double { grid.totalMinutes(lastDays: 7) }
     var weekDecibels: Double { grid.averageDecibels(lastDays: 7) }
@@ -18,11 +21,11 @@ struct ListeningSummary {
     /// Share of the WHO weekly safe-listening budget (80 dB(A) for 40 h) used this week.
     /// Every +3 dB halves the allowed time.
     var weeklyBudgetUsed: Double {
+        if let weeklyBudgetOverride { return weeklyBudgetOverride }
         var used = 0.0
         for (m, db) in zip(grid.minutes.suffix(7), grid.decibels.suffix(7)) {
             for h in 0..<24 where m[h] > 0 {
-                let allowedMinutes = 40 * 60 * pow(2, (80 - db[h]) / 3)
-                used += m[h] / allowedMinutes
+                used += HearingBudget.dose(decibels: db[h], seconds: m[h] * 60)
             }
         }
         return used

@@ -16,12 +16,23 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Earprint
+      - path: Earprint
+        excludes:
+          - Resources/Models/**
+      - path: Earprint/Resources/Models
+        buildPhase: resources
+      # Shared with the widget extension: snapshot model, App Group store, Live Activity attributes.
+      - Shared
+    dependencies:
+      - target: EarprintWidgets
+        embed: true
     entitlements:
       path: Earprint/Earprint.entitlements
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        com.apple.security.application-groups:
+          - group.com.popcornnn.earprint
     info:
       path: Earprint/Info.plist
       properties:
@@ -29,10 +40,101 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSHealthShareUsageDescription: Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone.
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.popcornnn.earprint
+            CFBundleURLSchemes:
+              - earprint
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
         TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+      configs:
+        Debug:
+          # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).
+          # Release builds omit this key and never request write authorization.
+          INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Debug builds can write sample headphone audio data into the simulator's Apple Health store for local testing."
+
+  # Home Screen + Lock Screen widgets and the "Listening now" Live Activity.
+  EarprintWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - EarprintWidgets
+      - Shared
+      # Pure design files reused from the app (no app-only dependencies).
+      - Earprint/Design/Theme.swift
+      - Earprint/Design/EarprintGlyph.swift
+    entitlements:
+      path: EarprintWidgets/EarprintWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.popcornnn.earprint
+    info:
+      path: EarprintWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Earprint
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+
+  # Fast unit tests for HealthKit aggregation, grid bucketing, and device-ID catalog.
+  EarprintTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - EarprintTests
+    dependencies:
+      - target: Earprint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.tests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+
+  # Renders every widget view to PNG with ImageRenderer (writes docs/widgets/*.png).
+  # Run: xcodebuild test -scheme Earprint -only-testing:EarprintWidgetRenders ...
+  EarprintWidgetRenders:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - EarprintWidgetRenders
+      - Shared
+      - EarprintWidgets/Views
+      - Earprint/Design/Theme.swift
+      - Earprint/Design/EarprintGlyph.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.widget-renders
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Earprint:
+    build:
+      targets:
+        Earprint: all
+        EarprintTests: [test]
+        EarprintWidgetRenders: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EarprintTests
+    archive:
+      config: Release

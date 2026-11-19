@@ -1,5 +1,6 @@
 .DS_Store
 build/
+build-*/
 DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
@@ -8,3 +9,8 @@ DerivedData/
 Earprint.xcodeproj/
 Earprint/Info.plist
 Earprint/Earprint.entitlements
+EarprintWidgets/Info.plist
+EarprintWidgets/EarprintWidgets.entitlements
+
+# Raw 3D downloads (only optimized USDZ is committed)
+assets-raw/
