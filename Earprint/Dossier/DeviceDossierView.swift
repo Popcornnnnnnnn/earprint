@@ -84,13 +84,7 @@ struct DeviceDossierView: View {
                     Text("Device Dossier")
                         .font(.system(.headline, design: .rounded, weight: .bold))
                     Spacer()
-                    if isSampleData {
-                        Text("Sample data")
-                            .font(.caption.weight(.semibold))
-                    } else if !includesHealthDetails {
-                        Text("Dossier details are illustrative.")
-                            .font(.caption)
-                    }
+                    dataSourceNote
                 }
                 .foregroundStyle(.white.opacity(0.8))
                 .padding(.top, 4)
@@ -114,6 +108,15 @@ struct DeviceDossierView: View {
             if includesHealthDetails && !exporting { footerNote }
         }
         .padding(.horizontal, 18)
+    }
+
+    @ViewBuilder
+    private var dataSourceNote: some View {
+        if isSampleData {
+            Text("Sample data").font(.caption)
+        } else if !includesHealthDetails {
+            Text("Dossier details are illustrative.").font(.caption)
+        }
     }
 
     // MARK: - Backdrop & Sticky Header
@@ -336,6 +339,7 @@ struct DeviceDossierView: View {
                     .foregroundStyle(DossierPalette.dim)
             } else {
                 PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+                dataSourceNote.foregroundStyle(DossierPalette.dim)
             }
             AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))
                 .frame(maxWidth: .infinity)
