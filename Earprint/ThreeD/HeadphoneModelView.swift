@@ -252,13 +252,6 @@ extension HeadphoneCard {
 
     var foilTint: [UIColor] { rarity.baseColors.map { UIColor($0) } }
 
-    /// Bundled USDZ resource matching the exact device shape (empty string falls back to procedural sport buds).
-    var modelAssetName: String {
-        switch modelKey {
-        case .airpodsMax: "AirPodsMax"
-        case .airpodsPro, .airpods, .airpods3: "AirPodsPro"
-        case .overEarGeneric, .beatsOverEar: "HeadphoneGeneric"
-        case .beatsEarbuds, .beatsEarhook, .earbudsGeneric: ""
-        }
-    }
+    /// The bundled model for this product family, when available.
+    var modelAssetName: String? { modelKey.collectibleModel }
 }

@@ -3,16 +3,22 @@ import SwiftUI
 struct CollectionView: View {
     let cards: [HeadphoneCard]
     var isSampleData: Bool = false
-    var sampleBadgeText: String = "Sample data"
-    var statusMessage: String? = nil
+    var sampleBadgeText: LocalizedStringKey = "Sample data"
+    var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
     var onConnectHealth: (() -> Void)? = nil
 
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
-    @State private var showIconPicker = false
-    @State private var iconManager = AppIconManager()
+    #if DEBUG
+    private let openIconPicker = ProcessInfo.processInfo.arguments.contains("-iconPicker")
+    @State private var showSettings = ProcessInfo.processInfo.arguments.contains("-iconPicker")
+        || ProcessInfo.processInfo.arguments.contains("-settings")
+    #else
+    private let openIconPicker = false
+    @State private var showSettings = false
+    #endif
     @State private var demoStarted = false
     /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
@@ -28,6 +34,11 @@ struct CollectionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                         .padding(.horizontal, 18)
+                    if isSampleData && !cards.isEmpty {
+                        SampleDataBanner(badgeText: sampleBadgeText, detail: statusMessage,
+                                         isLoading: isLoading, onConnect: onConnectHealth)
+                            .padding(.horizontal, 18)
+                    }
                     if cards.isEmpty {
                         emptyCollectionState
                             .padding(.horizontal, 18)
@@ -83,9 +94,8 @@ struct CollectionView: View {
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(card: card) { dossierCard = nil }
         }
-        .sheet(isPresented: $showIconPicker) {
-            AppIconPickerSheet(manager: iconManager)
-                .presentationDetents([.fraction(0.90), .large])
+        .sheet(isPresented: $showSettings) {
+            SettingsView(openIconPicker: openIconPicker)
                 .presentationDragIndicator(.visible)
         }
         .task { await runDemoIfNeeded() }
@@ -112,25 +122,33 @@ struct CollectionView: View {
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("My headphones").font(.system(size: 30, weight: .heavy))
-                Text(cards.isEmpty ? "Listening archive" : "\(cards.count) cards · \(total.minutesText) together")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.55))
+                Group {
+                    if cards.isEmpty {
+                        Text("Listening archive")
+                    } else {
+                        Text("\(cards.count) cards · \(total.minutesText) together")
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.55))
             }
             Spacer(minLength: 8)
-            iconSettingsButton
+            settingsButton
         }
         .padding(.top, 12)
     }
 
-    private var iconSettingsButton: some View {
+    private var settingsButton: some View {
         let button = Button {
-            showIconPicker = true
+            showSettings = true
         } label: {
-            AppIconThumbnail(choice: iconManager.current, size: 38)
-                .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
+            Image(systemName: "gearshape")
+                .font(.system(size: 19, weight: .medium))
+                .frame(width: 44, height: 44)
+                .background(Theme.card, in: Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Change app icon")
+        .accessibilityLabel("Settings")
 
         #if DEBUG
         return button.contextMenu {
@@ -148,9 +166,9 @@ struct CollectionView: View {
             Image(systemName: "headphones")
                 .font(.system(size: 36, weight: .light))
                 .foregroundStyle(.white.opacity(0.45))
-            Text(isLoading ? "Reading Apple Health…" : "No headphones recorded yet")
+            Text(isLoading ? "Reading Apple Health…" : "No supported headphones yet")
                 .font(.headline)
-            Text("Wear your AirPods or Beats while listening and Earprint will mint a collectible card automatically.")
+            Text("Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.52))
                 .multilineTextAlignment(.center)
@@ -225,7 +243,7 @@ struct CollectionView: View {
                         .background(.white.opacity(0.06), in: Circle())
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Next pair").font(.subheadline.weight(.semibold))
-                        Text("Connect new headphones to unlock a collectible card")
+                        Text("Listen with supported headphones to unlock a card")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.42))
                     }
@@ -245,7 +263,7 @@ struct CollectionView: View {
                 VStack(spacing: 6) {
                     Image(systemName: "lock.fill").font(.title2)
                     Text("Next pair").font(.footnote.weight(.semibold))
-                    Text("Connect new headphones\nto unlock a card")
+                    Text("Listen with supported headphones\nto unlock a card")
                         .font(.caption2)
                         .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.8)
@@ -268,11 +286,6 @@ struct CollectionView: View {
             dossierCard = cards[index]
             return
         }
-        if args.contains("-iconPicker") {
-            demoStarted = true
-            showIconPicker = true
-            return
-        }
         if args.contains("-cardDetail") {
             demoStarted = true
             selected = cards[index]
@@ -285,7 +298,7 @@ struct CollectionView: View {
     }
 }
 
-/// Pure helper for switching between cards in `CardDetail` via outside-the-card horizontal swipes.
+/// Pure helper for switching between cards in `CardDetail`.
 enum CardDeckNavigation {
     static func index(of card: HeadphoneCard, in cards: [HeadphoneCard]) -> Int? {
         cards.firstIndex(where: { $0.id == card.id })
@@ -402,10 +415,6 @@ struct CardDetail: View {
         colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
     }
 
-    private var currentCardIndex: Int? {
-        CardDeckNavigation.index(of: card, in: cards)
-    }
-
     private var tilt: CGSize {
         dragTilt == .zero ? motion.tilt : dragTilt
     }
@@ -444,7 +453,6 @@ struct CardDetail: View {
                 .opacity(appeared ? 1 : 0)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: close)
-                .gesture(backdropSwipe)
 
             layout
         }
@@ -461,12 +469,10 @@ struct CardDetail: View {
             angle = 0
             dragTilt = .zero
             showColorBar = false
-            if dragStartPosition == nil {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
-                    deckPosition = CGFloat(activeIndex)
-                }
-                scheduleSettle(for: newID, delayMs: 260)
+            withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
+                deckPosition = CGFloat(activeIndex)
             }
+            scheduleSettle(for: newID, delayMs: 260)
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
@@ -510,8 +516,8 @@ struct CardDetail: View {
         .accessibilityLabel("Close")
     }
 
-    /// Horizontal swipe on the backdrop outside the card deals the top card away or pulls the previous card back.
-    private var backdropSwipe: some Gesture {
+    /// Only the controls beneath the card handle horizontal paging.
+    private var cardNavigationSwipe: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
                 guard deckCards.count > 1 else { return }
@@ -547,11 +553,6 @@ struct CardDetail: View {
             .onEnded { value in
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
                 dragStartPosition = nil
-                guard deckCards.count > 1 else {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { deckPosition = CGFloat(activeIndex) }
-                    scheduleSettle(for: card.id, delayMs: 220)
-                    return
-                }
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 let dy = value.translation.height
@@ -565,21 +566,20 @@ struct CardDetail: View {
                     nil
                 }
 
-                if let step, let next = CardDeckNavigation.neighbor(of: card, in: deckCards, step: step),
-                   let nextIdx = CardDeckNavigation.index(of: next, in: deckCards) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    onSelectCard(next)
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
-                        deckPosition = CGFloat(nextIdx)
-                    }
-                    scheduleSettle(for: next.id, delayMs: 260)
-                } else {
-                    withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
-                        deckPosition = CGFloat(activeIndex)
-                    }
-                    scheduleSettle(for: card.id, delayMs: 220)
+                if let step, selectNeighbor(step: step) { return }
+                withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                    deckPosition = CGFloat(activeIndex)
                 }
+                scheduleSettle(for: card.id, delayMs: 220)
             }
+    }
+
+    @discardableResult
+    private func selectNeighbor(step: Int) -> Bool {
+        guard let neighbor = CardDeckNavigation.neighbor(of: card, in: deckCards, step: step) else { return false }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onSelectCard(neighbor)
+        return true
     }
 
     @ViewBuilder private var layout: some View {
@@ -587,11 +587,11 @@ struct CardDetail: View {
         let size = space.size
         switch mode {
         case .single:
-            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 176 : 126) : 76
-            let scale = min(space.isWide ? 1.35 : 1, (size.height - controlsHeight) / design.height, (size.width - 40) / design.width)
+            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 230 : 180) : 134
+            let scale = min(space.isWide ? 1.35 : 1.14, (size.height - controlsHeight) / design.height, (size.width - 36) / design.width)
             VStack(spacing: 18) {
                 cardStack(scale: scale)
-                hintAndDots
+                cardControls
                 colorControls
             }
         case .besideControls:
@@ -599,7 +599,7 @@ struct CardDetail: View {
             HStack(spacing: 32) {
                 cardStack(scale: scale)
                 VStack(spacing: 18) {
-                    hintAndDots
+                    cardControls
                     colorControls
                 }
             }
@@ -609,7 +609,7 @@ struct CardDetail: View {
             HStack(alignment: .top, spacing: split.gap) {
                 VStack(spacing: 18) {
                     cardStack(scale: scale)
-                    hintAndDots
+                    cardControls
                         .frame(minHeight: 42)
                 }
                 .frame(width: split.leading)
@@ -630,7 +630,7 @@ struct CardDetail: View {
                     .frame(height: max(0, fold.minY))
                 Color.clear.frame(height: fold.height)
                 VStack(spacing: 16) {
-                    hintAndDots
+                    cardControls
                     colorControls
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -658,7 +658,7 @@ struct CardDetail: View {
         let itemFinish = itemColor?.modelFinish ?? item.finish
         let itemFinishID = itemColor?.id ?? "default"
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
-        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && !flipped
+        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && !flipped && item.modelAssetName != nil
         let is3DReady = show3D && ready3DCardID == item.id
         let activeAngle = isTop ? angle : 0
         let activeTilt = isTop ? tilt : .zero
@@ -673,7 +673,7 @@ struct CardDetail: View {
                     colorOption: itemColor,
                     isCurrentlyWorn: itemWorn
                 )
-                if show3D {
+                if show3D, let assetName = item.modelAssetName {
                     Ellipse()
                         .fill(.black.opacity(0.30))
                         .frame(width: 136, height: 16)
@@ -685,7 +685,7 @@ struct CardDetail: View {
                         finish: itemFinish,
                         finishID: itemFinishID,
                         modelKey: item.modelKey,
-                        assetName: item.modelAssetName,
+                        assetName: assetName,
                         modelSize: 0.145,
                         tint: item.foilTint,
                         tilt: activeTilt,
@@ -735,24 +735,61 @@ struct CardDetail: View {
             .opacity(appeared ? 1 : 0)
     }
 
-    private var hintAndDots: some View {
-        VStack(spacing: 10) {
-            Text(mode == .sideBySide ? "Drag or tilt · swipe up for dossier" : flipped ? "Tap to flip back" : "Tap to flip · swipe up for dossier")
-                .font(.footnote)
-                .foregroundStyle(.white.opacity(0.52))
-            if cards.count > 1, let activeIndex = currentCardIndex {
-                HStack(spacing: 6) {
-                    ForEach(cards.indices, id: \.self) { idx in
-                        Capsule()
-                            .fill(idx == activeIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.24))
-                            .frame(width: idx == activeIndex ? 16 : 6, height: 6)
+    private var cardControls: some View {
+        VStack(spacing: 7) {
+            if deckCards.count > 1 {
+                HStack(spacing: 10) {
+                    navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
+                    VStack(spacing: 3) {
+                        Text("Card \(activeIndex + 1) of \(deckCards.count)")
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                        Text("Swipe here to browse")
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
                     }
+                    .frame(maxWidth: .infinity)
+                    navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
                 }
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: activeIndex)
+                .padding(6)
+                .background(.ultraThinMaterial, in: Capsule())
+                .contentShape(Capsule())
+                .gesture(cardNavigationSwipe)
+                .frame(maxWidth: 280)
             }
+
+            HStack(spacing: 10) {
+                if mode == .sideBySide {
+                    Text("Drag to tilt")
+                } else {
+                    Text("Tap to flip · drag to tilt")
+                }
+                Button(action: openDossier) {
+                    Label("Dossier", systemImage: "doc.text")
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.90))
+            }
+            .font(.footnote)
+            .foregroundStyle(Theme.secondaryText)
         }
         .opacity(appeared ? 1 : 0)
-        .allowsHitTesting(false)
+    }
+
+    private func navigationButton(step: Int, symbol: String, label: LocalizedStringKey) -> some View {
+        let enabled = CardDeckNavigation.neighbor(of: card, in: deckCards, step: step) != nil
+        return Button {
+            selectNeighbor(step: step)
+        } label: {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .background(.white.opacity(0.12), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.35)
+        .accessibilityLabel(Text(label))
     }
 
     @ViewBuilder
@@ -780,7 +817,7 @@ struct CardDetail: View {
                     .fill(LinearGradient(colors: [active.swatchTop, active.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 15, height: 15)
                     .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 1))
-                Text(active.title)
+                Text(LocalizedStringKey(active.title))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
@@ -795,7 +832,7 @@ struct CardDetail: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Change device color, currently \(active.title)")
+        .accessibilityLabel("Change device color, currently \(Text(LocalizedStringKey(active.title)))")
     }
 
     private var deviceColorStrip: some View {
@@ -821,7 +858,7 @@ struct CardDetail: View {
                         .frame(width: 34, height: 34)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(option.title)
+                    .accessibilityLabel(Text(LocalizedStringKey(option.title)))
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
@@ -841,9 +878,7 @@ struct CardDetail: View {
                                   height: max(-1, min(1, value.translation.height / 160)))
             }
             .onEnded { value in
-                if value.translation.height < -90 && abs(value.translation.height) > abs(value.translation.width) * 1.4 {
-                    openDossier()
-                } else if abs(value.translation.width) > 140 {
+                if abs(value.translation.width) > 140 && abs(value.translation.width) > abs(value.translation.height) {
                     flip()
                 }
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { dragTilt = .zero }

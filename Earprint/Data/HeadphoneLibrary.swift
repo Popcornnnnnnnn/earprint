@@ -1,5 +1,6 @@
 import Foundation
 import HealthKit
+import SwiftUI
 
 /// Main-actor view model that bridges `HealthIngestor` (off-main-actor HealthKit sync + disk cache)
 /// into SwiftUI views (`CollectionView`, `HomeView`, `ProbeView`).
@@ -78,7 +79,7 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     /// Short badge label shown when falling back to sample data.
-    var sampleBadgeText: String {
+    var sampleBadgeText: LocalizedStringKey {
         #if targetEnvironment(simulator)
         if state == .empty || state == .idle { return "Sample data · Simulator" }
         #endif
@@ -93,7 +94,7 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     /// Detailed hint for empty / denied / error states.
-    var statusMessage: String? {
+    var statusMessage: LocalizedStringKey? {
         switch state {
         case .idle:
             return "Previewing sample data. Connect Apple Health to see your real headphones."

@@ -6,6 +6,7 @@ struct DeviceDossierView: View {
     let card: HeadphoneCard
     let dossier: DeviceDossier
     var onClose: (() -> Void)?
+    private let showsSampleBreakdown: Bool
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var motion = TiltMotion()
@@ -25,6 +26,7 @@ struct DeviceDossierView: View {
         let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
         let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
         self.dossier = dossier ?? DeviceDossier.sample(for: card, now: referenceDate)
+        showsSampleBreakdown = dossier == nil
         self.onClose = onClose
     }
 
@@ -39,6 +41,16 @@ struct DeviceDossierView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 22) {
+                        if showsSampleBreakdown {
+                            VStack(spacing: 5) {
+                                Label("Sample breakdown", systemImage: "info.circle")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.moderate.color)
+                                Text("Detailed sessions and grades are illustrative.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.secondaryText)
+                            }
+                        }
                         slabStage
                             .id("slab")
 
@@ -62,7 +74,7 @@ struct DeviceDossierView: View {
                             .padding(.top, 10)
                             .id("certificate")
 
-                        footerNote
+                        if !showsSampleBreakdown { footerNote }
                     }
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
@@ -142,7 +154,7 @@ struct DeviceDossierView: View {
                             .fill(rarity.accent)
                             .frame(width: 7, height: 7)
                             .shadow(color: rarity.glow, radius: 4)
-                        Text(String(format: "DOSSIER · #%04d", card.serial))
+                        Text(AppLanguage.current.text("DOSSIER · #%04d", card.serial))
                             .font(.system(.caption, design: .monospaced, weight: .bold))
                             .tracking(1.4)
                             .foregroundStyle(.white.opacity(0.75))
@@ -272,7 +284,7 @@ struct DeviceDossierView: View {
         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 28)
     }
 
-    private func quickStat(_ label: String, _ value: String, accent: Color = .white) -> some View {
+    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = .white) -> some View {
         VStack(spacing: 3) {
             Text(label)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -293,7 +305,7 @@ struct DeviceDossierView: View {
 
     private var airtimeSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            DossierSectionHeader(index: 1, title: "Airtime", trailing: period.title.uppercased(), accent: rarity.accent)
+            DossierSectionHeader(index: 1, title: "Airtime", trailing: AppLanguage.current.text(period.title).uppercased(), accent: rarity.accent)
             PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
             AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))
                 .frame(maxWidth: .infinity)
@@ -304,7 +316,7 @@ struct DeviceDossierView: View {
 
     private var rhythmSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 2, title: "Rhythm", trailing: stats.period.title.uppercased(), accent: rarity.accent)
+            DossierSectionHeader(index: 2, title: "Rhythm", trailing: AppLanguage.current.text(stats.period.title).uppercased(), accent: rarity.accent)
 
             DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear, selection: $selectedDate)
                 .dossierTile(tint: rarity.accent)
@@ -346,7 +358,7 @@ struct DeviceDossierView: View {
 
     private var habitsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 3, title: "Habits & Hearing", trailing: "\(stats.sessionCount) wears", accent: rarity.accent)
+            DossierSectionHeader(index: 3, title: "Habits & Hearing", trailing: AppLanguage.current.text("%lld wears", stats.sessionCount), accent: rarity.accent)
 
             HabitsBento(stats: stats, dossier: dossier, rarity: rarity)
 
@@ -361,7 +373,7 @@ struct DeviceDossierView: View {
     private var milestonesSection: some View {
         let unlocked = dossier.milestones.filter { !$0.isFuture }.count
         return VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 4, title: "Milestones", trailing: "\(unlocked) unlocked", accent: rarity.accent)
+            DossierSectionHeader(index: 4, title: "Milestones", trailing: AppLanguage.current.text("%lld unlocked", unlocked), accent: rarity.accent)
             MilestoneTimelineCard(milestones: dossier.milestones, rarity: rarity)
         }
     }
@@ -546,7 +558,7 @@ private struct LifetimeLedgerCard: View {
         .dossierTile()
     }
 
-    private func dateBlock(title: String, primary: String, secondary: String) -> some View {
+    private func dateBlock(title: LocalizedStringKey, primary: String, secondary: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -610,11 +622,11 @@ private struct MilestoneTimelineCard: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(item.title)
+                            Text(LocalizedStringKey(item.title))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(item.isFuture ? .white.opacity(0.78) : .white)
                             if let tier = item.tier, item.kind == .tier || item.kind == .minted {
-                                Text(tier.rawValue)
+                                Text(LocalizedStringKey(tier.rawValue))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .tracking(0.8)
                                     .padding(.horizontal, 6)
@@ -631,11 +643,11 @@ private struct MilestoneTimelineCard: View {
                                     .foregroundStyle(rarity.accent)
                             }
                             Spacer(minLength: 8)
-                            Text(item.isFuture ? "ETA \(item.date.dossierShort)" : DossierFormat.dot(item.date))
+                            Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DossierFormat.dot(item.date))
                                 .font(.system(.caption2, design: .monospaced, weight: .semibold))
                                 .foregroundStyle(item.isFuture ? rarity.accent.opacity(0.8) : DossierPalette.dim)
                         }
-                        Text(item.detail)
+                        Text(LocalizedStringKey(item.detail))
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
                     }

@@ -157,6 +157,30 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertNil(cache.load())
     }
 
+    func testCollectiblesRequireMatchingArtworkWithoutMergingRealDevices() {
+        let now = Date(timeIntervalSince1970: 1_795_000_000)
+        let models = [
+            DeviceDescriptor(name: "AirPods Pro", manufacturer: "Apple Inc.", model: "0x2027", localIdentifier: "one"),
+            DeviceDescriptor(name: "AirPods Pro", manufacturer: "0x004C", model: "0x2027", localIdentifier: "two"),
+            DeviceDescriptor(name: "Third-party headset", manufacturer: "0x009E", model: "0x2027", localIdentifier: "three"),
+            DeviceDescriptor(name: "Redmi Buds", manufacturer: "0x0094", model: "0x04", localIdentifier: "four"),
+            DeviceDescriptor(name: "AirPods 4", manufacturer: "Apple Inc.", model: "0x201B", localIdentifier: "five"),
+        ]
+        var aggregate = ListeningAggregate()
+        aggregate.ingest(models.map { device in
+            RawListeningSample(start: now.addingTimeInterval(-600), end: now, decibels: 62, device: device)
+        }, now: now, calendar: utcCalendar)
+        let snapshot = LibrarySnapshot(aggregate: aggregate, now: now, calendar: utcCalendar)
+        let cards = snapshot.cards(now: now, calendar: utcCalendar)
+
+        XCTAssertEqual(snapshot.devices.count, 5)
+        XCTAssertFalse(HeadphoneModelCatalog.resolve(models[2]).isApple)
+        XCTAssertEqual(snapshot.lifetimeSeconds, 3000, accuracy: 0.001)
+        XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five"]))
+        XCTAssertNil(cards.first { $0.id == "lid:five" }?.modelAssetName)
+        XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
+    }
+
     #if DEBUG
     func testSimulatorSeederHKSampleRoundTripThroughPipeline() {
         let now = Date(timeIntervalSince1970: 1_795_000_000)
@@ -177,7 +201,7 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(snap.invalidSamples, 0)
 
         let cards = snap.cards(now: now, calendar: utcCalendar)
-        XCTAssertEqual(cards.count, 3)
+        XCTAssertEqual(cards.count, 2)
         XCTAssertEqual(cards.first?.model, "AirPods Pro 2 · USB-C")
         XCTAssertEqual(cards.first?.modelKey, .airpodsPro)
         XCTAssertEqual(cards.first?.kind, .earbuds)

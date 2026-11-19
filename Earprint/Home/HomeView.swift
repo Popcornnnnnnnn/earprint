@@ -3,8 +3,8 @@ import SwiftUI
 struct HomeView: View {
     let summary: ListeningSummary
     var isSampleData: Bool = false
-    var sampleBadgeText: String = "Sample data"
-    var statusMessage: String? = nil
+    var sampleBadgeText: LocalizedStringKey = "Sample data"
+    var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
     var onConnectHealth: (() -> Void)? = nil
 
@@ -219,14 +219,14 @@ struct HomeView: View {
             }
             if summary.grid.totalMinutes(lastDays: 28) > 0 {
                 Divider()
-                Label(summary.persona.title, systemImage: "waveform")
+                Label(LocalizedStringKey(summary.persona.title), systemImage: "waveform")
                     .font(.subheadline.weight(.semibold))
             }
         }
         .card()
     }
 
-    private func legendDot(_ color: Color, _ label: String) -> some View {
+    private func legendDot(_ color: Color, _ label: LocalizedStringKey) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(label).font(.caption).foregroundStyle(Theme.secondaryText)
@@ -256,7 +256,7 @@ struct HomeView: View {
         .card()
     }
 
-    private func stat(_ title: String, _ value: String) -> some View {
+    private func stat(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value).font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
             Text(title).font(.caption).foregroundStyle(Theme.secondaryText)

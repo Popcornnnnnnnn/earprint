@@ -59,24 +59,15 @@ struct HeadphoneArtwork: View {
     let card: HeadphoneCard
     var colorOption: DeviceColorOption? = nil
 
-    private var assetName: String {
+    private var assetName: String? {
         if let custom = colorOption?.cardAssetName, UIImage(named: custom) != nil {
             return custom
         }
-        switch card.modelKey {
-        case .airpodsPro:
-            return "CardRenderAirPodsPro"
-        case .airpods, .airpods3, .earbudsGeneric:
-            return "CardRenderAirPodsOpen"
-        case .beatsEarbuds, .beatsEarhook:
-            return "CardRenderBeatsFitBlack"
-        case .airpodsMax, .beatsOverEar, .overEarGeneric:
-            return "CardRenderAirPodsMax"
-        }
+        return card.modelKey.collectibleArtwork
     }
 
     var body: some View {
-        if UIImage(named: assetName) != nil {
+        if let assetName, UIImage(named: assetName) != nil {
             Image(assetName)
                 .resizable()
                 .scaledToFit()
@@ -100,7 +91,7 @@ struct CardHorizontalFront: View {
         let ink = card.rarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(card.rarity.title)
+                Text(LocalizedStringKey(card.rarity.title))
                     .font(.system(size: 10.5, weight: .heavy))
                     .tracking(1.4)
                     .lineLimit(1)
@@ -181,7 +172,7 @@ struct CardFront: View {
         let ink = card.rarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(card.rarity.title)
+                Text(LocalizedStringKey(card.rarity.title))
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.6)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -295,7 +286,7 @@ struct CardBack: View {
 
     private enum Unit { case minutes, count, decibels }
 
-    private func stat(_ title: String, _ value: Double, unit: Unit) -> some View {
+    private func stat(_ title: LocalizedStringKey, _ value: Double, unit: Unit) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.system(size: 11)).opacity(0.55)
             Group {

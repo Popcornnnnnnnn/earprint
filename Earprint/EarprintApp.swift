@@ -6,6 +6,7 @@ struct EarprintApp: App {
     @State private var router = DeepLinkRouter()
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -36,6 +37,7 @@ struct EarprintApp: App {
             .environment(router)
             .environment(colorStore)
             .environment(routeMonitor)
+            .environment(\.locale, language.locale)
             .preferredColorScheme(.dark)
             #if DEBUG
             .sheet(item: $router.developerScreen) { screen in

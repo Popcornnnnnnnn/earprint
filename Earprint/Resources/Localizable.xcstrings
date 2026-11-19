@@ -1,0 +1,2246 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ a day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每天 %@"
+          }
+        }
+      }
+    },
+    "%@, graded %@, %@. %@, product ID %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，评分 %@，%@。%@，产品编号 %@。"
+          }
+        }
+      }
+    },
+    "%lld cards · %@ together": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 张卡片 · 共 %@"
+          }
+        }
+      }
+    },
+    "%lld days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天"
+          }
+        }
+      }
+    },
+    "%lld days ago": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天前"
+          }
+        }
+      }
+    },
+    "%lld months ago": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个月前"
+          }
+        }
+      }
+    },
+    "%lld of %lld days · synced %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天有记录，共 %lld 天 · 同步于 %@"
+          }
+        }
+      }
+    },
+    "%lld record days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天有记录"
+          }
+        }
+      }
+    },
+    "%lld samples from %lld devices in %@s. If this shows 0, allow access in Settings › Health › Data Access.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用时 %3$@ 秒，读取 %2$lld 台设备的 %1$lld 条记录。若为 0，请在「设置 › 健康 › 数据访问」中授权。"
+          }
+        }
+      }
+    },
+    "%lld sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次聆听"
+          }
+        }
+      }
+    },
+    "%lld total wears · %lld dB(A)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %lld 次聆听 · %lld dB(A)"
+          }
+        }
+      }
+    },
+    "%lld unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁 %lld 项"
+          }
+        }
+      }
+    },
+    "%lld wears": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次聆听"
+          }
+        }
+      }
+    },
+    "%lld years ago": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 年前"
+          }
+        }
+      }
+    },
+    "%lld%% late night": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜占 %lld%%"
+          }
+        }
+      }
+    },
+    "%lld%% of WHO limit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "世界卫生组织参考限额的 %lld%%"
+          }
+        }
+      }
+    },
+    "%lld%% of your longest": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为最长一次的 %lld%%"
+          }
+        }
+      }
+    },
+    "%lld%% used": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已用 %lld%%"
+          }
+        }
+      }
+    },
+    "%lldh": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 小时"
+          }
+        }
+      }
+    },
+    "%lldh to next tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距下一等级还差 %lld 小时"
+          }
+        }
+      }
+    },
+    "28-day pattern": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天聆听图谱"
+          }
+        }
+      }
+    },
+    "3D model. Drag to spin, pinch to zoom, long press to twirl.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D 模型。拖动旋转，双指缩放，长按让模型转一圈。"
+          }
+        }
+      }
+    },
+    "4 weeks": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 4 周"
+          }
+        }
+      }
+    },
+    "7-day exposure for this pair · WHO reference: 40 hours at 80 dB(A)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此设备近 7 天的声音暴露 · 世界卫生组织参考值为 80 dB(A) 下 40 小时"
+          }
+        }
+      }
+    },
+    "AVG": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均"
+          }
+        }
+      }
+    },
+    "AirPods Max Color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AirPods Max 配色"
+          }
+        }
+      }
+    },
+    "Airtime": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
+          }
+        }
+      }
+    },
+    "All-Day Listener": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全天听众"
+          }
+        }
+      }
+    },
+    "All-time listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计聆听"
+          }
+        }
+      }
+    },
+    "Alternate app icons are unavailable on this device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此设备无法切换 App 图标。"
+          }
+        }
+      }
+    },
+    "App Icon": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 图标"
+          }
+        }
+      }
+    },
+    "Apple Health is not available on this device. Showing sample data.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此设备无法使用 Apple 健康，目前显示示例数据。"
+          }
+        }
+      }
+    },
+    "Auto": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动"
+          }
+        }
+      }
+    },
+    "Average": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均"
+          }
+        }
+      }
+    },
+    "Average volume": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg level": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg. level": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg. session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均单次时长"
+          }
+        }
+      }
+    },
+    "BRONZE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "铜卡"
+          }
+        }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景"
+          }
+        }
+      }
+    },
+    "Best %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高 %@"
+          }
+        }
+      }
+    },
+    "Biggest day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听最多的一天"
+          }
+        }
+      }
+    },
+    "Black": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑色"
+          }
+        }
+      }
+    },
+    "Blue": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蓝色"
+          }
+        }
+      }
+    },
+    "Card %lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 张，共 %lld 张"
+          }
+        }
+      }
+    },
+    "Certificate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备证书"
+          }
+        }
+      }
+    },
+    "Change device color, currently %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改耳机配色，当前为 %@"
+          }
+        }
+      }
+    },
+    "Classic Finishes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经典配色"
+          }
+        }
+      }
+    },
+    "Clear seeded Health data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除模拟健康数据"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
+    "Close dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭档案"
+          }
+        }
+      }
+    },
+    "Collection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏"
+          }
+        }
+      }
+    },
+    "Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏会为有对应图像的 AirPods 生成卡片。其他聆听记录仍保存在 Apple 健康中。"
+          }
+        }
+      }
+    },
+    "Commute Soundtracker": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通勤听众"
+          }
+        }
+      }
+    },
+    "Computed locally from Apple Health · stays on your iPhone": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据 Apple 健康数据在此 iPhone 上计算"
+          }
+        }
+      }
+    },
+    "Connect Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接健康"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "Copy report": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制报告"
+          }
+        }
+      }
+    },
+    "Couldn't read Apple Health: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 Apple 健康：%@"
+          }
+        }
+      }
+    },
+    "Currently connected": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前已连接"
+          }
+        }
+      }
+    },
+    "DOSSIER · #%04d": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案 · #%04d"
+          }
+        }
+      }
+    },
+    "Daily listening, earliest to latest": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日聆听，按时间从早到晚"
+          }
+        }
+      }
+    },
+    "Dark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色"
+          }
+        }
+      }
+    },
+    "Data Probe": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据诊断"
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期"
+          }
+        }
+      }
+    },
+    "Day %lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 天，共 %lld 天"
+          }
+        }
+      }
+    },
+    "Detailed sessions and grades are illustrative.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细聆听记录和评分仅供示例。"
+          }
+        }
+      }
+    },
+    "Developer Tools": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发者工具"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "Dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案"
+          }
+        }
+      }
+    },
+    "Drag across the bars to scrub · color shows loudness": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动查看各柱数据 · 颜色表示音量"
+          }
+        }
+      }
+    },
+    "Drag to tilt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动以倾斜卡片"
+          }
+        }
+      }
+    },
+    "EAR GRADE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听评分"
+          }
+        }
+      }
+    },
+    "EARPRINT GRADING": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT 评分"
+          }
+        }
+      }
+    },
+    "EARPRINT GRADING AUTHORITY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT 评分档案"
+          }
+        }
+      }
+    },
+    "EARPRINT · AUTHENTICATED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT · 已认证"
+          }
+        }
+      }
+    },
+    "EST.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算"
+          }
+        }
+      }
+    },
+    "ETA %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预计 %@"
+          }
+        }
+      }
+    },
+    "Early Bird": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "早起听众"
+          }
+        }
+      }
+    },
+    "Earprint hologram seal": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 防伪印记"
+          }
+        }
+      }
+    },
+    "FIRMWARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固件版本"
+          }
+        }
+      }
+    },
+    "FIRST WEAR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听"
+          }
+        }
+      }
+    },
+    "GOLD": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金卡"
+          }
+        }
+      }
+    },
+    "GOLD · EPIC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金卡 · 史诗"
+          }
+        }
+      }
+    },
+    "GRADE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评分"
+          }
+        }
+      }
+    },
+    "Green": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "绿色"
+          }
+        }
+      }
+    },
+    "HARDWARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "硬件版本"
+          }
+        }
+      }
+    },
+    "HOLO": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻彩"
+          }
+        }
+      }
+    },
+    "HOLO · LEGENDARY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻彩 · 传奇"
+          }
+        }
+      }
+    },
+    "Habits & Hearing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "习惯与听力"
+          }
+        }
+      }
+    },
+    "Headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耳机"
+          }
+        }
+      }
+    },
+    "Hearing budget": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音暴露限额"
+          }
+        }
+      }
+    },
+    "Holo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻彩"
+          }
+        }
+      }
+    },
+    "Hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小时"
+          }
+        }
+      }
+    },
+    "LAST WEAR": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近聆听"
+          }
+        }
+      }
+    },
+    "LIFETIME": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计时长"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言"
+          }
+        }
+      }
+    },
+    "Last 7 days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "过去 7 天"
+          }
+        }
+      }
+    },
+    "Late-night share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜聆听占比"
+          }
+        }
+      }
+    },
+    "Library pipeline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据同步"
+          }
+        }
+      }
+    },
+    "Lifetime": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计时长"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浅色"
+          }
+        }
+      }
+    },
+    "Listen with supported headphones\nto unlock a card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用支持的耳机聆听\n即可解锁卡片"
+          }
+        }
+      }
+    },
+    "Listen with supported headphones to unlock a card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用支持的耳机聆听，即可解锁卡片"
+          }
+        }
+      }
+    },
+    "Listening archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听档案"
+          }
+        }
+      }
+    },
+    "Listening by hour of day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分时段聆听"
+          }
+        }
+      }
+    },
+    "Listening time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "Longest": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长一次"
+          }
+        }
+      }
+    },
+    "Longest session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长单次时长"
+          }
+        }
+      }
+    },
+    "Longest wear": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长单次聆听"
+          }
+        }
+      }
+    },
+    "Loud": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较响"
+          }
+        }
+      }
+    },
+    "Loud sessions ≥80 dB": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高音量聆听 ≥80 dB"
+          }
+        }
+      }
+    },
+    "Lower volume, a lighter weekly dose and fewer loud or late sessions keep the grade high. Based on the WHO safe-listening guide (80 dB(A) for 40 h a week).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较低的音量和每周声音暴露，以及较少的高音量或深夜聆听，有助于提高评分。参考世界卫生组织安全聆听指南（80 dB(A) 下每周 40 小时）。"
+          }
+        }
+      }
+    },
+    "MANUFACTURER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "制造商"
+          }
+        }
+      }
+    },
+    "MAX": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长"
+          }
+        }
+      }
+    },
+    "MINTED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成日期"
+          }
+        }
+      }
+    },
+    "MINTED %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成于 %@"
+          }
+        }
+      }
+    },
+    "MODEL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "型号"
+          }
+        }
+      }
+    },
+    "MONTH": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月份"
+          }
+        }
+      }
+    },
+    "MY EARPRINT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 EARPRINT"
+          }
+        }
+      }
+    },
+    "Max tier reached ✦": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已达到最高等级 ✦"
+          }
+        }
+      }
+    },
+    "Midnight": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "午夜色"
+          }
+        }
+      }
+    },
+    "Milestones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "里程碑"
+          }
+        }
+      }
+    },
+    "Minted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成卡片"
+          }
+        }
+      }
+    },
+    "Moderate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适中"
+          }
+        }
+      }
+    },
+    "Month": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月"
+          }
+        }
+      }
+    },
+    "My Earprint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的 Earprint"
+          }
+        }
+      }
+    },
+    "My headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的耳机"
+          }
+        }
+      }
+    },
+    "NEXT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一项"
+          }
+        }
+      }
+    },
+    "Next card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一张卡片"
+          }
+        }
+      }
+    },
+    "Next pair": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一副耳机"
+          }
+        }
+      }
+    },
+    "Night Owl": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜猫子"
+          }
+        }
+      }
+    },
+    "No headphone samples found in Apple Health. If you denied access, enable it in Settings › Health › Data Access › Earprint.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康中暂无耳机记录。如果曾拒绝访问，可在「设置 › 健康 › 数据访问 › Earprint」中授权。"
+          }
+        }
+      }
+    },
+    "No listening yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无聆听记录"
+          }
+        }
+      }
+    },
+    "No supported headphones yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无支持的耳机"
+          }
+        }
+      }
+    },
+    "Not reported": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未提供"
+          }
+        }
+      }
+    },
+    "One ring per day, newest on the outside. Midnight is at the top.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一圈代表一天，最近一天在最外圈，顶部为午夜。"
+          }
+        }
+      }
+    },
+    "Orange": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "橙色"
+          }
+        }
+      }
+    },
+    "PRODUCT ID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "产品编号"
+          }
+        }
+      }
+    },
+    "Pink": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粉色"
+          }
+        }
+      }
+    },
+    "Previewing sample data. Connect Apple Health to see your real headphones.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在预览示例数据。连接 Apple 健康后即可查看你的耳机。"
+          }
+        }
+      }
+    },
+    "Previous card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一张卡片"
+          }
+        }
+      }
+    },
+    "Purple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紫色"
+          }
+        }
+      }
+    },
+    "Quiet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较轻"
+          }
+        }
+      }
+    },
+    "RECORD DAYS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录天数"
+          }
+        }
+      }
+    },
+    "RECORDED BY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录来源"
+          }
+        }
+      }
+    },
+    "Raw Health probe": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "健康记录诊断"
+          }
+        }
+      }
+    },
+    "Raw samples": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原始记录"
+          }
+        }
+      }
+    },
+    "Read Health data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取健康数据"
+          }
+        }
+      }
+    },
+    "Reading Apple Health…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 Apple 健康…"
+          }
+        }
+      }
+    },
+    "Reading Apple Health… %lld samples": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 Apple 健康…已读取 %lld 条"
+          }
+        }
+      }
+    },
+    "Reading samples…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取记录…"
+          }
+        }
+      }
+    },
+    "Reading…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取…"
+          }
+        }
+      }
+    },
+    "Reads headphone audio levels from Apple Health. Nothing leaves this iPhone.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取 Apple 健康中的耳机音量记录。数据保留在此 iPhone。"
+          }
+        }
+      }
+    },
+    "Reset cache & resync": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置缓存并重新同步"
+          }
+        }
+      }
+    },
+    "Rhythm": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听节奏"
+          }
+        }
+      }
+    },
+    "Rings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听"
+          }
+        }
+      }
+    },
+    "SAMPLES READ": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取样本"
+          }
+        }
+      }
+    },
+    "SILVER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银卡"
+          }
+        }
+      }
+    },
+    "SILVER · RARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银卡 · 稀有"
+          }
+        }
+      }
+    },
+    "SOURCE BUNDLE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来源标识"
+          }
+        }
+      }
+    },
+    "STATS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "统计"
+          }
+        }
+      }
+    },
+    "Sample breakdown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例分析"
+          }
+        }
+      }
+    },
+    "Sample data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例数据"
+          }
+        }
+      }
+    },
+    "Sample data · Health unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例数据 · 健康不可用"
+          }
+        }
+      }
+    },
+    "Sample data · No Health records": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例数据 · 暂无健康记录"
+          }
+        }
+      }
+    },
+    "Sample data · Simulator": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例数据 · 模拟器"
+          }
+        }
+      }
+    },
+    "Seed simulator Health data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写入模拟器健康数据"
+          }
+        }
+      }
+    },
+    "Seeding HealthKit…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在写入模拟数据…"
+          }
+        }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听次数"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置"
+          }
+        }
+      }
+    },
+    "Share image": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享图片"
+          }
+        }
+      }
+    },
+    "Share my Earprint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享我的 Earprint"
+          }
+        }
+      }
+    },
+    "Silver": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银色"
+          }
+        }
+      }
+    },
+    "Simulator seeder (Debug)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模拟器数据工具（调试）"
+          }
+        }
+      }
+    },
+    "Since %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自 %@"
+          }
+        }
+      }
+    },
+    "Sky Blue": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天蓝色"
+          }
+        }
+      }
+    },
+    "Space Gray": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深空灰色"
+          }
+        }
+      }
+    },
+    "Starlight": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "星光色"
+          }
+        }
+      }
+    },
+    "Start at 10.0": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初始分 10.0"
+          }
+        }
+      }
+    },
+    "Swipe here to browse": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此左右滑动切换"
+          }
+        }
+      }
+    },
+    "Sync Apple Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步 Apple 健康"
+          }
+        }
+      }
+    },
+    "Syncing %lld…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步 %lld 条…"
+          }
+        }
+      }
+    },
+    "Syncing Health…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步健康数据…"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "TIME": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时长"
+          }
+        }
+      }
+    },
+    "Tap or press-drag any hour · bar color shows loudness": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点或按住拖动查看各时段 · 颜色表示音量"
+          }
+        }
+      }
+    },
+    "Tap slab to flip · tilt phone for foil": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面 · 倾斜手机查看镭射效果"
+          }
+        }
+      }
+    },
+    "Tap slab to view front": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点卡套查看正面"
+          }
+        }
+      }
+    },
+    "Tap to flip · drag to tilt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面 · 拖动倾斜"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
+          }
+        }
+      }
+    },
+    "Unknown headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知耳机"
+          }
+        }
+      }
+    },
+    "WEARS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次数"
+          }
+        }
+      }
+    },
+    "WORN · ALL TIME": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听 · 全部时间"
+          }
+        }
+      }
+    },
+    "WORN · LAST 12 MONTHS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听 · 过去 12 个月"
+          }
+        }
+      }
+    },
+    "WORN · LAST 30 DAYS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听 · 过去 30 天"
+          }
+        }
+      }
+    },
+    "WORN · LAST 7 DAYS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听 · 过去 7 天"
+          }
+        }
+      }
+    },
+    "Week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周"
+          }
+        }
+      }
+    },
+    "Weekly WHO dose": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周声音暴露"
+          }
+        }
+      }
+    },
+    "Weekly hearing dose": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周声音暴露"
+          }
+        }
+      }
+    },
+    "When you wear it": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听时段"
+          }
+        }
+      }
+    },
+    "White": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "白色"
+          }
+        }
+      }
+    },
+    "Worn %@, %lld percent of all headphone listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听 %@，占所有耳机聆听时间的 %lld%%"
+          }
+        }
+      }
+    },
+    "Year": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年"
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨天"
+          }
+        }
+      }
+    },
+    "a day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每天"
+          }
+        }
+      }
+    },
+    "avg / %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每%@平均"
+          }
+        }
+      }
+    },
+    "avg level": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "days worn": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听天数"
+          }
+        }
+      }
+    },
+    "estimated": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算"
+          }
+        }
+      }
+    },
+    "in my headphones this week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周戴耳机聆听的时间"
+          }
+        }
+      }
+    },
+    "listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听"
+          }
+        }
+      }
+    },
+    "longest": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长一次"
+          }
+        }
+      }
+    },
+    "peak %lld dB": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值 %lld dB"
+          }
+        }
+      }
+    },
+    "sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听次数"
+          }
+        }
+      }
+    },
+    "since %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自 %@"
+          }
+        }
+      }
+    },
+    "since minted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自卡片生成以来"
+          }
+        }
+      }
+    },
+    "vs prev 30 days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前 30 天"
+          }
+        }
+      }
+    },
+    "vs prev 7 days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前 7 天"
+          }
+        }
+      }
+    },
+    "vs prev year": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前一年"
+          }
+        }
+      }
+    },
+    "wear share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听占比"
+          }
+        }
+      }
+    },
+    "wears": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听次数"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

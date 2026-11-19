@@ -16,7 +16,7 @@ struct PeriodSwitcher: View {
                     Button {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) { period = p }
                     } label: {
-                        Text(p.title)
+                        Text(LocalizedStringKey(p.title))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(period == p ? rarity.ink : .white.opacity(0.7))
                             .frame(maxWidth: .infinity)
@@ -79,7 +79,7 @@ struct AirtimeHero: View {
                 bezel
                 ring
                 VStack(spacing: 2) {
-                    Eyebrow(stats.period.wornLabel, color: rarity.accent)
+                    Eyebrow(AppLanguage.current.text(stats.period.wornLabel), color: rarity.accent)
                     Text(stats.totalMinutes.minutesText)
                         .font(.system(size: 50, weight: .black, design: .rounded))
                         .monospacedDigit()
@@ -117,7 +117,7 @@ struct AirtimeHero: View {
 
     private var divider: some View { Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 34) }
 
-    private func fact(_ text: String, _ caption: String, value: Double) -> some View {
+    private func fact(_ text: String, _ caption: LocalizedStringKey, value: Double) -> some View {
         VStack(spacing: 3) {
             Text(text)
                 .font(.system(.headline, design: .rounded, weight: .bold))
@@ -140,7 +140,7 @@ struct AirtimeHero: View {
                         .contentTransition(.numericText(value: change))
                 }
                 .foregroundStyle(up ? Theme.quiet.color : Theme.moderate.color)
-                Text(stats.period.previousLabel).font(.caption).foregroundStyle(DossierPalette.dim)
+                Text(LocalizedStringKey(stats.period.previousLabel)).font(.caption).foregroundStyle(DossierPalette.dim)
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
@@ -309,7 +309,7 @@ struct HabitsBento: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
-                    Label(verdict, systemImage: db < 72 ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                    Label(LocalizedStringKey(verdict), systemImage: db < 72 ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(color)
                     Text("peak \(Int(stats.peakDecibels.rounded())) dB")

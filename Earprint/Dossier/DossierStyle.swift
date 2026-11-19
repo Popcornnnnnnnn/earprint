@@ -13,11 +13,11 @@ extension Date {
     func dossierRelative(to now: Date, calendar: Calendar = .current) -> String {
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: self), to: calendar.startOfDay(for: now)).day ?? 0
         switch days {
-        case 0: return "Today"
-        case 1: return "Yesterday"
-        case 2..<60: return "\(days) days ago"
-        case 60..<730: return "\(days / 30) months ago"
-        default: return "\(days / 365) years ago"
+        case 0: return AppLanguage.current.text("Today")
+        case 1: return AppLanguage.current.text("Yesterday")
+        case 2..<60: return AppLanguage.current.text("%lld days ago", days)
+        case 60..<730: return AppLanguage.current.text("%lld months ago", days / 30)
+        default: return AppLanguage.current.text("%lld years ago", days / 365)
         }
     }
 }
@@ -88,7 +88,7 @@ struct DossierSectionHeader: View {
                 .font(.system(.caption, design: .monospaced, weight: .bold))
                 .foregroundStyle(accent)
                 .fixedSize()
-            Text(title.uppercased())
+            Text(AppLanguage.current.text(title).uppercased())
                 .font(.system(.caption, design: .rounded, weight: .heavy))
                 .tracking(2.0)
                 .foregroundStyle(.white.opacity(0.88))
@@ -147,7 +147,7 @@ struct Eyebrow: View {
     var color: Color = DossierPalette.dim
     init(_ text: String, color: Color = DossierPalette.dim) { self.text = text; self.color = color }
     var body: some View {
-        Text(text.uppercased())
+        Text(AppLanguage.current.text(text).uppercased())
             .font(.system(.caption2, design: .rounded, weight: .heavy))
             .tracking(1.4)
             .foregroundStyle(color)

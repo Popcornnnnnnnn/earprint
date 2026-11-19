@@ -19,15 +19,6 @@ enum IconBackground: String, CaseIterable, Identifiable, Equatable {
         }
     }
 
-    var caption: String {
-        switch self {
-        case .auto: return "White in Light Mode · Obsidian in Dark Mode"
-        case .light: return "Clean Apple off-white background"
-        case .dark: return "Clean matte obsidian background"
-        case .holo: return "Pastel collector foil background"
-        }
-    }
-
     var assetSuffix: String {
         switch self {
         case .auto: return "Auto"
@@ -150,23 +141,26 @@ final class AppIconManager {
         current = AppIconChoice.from(alternateIconName: UIApplication.shared.alternateIconName)
     }
 
-    func apply(_ choice: AppIconChoice) async {
-        guard choice != current, !isUpdating else { return }
+    func apply(_ choice: AppIconChoice) async -> Bool {
+        guard !isUpdating else { return false }
+        errorMessage = nil
+        guard choice != current else { return true }
         guard UIApplication.shared.supportsAlternateIcons else {
-            errorMessage = "Alternate app icons are not supported on this device."
-            return
+            errorMessage = "Alternate app icons are unavailable on this device."
+            return false
         }
 
         isUpdating = true
-        errorMessage = nil
         defer { isUpdating = false }
 
         do {
             try await UIApplication.shared.setAlternateIconName(choice.alternateIconName)
             current = choice
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 }
@@ -252,171 +246,140 @@ private struct DiagonalBottomRightTriangle: Shape {
     }
 }
 
-struct AppIconPickerSheet: View {
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case english = "en"
+    case simplifiedChinese = "zh-Hans"
+
+    static let storageKey = "appLanguage"
+    static var systemDefault: Self {
+        Locale.preferredLanguages.first?.hasPrefix("zh") == true ? .simplifiedChinese : .english
+    }
+    static var current: Self {
+        UserDefaults.standard.string(forKey: storageKey).flatMap(Self.init(rawValue:)) ?? systemDefault
+    }
+
+    func text(_ key: String, _ arguments: CVarArg...) -> String {
+        let path = Bundle.main.path(forResource: rawValue, ofType: "lproj")
+        let template = path.flatMap(Bundle.init(path:))?.localizedString(forKey: key, value: nil, table: nil) ?? key
+        return arguments.isEmpty ? template : String(format: template, locale: locale, arguments: arguments)
+    }
+
+    var id: String { rawValue }
+    var locale: Locale { Locale(identifier: rawValue) }
+    var name: String { self == .english ? "English" : "简体中文" }
+}
+
+struct SettingsView: View {
+    private enum Destination: Hashable { case appIcon }
+
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
+    @State private var iconManager = AppIconManager()
+    @State private var path: [Destination]
+
+    init(openIconPicker: Bool = false) {
+        _path = State(initialValue: openIconPicker ? [.appIcon] : [])
+    }
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Form {
+                NavigationLink(value: Destination.appIcon) {
+                    Label("App Icon", systemImage: "app")
+                }
+                Picker("Language", selection: $language) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(option.name).tag(option)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .navigationDestination(for: Destination.self) { _ in
+                AppIconPickerView(manager: iconManager)
+            }
+        }
+        .interactiveDismissDisabled(iconManager.isUpdating)
+    }
+}
+
+struct AppIconPickerView: View {
     @Bindable var manager: AppIconManager
     @Environment(\.dismiss) private var dismiss
     @State private var draft: AppIconChoice
 
     init(manager: AppIconManager) {
         self.manager = manager
-        self._draft = State(initialValue: manager.current)
+        _draft = State(initialValue: manager.current)
     }
 
     private let fiveColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: 22) {
-                        previewStage
-                        backgroundSection
-                        finishSection
-                        applyButton
-
-                        if let error = manager.errorMessage {
-                            Text(error)
-                                .font(.footnote)
-                                .foregroundStyle(.red.opacity(0.9))
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 32)
-                }
-                .scrollIndicators(.hidden)
-            }
-            .navigationTitle("App Icon")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+        ScrollView {
+            VStack(spacing: 24) {
+                backgroundSection
+                finishSection
+                if let error = manager.errorMessage {
+                    Text(LocalizedStringKey(error))
+                        .font(.footnote)
+                        .foregroundStyle(.red)
                 }
             }
-            .toolbarBackground(Color(red: 0.05, green: 0.05, blue: 0.07), for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .padding(20)
         }
-        .preferredColorScheme(.dark)
+        .background(Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea())
+        .navigationTitle("App Icon")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(manager.isUpdating)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    Task {
+                        if await manager.apply(draft) { dismiss() }
+                    }
+                }
+                .disabled(manager.isUpdating)
+            }
+        }
+        .disabled(manager.isUpdating)
         .onAppear {
             manager.refresh()
+            manager.errorMessage = nil
             draft = manager.current
         }
     }
 
-    // MARK: - Live Hero Preview
-
-    private var previewStage: some View {
-        VStack(spacing: 14) {
-            if draft.background == .auto {
-                HStack(spacing: 26) {
-                    previewTile(bg: .light, label: "Light Mode", size: 96)
-                    previewTile(bg: .dark, label: "Dark Mode", size: 96)
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            } else {
-                previewTile(bg: draft.background, label: "Earprint", size: 112)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            }
-
-            Text("\(draft.finish.title) · \(draft.background.title)")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.55))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 22)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.04))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: draft)
-    }
-
-    private func previewTile(bg: IconBackground, label: String, size: CGFloat) -> some View {
-        VStack(spacing: 8) {
-            AppIconThumbnail(finish: draft.finish, background: bg, size: size)
-                .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
-            Text(label)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.white.opacity(0.75))
-        }
-    }
-
-    // MARK: - Setting 1: Background
-
     private var backgroundSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Background")
-
             HStack(spacing: 8) {
-                ForEach(IconBackground.allCases) { bg in
-                    let isSelected = draft.background == bg
+                ForEach(IconBackground.allCases) { background in
+                    let isSelected = draft.background == background
                     Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        draft.background = bg
+                        draft.background = background
                     } label: {
-                        HStack(spacing: 6) {
-                            backgroundDot(bg)
-                            Text(bg.title)
-                                .font(.footnote.weight(isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? .white : .white.opacity(0.72))
+                        VStack(spacing: 8) {
+                            AppIconThumbnail(finish: draft.finish, background: background, size: 42)
+                            Text(LocalizedStringKey(background.title))
+                                .font(.caption.weight(.semibold))
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.045))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(isSelected ? Color.white.opacity(0.45) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.2 : 1)
-                        )
+                        .padding(.vertical, 10)
+                        .background(.white.opacity(isSelected ? 0.12 : 0.04), in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(.white.opacity(isSelected ? 0.56 : 0.08)))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
-
-            Text(draft.background.caption)
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.48))
-        }
-    }
-
-    @ViewBuilder
-    private func backgroundDot(_ bg: IconBackground) -> some View {
-        let sz: CGFloat = 14
-        switch bg {
-        case .auto:
-            ZStack {
-                Circle().fill(Color(red: 0.95, green: 0.95, blue: 0.97))
-                Circle().fill(Color(red: 0.08, green: 0.09, blue: 0.12))
-                    .mask(DiagonalBottomRightTriangle())
-            }
-            .frame(width: sz, height: sz)
-            .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.8))
-        case .light:
-            Circle()
-                .fill(Color(red: 0.96, green: 0.96, blue: 0.97))
-                .frame(width: sz, height: sz)
-                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.8))
-        case .dark:
-            Circle()
-                .fill(Color(red: 0.07, green: 0.08, blue: 0.10))
-                .frame(width: sz, height: sz)
-                .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.9))
-        case .holo:
-            Circle()
-                .fill(LinearGradient(colors: [.cyan, .mint, .yellow, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: sz, height: sz)
-                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.8))
         }
     }
 
@@ -471,7 +434,7 @@ struct AppIconPickerSheet: View {
                 }
                 .frame(width: 50, height: 50)
 
-                Text(finish.title)
+                Text(LocalizedStringKey(finish.title))
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                     .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
                     .lineLimit(1)
@@ -479,42 +442,11 @@ struct AppIconPickerSheet: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(finish.title)
+        .accessibilityLabel(Text(LocalizedStringKey(finish.title)))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    // MARK: - Apply CTA
-
-    private var applyButton: some View {
-        let isCurrent = draft == manager.current
-        return Button {
-            Task { await manager.apply(draft) }
-        } label: {
-            HStack(spacing: 8) {
-                if manager.isUpdating {
-                    ProgressView().tint(.black)
-                } else if isCurrent {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Current App Icon")
-                } else {
-                    Text("Apply App Icon")
-                }
-            }
-            .font(.body.weight(.bold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isCurrent ? Color.white.opacity(0.10) : Color.white)
-            )
-            .foregroundStyle(isCurrent ? .white.opacity(0.65) : .black)
-        }
-        .buttonStyle(.plain)
-        .disabled(isCurrent || manager.isUpdating)
-        .padding(.top, 4)
-    }
-
-    private func sectionTitle(_ title: String, detail: String? = nil) -> some View {
+    private func sectionTitle(_ title: LocalizedStringKey, detail: String? = nil) -> some View {
         HStack {
             Text(title)
                 .font(.footnote.weight(.bold))

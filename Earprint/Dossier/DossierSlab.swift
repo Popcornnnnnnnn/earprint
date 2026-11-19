@@ -74,7 +74,7 @@ struct GradingSlab: View {
                     .font(.system(size: 34, weight: .black, design: .rounded))
                     .foregroundStyle(rarity.foil)
                     .shadow(color: rarity.glow.opacity(0.5), radius: 6)
-                Text(grade.label)
+                Text(LocalizedStringKey(grade.label))
                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(rarity.accent)
@@ -197,7 +197,7 @@ struct CertificateLabel: View {
                         .font(.system(size: 44, weight: .black, design: .rounded))
                         .foregroundStyle(rarity.foil)
                         .shadow(color: rarity.glow.opacity(0.45), radius: 8)
-                    Text(grade.label)
+                    Text(LocalizedStringKey(grade.label))
                         .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
                         .foregroundStyle(rarity.accent)
                 }
@@ -278,7 +278,7 @@ struct CertificateLabel: View {
         }
     }
 
-    private func engraved(_ title: String, _ value: String) -> some View {
+    private func engraved(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -333,7 +333,7 @@ struct GradeBreakdown: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text(factor.name).font(.footnote.weight(.semibold))
+                            Text(LocalizedStringKey(factor.name)).font(.footnote.weight(.semibold))
                             Spacer()
                             Text(factor.value).font(.system(.footnote, design: .monospaced)).foregroundStyle(DossierPalette.dim)
                         }

@@ -147,8 +147,9 @@ extension LibrarySnapshot {
         // Serial number = order in which the user met each headphone (oldest = No. 1).
         let byFirst = devices.sorted { ($0.first ?? .distantFuture, $0.id) < ($1.first ?? .distantFuture, $1.id) }
         let serials = Dictionary(uniqueKeysWithValues: byFirst.enumerated().map { ($1.id, $0 + 1) })
-        return devices.map { d in
-            HeadphoneCard(
+        return devices.compactMap { d in
+            guard d.model.key.collectibleArtwork != nil else { return nil }
+            return HeadphoneCard(
                 id: d.id,
                 nickname: d.nickname,
                 model: d.model.marketingName,
@@ -202,13 +203,18 @@ enum DateText {
 
     /// "Oct 30"
     static func monthDay(_ date: Date, calendar: Calendar) -> String {
-        formatter("MMM d", calendar: calendar).string(from: date)
+        let format = DateFormatter()
+        format.calendar = calendar
+        format.timeZone = calendar.timeZone
+        format.locale = AppLanguage.current.locale
+        format.setLocalizedDateFormatFromTemplate("MMM d")
+        return format.string(from: date)
     }
 
     /// "Today", "Yesterday", "Sep 2", or "2024.12.25" for other years.
     static func relativeDay(_ date: Date, now: Date, calendar: Calendar) -> String {
-        if calendar.isDate(date, inSameDayAs: now) { return "Today" }
-        if let y = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: y) { return "Yesterday" }
+        if calendar.isDate(date, inSameDayAs: now) { return AppLanguage.current.text("Today") }
+        if let y = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: y) { return AppLanguage.current.text("Yesterday") }
         if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
             return monthDay(date, calendar: calendar)
         }
@@ -220,7 +226,8 @@ enum DateText {
         let end = calendar.startOfDay(for: now)
         let start = calendar.date(byAdding: .day, value: -6, to: end) ?? end
         let sameMonth = calendar.component(.month, from: start) == calendar.component(.month, from: end)
-        let tail = sameMonth ? formatter("d", calendar: calendar).string(from: end) : monthDay(end, calendar: calendar)
+        let tail = sameMonth && AppLanguage.current == .english
+            ? formatter("d", calendar: calendar).string(from: end) : monthDay(end, calendar: calendar)
         return "\(monthDay(start, calendar: calendar)) – \(tail)"
     }
 }
