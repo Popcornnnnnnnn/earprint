@@ -286,6 +286,41 @@ enum CardDeckNavigation {
     }
 }
 
+/// Pure geometric pose for one card in the physical Card Stack Deal (`Option B`) given its signed offset
+/// `delta = cardIndex - visualPosition` (`0` = active top card, `> 0` = tucked behind in the deck, `< 0` = dealt off left).
+struct CardStackPose: Equatable {
+    var offsetX: CGFloat
+    var offsetY: CGFloat
+    var scale: CGFloat
+    var rotationDegrees: Double
+    var opacity: Double
+    var zIndex: Double
+
+    static func pose(forDelta d: CGFloat) -> CardStackPose {
+        if d < 0 {
+            let p = min(1.5, -d)
+            return CardStackPose(
+                offsetX: -p * 340,
+                offsetY: p * 22,
+                scale: 1.0,
+                rotationDegrees: Double(-p * 15),
+                opacity: max(0, Double(1 - p * 0.96)),
+                zIndex: 120 - Double(p * 10)
+            )
+        } else {
+            let depth = min(2.6, d)
+            return CardStackPose(
+                offsetX: depth * 15,
+                offsetY: depth * 14,
+                scale: max(0.80, 1 - depth * 0.08),
+                rotationDegrees: Double(depth * 3.2),
+                opacity: max(0, Double(1 - depth * 0.34)),
+                zIndex: 100 - Double(depth * 20)
+            )
+        }
+    }
+}
+
 struct CardDetail: View {
     let card: HeadphoneCard
     var cards: [HeadphoneCard] = []
@@ -300,11 +335,20 @@ struct CardDetail: View {
     @State private var flipped = false
     @State private var angle: Double = 0
     @State private var dragTilt: CGSize = .zero
-    @State private var backdropDragX: CGFloat = 0
-    @State private var slideDirection: CGFloat = 1
+    /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
+    @State private var deckPosition: CGFloat = 0
+    @State private var dragStartPosition: CGFloat? = nil
     @State private var appeared = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
+
+    private var deckCards: [HeadphoneCard] {
+        cards.isEmpty ? [card] : cards
+    }
+
+    private var activeIndex: Int {
+        CardDeckNavigation.index(of: card, in: deckCards) ?? 0
+    }
 
     private var availableColors: [DeviceColorOption] {
         colorStore?.availableColors(for: card) ?? DeviceColorOption.options(for: card.modelKey)
@@ -367,7 +411,6 @@ struct CardDetail: View {
                 .gesture(backdropSwipe)
 
             layout
-                .offset(x: backdropDragX)
         }
         .overlay(alignment: .topTrailing) {
             topCloseButton
@@ -382,8 +425,14 @@ struct CardDetail: View {
             angle = 0
             dragTilt = .zero
             showColorBar = false
+            if dragStartPosition == nil {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.80)) {
+                    deckPosition = CGFloat(activeIndex)
+                }
+            }
         }
         .onAppear {
+            deckPosition = CGFloat(activeIndex)
             motion.start()
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
             Task { await runDemoIfNeeded() }
@@ -408,46 +457,57 @@ struct CardDetail: View {
         .accessibilityLabel("Close")
     }
 
-    /// Horizontal swipe on the backdrop outside the card switches between headphones.
+    /// Horizontal swipe on the backdrop outside the card deals the top card away or pulls the previous card back.
     private var backdropSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
+        DragGesture(minimumDistance: 16)
             .onChanged { value in
-                guard cards.count > 1 else { return }
+                guard deckCards.count > 1 else { return }
                 let dx = value.translation.width
                 let dy = value.translation.height
-                guard abs(dx) > abs(dy) * 1.1 else { return }
-                let canMove = (dx < 0 && CardDeckNavigation.neighbor(of: card, in: cards, step: 1) != nil)
-                    || (dx > 0 && CardDeckNavigation.neighbor(of: card, in: cards, step: -1) != nil)
-                backdropDragX = canMove ? dx * 0.42 : dx * 0.14
+                guard dragStartPosition != nil || abs(dx) > abs(dy) * 1.05 else { return }
+                let origin = dragStartPosition ?? CGFloat(activeIndex)
+                if dragStartPosition == nil { dragStartPosition = origin }
+
+                let raw = origin - dx / 225
+                let maxIdx = CGFloat(deckCards.count - 1)
+                if raw < 0 {
+                    deckPosition = raw * 0.20
+                } else if raw > maxIdx {
+                    deckPosition = maxIdx + (raw - maxIdx) * 0.20
+                } else {
+                    deckPosition = raw
+                }
             }
             .onEnded { value in
-                guard cards.count > 1 else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { backdropDragX = 0 }
+                let origin = dragStartPosition ?? CGFloat(activeIndex)
+                dragStartPosition = nil
+                guard deckCards.count > 1 else {
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.80)) { deckPosition = CGFloat(activeIndex) }
                     return
                 }
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 let dy = value.translation.height
-                let isHorizontal = abs(dx) > abs(dy) * 1.1
+                let isHorizontal = abs(dx) > abs(dy) * 1.05 || abs(deckPosition - origin) > 0.12
 
-                let step: Int? = if isHorizontal && (dx < -55 || predicted < -140) {
+                let step: Int? = if isHorizontal && (dx < -50 || predicted < -140) {
                     1
-                } else if isHorizontal && (dx > 55 || predicted > 140) {
+                } else if isHorizontal && (dx > 50 || predicted > 140) {
                     -1
                 } else {
                     nil
                 }
 
-                if let step, let next = CardDeckNavigation.neighbor(of: card, in: cards, step: step) {
-                    slideDirection = CGFloat(step)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
-                        backdropDragX = 0
-                        onSelectCard(next)
+                if let step, let next = CardDeckNavigation.neighbor(of: card, in: deckCards, step: step),
+                   let nextIdx = CardDeckNavigation.index(of: next, in: deckCards) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    onSelectCard(next)
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.80)) {
+                        deckPosition = CGFloat(nextIdx)
                     }
                 } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                        backdropDragX = 0
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                        deckPosition = CGFloat(activeIndex)
                     }
                 }
             }
@@ -461,14 +521,14 @@ struct CardDetail: View {
             let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 176 : 126) : 76
             let scale = min(space.isWide ? 1.35 : 1, (size.height - controlsHeight) / design.height, (size.width - 40) / design.width)
             VStack(spacing: 18) {
-                interactiveCard(scale: scale)
+                cardStack(scale: scale)
                 hintAndDots
                 colorControls
             }
         case .besideControls:
             let scale = min(1, (size.height - 24) / design.height, (size.width * 0.6) / design.width)
             HStack(spacing: 32) {
-                interactiveCard(scale: scale)
+                cardStack(scale: scale)
                 VStack(spacing: 18) {
                     hintAndDots
                     colorControls
@@ -479,7 +539,7 @@ struct CardDetail: View {
             let scale = min(1.35, min(split.leading, split.trailing) / design.width, (size.height - 116) / design.height)
             HStack(alignment: .top, spacing: split.gap) {
                 VStack(spacing: 18) {
-                    interactiveCard(scale: scale)
+                    cardStack(scale: scale)
                     hintAndDots
                         .frame(minHeight: 42)
                 }
@@ -496,7 +556,7 @@ struct CardDetail: View {
             // The fold frame already includes margins; keep the card fully above it.
             let scale = min(1.25, (fold.minY - 24) / design.height, (size.width - 40) / design.width)
             VStack(spacing: 0) {
-                interactiveCard(scale: scale)
+                cardStack(scale: scale)
                     .frame(maxWidth: .infinity)
                     .frame(height: max(0, fold.minY))
                 Color.clear.frame(height: fold.height)
@@ -509,15 +569,51 @@ struct CardDetail: View {
         }
     }
 
+    /// Physical trading-card stack: active card sits on top with live 3D model, while upcoming cards peek behind
+    /// and the outgoing/incoming card flies off or returns with wrist tilt during outside-the-card swipes.
+    private func cardStack(scale: CGFloat) -> some View {
+        let scale = max(scale, 0.3)
+        let centerIdx = Int(deckPosition.rounded())
+        let lo = max(0, min(activeIndex, centerIdx) - 1)
+        let hi = min(deckCards.count - 1, max(activeIndex, centerIdx) + 2)
+
+        return ZStack {
+            ForEach(lo...hi, id: \.self) { idx in
+                let item = deckCards[idx]
+                let delta = CGFloat(idx) - deckPosition
+                let pose = CardStackPose.pose(forDelta: delta)
+                let isTop = idx == activeIndex
+
+                Group {
+                    if isTop {
+                        interactiveCard(scale: scale)
+                    } else {
+                        stackedNeighborCard(item, scale: scale)
+                    }
+                }
+                .scaleEffect(pose.scale)
+                .rotationEffect(.degrees(pose.rotationDegrees))
+                .offset(x: pose.offsetX * scale, y: pose.offsetY * scale)
+                .opacity(isTop ? pose.opacity : (appeared ? pose.opacity : 0))
+                .zIndex(pose.zIndex)
+            }
+        }
+        .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+    }
+
+    private func stackedNeighborCard(_ neighbor: HeadphoneCard, scale: CGFloat) -> some View {
+        let neighborColor = colorStore?.selectedColor(for: neighbor) ?? DeviceColorOption.defaultOption(for: neighbor.modelKey)
+        return CardFront(card: neighbor, tilt: .zero, showSymbol: true, colorOption: neighborColor, isCurrentlyWorn: false)
+            .scaleEffect(scale)
+            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .shadow(color: .black.opacity(0.45), radius: 22, y: 12)
+            .allowsHitTesting(false)
+    }
+
     private func interactiveCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        let cardTransition = AnyTransition.asymmetric(
-            insertion: .move(edge: slideDirection >= 0 ? .trailing : .leading).combined(with: .opacity),
-            removal: .move(edge: slideDirection >= 0 ? .leading : .trailing).combined(with: .opacity)
-        )
         return flipCard
             .id(card.id)
-            .transition(cardTransition)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
             .matchedGeometryEffect(id: card.id, in: namespace)

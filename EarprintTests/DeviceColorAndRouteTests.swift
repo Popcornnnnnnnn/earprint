@@ -64,4 +64,26 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertNil(CardDeckNavigation.neighbor(of: cards[2], in: cards, step: 1))
         XCTAssertNil(CardDeckNavigation.neighbor(of: cards[0], in: [cards[0]], step: 1))
     }
+
+    func testCardStackPoseForActiveBehindAndDealtCards() {
+        let top = CardStackPose.pose(forDelta: 0)
+        XCTAssertEqual(top.offsetX, 0)
+        XCTAssertEqual(top.offsetY, 0)
+        XCTAssertEqual(top.scale, 1.0)
+        XCTAssertEqual(top.rotationDegrees, 0)
+        XCTAssertEqual(top.opacity, 1.0)
+
+        let behind = CardStackPose.pose(forDelta: 1)
+        XCTAssertGreaterThan(behind.offsetX, 0)
+        XCTAssertGreaterThan(behind.offsetY, 0)
+        XCTAssertLessThan(behind.scale, 1.0)
+        XCTAssertGreaterThan(behind.rotationDegrees, 0)
+        XCTAssertLessThan(behind.zIndex, top.zIndex)
+
+        let dealt = CardStackPose.pose(forDelta: -1)
+        XCTAssertLessThan(dealt.offsetX, -200)
+        XCTAssertLessThan(dealt.rotationDegrees, -10)
+        XCTAssertLessThan(dealt.opacity, 0.1)
+        XCTAssertGreaterThan(dealt.zIndex, top.zIndex)
+    }
 }
