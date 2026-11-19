@@ -179,6 +179,15 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five"]))
         XCTAssertNil(cards.first { $0.id == "lid:five" }?.modelAssetName)
         XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
+
+        guard let summary = snapshot.homeSummary(now: now, calendar: utcCalendar) else {
+            return XCTFail("Real listening should still produce a summary")
+        }
+        let widget = WidgetSnapshot(summary: summary, cards: cards, isSample: false, listening: snapshot,
+                                    now: now, calendar: utcCalendar)
+        XCTAssertEqual(widget.today.minutes, 50, accuracy: 0.001)
+        XCTAssertEqual(widget.today.decibels ?? 0, 62, accuracy: 0.001)
+        XCTAssertEqual(Set(widget.cards.map(\.id)), Set(cards.map(\.id)))
     }
 
     #if DEBUG

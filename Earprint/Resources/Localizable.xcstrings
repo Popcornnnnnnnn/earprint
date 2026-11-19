@@ -671,12 +671,12 @@
         }
       }
     },
-    "Detailed sessions and grades are illustrative.": {
+    "Dossier details are illustrative.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "详细聆听记录和评分仅供示例。"
+            "value": "档案详情仅供示例。"
           }
         }
       }

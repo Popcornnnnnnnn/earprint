@@ -211,12 +211,12 @@ enum DateText {
         return format.string(from: date)
     }
 
-    /// "Today", "Yesterday", "Sep 2", or "2024.12.25" for other years.
+    /// Stable date strings consumed by the sample dossier's parser.
     static func relativeDay(_ date: Date, now: Date, calendar: Calendar) -> String {
-        if calendar.isDate(date, inSameDayAs: now) { return AppLanguage.current.text("Today") }
-        if let y = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: y) { return AppLanguage.current.text("Yesterday") }
+        if calendar.isDate(date, inSameDayAs: now) { return "Today" }
+        if let y = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: y) { return "Yesterday" }
         if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
-            return monthDay(date, calendar: calendar)
+            return formatter("MMM d", calendar: calendar).string(from: date)
         }
         return dotted(date, calendar: calendar)
     }

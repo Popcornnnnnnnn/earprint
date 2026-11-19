@@ -46,7 +46,7 @@ struct DeviceDossierView: View {
                                 Label("Sample breakdown", systemImage: "info.circle")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Theme.moderate.color)
-                                Text("Detailed sessions and grades are illustrative.")
+                                Text("Dossier details are illustrative.")
                                     .font(.footnote)
                                     .foregroundStyle(Theme.secondaryText)
                             }
