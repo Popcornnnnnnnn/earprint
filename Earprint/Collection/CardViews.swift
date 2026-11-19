@@ -43,18 +43,33 @@ struct FoilSurface: View {
     }
 }
 
+/// Subtle LED-style green indicator shown quietly on a card when that pair is currently connected/worn.
+struct ActiveWearDot: View {
+    var body: some View {
+        Circle()
+            .fill(Color(red: 0.20, green: 0.84, blue: 0.44))
+            .frame(width: 7, height: 7)
+            .shadow(color: Color(red: 0.20, green: 0.84, blue: 0.44).opacity(0.65), radius: 3.5)
+            .accessibilityLabel("Currently connected")
+    }
+}
+
 /// Realistic transparent 3D product render for a headphone card (used on card faces & thumbnails).
 struct HeadphoneArtwork: View {
     let card: HeadphoneCard
+    var colorOption: DeviceColorOption? = nil
 
     private var assetName: String {
+        if let custom = colorOption?.cardAssetName, UIImage(named: custom) != nil {
+            return custom
+        }
         switch card.modelKey {
         case .airpodsPro:
             return "CardRenderAirPodsPro"
         case .airpods, .airpods3, .earbudsGeneric:
             return "CardRenderAirPodsOpen"
         case .beatsEarbuds, .beatsEarhook:
-            return "CardRenderBeatsFit"
+            return "CardRenderBeatsFitBlack"
         case .airpodsMax, .beatsOverEar, .overEarGeneric:
             return "CardRenderAirPodsMax"
         }
@@ -78,6 +93,8 @@ struct HeadphoneArtwork: View {
 struct CardHorizontalFront: View {
     let card: HeadphoneCard
     var tilt: CGSize = .zero
+    var colorOption: DeviceColorOption? = nil
+    var isCurrentlyWorn: Bool = false
 
     var body: some View {
         let ink = card.rarity.ink
@@ -92,9 +109,14 @@ struct CardHorizontalFront: View {
                     .background(.black.opacity(0.28), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                Text(String(format: "#%04d", card.serial))
-                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(ink.opacity(0.55))
+                HStack(spacing: 6) {
+                    if isCurrentlyWorn {
+                        ActiveWearDot()
+                    }
+                    Text(String(format: "#%04d", card.serial))
+                        .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(ink.opacity(0.55))
+                }
             }
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -128,7 +150,7 @@ struct CardHorizontalFront: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                HeadphoneArtwork(card: card)
+                HeadphoneArtwork(card: card, colorOption: colorOption)
                     .frame(width: 128, height: 128)
                     .offset(x: tilt.width * -6, y: tilt.height * -6)
             }
@@ -152,6 +174,8 @@ struct CardFront: View {
     var tilt: CGSize = .zero
     /// Hidden when a live 3D model is drawn on top of the card instead.
     var showSymbol = true
+    var colorOption: DeviceColorOption? = nil
+    var isCurrentlyWorn: Bool = false
 
     var body: some View {
         let ink = card.rarity.ink
@@ -164,14 +188,19 @@ struct CardFront: View {
                     .background(.black.opacity(0.28), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                Text(String(format: "#%04d", card.serial))
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(ink.opacity(0.6))
+                HStack(spacing: 6) {
+                    if isCurrentlyWorn {
+                        ActiveWearDot()
+                    }
+                    Text(String(format: "#%04d", card.serial))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(ink.opacity(0.6))
+                }
             }
 
             Spacer()
 
-            HeadphoneArtwork(card: card)
+            HeadphoneArtwork(card: card, colorOption: colorOption)
                 .frame(height: 165)
                 .opacity(showSymbol ? 1 : 0)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)

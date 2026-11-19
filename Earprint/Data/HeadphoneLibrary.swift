@@ -63,7 +63,11 @@ final class HeadphoneLibrary: ObservableObject {
         if let snapshot, !snapshot.isEmpty {
             return snapshot.cards()
         }
+        #if DEBUG
         return SampleCards.all
+        #else
+        return []
+        #endif
     }
 
     var homeSummary: ListeningSummary {
@@ -133,6 +137,11 @@ final class HeadphoneLibrary: ObservableObject {
         if authStatus == .unnecessary || snapshot != nil {
             await sync()
             await ensureObserving()
+        } else {
+            #if !targetEnvironment(simulator)
+            // On real devices, request Apple Health automatically on first launch so real headphones appear immediately.
+            await connectAndSync()
+            #endif
         }
     }
 

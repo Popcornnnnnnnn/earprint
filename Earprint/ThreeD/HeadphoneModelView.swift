@@ -57,6 +57,9 @@ final class ModelRig {
     var dragging = false
     var zoom: Float = 1
     var idleSpin: Float = 0.45
+    var loadedModel: Entity?
+    var appliedFinishID: String?
+    var iblReceiver: ImageBasedLightReceiverComponent?
     private var subscription: EventSubscription?
     private var lastTranslation: CGSize = .zero
     private var appear: Float = 0
@@ -130,6 +133,8 @@ final class ModelRig {
 struct HeadphoneModelView: View {
     let kind: HeadphoneKind
     let finish: HeadphoneFinish
+    var finishID: String = "default"
+    var modelKey: HeadphoneModelKey = .overEarGeneric
     var assetName: String? = nil
     var tint: [UIColor] = []
     var tilt: CGSize = .zero
@@ -166,17 +171,39 @@ struct HeadphoneModelView: View {
             content.add(rig.root)
             rig.attach(to: content)
 
-            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, size: 0.17)
+            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, modelKey: modelKey, size: 0.17)
+            rig.loadedModel = model
+            rig.appliedFinishID = finishID
             rig.spinPivot.addChild(model)
 
             if let environment = try? await StudioEnvironment.make(tint: tint) {
                 let light = Entity()
                 light.components.set(ImageBasedLightComponent(source: .single(environment), intensityExponent: 1.3))
                 content.add(light)
-                applyReceiver(ImageBasedLightReceiverComponent(imageBasedLight: light), to: model)
+                let receiver = ImageBasedLightReceiverComponent(imageBasedLight: light)
+                rig.iblReceiver = receiver
+                applyReceiver(receiver, to: model)
             }
         } update: { _ in
             rig.applyTilt(tilt)
+            if let currentModel = rig.loadedModel, rig.appliedFinishID != finishID {
+                rig.appliedFinishID = finishID
+                if (assetName ?? kind.assetName).isEmpty {
+                    // Procedural model (e.g. Beats Fit Pro): swap smoothly in place keeping spin orientation.
+                    let replacement = HeadphoneModelLoader.normalized(
+                        ProceduralHeadphones.make(kind, finish: finish),
+                        size: 0.17
+                    )
+                    if let receiver = rig.iblReceiver {
+                        applyReceiver(receiver, to: replacement)
+                    }
+                    currentModel.removeFromParent()
+                    rig.spinPivot.addChild(replacement)
+                    rig.loadedModel = replacement
+                } else {
+                    HeadphoneModelLoader.applyFinish(finish, to: currentModel, modelKey: modelKey)
+                }
+            }
         }
         .gesture(
             DragGesture(minimumDistance: 2)

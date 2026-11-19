@@ -16,6 +16,8 @@ struct CollectionView: View {
     @State private var demoStarted = false
     /// Set by widget deep links (`earprint://card/<id>`). Optional so previews work without it.
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
+    @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
+    @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
     @State private var space = LayoutSpace()
 
     var body: some View {
@@ -26,16 +28,11 @@ struct CollectionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                         .padding(.horizontal, 18)
-                    if isSampleData {
-                        SampleDataBanner(
-                            badgeText: sampleBadgeText,
-                            detail: statusMessage,
-                            isLoading: isLoading,
-                            onConnect: onConnectHealth
-                        )
-                        .padding(.horizontal, 18)
-                    }
-                    if space.isWide || space.verticalFold != nil {
+                    if cards.isEmpty {
+                        emptyCollectionState
+                            .padding(.horizontal, 18)
+                            .padding(.top, 24)
+                    } else if space.isWide || space.verticalFold != nil {
                         // Wide / iPhone Duo displays keep multi-column cards aligned clear of the hinge.
                         let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 210)
                         LazyVGrid(columns: grid.columns, spacing: 14) {
@@ -64,9 +61,15 @@ struct CollectionView: View {
             .readLayoutSpace($space)
 
             if let card = selected {
-                CardDetail(card: card, namespace: hero, openDossier: {
-                    dossierCard = card
-                }) {
+                CardDetail(
+                    card: card,
+                    namespace: hero,
+                    colorStore: colorStore,
+                    isCurrentlyWorn: routeMonitor?.isCurrentlyWorn(card) ?? false,
+                    openDossier: {
+                        dossierCard = card
+                    }
+                ) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
                 }
                 .id(card.id)
@@ -106,7 +109,7 @@ struct CollectionView: View {
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("My headphones").font(.system(size: 30, weight: .heavy))
-                Text("\(cards.count) cards · \(total.minutesText) together")
+                Text(cards.isEmpty ? "Listening archive" : "\(cards.count) cards · \(total.minutesText) together")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.55))
             }
@@ -114,17 +117,8 @@ struct CollectionView: View {
             Button {
                 showIconPicker = true
             } label: {
-                HStack(spacing: 8) {
-                    AppIconThumbnail(choice: iconManager.current, size: 30)
-                    Text("Icon")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                .padding(.leading, 5)
-                .padding(.trailing, 11)
-                .padding(.vertical, 5)
-                .background(.white.opacity(0.08), in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+                AppIconThumbnail(choice: iconManager.current, size: 38)
+                    .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Change app icon")
@@ -132,15 +126,49 @@ struct CollectionView: View {
         .padding(.top, 12)
     }
 
+    private var emptyCollectionState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "headphones")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(.white.opacity(0.45))
+            Text(isLoading ? "Reading Apple Health…" : "No headphones recorded yet")
+                .font(.headline)
+            Text("Wear your AirPods or Beats while listening and Earprint will mint a collectible card automatically.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.52))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+            if let onConnectHealth, !isLoading {
+                Button(action: onConnectHealth) {
+                    Text("Sync Apple Health")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 44)
+        .padding(.horizontal, 20)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.white.opacity(0.04)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 1))
+    }
+
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
-        ZStack {
+        let color = colorStore?.selectedColor(for: card)
+        let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
+        return ZStack {
             if selected != card {
-                CardHorizontalFront(card: card)
+                CardHorizontalFront(card: card, colorOption: color, isCurrentlyWorn: worn)
                     .matchedGeometryEffect(id: card.id, in: hero)
                     .shadow(color: card.rarity.glow.opacity(0.32), radius: 16, y: 8)
                     .transition(.identity)
             } else {
-                Color.clear.frame(height: 186)
+                Color.clear.frame(height: 188)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -150,9 +178,11 @@ struct CollectionView: View {
     }
 
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
-        ZStack {
+        let color = colorStore?.selectedColor(for: card)
+        let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
+        return ZStack {
             if selected != card {
-                ScaledCard { CardFront(card: card) }
+                ScaledCard { CardFront(card: card, colorOption: color, isCurrentlyWorn: worn) }
                     .matchedGeometryEffect(id: card.id, in: hero)
                     .shadow(color: card.rarity.glow.opacity(0.35), radius: 14, y: 8)
                     .transition(.identity)
@@ -241,6 +271,8 @@ struct CollectionView: View {
 struct CardDetail: View {
     let card: HeadphoneCard
     let namespace: Namespace.ID
+    var colorStore: DeviceColorStore? = nil
+    var isCurrentlyWorn: Bool = false
     var openDossier: () -> Void = {}
     let close: () -> Void
 
@@ -249,7 +281,24 @@ struct CardDetail: View {
     @State private var angle: Double = 0
     @State private var dragTilt: CGSize = .zero
     @State private var appeared = false
+    @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
+
+    private var availableColors: [DeviceColorOption] {
+        colorStore?.availableColors(for: card) ?? DeviceColorOption.options(for: card.modelKey)
+    }
+
+    private var selectedColor: DeviceColorOption? {
+        colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
+    }
+
+    private var resolvedFinish: HeadphoneFinish {
+        selectedColor?.modelFinish ?? card.finish
+    }
+
+    private var resolvedFinishID: String {
+        selectedColor?.id ?? "default"
+    }
 
     private var tilt: CGSize {
         dragTilt == .zero ? motion.tilt : dragTilt
@@ -309,9 +358,10 @@ struct CardDetail: View {
         let size = space.size
         switch mode {
         case .single:
-            // Text + buttons take about 120 pt. Never grow on phones; grow a little on big screens.
-            let scale = min(space.isWide ? 1.35 : 1, (size.height - 120) / design.height, (size.width - 40) / design.width)
-            VStack(spacing: 22) {
+            // Text + buttons take about 120 pt (or 176 pt when the color swatch strip is open).
+            let controlsHeight: CGFloat = (showColorBar && availableColors.count > 1) ? 176 : 120
+            let scale = min(space.isWide ? 1.35 : 1, (size.height - controlsHeight) / design.height, (size.width - 40) / design.width)
+            VStack(spacing: 20) {
                 interactiveCard(scale: scale)
                 hint
                 buttons
@@ -391,12 +441,86 @@ struct CardDetail: View {
     }
 
     private var buttons: some View {
-        HStack(spacing: 10) {
-            pillButton("Dossier", "doc.text.magnifyingglass", highlighted: true, action: openDossier)
-            pillButton("Share card", "square.and.arrow.up")
-            pillButton("Close", "xmark", action: close)
+        VStack(spacing: 12) {
+            if showColorBar && availableColors.count > 1 {
+                deviceColorStrip
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            HStack(spacing: 10) {
+                pillButton("Dossier", "doc.text.magnifyingglass", highlighted: true, action: openDossier)
+                if availableColors.count > 1, let active = selectedColor {
+                    colorToggleButton(active)
+                }
+                pillButton("Close", "xmark", action: close)
+            }
         }
         .opacity(appeared ? 1 : 0)
+        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showColorBar)
+    }
+
+    private func colorToggleButton(_ active: DeviceColorOption) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showColorBar.toggle()
+        } label: {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(LinearGradient(colors: [active.swatchTop, active.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 15, height: 15)
+                    .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 1))
+                Text(active.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .foregroundStyle(.white)
+            .background(
+                Capsule().fill(showColorBar ? .white.opacity(0.24) : .white.opacity(0.12))
+            )
+            .overlay(
+                Capsule().strokeBorder(.white.opacity(showColorBar ? 0.4 : 0.0), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Change device color, currently \(active.title)")
+    }
+
+    private var deviceColorStrip: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                ForEach(availableColors) { option in
+                    let isSelected = option == selectedColor
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        colorStore?.select(option, for: card)
+                    } label: {
+                        ZStack {
+                            if isSelected {
+                                Circle()
+                                    .strokeBorder(.white, lineWidth: 2)
+                                    .frame(width: 34, height: 34)
+                            }
+                            Circle()
+                                .fill(LinearGradient(colors: [option.swatchTop, option.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 26, height: 26)
+                                .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 0.9))
+                        }
+                        .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.title)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: 330)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
     }
 
     private var flipCard: some View {
@@ -413,13 +537,21 @@ struct CardDetail: View {
     /// The card front with a live 3D model that pops out above the card's top edge.
     private var frontWithModel: some View {
         ZStack {
-            CardFront(card: card, tilt: tilt, showSymbol: false)
+            CardFront(card: card, tilt: tilt, showSymbol: false, colorOption: selectedColor, isCurrentlyWorn: isCurrentlyWorn)
             Ellipse()
                 .fill(.black.opacity(0.35))
                 .frame(width: 150, height: 18)
                 .blur(radius: 10)
                 .offset(x: -tilt.width * 10, y: 40)
-            HeadphoneModelView(kind: card.kind, finish: card.finish, assetName: card.modelAssetName, tint: card.foilTint, tilt: tilt)
+            HeadphoneModelView(
+                kind: card.kind,
+                finish: resolvedFinish,
+                finishID: resolvedFinishID,
+                modelKey: card.modelKey,
+                assetName: card.modelAssetName,
+                tint: card.foilTint,
+                tilt: tilt
+            )
                 .frame(width: 340, height: 300)
                 .offset(y: -62)
         }

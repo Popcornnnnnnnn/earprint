@@ -21,14 +21,6 @@ struct HomeView: View {
                     HStack(alignment: .top, spacing: split.gap) {
                         VStack(alignment: .leading, spacing: 18) {
                             header
-                            if isSampleData {
-                                SampleDataBanner(
-                                    badgeText: sampleBadgeText,
-                                    detail: statusMessage,
-                                    isLoading: isLoading,
-                                    onConnect: onConnectHealth
-                                )
-                            }
                             hero(width: split.leading)
                             legend
                         }
@@ -46,14 +38,6 @@ struct HomeView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 18) {
                         header
-                        if isSampleData {
-                            SampleDataBanner(
-                                badgeText: sampleBadgeText,
-                                detail: statusMessage,
-                                isLoading: isLoading,
-                                onConnect: onConnectHealth
-                            )
-                        }
                         hero(width: max(300, space.size.width - 40))
                         legend
                         personaCard

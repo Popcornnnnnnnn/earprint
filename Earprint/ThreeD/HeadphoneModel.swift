@@ -207,19 +207,103 @@ enum ProceduralHeadphones {
 }
 
 enum HeadphoneModelLoader {
+    /// AirPodsMax.usdz material name buckets discovered via `usdcat`.
+    /// Neutral chrome stems, gold pins, and pure-black acoustic vents are intentionally excluded.
+    private static let airPodsMaxShellMaterials: Set<String> = [
+        "oCppDZKIKMUCOIr", "IONYLTjXhCrWCDx"
+    ]
+    private static let airPodsMaxAccentMaterials: Set<String> = [
+        "CufifJQVFGKEXjK", "DiaLtZsVVXWBwMe", "XnHBntWOhvrYYYt"
+    ]
+    private static let airPodsMaxCushionMaterials: Set<String> = [
+        "OeMmmEEWkMBwwgR", "fZEVSQIaNKfmlij", "DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC",
+        "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
+    ]
+
     /// Loads the bundled USDZ if present (matching `assetName`, or `kind.assetName` if omitted), otherwise the procedural model.
     @MainActor
-    static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, assetName: String? = nil, size: Float = 0.2) async -> Entity {
+    static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, assetName: String? = nil, modelKey: HeadphoneModelKey = .overEarGeneric, size: Float = 0.2) async -> Entity {
         let model: Entity
         let resolvedName = assetName ?? kind.assetName
+        let loadedFromUSDZ: Bool
         if !resolvedName.isEmpty,
            Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil,
            let asset = try? await Entity(named: resolvedName, in: .main) {
             model = asset
+            loadedFromUSDZ = true
         } else {
             model = ProceduralHeadphones.make(kind, finish: finish)
+            loadedFromUSDZ = false
         }
-        return normalized(model, size: size)
+        let wrapped = normalized(model, size: size)
+        if loadedFromUSDZ {
+            applyFinish(finish, to: wrapped, modelKey: modelKey)
+        }
+        return wrapped
+    }
+
+    /// Updates materials on an already-loaded 3D entity in place when the user changes device color.
+    @MainActor
+    static func applyFinish(_ finish: HeadphoneFinish, to entity: Entity, modelKey: HeadphoneModelKey) {
+        switch modelKey {
+        case .airpodsMax:
+            recolorAirPodsMax(entity, finish: finish)
+        case .beatsOverEar:
+            recolorGenericOverEar(entity, finish: finish)
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private static func recolorAirPodsMax(_ entity: Entity, finish: HeadphoneFinish) {
+        if let modelEntity = entity as? ModelEntity, var modelComp = modelEntity.model {
+            var changed = false
+            modelComp.materials = modelComp.materials.map { material in
+                guard var pbr = material as? PhysicallyBasedMaterial, let name = pbr.name else {
+                    return material
+                }
+                if airPodsMaxShellMaterials.contains(name) {
+                    pbr.baseColor = .init(tint: finish.shell)
+                    pbr.metallic = .init(floatLiteral: finish.metallic)
+                    pbr.roughness = .init(floatLiteral: finish.roughness)
+                    changed = true
+                    return pbr
+                }
+                if airPodsMaxAccentMaterials.contains(name) {
+                    pbr.baseColor = .init(tint: finish.accent)
+                    changed = true
+                    return pbr
+                }
+                if airPodsMaxCushionMaterials.contains(name) {
+                    pbr.baseColor = .init(tint: finish.cushion)
+                    changed = true
+                    return pbr
+                }
+                return material
+            }
+            if changed {
+                modelEntity.model = modelComp
+            }
+        }
+        for child in entity.children {
+            recolorAirPodsMax(child, finish: finish)
+        }
+    }
+
+    @MainActor
+    private static func recolorGenericOverEar(_ entity: Entity, finish: HeadphoneFinish) {
+        if let modelEntity = entity as? ModelEntity, var modelComp = modelEntity.model {
+            modelComp.materials = modelComp.materials.map { material in
+                guard var pbr = material as? PhysicallyBasedMaterial else { return material }
+                pbr.baseColor = .init(tint: finish.shell)
+                return pbr
+            }
+            modelEntity.model = modelComp
+        }
+        for child in entity.children {
+            recolorGenericOverEar(child, finish: finish)
+        }
     }
 
     @MainActor

@@ -4,6 +4,8 @@ import SwiftUI
 struct EarprintApp: App {
     @StateObject private var library = HeadphoneLibrary()
     @State private var router = DeepLinkRouter()
+    @State private var colorStore = DeviceColorStore()
+    @State private var routeMonitor = ActiveAudioRouteMonitor()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -31,16 +33,21 @@ struct EarprintApp: App {
                 .tabItem { Label("Rings", systemImage: "circle.hexagongrid") }
                 .tag(DeepLinkRouter.Tab.rings)
 
+                #if DEBUG
                 ProbeView(library: library)
                     .tabItem { Label("Data probe", systemImage: "waveform") }
                     .tag(DeepLinkRouter.Tab.probe)
+                #endif
             }
             .environment(router)
+            .environment(colorStore)
+            .environment(routeMonitor)
             .preferredColorScheme(.dark)
             // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, ...
             .onOpenURL { router.handle($0) }
             .task {
                 applyLaunchTab()
+                routeMonitor.refresh()
                 publishWidgets()
                 await library.start()
                 publishWidgets()
@@ -64,6 +71,7 @@ struct EarprintApp: App {
                 publishWidgets()
             }
             .onChange(of: scenePhase) { _, phase in
+                if phase == .active { routeMonitor.refresh() }
                 if phase == .background { publishWidgets() }
             }
         }
