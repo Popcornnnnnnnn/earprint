@@ -211,12 +211,16 @@ struct CardFront: View {
             Text(card.nickname)
                 .font(.system(size: 17, weight: .bold))
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text(card.model)
                 .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
                 .opacity(0.65)
             Text(card.lifetimeMinutes.minutesText)
-                .font(.system(size: 44, weight: .black, design: .rounded))
+                .font(.system(size: 42, weight: .black, design: .rounded))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.58)
                 .padding(.top, 2)
 
             HStack {

@@ -136,6 +136,7 @@ struct HeadphoneModelView: View {
     var finishID: String = "default"
     var modelKey: HeadphoneModelKey = .overEarGeneric
     var assetName: String? = nil
+    var modelSize: Float = 0.145
     var tint: [UIColor] = []
     var tilt: CGSize = .zero
 
@@ -171,7 +172,7 @@ struct HeadphoneModelView: View {
             content.add(rig.root)
             rig.attach(to: content)
 
-            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, modelKey: modelKey, size: 0.17)
+            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, modelKey: modelKey, size: modelSize)
             rig.loadedModel = model
             rig.appliedFinishID = finishID
             rig.spinPivot.addChild(model)
@@ -192,7 +193,7 @@ struct HeadphoneModelView: View {
                     // Procedural model (e.g. Beats Fit Pro): swap smoothly in place keeping spin orientation.
                     let replacement = HeadphoneModelLoader.normalized(
                         ProceduralHeadphones.make(kind, finish: finish),
-                        size: 0.17
+                        size: modelSize
                     )
                     if let receiver = rig.iblReceiver {
                         applyReceiver(receiver, to: replacement)
@@ -211,7 +212,7 @@ struct HeadphoneModelView: View {
                 .onEnded { rig.dragEnded($0) }
                 .simultaneously(with:
                     MagnifyGesture()
-                        .onChanged { rig.zoom = Float(max(0.7, min(1.7, $0.magnification))) }
+                        .onChanged { rig.zoom = Float(max(0.75, min(1.35, $0.magnification))) }
                         .onEnded { _ in rig.zoom = 1 })
         )
         .onLongPressGesture(minimumDuration: 0.35) {

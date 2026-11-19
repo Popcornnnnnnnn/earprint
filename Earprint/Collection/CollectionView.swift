@@ -63,16 +63,19 @@ struct CollectionView: View {
             if let card = selected {
                 CardDetail(
                     card: card,
+                    cards: cards,
                     namespace: hero,
                     colorStore: colorStore,
                     isCurrentlyWorn: routeMonitor?.isCurrentlyWorn(card) ?? false,
+                    onSelectCard: { next in
+                        selected = next
+                    },
                     openDossier: {
                         dossierCard = card
                     }
                 ) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
                 }
-                .id(card.id)
                 .zIndex(1)
             }
         }
@@ -268,11 +271,28 @@ struct CollectionView: View {
     }
 }
 
+/// Pure helper for switching between cards in `CardDetail` via outside-the-card horizontal swipes.
+enum CardDeckNavigation {
+    static func index(of card: HeadphoneCard, in cards: [HeadphoneCard]) -> Int? {
+        cards.firstIndex(where: { $0.id == card.id })
+    }
+
+    /// Returns the neighboring card (`step = +1` for next / swipe left, `step = -1` for previous / swipe right).
+    static func neighbor(of card: HeadphoneCard, in cards: [HeadphoneCard], step: Int) -> HeadphoneCard? {
+        guard cards.count > 1, let current = index(of: card, in: cards) else { return nil }
+        let target = current + step
+        guard target >= 0, target < cards.count else { return nil }
+        return cards[target]
+    }
+}
+
 struct CardDetail: View {
     let card: HeadphoneCard
+    var cards: [HeadphoneCard] = []
     let namespace: Namespace.ID
     var colorStore: DeviceColorStore? = nil
     var isCurrentlyWorn: Bool = false
+    var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
     let close: () -> Void
 
@@ -280,6 +300,8 @@ struct CardDetail: View {
     @State private var flipped = false
     @State private var angle: Double = 0
     @State private var dragTilt: CGSize = .zero
+    @State private var backdropDragX: CGFloat = 0
+    @State private var slideDirection: CGFloat = 1
     @State private var appeared = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
@@ -298,6 +320,10 @@ struct CardDetail: View {
 
     private var resolvedFinishID: String {
         selectedColor?.id ?? "default"
+    }
+
+    private var currentCardIndex: Int? {
+        CardDeckNavigation.index(of: card, in: cards)
     }
 
     private var tilt: CGSize {
@@ -336,14 +362,26 @@ struct CardDetail: View {
                 .overlay(Color.black.opacity(0.55))
                 .ignoresSafeArea()
                 .opacity(appeared ? 1 : 0)
+                .contentShape(Rectangle())
                 .onTapGesture(perform: close)
+                .gesture(backdropSwipe)
 
             layout
+                .offset(x: backdropDragX)
+        }
+        .overlay(alignment: .topTrailing) {
+            topCloseButton
         }
         .readLayoutSpace($space)
         .onChange(of: mode) { _, newMode in
             // Side by side already shows the back, so keep the left card on its front.
             if newMode == .sideBySide && flipped { flip(force: true) }
+        }
+        .onChange(of: card.id) { _, _ in
+            flipped = false
+            angle = 0
+            dragTilt = .zero
+            showColorBar = false
         }
         .onAppear {
             motion.start()
@@ -353,26 +391,87 @@ struct CardDetail: View {
         .onDisappear { motion.stop() }
     }
 
+    private var topCloseButton: some View {
+        Button(action: close) {
+            Image(systemName: "xmark")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: 36, height: 36)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 1))
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 14)
+        .padding(.trailing, 18)
+        .opacity(appeared ? 1 : 0)
+        .accessibilityLabel("Close")
+    }
+
+    /// Horizontal swipe on the backdrop outside the card switches between headphones.
+    private var backdropSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                guard cards.count > 1 else { return }
+                let dx = value.translation.width
+                let dy = value.translation.height
+                guard abs(dx) > abs(dy) * 1.1 else { return }
+                let canMove = (dx < 0 && CardDeckNavigation.neighbor(of: card, in: cards, step: 1) != nil)
+                    || (dx > 0 && CardDeckNavigation.neighbor(of: card, in: cards, step: -1) != nil)
+                backdropDragX = canMove ? dx * 0.42 : dx * 0.14
+            }
+            .onEnded { value in
+                guard cards.count > 1 else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { backdropDragX = 0 }
+                    return
+                }
+                let dx = value.translation.width
+                let predicted = value.predictedEndTranslation.width
+                let dy = value.translation.height
+                let isHorizontal = abs(dx) > abs(dy) * 1.1
+
+                let step: Int? = if isHorizontal && (dx < -55 || predicted < -140) {
+                    1
+                } else if isHorizontal && (dx > 55 || predicted > 140) {
+                    -1
+                } else {
+                    nil
+                }
+
+                if let step, let next = CardDeckNavigation.neighbor(of: card, in: cards, step: step) {
+                    slideDirection = CGFloat(step)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+                        backdropDragX = 0
+                        onSelectCard(next)
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        backdropDragX = 0
+                    }
+                }
+            }
+    }
+
     @ViewBuilder private var layout: some View {
         let design = CardMetrics.size
         let size = space.size
         switch mode {
         case .single:
-            // Text + buttons take about 120 pt (or 176 pt when the color swatch strip is open).
-            let controlsHeight: CGFloat = (showColorBar && availableColors.count > 1) ? 176 : 120
+            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 176 : 126) : 76
             let scale = min(space.isWide ? 1.35 : 1, (size.height - controlsHeight) / design.height, (size.width - 40) / design.width)
-            VStack(spacing: 20) {
+            VStack(spacing: 18) {
                 interactiveCard(scale: scale)
-                hint
-                buttons
+                hintAndDots
+                colorControls
             }
         case .besideControls:
             let scale = min(1, (size.height - 24) / design.height, (size.width * 0.6) / design.width)
             HStack(spacing: 32) {
                 interactiveCard(scale: scale)
                 VStack(spacing: 18) {
-                    hint
-                    buttons
+                    hintAndDots
+                    colorControls
                 }
             }
         case .sideBySide:
@@ -381,13 +480,13 @@ struct CardDetail: View {
             HStack(alignment: .top, spacing: split.gap) {
                 VStack(spacing: 18) {
                     interactiveCard(scale: scale)
-                    hint
+                    hintAndDots
                         .frame(minHeight: 42)
                 }
                 .frame(width: split.leading)
                 VStack(spacing: 18) {
                     backCard(scale: scale)
-                    buttons
+                    colorControls
                 }
                 .frame(width: split.trailing)
             }
@@ -402,8 +501,8 @@ struct CardDetail: View {
                     .frame(height: max(0, fold.minY))
                 Color.clear.frame(height: fold.height)
                 VStack(spacing: 16) {
-                    hint
-                    buttons
+                    hintAndDots
+                    colorControls
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -412,7 +511,13 @@ struct CardDetail: View {
 
     private func interactiveCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
+        let cardTransition = AnyTransition.asymmetric(
+            insertion: .move(edge: slideDirection >= 0 ? .trailing : .leading).combined(with: .opacity),
+            removal: .move(edge: slideDirection >= 0 ? .leading : .trailing).combined(with: .opacity)
+        )
         return flipCard
+            .id(card.id)
+            .transition(cardTransition)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
             .matchedGeometryEffect(id: card.id, in: namespace)
@@ -427,36 +532,46 @@ struct CardDetail: View {
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
         return CardBack(card: card, revealed: appeared)
+            .id(card.id)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
             .shadow(color: card.rarity.glow.opacity(0.4), radius: 24, y: 14)
             .opacity(appeared ? 1 : 0)
     }
 
-    private var hint: some View {
-        Text(mode == .sideBySide ? "Drag or tilt · swipe up for dossier" : flipped ? "Tap to flip back" : "Tap to flip · swipe up for dossier")
-            .font(.footnote)
-            .foregroundStyle(.white.opacity(0.5))
-            .opacity(appeared ? 1 : 0)
-    }
-
-    private var buttons: some View {
-        VStack(spacing: 12) {
-            if showColorBar && availableColors.count > 1 {
-                deviceColorStrip
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-
-            HStack(spacing: 10) {
-                pillButton("Dossier", "doc.text.magnifyingglass", highlighted: true, action: openDossier)
-                if availableColors.count > 1, let active = selectedColor {
-                    colorToggleButton(active)
+    private var hintAndDots: some View {
+        VStack(spacing: 10) {
+            Text(mode == .sideBySide ? "Drag or tilt · swipe up for dossier" : flipped ? "Tap to flip back" : "Tap to flip · swipe up for dossier")
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.52))
+            if cards.count > 1, let activeIndex = currentCardIndex {
+                HStack(spacing: 6) {
+                    ForEach(cards.indices, id: \.self) { idx in
+                        Capsule()
+                            .fill(idx == activeIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.24))
+                            .frame(width: idx == activeIndex ? 16 : 6, height: 6)
+                    }
                 }
-                pillButton("Close", "xmark", action: close)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: activeIndex)
             }
         }
         .opacity(appeared ? 1 : 0)
-        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showColorBar)
+        .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private var colorControls: some View {
+        if availableColors.count > 1, let active = selectedColor {
+            VStack(spacing: 12) {
+                if showColorBar {
+                    deviceColorStrip
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                colorToggleButton(active)
+            }
+            .opacity(appeared ? 1 : 0)
+            .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showColorBar)
+        }
     }
 
     private func colorToggleButton(_ active: DeviceColorOption) -> some View {
@@ -473,14 +588,14 @@ struct CardDetail: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
             .foregroundStyle(.white)
             .background(
                 Capsule().fill(showColorBar ? .white.opacity(0.24) : .white.opacity(0.12))
             )
             .overlay(
-                Capsule().strokeBorder(.white.opacity(showColorBar ? 0.4 : 0.0), lineWidth: 1)
+                Capsule().strokeBorder(.white.opacity(showColorBar ? 0.4 : 0.14), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -534,26 +649,28 @@ struct CardDetail: View {
         .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
     }
 
-    /// The card front with a live 3D model that pops out above the card's top edge.
+    /// The card front with a live 3D model framed cleanly in the upper stage, clear of name & hours below.
     private var frontWithModel: some View {
         ZStack {
             CardFront(card: card, tilt: tilt, showSymbol: false, colorOption: selectedColor, isCurrentlyWorn: isCurrentlyWorn)
             Ellipse()
-                .fill(.black.opacity(0.35))
-                .frame(width: 150, height: 18)
+                .fill(.black.opacity(0.30))
+                .frame(width: 136, height: 16)
                 .blur(radius: 10)
-                .offset(x: -tilt.width * 10, y: 40)
+                .offset(x: -tilt.width * 8, y: 20)
             HeadphoneModelView(
                 kind: card.kind,
                 finish: resolvedFinish,
                 finishID: resolvedFinishID,
                 modelKey: card.modelKey,
                 assetName: card.modelAssetName,
+                modelSize: 0.145,
                 tint: card.foilTint,
                 tilt: tilt
             )
-                .frame(width: 340, height: 300)
-                .offset(y: -62)
+            .id(card.id)
+            .frame(width: 300, height: 230)
+            .offset(y: -64)
         }
     }
 
@@ -580,24 +697,6 @@ struct CardDetail: View {
         withAnimation(.spring(response: 0.7, dampingFraction: 0.72)) {
             angle += 180
         }
-    }
-
-    private func pillButton(_ title: String, _ icon: String, highlighted: Bool = false, action: @escaping () -> Void = {}) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .padding(.horizontal, 15).padding(.vertical, 12)
-                .foregroundStyle(highlighted ? card.rarity.ink : .white)
-                .background {
-                    if highlighted {
-                        Capsule().fill(card.rarity.foil)
-                    } else {
-                        Capsule().fill(.white.opacity(0.12))
-                    }
-                }
-        }
-        .buttonStyle(.plain)
     }
 
     /// With `-demo`, play tilt and flip so the simulator recording shows every effect.

@@ -52,4 +52,16 @@ final class DeviceColorAndRouteTests: XCTestCase {
             activeOutputNames: ["🧸’s AirPods Pro"]
         ))
     }
+
+    func testCardDeckNavigationBoundsAndNeighbors() {
+        let cards = SampleCards.all
+        XCTAssertEqual(cards.count, 3)
+
+        XCTAssertNil(CardDeckNavigation.neighbor(of: cards[0], in: cards, step: -1))
+        XCTAssertEqual(CardDeckNavigation.neighbor(of: cards[0], in: cards, step: 1)?.id, cards[1].id)
+        XCTAssertEqual(CardDeckNavigation.neighbor(of: cards[1], in: cards, step: -1)?.id, cards[0].id)
+        XCTAssertEqual(CardDeckNavigation.neighbor(of: cards[1], in: cards, step: 1)?.id, cards[2].id)
+        XCTAssertNil(CardDeckNavigation.neighbor(of: cards[2], in: cards, step: 1))
+        XCTAssertNil(CardDeckNavigation.neighbor(of: cards[0], in: [cards[0]], step: 1))
+    }
 }
