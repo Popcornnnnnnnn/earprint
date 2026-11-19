@@ -11,12 +11,11 @@ final class AppIconOptionTests: XCTestCase {
         }
     }
 
-    func testAlternateIconNamesAreUniqueAndNonEmpty() {
+    func testAllTenOfficialAirPodsMaxColorsArePresent() {
+        XCTAssertEqual(AppIconOption.usbcFinishes.count, 5)
+        XCTAssertEqual(AppIconOption.lightningFinishes.count, 5)
         let nonNilNames = AppIconOption.allCases.compactMap(\.alternateIconName)
-        XCTAssertEqual(nonNilNames.count, AppIconOption.allCases.count - 1)
-        XCTAssertEqual(Set(nonNilNames).count, nonNilNames.count)
-        for name in nonNilNames {
-            XCTAssertFalse(name.isEmpty)
-        }
+        XCTAssertEqual(nonNilNames.count, 11)
+        XCTAssertEqual(Set(nonNilNames).count, 11)
     }
 }

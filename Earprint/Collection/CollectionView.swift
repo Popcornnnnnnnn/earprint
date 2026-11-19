@@ -23,8 +23,6 @@ struct CollectionView: View {
             Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
 
             ScrollView {
-                // Columns follow the width: 2 on iPhone & inner portrait, 4 on inner landscape, even on a foldable display.
-                let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 170)
                 VStack(alignment: .leading, spacing: 18) {
                     header
                         .padding(.horizontal, 18)
@@ -37,14 +35,27 @@ struct CollectionView: View {
                         )
                         .padding(.horizontal, 18)
                     }
-                    LazyVGrid(columns: grid.columns, spacing: 14) {
-                        ForEach(cards) { card in
-                            thumbnail(card)
+                    if space.isWide || space.verticalFold != nil {
+                        // Wide / iPhone Duo displays keep multi-column cards aligned clear of the hinge.
+                        let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 210)
+                        LazyVGrid(columns: grid.columns, spacing: 14) {
+                            ForEach(cards) { card in
+                                verticalThumbnail(card)
+                            }
+                            lockedSlotVertical
                         }
-                        lockedSlot
+                        .padding(.leading, grid.leadingPadding)
+                        .padding(.trailing, grid.trailingPadding)
+                    } else {
+                        // Standard iPhones show full-width horizontal collector cards.
+                        LazyVStack(spacing: 14) {
+                            ForEach(cards) { card in
+                                horizontalThumbnail(card)
+                            }
+                            lockedSlotHorizontal
+                        }
+                        .padding(.horizontal, 18)
                     }
-                    .padding(.leading, grid.leadingPadding)
-                    .padding(.trailing, grid.trailingPadding)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 40)
@@ -68,7 +79,7 @@ struct CollectionView: View {
         }
         .sheet(isPresented: $showIconPicker) {
             AppIconPickerSheet(manager: iconManager)
-                .presentationDetents([.fraction(0.78), .large])
+                .presentationDetents([.fraction(0.90), .large])
                 .presentationDragIndicator(.visible)
         }
         .task { await runDemoIfNeeded() }
@@ -121,7 +132,24 @@ struct CollectionView: View {
         .padding(.top, 12)
     }
 
-    private func thumbnail(_ card: HeadphoneCard) -> some View {
+    private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
+        ZStack {
+            if selected != card {
+                CardHorizontalFront(card: card)
+                    .matchedGeometryEffect(id: card.id, in: hero)
+                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 16, y: 8)
+                    .transition(.identity)
+            } else {
+                Color.clear.frame(height: 186)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onTapGesture {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        }
+    }
+
+    private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         ZStack {
             if selected != card {
                 ScaledCard { CardFront(card: card) }
@@ -137,7 +165,31 @@ struct CollectionView: View {
         }
     }
 
-    private var lockedSlot: some View {
+    private var lockedSlotHorizontal: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
+            .foregroundStyle(.white.opacity(0.18))
+            .frame(height: 86)
+            .overlay {
+                HStack(spacing: 14) {
+                    Image(systemName: "lock.fill")
+                        .font(.title3)
+                        .frame(width: 40, height: 40)
+                        .background(.white.opacity(0.06), in: Circle())
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Next pair").font(.subheadline.weight(.semibold))
+                        Text("Connect new headphones to unlock a collectible card")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.42))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+                .foregroundStyle(.white.opacity(0.55))
+            }
+    }
+
+    private var lockedSlotVertical: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
             .foregroundStyle(.white.opacity(0.2))

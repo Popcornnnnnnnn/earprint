@@ -43,6 +43,110 @@ struct FoilSurface: View {
     }
 }
 
+/// Realistic transparent 3D product render for a headphone card (used on card faces & thumbnails).
+struct HeadphoneArtwork: View {
+    let card: HeadphoneCard
+
+    private var assetName: String {
+        switch card.modelKey {
+        case .airpodsPro:
+            return "CardRenderAirPodsPro"
+        case .airpods, .airpods3, .earbudsGeneric:
+            return "CardRenderAirPodsOpen"
+        case .beatsEarbuds, .beatsEarhook:
+            return "CardRenderBeatsFit"
+        case .airpodsMax, .beatsOverEar, .overEarGeneric:
+            return "CardRenderAirPodsMax"
+        }
+    }
+
+    var body: some View {
+        if UIImage(named: assetName) != nil {
+            Image(assetName)
+                .resizable()
+                .scaledToFit()
+                .shadow(color: .black.opacity(0.28), radius: 10, y: 7)
+        } else {
+            Image(systemName: card.symbol)
+                .font(.system(size: 100, weight: .thin))
+                .foregroundStyle(card.rarity.ink.opacity(0.85))
+        }
+    }
+}
+
+/// Full-width horizontal collector card used in the main Collection list on standard iPhones.
+struct CardHorizontalFront: View {
+    let card: HeadphoneCard
+    var tilt: CGSize = .zero
+
+    var body: some View {
+        let ink = card.rarity.ink
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(card.rarity.title)
+                    .font(.system(size: 10.5, weight: .heavy))
+                    .tracking(1.4)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(.black.opacity(0.28), in: Capsule())
+                    .foregroundStyle(.white)
+                Spacer()
+                Text(String(format: "#%04d", card.serial))
+                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(ink.opacity(0.55))
+            }
+
+            HStack(alignment: .bottom, spacing: 10) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer(minLength: 8)
+                    Text(card.nickname)
+                        .font(.system(size: 16, weight: .bold))
+                        .lineLimit(1)
+                    Text(card.model)
+                        .font(.system(size: 12, weight: .medium))
+                        .opacity(0.65)
+                        .lineLimit(1)
+
+                    Text(card.lifetimeMinutes.minutesText)
+                        .font(.system(size: 38, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.75)
+                        .lineLimit(1)
+                        .padding(.top, 2)
+
+                    HStack(spacing: 6) {
+                        Text("\(card.sessions) sessions")
+                        Text("·")
+                        Text("since \(card.firstMet)")
+                    }
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .opacity(0.68)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HeadphoneArtwork(card: card)
+                    .frame(width: 128, height: 128)
+                    .offset(x: tilt.width * -6, y: tilt.height * -6)
+            }
+        }
+        .foregroundStyle(ink)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .frame(height: 188)
+        .background(FoilSurface(rarity: card.rarity, tilt: tilt))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.white.opacity(0.42), lineWidth: 1.4)
+        )
+    }
+}
+
 struct CardFront: View {
     let card: HeadphoneCard
     var tilt: CGSize = .zero
@@ -67,11 +171,9 @@ struct CardFront: View {
 
             Spacer()
 
-            Image(systemName: card.symbol)
-                .font(.system(size: 110, weight: .thin))
+            HeadphoneArtwork(card: card)
+                .frame(height: 165)
                 .opacity(showSymbol ? 1 : 0)
-                .foregroundStyle(ink.opacity(0.85))
-                .shadow(color: .white.opacity(0.6), radius: 1, y: 1)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)
                 .frame(maxWidth: .infinity)
 
