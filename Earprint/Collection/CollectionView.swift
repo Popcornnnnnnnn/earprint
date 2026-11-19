@@ -82,10 +82,13 @@ struct CollectionView: View {
 
     /// `-demo` launch argument: open the first card so a screen recording shows the motion.
     private func runDemoIfNeeded() async {
-        guard ProcessInfo.processInfo.arguments.contains("-demo"), !demoStarted, let first = cards.first else { return }
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-demo"), !demoStarted, !cards.isEmpty else { return }
         demoStarted = true
+        var index = 0
+        if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) { index = min(n, cards.count - 1) }
         try? await Task.sleep(for: .seconds(1.2))
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = first }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = cards[index] }
     }
 }
 
@@ -146,13 +149,28 @@ struct CardDetail: View {
 
     private var flipCard: some View {
         ZStack {
-            CardFront(card: card, tilt: tilt)
+            frontWithModel
                 .opacity(angle.truncatingRemainder(dividingBy: 360) < 90 || angle.truncatingRemainder(dividingBy: 360) > 270 ? 1 : 0)
             CardBack(card: card, revealed: flipped)
                 .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
                 .opacity(angle.truncatingRemainder(dividingBy: 360) >= 90 && angle.truncatingRemainder(dividingBy: 360) <= 270 ? 1 : 0)
         }
         .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+    }
+
+    /// The card front with a live 3D model that pops out above the card's top edge.
+    private var frontWithModel: some View {
+        ZStack {
+            CardFront(card: card, tilt: tilt, showSymbol: false)
+            Ellipse()
+                .fill(.black.opacity(0.35))
+                .frame(width: 150, height: 18)
+                .blur(radius: 10)
+                .offset(x: -tilt.width * 10, y: 40)
+            HeadphoneModelView(kind: card.headphoneKind, finish: card.finish, tint: card.foilTint, tilt: tilt)
+                .frame(width: 340, height: 300)
+                .offset(y: -62)
+        }
     }
 
     private var dragToTilt: some Gesture {

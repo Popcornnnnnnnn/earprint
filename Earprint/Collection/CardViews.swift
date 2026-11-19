@@ -46,6 +46,8 @@ struct FoilSurface: View {
 struct CardFront: View {
     let card: HeadphoneCard
     var tilt: CGSize = .zero
+    /// Hidden when a live 3D model is drawn on top of the card instead.
+    var showSymbol = true
 
     var body: some View {
         let ink = card.rarity.ink
@@ -67,6 +69,7 @@ struct CardFront: View {
 
             Image(systemName: card.symbol)
                 .font(.system(size: 110, weight: .thin))
+                .opacity(showSymbol ? 1 : 0)
                 .foregroundStyle(ink.opacity(0.85))
                 .shadow(color: .white.opacity(0.6), radius: 1, y: 1)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)
