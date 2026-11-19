@@ -8,7 +8,8 @@ An iPhone app that turns your AirPods and headphone listening history from Apple
 
 - **3D Collectible Cards (`Earprint/Collection/`, `Earprint/ThreeD/`):**
   - Rarity tiers by lifetime listening hours: `BRONZE` → `SILVER` → `GOLD` → `HOLO · LEGENDARY`.
-  - Real-time RealityKit 3D models (`AirPods4.usdz`, `AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`, plus procedural fallback) floating above the card surface: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, tilt phone for foil shine & parallax, tap to flip for counting stats.
+  - Real-time RealityKit 3D models (`AirPods4.usdz`, `AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`, plus procedural fallback) floating above the card surface: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, tilt the phone for foil shine and parallax, and tap or swipe the card to flip to its stats. Swipe below to browse the deck.
+  - Each card shows its exact model name. The Collection shows equipment without charging cases. The small card number reflects when Earprint first recorded the accessory relative to other accessories.
   - See [docs/ASSETS.md](docs/ASSETS.md) for CC-BY 4.0 attributions and trademark notes.
 - **Device Dossier (`Earprint/Dossier/`):**
   - Flip a card and tap **Dossier** on the reverse to open its PSA-style acrylic grading slab (`EAR GRADE` from hearing safety), period switcher (`Week` / `Month` / `Year` / `All`), interactive 30-day scrub bar chart, 24-hour peak clock, 6-tile habits & hearing bento, lifetime ledger, milestone timeline, and guilloché hardware certificate (`Apple Inc. · 0x2024`, firmware, sample count, history range).

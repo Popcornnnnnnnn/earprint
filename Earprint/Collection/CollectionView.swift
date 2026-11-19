@@ -218,7 +218,7 @@ struct CollectionView: View {
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
         return ZStack {
             if selected != card {
-                ScaledCard { CardFront(card: card, colorOption: color, isCurrentlyWorn: worn) }
+                ScaledCard { CardFront(card: card, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
                     .matchedGeometryEffect(id: card.id, in: hero)
                     .shadow(color: card.rarity.glow.opacity(0.35), radius: 14, y: 8)
                     .transition(.identity)
@@ -374,6 +374,24 @@ private struct CardStackEffect: ViewModifier, Animatable {
     }
 }
 
+enum CardFlipDirection: Double {
+    case left = -180
+    case right = 180
+
+    static func isHorizontal(_ translation: CGSize) -> Bool {
+        abs(translation.width) > abs(translation.height) * 1.2
+    }
+
+    static func swipe(translation: CGSize, predicted: CGSize) -> Self? {
+        guard isHorizontal(translation) else { return nil }
+        let width = translation.width
+        let projected = predicted.width
+        let flicked = abs(width) >= 24 && abs(projected) >= 115 && width * projected > 0
+        guard abs(width) >= 76 || flicked else { return nil }
+        return width < 0 ? .left : .right
+    }
+}
+
 struct CardDetail: View {
     let card: HeadphoneCard
     var cards: [HeadphoneCard] = []
@@ -387,6 +405,7 @@ struct CardDetail: View {
     @StateObject private var motion = TiltMotion()
     @State private var flipped = false
     @State private var angle: Double = 0
+    @State private var dragAngle: Double = 0
     @State private var dragTilt: CGSize = .zero
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
@@ -462,12 +481,16 @@ struct CardDetail: View {
         }
         .readLayoutSpace($space)
         .onChange(of: mode) { _, newMode in
-            // Side by side already shows the back, so keep the left card on its front.
-            if newMode == .sideBySide && flipped { flip(force: true) }
+            if newMode == .sideBySide {
+                flipped = false
+                angle = 0
+                dragAngle = 0
+            }
         }
         .onChange(of: card.id) { _, newID in
             flipped = false
             angle = 0
+            dragAngle = 0
             dragTilt = .zero
             showColorBar = false
             withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
@@ -588,7 +611,7 @@ struct CardDetail: View {
         let size = space.size
         switch mode {
         case .single:
-            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 192 : 126) : 78
+            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 204 : 138) : 90
             let scale = min(space.isWide ? 1.35 : 1.14, (size.height - controlsHeight) / design.height, (size.width - 36) / design.width)
             VStack(spacing: 18) {
                 cardStack(scale: scale)
@@ -659,11 +682,10 @@ struct CardDetail: View {
         let itemFinish = itemColor?.modelFinish ?? item.finish
         let itemFinishID = itemColor?.id ?? "default"
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
-        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && !flipped && item.modelAssetName != nil
+        let show3D = isTop && settledCardID == item.id && dragStartPosition == nil && item.modelAssetName != nil
         let is3DReady = show3D && ready3DCardID == item.id
-        let activeAngle = isTop ? angle : 0
+        let activeAngle = isTop ? angle + dragAngle : 0
         let activeTilt = isTop ? tilt : .zero
-        let frontVisible = activeAngle.truncatingRemainder(dividingBy: 360) < 90 || activeAngle.truncatingRemainder(dividingBy: 360) > 270
 
         return ZStack {
             ZStack {
@@ -701,23 +723,21 @@ struct CardDetail: View {
                     .opacity(is3DReady ? 1 : 0)
                 }
             }
-            .opacity(frontVisible ? 1 : 0)
             .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
             .onTapGesture { flip() }
             .accessibilityElement(children: .contain)
             .accessibilityAction(named: Text("Flip card")) { flip() }
-            .allowsHitTesting(frontVisible && !flipped)
-            .accessibilityHidden(!frontVisible || flipped || !isTop)
+            .allowsHitTesting(!flipped)
+            .accessibilityHidden(flipped || !isTop)
+            .modifier(CardFaceRotation(angle: activeAngle))
 
             if isTop {
-                CardBack(card: item, revealed: flipped, openDossier: flipped ? openDossier : nil, flip: { flip() })
-                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                    .opacity(frontVisible ? 0 : 1)
-                    .allowsHitTesting(!frontVisible && flipped)
-                    .accessibilityHidden(frontVisible || !flipped)
+                CardBack(card: item, openDossier: flipped ? openDossier : nil, flip: { flip() })
+                    .allowsHitTesting(flipped)
+                    .accessibilityHidden(!flipped)
+                    .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
             }
         }
-        .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
         .scaleEffect(scale)
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
         .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
@@ -729,13 +749,13 @@ struct CardDetail: View {
             y: isTop ? 18 - activeTilt.height * 10 : 12
         )
         .allowsHitTesting(isTop)
-        .gesture(isTop ? dragToTilt : nil)
+        .simultaneousGesture(isTop ? cardDrag : nil)
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        return CardBack(card: card, revealed: appeared, openDossier: openDossier)
+        return CardBack(card: card, openDossier: openDossier)
             .id(card.id)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
@@ -744,22 +764,26 @@ struct CardDetail: View {
     }
 
     private var cardControls: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 4) {
+            if mode != .sideBySide {
+                Text("Tap or swipe the card to flip")
+                    .font(.caption2)
+            }
             if deckCards.count > 1 {
-                HStack(spacing: 4) {
-                    navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
-                    Text("\(activeIndex + 1) / \(deckCards.count)")
-                        .font(.caption.monospacedDigit())
-                        .accessibilityLabel(Text("Card \(activeIndex + 1) of \(deckCards.count)"))
-                    navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
+                        Text("\(activeIndex + 1) / \(deckCards.count)")
+                            .font(.caption.monospacedDigit())
+                            .accessibilityLabel(Text("Card \(activeIndex + 1) of \(deckCards.count)"))
+                        navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
+                    }
+                    Text("Swipe here to switch cards")
+                        .font(.caption2)
                 }
                 .frame(maxWidth: 340)
                 .contentShape(Rectangle())
                 .gesture(cardNavigationSwipe)
-            }
-            if mode != .sideBySide && !flipped {
-                Text("Tap to flip")
-                    .font(.caption2)
             }
         }
         .foregroundStyle(Theme.secondaryText)
@@ -861,26 +885,41 @@ struct CardDetail: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
     }
 
-    private var dragToTilt: some Gesture {
-        DragGesture(minimumDistance: 4)
+    private var cardDrag: some Gesture {
+        DragGesture(minimumDistance: 5, coordinateSpace: .global)
             .onChanged { value in
-                dragTilt = CGSize(width: max(-1, min(1, value.translation.width / 120)),
-                                  height: max(-1, min(1, value.translation.height / 160)))
+                let translation = value.translation
+                if mode != .sideBySide && CardFlipDirection.isHorizontal(translation) {
+                    dragAngle = max(-68, min(68, Double(translation.width) * 0.56))
+                    dragTilt = .zero
+                } else {
+                    dragAngle = 0
+                    dragTilt = CGSize(width: max(-1, min(1, translation.width / 120)),
+                                      height: max(-1, min(1, translation.height / 160)))
+                }
             }
             .onEnded { value in
-                if abs(value.translation.width) > 140 && abs(value.translation.width) > abs(value.translation.height) {
-                    flip()
+                if mode != .sideBySide, let direction = CardFlipDirection.swipe(
+                    translation: value.translation, predicted: value.predictedEndTranslation
+                ) {
+                    flip(direction)
+                } else {
+                    withAnimation(.snappy(duration: 0.32, extraBounce: 0)) {
+                        dragAngle = 0
+                        dragTilt = .zero
+                    }
                 }
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { dragTilt = .zero }
             }
     }
 
-    private func flip(force: Bool = false) {
-        // Side by side shows both faces at once, so there is nothing to flip.
-        guard force || mode != .sideBySide else { return }
-        flipped.toggle()
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.72)) {
-            angle += 180
+    private func flip(_ direction: CardFlipDirection = .left) {
+        // Side by side already shows both faces.
+        guard mode != .sideBySide else { return }
+        withAnimation(.snappy(duration: 0.38, extraBounce: 0)) {
+            flipped.toggle()
+            angle += direction.rawValue
+            dragAngle = 0
+            dragTilt = .zero
         }
     }
 

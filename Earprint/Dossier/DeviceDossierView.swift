@@ -137,14 +137,9 @@ struct DeviceDossierView: View {
                                 .foregroundStyle(rarity.ink)
                         }
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(card.nickname)
+                            Text(card.model)
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .lineLimit(1)
-                            Text(dossier.hardware.modelName)
-                                .font(.system(.caption2, design: .monospaced, weight: .medium))
-                                .foregroundStyle(DossierPalette.dim)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.85)
                         }
                     }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))

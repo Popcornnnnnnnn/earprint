@@ -451,6 +451,16 @@
         }
       }
     },
+    "Card number %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片编号 %lld"
+          }
+        }
+      }
+    },
     "Card %lld of %lld": {
       "localizations": {
         "zh-Hans": {
@@ -1831,6 +1841,16 @@
         }
       }
     },
+    "Swipe here to switch cards": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此滑动切换卡片"
+          }
+        }
+      }
+    },
     "Swipe here to browse": {
       "localizations": {
         "zh-Hans": {
@@ -1877,6 +1897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "Tap or swipe the card to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点或滑动卡片即可翻面"
           }
         }
       }

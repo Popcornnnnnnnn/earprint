@@ -218,8 +218,10 @@ enum HeadphoneModelLoader {
     private static let airPodsMaxAccentMaterials: Set<String> = [
         "CufifJQVFGKEXjK", "DiaLtZsVVXWBwMe", "XnHBntWOhvrYYYt"
     ]
+    // These canopy textures also carry the alpha mask that cuts holes into the knit.
+    private static let airPodsMaxCanopyMaterials: Set<String> = ["DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC"]
     private static let airPodsMaxCushionMaterials: Set<String> = [
-        "OeMmmEEWkMBwwgR", "fZEVSQIaNKfmlij", "DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC",
+        "OeMmmEEWkMBwwgR", "fZEVSQIaNKfmlij",
         "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
     ]
 
@@ -283,6 +285,11 @@ enum HeadphoneModelLoader {
                 }
                 if airPodsMaxAccentMaterials.contains(name) {
                     pbr.baseColor = .init(tint: finish.accent)
+                    changed = true
+                    return pbr
+                }
+                if airPodsMaxCanopyMaterials.contains(name) {
+                    pbr.baseColor.tint = finish.cushion
                     changed = true
                     return pbr
                 }

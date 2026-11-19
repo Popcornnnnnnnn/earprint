@@ -6,6 +6,24 @@ enum CardMetrics {
     static let corner: CGFloat = 26
 }
 
+/// Keep each face visible only while it faces the viewer, using the angle of the current frame.
+struct CardFaceRotation: ViewModifier, Animatable {
+    var angle: Double
+    var isBack = false
+
+    var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let showsFront = cos(angle * .pi / 180) > 0
+        content
+            .opacity(showsFront == isBack ? 0 : 1)
+            .rotation3DEffect(.degrees(angle + (isBack ? 180 : 0)), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+    }
+}
+
 /// Foil surface: base gradient + rainbow sheen + specular highlight that move with tilt.
 struct FoilSurface: View {
     let rarity: Rarity
@@ -58,12 +76,13 @@ struct ActiveWearDot: View {
 struct HeadphoneArtwork: View {
     let card: HeadphoneCard
     var colorOption: DeviceColorOption? = nil
+    var showsChargingCase = true
 
     private var assetName: String? {
         if let custom = colorOption?.cardAssetName, UIImage(named: custom) != nil {
             return custom
         }
-        return card.modelKey.collectibleArtwork
+        return showsChargingCase ? card.modelKey.collectibleArtwork : card.modelKey.collectionArtwork
     }
 
     var body: some View {
@@ -107,19 +126,16 @@ struct CardHorizontalFront: View {
                     Text(String(format: "#%04d", card.serial))
                         .font(.system(size: 11.5, weight: .bold, design: .monospaced))
                         .foregroundStyle(ink.opacity(0.55))
+                        .accessibilityLabel(Text("Card number \(card.serial)"))
                 }
             }
 
             HStack(alignment: .bottom, spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
                     Spacer(minLength: 8)
-                    Text(card.nickname)
-                        .font(.system(size: 16, weight: .bold))
-                        .lineLimit(1)
                     Text(card.model)
-                        .font(.system(size: 12, weight: .medium))
-                        .opacity(0.65)
-                        .lineLimit(1)
+                        .font(.system(size: 16, weight: .bold))
+                        .lineLimit(2)
 
                     Text(card.lifetimeMinutes.minutesText)
                         .font(.system(size: 38, weight: .black, design: .rounded))
@@ -141,7 +157,7 @@ struct CardHorizontalFront: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                HeadphoneArtwork(card: card, colorOption: colorOption)
+                HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
                     .frame(width: 128, height: 128)
                     .offset(x: tilt.width * -6, y: tilt.height * -6)
             }
@@ -167,6 +183,7 @@ struct CardFront: View {
     var showSymbol = true
     var colorOption: DeviceColorOption? = nil
     var isCurrentlyWorn: Bool = false
+    var showsChargingCase = true
 
     var body: some View {
         let ink = card.rarity.ink
@@ -186,12 +203,13 @@ struct CardFront: View {
                     Text(String(format: "#%04d", card.serial))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(ink.opacity(0.6))
+                        .accessibilityLabel(Text("Card number \(card.serial)"))
                 }
             }
 
             Spacer()
 
-            HeadphoneArtwork(card: card, colorOption: colorOption)
+            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase)
                 .frame(height: 165)
                 .opacity(showSymbol ? 1 : 0)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)
@@ -199,14 +217,10 @@ struct CardFront: View {
 
             Spacer()
 
-            Text(card.nickname)
-                .font(.system(size: 17, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
             Text(card.model)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .opacity(0.65)
+                .font(.system(size: 17, weight: .bold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
             Text(card.lifetimeMinutes.minutesText)
                 .font(.system(size: 42, weight: .black, design: .rounded))
                 .monospacedDigit()
@@ -235,8 +249,6 @@ struct CardFront: View {
 
 struct CardBack: View {
     let card: HeadphoneCard
-    /// Numbers count up from zero when this becomes true.
-    var revealed: Bool
     var openDossier: (() -> Void)? = nil
     var flip: (() -> Void)? = nil
 
@@ -301,12 +313,12 @@ struct CardBack: View {
 
             Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                 GridRow {
-                    stat("Lifetime", revealed ? card.lifetimeMinutes : 0, unit: .minutes)
-                    stat("Sessions", revealed ? Double(card.sessions) : 0, unit: .count)
+                    stat("Lifetime", card.lifetimeMinutes, unit: .minutes)
+                    stat("Sessions", Double(card.sessions), unit: .count)
                 }
                 GridRow {
-                    stat("Longest", revealed ? card.longestMinutes : 0, unit: .minutes)
-                    stat("Avg level", revealed ? card.averageDecibels : 0, unit: .decibels)
+                    stat("Longest", card.longestMinutes, unit: .minutes)
+                    stat("Avg level", card.averageDecibels, unit: .decibels)
                 }
             }
 
@@ -328,7 +340,6 @@ struct CardBack: View {
             }
             .font(.system(size: 20, weight: .bold, design: .rounded))
             .monospacedDigit()
-            .contentTransition(.numericText(value: value))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -340,7 +351,7 @@ struct CardBack: View {
         if let next = card.rarity.nextTierHours {
             VStack(alignment: .leading, spacing: 6) {
                 Text("\(Int(next - hours))h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.7)
-                ProgressView(value: revealed ? min(hours / next, 1) : 0)
+                ProgressView(value: min(hours / next, 1))
                     .tint(card.rarity.glow)
             }
         } else {
