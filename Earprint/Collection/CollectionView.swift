@@ -93,7 +93,7 @@ struct CollectionView: View {
         }
         .foregroundStyle(.white)
         .fullScreenCover(item: $dossierCard) { card in
-            DeviceDossierView(card: card) { dossierCard = nil }
+            DeviceDossierView(card: card, isSampleData: isSampleData) { dossierCard = nil }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(openIconPicker: openIconPicker)

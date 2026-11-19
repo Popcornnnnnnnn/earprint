@@ -641,6 +641,26 @@
         }
       }
     },
+    "Device Dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备档案"
+          }
+        }
+      }
+    },
+    "Dossier image preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案图片预览"
+          }
+        }
+      }
+    },
     "DOSSIER · #%04d": {
       "localizations": {
         "zh-Hans": {
@@ -1001,6 +1021,26 @@
         }
       }
     },
+    "Image format": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片格式"
+          }
+        }
+      }
+    },
+    "Image unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片不可用"
+          }
+        }
+      }
+    },
     "LAST WEAR": {
       "localizations": {
         "zh-Hans": {
@@ -1127,6 +1167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "Long": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "长图"
           }
         }
       }
@@ -1661,6 +1711,16 @@
         }
       }
     },
+    "Share dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享档案"
+          }
+        }
+      }
+    },
     "SILVER": {
       "localizations": {
         "zh-Hans": {
@@ -1681,6 +1741,16 @@
         }
       }
     },
+    "Simple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简图"
+          }
+        }
+      }
+    },
     "SOURCE BUNDLE": {
       "localizations": {
         "zh-Hans": {
@@ -1697,16 +1767,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "统计"
-          }
-        }
-      }
-    },
-    "Sample breakdown": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "示例分析"
           }
         }
       }

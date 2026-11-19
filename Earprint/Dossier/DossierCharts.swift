@@ -7,6 +7,7 @@ struct DossierTrendChart: View {
     let rarity: Rarity
     let firstWear: Date?
     @Binding var selection: Date?
+    var showsInteractionHint = true
 
     private var selected: TrendBucket? {
         guard let selection else { return nil }
@@ -84,9 +85,11 @@ struct DossierTrendChart: View {
                 .frame(height: 210)
                 .padding(.top, 4)
 
-            Text(selection == nil ? "Drag across the bars to scrub · color shows loudness" : " ")
-                .font(.caption2)
-                .foregroundStyle(DossierPalette.faint)
+            if showsInteractionHint {
+                Text(selection == nil ? "Drag across the bars to scrub · color shows loudness" : " ")
+                    .font(.caption2)
+                    .foregroundStyle(DossierPalette.faint)
+            }
         }
         .sensoryFeedback(.selection, trigger: selected?.id)
     }

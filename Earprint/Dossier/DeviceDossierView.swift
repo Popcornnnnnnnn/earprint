@@ -6,9 +6,11 @@ struct DeviceDossierView: View {
     let card: HeadphoneCard
     let dossier: DeviceDossier
     var onClose: (() -> Void)?
-    private let showsSampleBreakdown: Bool
+    private let includesHealthDetails: Bool
+    private let isSampleData: Bool
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @StateObject private var motion = TiltMotion()
 
     @State private var period: DossierPeriod = .month
@@ -18,15 +20,17 @@ struct DeviceDossierView: View {
     @State private var demoTilt: CGSize = .zero
     @State private var scrollOffset: CGFloat = 0
     @State private var demoStarted = false
+    @State private var showShare = false
 
-    init(card: HeadphoneCard, dossier: DeviceDossier? = nil, onClose: (() -> Void)? = nil) {
+    init(card: HeadphoneCard, dossier: DeviceDossier? = nil, isSampleData: Bool = false, onClose: (() -> Void)? = nil) {
         self.card = card
         // Keep fixed referenceNow for deterministic demo launches; use current date for live cards.
         let args = ProcessInfo.processInfo.arguments
         let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
         let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
         self.dossier = dossier ?? DeviceDossier.sample(for: card, now: referenceDate)
-        showsSampleBreakdown = dossier == nil
+        includesHealthDetails = dossier != nil
+        self.isSampleData = isSampleData
         self.onClose = onClose
     }
 
@@ -40,43 +44,7 @@ struct DeviceDossierView: View {
             backdrop
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 22) {
-                        if showsSampleBreakdown {
-                            VStack(spacing: 5) {
-                                Label("Sample breakdown", systemImage: "info.circle")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Theme.moderate.color)
-                                Text("Dossier details are illustrative.")
-                                    .font(.footnote)
-                                    .foregroundStyle(Theme.secondaryText)
-                            }
-                        }
-                        slabStage
-                            .id("slab")
-
-                        airtimeSection
-                            .padding(.top, 10)
-                            .id("airtime")
-
-                        rhythmSection
-                            .padding(.top, 10)
-                            .id("charts")
-
-                        habitsSection
-                            .padding(.top, 10)
-                            .id("habits")
-
-                        milestonesSection
-                            .padding(.top, 10)
-                            .id("milestones")
-
-                        certificateSection
-                            .padding(.top, 10)
-                            .id("certificate")
-
-                        if !showsSampleBreakdown { footerNote }
-                    }
-                    .padding(.horizontal, 18)
+                    dossierContent(exporting: false)
                     .padding(.top, 8)
                     .padding(.bottom, 48)
                 }
@@ -96,12 +64,56 @@ struct DeviceDossierView: View {
         }
         .foregroundStyle(.white)
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showShare) {
+            DossierShareSheet(card: card, color: colorStore?.selectedColor(for: card), isSampleData: isSampleData) {
+                dossierContent(exporting: true)
+            }
+        }
         .onAppear { motion.start() }
         .onDisappear { motion.stop() }
         .onChange(of: period) {
             selectedDate = nil
             selectedHour = nil
         }
+    }
+
+    private func dossierContent(exporting: Bool) -> some View {
+        VStack(spacing: 22) {
+            if exporting {
+                HStack {
+                    Text("Device Dossier")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                    Spacer()
+                    if isSampleData {
+                        Text("Sample data")
+                            .font(.caption.weight(.semibold))
+                    } else if !includesHealthDetails {
+                        Text("Dossier details are illustrative.")
+                            .font(.caption)
+                    }
+                }
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.top, 4)
+            }
+            slabStage(exporting: exporting)
+                .id("slab")
+            if exporting {
+                CardBack(card: card)
+            }
+            airtimeSection(exporting: exporting)
+                .padding(.top, 10)
+                .id("airtime")
+            rhythmSection(exporting: exporting)
+                .padding(.top, 10)
+                .id("charts")
+            habitsSection.padding(.top, 10).id("habits")
+            milestonesSection.padding(.top, 10).id("milestones")
+            certificateSection(tilt: exporting ? .zero : tilt)
+                .padding(.top, 10)
+                .id("certificate")
+            if includesHealthDetails && !exporting { footerNote }
+        }
+        .padding(.horizontal, 18)
     }
 
     // MARK: - Backdrop & Sticky Header
@@ -183,14 +195,17 @@ struct DeviceDossierView: View {
             }
 
             Button {
+                showShare = true
+            } label: {
+                topBarIcon("square.and.arrow.up")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Share dossier")
+
+            Button {
                 if let onClose { onClose() } else { dismiss() }
             } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(width: 34, height: 34)
-                    .background(.white.opacity(0.10), in: Circle())
-                    .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+                topBarIcon("xmark")
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close dossier")
@@ -211,13 +226,25 @@ struct DeviceDossierView: View {
         .animation(.snappy(duration: 0.25), value: showStickyIdentity)
     }
 
+    private func topBarIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.88))
+            .frame(width: 34, height: 34)
+            .background(.white.opacity(0.10), in: Circle())
+            .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+    }
+
     // MARK: - Hero Slab Stage
 
-    private var slabStage: some View {
-        VStack(spacing: 16) {
-            GradingSlab(card: card, dossier: dossier, tilt: tilt, flipped: slabFlipped)
-                .rotation3DEffect(.degrees(Double(tilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-                .rotation3DEffect(.degrees(Double(-tilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+    private func slabStage(exporting: Bool) -> some View {
+        let slabTilt = exporting ? .zero : tilt
+        return VStack(spacing: 16) {
+            GradingSlab(card: card, dossier: dossier, tilt: slabTilt, flipped: !exporting && slabFlipped)
+                .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+                .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
                 .onTapGesture {
                     withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
                         slabFlipped.toggle()
@@ -226,13 +253,15 @@ struct DeviceDossierView: View {
                 .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
                 .padding(.top, 4)
 
-            HStack(spacing: 8) {
-                Image(systemName: "hand.tap")
-                    .font(.caption2.weight(.semibold))
-                Text(slabFlipped ? "Tap slab to view front" : "Tap slab to flip · tilt phone for foil")
-                    .font(.caption)
+            if !exporting {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.tap")
+                        .font(.caption2.weight(.semibold))
+                    Text(slabFlipped ? "Tap slab to view front" : "Tap slab to flip · tilt phone for foil")
+                        .font(.caption)
+                }
+                .foregroundStyle(DossierPalette.dim)
             }
-            .foregroundStyle(DossierPalette.dim)
 
             lifetimeQuickStrip
         }
@@ -298,10 +327,16 @@ struct DeviceDossierView: View {
 
     // MARK: - 01 Airtime
 
-    private var airtimeSection: some View {
+    private func airtimeSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             DossierSectionHeader(index: 1, title: "Airtime", trailing: AppLanguage.current.text(period.title).uppercased(), accent: rarity.accent)
-            PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+            if exporting {
+                Text(DossierFormat.range(stats.start, stats.end))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DossierPalette.dim)
+            } else {
+                PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+            }
             AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))
                 .frame(maxWidth: .infinity)
         }
@@ -309,11 +344,12 @@ struct DeviceDossierView: View {
 
     // MARK: - 02 Rhythm & Charts
 
-    private var rhythmSection: some View {
+    private func rhythmSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             DossierSectionHeader(index: 2, title: "Rhythm", trailing: AppLanguage.current.text(stats.period.title).uppercased(), accent: rarity.accent)
 
-            DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear, selection: $selectedDate)
+            DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear,
+                              selection: exporting ? .constant(nil) : $selectedDate, showsInteractionHint: !exporting)
                 .dossierTile(tint: rarity.accent)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -333,15 +369,17 @@ struct DeviceDossierView: View {
                         .background(.white.opacity(0.06), in: Capsule())
                 }
 
-                DayClock(stats: stats, rarity: rarity, selectedHour: $selectedHour)
+                DayClock(stats: stats, rarity: rarity, selectedHour: exporting ? .constant(nil) : $selectedHour)
                     .frame(maxWidth: 300)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
 
-                Text("Tap or press-drag any hour · bar color shows loudness")
-                    .font(.caption2)
-                    .foregroundStyle(DossierPalette.faint)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                if !exporting {
+                    Text("Tap or press-drag any hour · bar color shows loudness")
+                        .font(.caption2)
+                        .foregroundStyle(DossierPalette.faint)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
             .dossierTile(tint: rarity.glow)
             .padding(.top, 6)
@@ -375,7 +413,7 @@ struct DeviceDossierView: View {
 
     // MARK: - 05 Certificate & Grade
 
-    private var certificateSection: some View {
+    private func certificateSection(tilt: CGSize) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             DossierSectionHeader(index: 5, title: "Certificate", trailing: dossier.hardware.productID, accent: rarity.accent)
             CertificateLabel(card: card, dossier: dossier, tilt: tilt)
@@ -679,5 +717,5 @@ private struct MilestoneTimelineCard: View {
 }
 
 #Preview {
-    DeviceDossierView(card: SampleCards.all[0])
+    DeviceDossierView(card: SampleCards.all[0], isSampleData: true)
 }
