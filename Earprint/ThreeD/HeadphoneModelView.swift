@@ -201,16 +201,8 @@ struct HeadphoneModelView: View {
 }
 
 extension HeadphoneCard {
-    var headphoneKind: HeadphoneKind {
-        switch symbol {
-        case "airpodsmax", "headphones": .overEar
-        case "beats.earphones": .sportBuds
-        default: .earbuds
-        }
-    }
-
     var finish: HeadphoneFinish {
-        switch headphoneKind {
+        switch kind {
         case .overEar: rarity == .holo ? .skyBlue : .spaceGray
         case .earbuds: .glossWhite
         case .sportBuds: .matteBlack

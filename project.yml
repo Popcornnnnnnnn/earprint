@@ -36,3 +36,35 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
         TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+      configs:
+        Debug:
+          # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).
+          # Release builds omit this key and never request write authorization.
+          INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Debug builds can write sample headphone audio data into the simulator's Apple Health store for local testing."
+  EarprintTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - EarprintTests
+    dependencies:
+      - target: Earprint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint.tests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Earprint:
+    build:
+      targets:
+        Earprint: all
+        EarprintTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EarprintTests
+    archive:
+      config: Release

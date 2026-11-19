@@ -2,12 +2,26 @@ import SwiftUI
 
 struct HomeView: View {
     let summary: ListeningSummary
+    var isSampleData: Bool = false
+    var sampleBadgeText: String = "Sample data"
+    var statusMessage: String? = nil
+    var isLoading: Bool = false
+    var onConnectHealth: (() -> Void)? = nil
+
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                if isSampleData {
+                    SampleDataBanner(
+                        badgeText: sampleBadgeText,
+                        detail: statusMessage,
+                        isLoading: isLoading,
+                        onConnect: onConnectHealth
+                    )
+                }
                 hero
                 legend
                 personaCard
@@ -31,7 +45,7 @@ struct HomeView: View {
                 .tracking(1.2)
                 .foregroundStyle(Theme.secondaryText)
             HStack(spacing: 8) {
-                Image(systemName: "airpodspro")
+                Image(systemName: summary.deviceSymbol)
                 Text(summary.deviceName).font(.headline)
             }
             Text(summary.deviceModel).font(.subheadline).foregroundStyle(Theme.secondaryText)

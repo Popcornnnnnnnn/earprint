@@ -2,6 +2,12 @@ import SwiftUI
 
 struct CollectionView: View {
     let cards: [HeadphoneCard]
+    var isSampleData: Bool = false
+    var sampleBadgeText: String = "Sample data"
+    var statusMessage: String? = nil
+    var isLoading: Bool = false
+    var onConnectHealth: (() -> Void)? = nil
+
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var demoStarted = false
@@ -15,6 +21,14 @@ struct CollectionView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
+                    if isSampleData {
+                        SampleDataBanner(
+                            badgeText: sampleBadgeText,
+                            detail: statusMessage,
+                            isLoading: isLoading,
+                            onConnect: onConnectHealth
+                        )
+                    }
                     LazyVGrid(columns: columns, spacing: 14) {
                         ForEach(cards) { card in
                             thumbnail(card)
@@ -167,7 +181,7 @@ struct CardDetail: View {
                 .frame(width: 150, height: 18)
                 .blur(radius: 10)
                 .offset(x: -tilt.width * 10, y: 40)
-            HeadphoneModelView(kind: card.headphoneKind, finish: card.finish, tint: card.foilTint, tilt: tilt)
+            HeadphoneModelView(kind: card.kind, finish: card.finish, tint: card.foilTint, tilt: tilt)
                 .frame(width: 340, height: 300)
                 .offset(y: -62)
         }

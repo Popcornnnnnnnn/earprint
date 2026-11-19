@@ -14,6 +14,10 @@ struct HeadphoneCard: Identifiable, Equatable {
     var lastUsed: String
     var serial: Int
     var grid: ListeningGrid
+    /// Detailed product shape from the device-ID table (see `HeadphoneModelCatalog`).
+    var modelKey: HeadphoneModelKey = .overEarGeneric
+    /// Which 3D model the card shows.
+    var kind: HeadphoneKind = .overEar
 
     var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
 
@@ -81,13 +85,16 @@ enum SampleCards {
         return [
             HeadphoneCard(id: "pro2", nickname: "🧸's AirPods Pro", model: "AirPods Pro 2 · USB-C", symbol: "airpodspro",
                           lifetimeMinutes: 188 * 60 + 22, sessions: 269, longestMinutes: 220, averageDecibels: 58,
-                          firstMet: "2026.10.30", lastUsed: "Today", serial: 1, grid: base.grid),
+                          firstMet: "2026.10.30", lastUsed: "Today", serial: 1, grid: base.grid,
+                          modelKey: .airpodsPro, kind: .earbuds),
             HeadphoneCard(id: "max", nickname: "Studio Max", model: "AirPods Max", symbol: "airpodsmax",
                           lifetimeMinutes: 64 * 60 + 10, sessions: 88, longestMinutes: 185, averageDecibels: 63,
-                          firstMet: "2024.12.25", lastUsed: "Sep 2", serial: 2, grid: scaled(base.grid, 0.45)),
+                          firstMet: "2024.12.25", lastUsed: "Sep 2", serial: 2, grid: scaled(base.grid, 0.45),
+                          modelKey: .airpodsMax, kind: .overEar),
             HeadphoneCard(id: "fit", nickname: "Gym buds", model: "Beats Fit Pro", symbol: "beats.earphones",
                           lifetimeMinutes: 9 * 60 + 40, sessions: 21, longestMinutes: 64, averageDecibels: 71,
-                          firstMet: "2025.03.08", lastUsed: "Nov 2", serial: 3, grid: scaled(base.grid, 0.15)),
+                          firstMet: "2025.03.08", lastUsed: "Nov 2", serial: 3, grid: scaled(base.grid, 0.15),
+                          modelKey: .beatsEarbuds, kind: .sportBuds),
         ]
     }()
 
