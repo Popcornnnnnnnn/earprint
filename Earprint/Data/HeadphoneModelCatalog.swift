@@ -27,6 +27,11 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// Collection thumbnails show the device by itself. Card detail can include its charging case.
+    var collectionArtwork: String? {
+        self == .airpods4 ? "CardRenderAirPodsOpen" : collectibleArtwork
+    }
+
     var collectibleModel: String? {
         switch self {
         case .airpods4: "AirPods4"

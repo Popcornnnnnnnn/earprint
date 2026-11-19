@@ -239,6 +239,7 @@ final class DeviceCatalogTests: XCTestCase {
     func testAirPods4CaseArtworkIsSpecificToFourthGenerationVariants() {
         let fourthGeneration = [0x2019, 0x201B, 0x201C, 0x201E, 0x2020]
         for id in fourthGeneration {
+            XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectionArtwork, "CardRenderAirPodsOpen")
             XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleArtwork, "CardRenderAirPods4")
             XCTAssertEqual(HeadphoneModelCatalog.byProductID[id]?.key.collectibleModel, "AirPods4")
         }

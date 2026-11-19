@@ -1,3 +1,4 @@
+import RealityKit
 import XCTest
 @testable import Earprint
 
@@ -77,6 +78,45 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(CardDeckNavigation.neighbor(of: cards[1], in: cards, step: 1)?.id, cards[2].id)
         XCTAssertNil(CardDeckNavigation.neighbor(of: cards[2], in: cards, step: 1))
         XCTAssertNil(CardDeckNavigation.neighbor(of: cards[0], in: [cards[0]], step: 1))
+    }
+
+    func testCardSwipesFollowTheirDirectionAndIgnoreShortOrVerticalDrags() {
+        func swipe(_ x: CGFloat, _ y: CGFloat, predictedX: CGFloat) -> CardFlipDirection? {
+            CardFlipDirection.swipe(translation: CGSize(width: x, height: y),
+                                    predicted: CGSize(width: predictedX, height: y))
+        }
+
+        XCTAssertEqual(swipe(-95, 5, predictedX: -100)?.rawValue, -180)
+        XCTAssertEqual(swipe(95, -5, predictedX: 100)?.rawValue, 180)
+        XCTAssertEqual(swipe(34, 4, predictedX: 140), .right)
+        XCTAssertNil(swipe(34, 4, predictedX: -140))
+        XCTAssertNil(swipe(17, 0, predictedX: 42))
+        XCTAssertNil(swipe(82, 115, predictedX: 135))
+    }
+
+    @MainActor
+    func testAirPodsMaxFinishKeepsBothCanopyTextures() async throws {
+        let standard = try XCTUnwrap(DeviceColorOption.defaultOption(for: .airpodsMax))
+        let orange = try XCTUnwrap(DeviceColorOption.airPodsMaxFinishes.first { $0.id == "apm.orange" })
+        let max = await HeadphoneModelLoader.load(.overEar, finish: standard.modelFinish, modelKey: .airpodsMax)
+        let canopyNames: Set<String> = ["DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC"]
+
+        func canopies(in entity: Entity) -> [PhysicallyBasedMaterial] {
+            let materials = (entity as? ModelEntity)?.model?.materials ?? []
+            let local = materials.compactMap { material -> PhysicallyBasedMaterial? in
+                guard let pbr = material as? PhysicallyBasedMaterial,
+                      let name = pbr.name, canopyNames.contains(name) else { return nil }
+                return pbr
+            }
+            return local + entity.children.flatMap { canopies(in: $0) }
+        }
+
+        for finish in [standard, orange] {
+            HeadphoneModelLoader.applyFinish(finish.modelFinish, to: max, modelKey: .airpodsMax)
+            let canopyMaterials = canopies(in: max)
+            XCTAssertEqual(Set(canopyMaterials.compactMap(\.name)), canopyNames)
+            XCTAssertTrue(canopyMaterials.allSatisfy { $0.baseColor.texture != nil })
+        }
     }
 
     func testCardStackPoseForActiveBehindAndDealtCards() {

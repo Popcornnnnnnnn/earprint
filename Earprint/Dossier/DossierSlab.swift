@@ -32,7 +32,7 @@ struct GradingSlab: View {
         .frame(width: SlabMetrics.width, height: SlabMetrics.height)
         .background { acrylic(rarity: rarity) }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(card.nickname), graded \(grade.scoreText), \(grade.label). \(dossier.hardware.manufacturer), product ID \(dossier.hardware.productID).")
+        .accessibilityLabel("\(card.model), graded \(grade.scoreText), \(grade.label). \(dossier.hardware.manufacturer), product ID \(dossier.hardware.productID).")
     }
 
     private func label(grade: EarGrade, rarity: Rarity) -> some View {
@@ -44,14 +44,10 @@ struct GradingSlab: View {
                     .foregroundStyle(rarity.accent)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(card.nickname)
+                Text(card.model)
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text(dossier.hardware.modelName)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.65))
-                    .lineLimit(1)
                 HStack(spacing: 5) {
                     DossierBarcode(seed: card.serial * 7 + 3, color: .white.opacity(0.75))
                         .frame(width: 44, height: 11)
@@ -96,12 +92,10 @@ struct GradingSlab: View {
     private var cardWell: some View {
         ZStack {
             CardFront(card: card, tilt: tilt)
-                .opacity(flipped ? 0 : 1)
-            CardBack(card: card, revealed: flipped)
-                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                .opacity(flipped ? 1 : 0)
+                .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
+            CardBack(card: card)
+                .modifier(CardFaceRotation(angle: flipped ? 180 : 0, isBack: true))
         }
-        .rotation3DEffect(.degrees(flipped ? 180 : 0), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
         .scaleEffect(SlabMetrics.cardScale)
         .frame(width: SlabMetrics.cardSize.width, height: SlabMetrics.cardSize.height)
         .shadow(color: .black.opacity(0.55), radius: 8, y: 4)
@@ -177,16 +171,13 @@ struct CertificateLabel: View {
 
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(card.nickname)
+                    Text(card.model)
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                     Text("\(hw.manufacturer) · \(hw.productID)")
                         .font(.system(.footnote, design: .monospaced, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.7))
-                    Text(hw.modelName)
-                        .font(.footnote)
-                        .foregroundStyle(DossierPalette.dim)
                 }
                 Spacer(minLength: 0)
                 VStack(spacing: 2) {
