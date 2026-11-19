@@ -45,13 +45,19 @@ targets:
           - CFBundleURLName: com.popcornnn.earprint
             CFBundleURLSchemes:
               - earprint
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.popcornnn.earprint
         TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
       configs:
         Debug:
           # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).

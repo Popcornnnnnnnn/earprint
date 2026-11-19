@@ -9,30 +9,66 @@ struct HomeView: View {
     var onConnectHealth: (() -> Void)? = nil
 
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
+    @State private var space = LayoutSpace()
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                if isSampleData {
-                    SampleDataBanner(
-                        badgeText: sampleBadgeText,
-                        detail: statusMessage,
-                        isLoading: isLoading,
-                        onConnect: onConnectHealth
-                    )
+            Group {
+                if space.isWide || (space.isLandscape && space.size.width >= 520) {
+                    // Wide screens (inner iPhone Duo display, phones in landscape): glyph left, stats right.
+                    // With a book fold, each column stays on its own half.
+                    let split = ColumnSplit(space: space, padding: space.isWide ? 24 : 18, gap: space.isWide ? 28 : 20)
+                    HStack(alignment: .top, spacing: split.gap) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            header
+                            if isSampleData {
+                                SampleDataBanner(
+                                    badgeText: sampleBadgeText,
+                                    detail: statusMessage,
+                                    isLoading: isLoading,
+                                    onConnect: onConnectHealth
+                                )
+                            }
+                            hero(width: split.leading)
+                            legend
+                        }
+                        .frame(width: split.leading)
+                        VStack(alignment: .leading, spacing: 18) {
+                            personaCard
+                            statsGrid
+                            budgetCard
+                            shareButton
+                        }
+                        .padding(.top, 8)
+                        .frame(width: split.trailing)
+                    }
+                    .padding(.horizontal, split.padding)
+                } else {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        if isSampleData {
+                            SampleDataBanner(
+                                badgeText: sampleBadgeText,
+                                detail: statusMessage,
+                                isLoading: isLoading,
+                                onConnect: onConnectHealth
+                            )
+                        }
+                        hero(width: max(300, space.size.width - 40))
+                        legend
+                        personaCard
+                        statsGrid
+                        budgetCard
+                        shareButton
+                    }
+                    .padding(.horizontal, 20)
                 }
-                hero
-                legend
-                personaCard
-                statsGrid
-                budgetCard
-                shareButton
             }
-            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
+        .readLayoutSpace($space)
         .background(Theme.background.ignoresSafeArea())
         .foregroundStyle(.white)
         .sheet(isPresented: $showShare) { ShareSheet(summary: summary) }
@@ -53,29 +89,34 @@ struct HomeView: View {
         .padding(.top, 8)
     }
 
-    private var hero: some View {
+    private func hero(width: CGFloat) -> some View {
         ZStack {
             EarprintGlyph(grid: summary.grid)
             VStack(spacing: 2) {
                 Text(summary.weekMinutes.minutesText)
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
                 Text("listened")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
             }
+            .frame(maxWidth: max(84, width * 0.32))
         }
         .padding(.vertical, 4)
     }
 
     private var legend: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             legendDot(Theme.quiet.color, "Quiet")
             legendDot(Theme.moderate.color, "Moderate")
             legendDot(Theme.loud.color, "Loud")
-            Spacer()
+            Spacer(minLength: 4)
             Text("4 weeks · rings = days")
                 .font(.caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .foregroundStyle(Theme.secondaryText)
         }
     }
