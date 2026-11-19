@@ -69,18 +69,12 @@ struct MiniCard: View {
         let rarity = card.rarity
         let ink = rarity.ink
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                Text(rarity.rawValue)
-                    .font(.system(size: 5.5 * s, weight: .heavy))
-                    .tracking(0.6 * s)
-                    .padding(.horizontal, 3.5 * s).padding(.vertical, 1.5 * s)
-                    .background(.black.opacity(0.28), in: Capsule())
-                    .foregroundStyle(.white)
-                Spacer(minLength: 0)
-                Text(String(format: "#%03d", card.serial))
-                    .font(.system(size: 5.5 * s, weight: .bold, design: .monospaced))
-                    .foregroundStyle(ink.opacity(0.55))
-            }
+            Text(rarity.rawValue)
+                .font(.system(size: 5.5 * s, weight: .heavy))
+                .tracking(0.6 * s)
+                .padding(.horizontal, 3.5 * s).padding(.vertical, 1.5 * s)
+                .background(.black.opacity(0.28), in: Capsule())
+                .foregroundStyle(.white)
             Spacer(minLength: 0)
             Image(systemName: card.symbol)
                 .font(.system(size: 30 * s, weight: .thin))

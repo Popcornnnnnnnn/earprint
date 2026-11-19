@@ -611,6 +611,26 @@
         }
       }
     },
+    "COLLECTION NUMBER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号"
+          }
+        }
+      }
+    },
+    "Collection numbers follow the order of first listening dates in Apple Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
+          }
+        }
+      }
+    },
     "Currently connected": {
       "localizations": {
         "zh-Hans": {
