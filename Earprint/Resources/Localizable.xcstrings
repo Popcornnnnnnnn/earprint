@@ -831,6 +831,16 @@
         }
       }
     },
+    "Flip card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻转卡片"
+          }
+        }
+      }
+    },
     "GOLD": {
       "localizations": {
         "zh-Hans": {
@@ -1867,6 +1877,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "Tap to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面"
           }
         }
       }

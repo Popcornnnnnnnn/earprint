@@ -1,8 +1,9 @@
 import Foundation
 
-/// Display-ready stats for one headphone, built from a `DeviceAccumulator` at a given "now".
+/// Display-ready stats for a headphone and its matching accessory records.
 struct DeviceSummary: Identifiable, Sendable {
     var id: String
+    var aliasIDs: [String]
     var nickname: String
     /// Earlier nicknames of the same physical device.
     var otherNames: [String]
@@ -36,6 +37,7 @@ struct LibrarySnapshot: Sendable {
     var totalSamples: Int
     var hostSamples: Int
     var invalidSamples: Int
+    private var sourceSerials: [String: Int]
 
     var isEmpty: Bool { devices.isEmpty }
     var lifetimeSeconds: Double { devices.reduce(0) { $0 + $1.lifetimeSeconds } }
@@ -54,13 +56,40 @@ struct LibrarySnapshot: Sendable {
         totalSamples = aggregate.totalSamples
         hostSamples = aggregate.hostSamples
         invalidSamples = aggregate.invalidSamples
-        devices = aggregate.devices.values
+        let sources = aggregate.devices.values
             .filter { $0.sampleCount > 0 }
-            .map { Self.summary(for: $0, now: now, calendar: calendar) }
+            .sorted { ($0.first ?? .distantFuture, $0.key) < ($1.first ?? .distantFuture, $1.key) }
+        sourceSerials = Dictionary(uniqueKeysWithValues: sources.enumerated().map { ($1.key, $0 + 1) })
+        devices = Dictionary(grouping: sources, by: DeviceGroup.init)
+            .values
+            .map { group in
+                Self.summary(for: DeviceAccumulator.combining(group), aliasIDs: group.dropFirst().map(\.key),
+                             now: now, calendar: calendar)
+            }
             .sorted { ($0.lifetimeSeconds, $0.id) > ($1.lifetimeSeconds, $1.id) }
     }
 
-    static func summary(for acc: DeviceAccumulator, now: Date, calendar: Calendar) -> DeviceSummary {
+    private enum DeviceGroup: Hashable {
+        case accessory(String)
+        case airPods(product: String, nickname: String)
+
+        init(_ device: DeviceAccumulator) {
+            let model = HeadphoneModelCatalog.resolve(device.descriptor)
+            guard let productID = model.productID,
+                  let product = HeadphoneModelCatalog.byProductID[productID],
+                  product.key.collectibleArtwork != nil,
+                  let name = DeviceDescriptor.clean(device.descriptor?.name) else {
+                self = .accessory(device.key)
+                return
+            }
+            let nickname = name.lowercased()
+                .replacingOccurrences(of: "\u{2019}", with: "'")
+                .replacingOccurrences(of: "\u{2018}", with: "'")
+            self = .airPods(product: product.marketingName, nickname: nickname)
+        }
+    }
+
+    private static func summary(for acc: DeviceAccumulator, aliasIDs: [String], now: Date, calendar: Calendar) -> DeviceSummary {
         let unattributed = acc.key == ListeningAggregate.unattributedKey
         let model = unattributed ? HeadphoneModelCatalog.unknownHeadphones : HeadphoneModelCatalog.resolve(acc.descriptor)
         let nickname = unattributed ? "Unknown headphones"
@@ -69,6 +98,7 @@ struct LibrarySnapshot: Sendable {
         let sessions = acc.sessions
         return DeviceSummary(
             id: acc.key,
+            aliasIDs: aliasIDs,
             nickname: nickname,
             otherNames: acc.names.filter { $0 != nickname },
             model: model,
@@ -140,13 +170,48 @@ struct LibrarySnapshot: Sendable {
     }
 }
 
+private extension DeviceAccumulator {
+    /// The first accessory keeps its key. Only the snapshot combines records; the cache retains each source.
+    static func combining(_ devices: [Self]) -> Self {
+        var combined = devices[0]
+        guard devices.count > 1 else { return combined }
+
+        for device in devices.dropFirst() {
+            combined.sampleCount += device.sampleCount
+            combined.seconds += device.seconds
+            combined.energy += device.energy
+            if device.descriptorDate >= combined.descriptorDate {
+                combined.descriptor = device.descriptor
+                combined.descriptorDate = device.descriptorDate
+            }
+            if let last = device.last {
+                combined.last = max(combined.last ?? last, last)
+            }
+            for name in device.names where !combined.names.contains(name) {
+                combined.names.append(name)
+            }
+            combined.sources.formUnion(device.sources)
+            combined.daily.merge(device.daily, uniquingKeysWith: +)
+            for (index, totals) in device.slots {
+                combined.slots[index, default: SlotTotals()].seconds += totals.seconds
+                combined.slots[index, default: SlotTotals()].energy += totals.energy
+            }
+        }
+
+        let spans = devices.flatMap { $0.sessions.spans }.sorted { $0.start < $1.start }
+        combined.sessions = SessionSet()
+        for span in spans {
+            combined.sessions.insert(start: span.start, end: span.end, gap: ListeningAggregate.sessionGap)
+        }
+        return combined
+    }
+}
+
 // MARK: - Mapping to the existing view models
 
 extension LibrarySnapshot {
     func cards(now: Date = Date(), calendar: Calendar = .current) -> [HeadphoneCard] {
-        // Serial number = order in which the user met each headphone (oldest = No. 1).
-        let byFirst = devices.sorted { ($0.first ?? .distantFuture, $0.id) < ($1.first ?? .distantFuture, $1.id) }
-        let serials = Dictionary(uniqueKeysWithValues: byFirst.enumerated().map { ($1.id, $0 + 1) })
+        // Keep the first accessory's existing serial after merging its aliases.
         return devices.compactMap { d in
             guard d.model.key.collectibleArtwork != nil else { return nil }
             return HeadphoneCard(
@@ -160,10 +225,11 @@ extension LibrarySnapshot {
                 averageDecibels: (d.averageDecibels ?? 0).rounded(),
                 firstMet: d.first.map { DateText.dotted($0, calendar: calendar) } ?? "—",
                 lastUsed: d.last.map { DateText.relativeDay($0, now: now, calendar: calendar) } ?? "—",
-                serial: serials[d.id] ?? 0,
+                serial: sourceSerials[d.id] ?? 0,
                 grid: d.grid,
                 modelKey: d.model.key,
-                kind: d.model.key.kind
+                kind: d.model.key.kind,
+                aliasIDs: d.aliasIDs
             )
         }
     }

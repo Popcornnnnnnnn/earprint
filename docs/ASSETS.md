@@ -6,11 +6,12 @@ Earprint bundles three optimized `.usdz` models in `Earprint/Resources/Models/` 
 
 | Identified product family | Card artwork | Interactive 3D |
 | --- | --- | --- |
-| AirPods (1st and 2nd generation), AirPods 3, AirPods 4 and 4 (ANC), and mapped AirPods 5 variants | Shared open-ear AirPods artwork | Card tilt and flip |
+| AirPods (1st and 2nd generation), AirPods 3, and mapped AirPods 5 variants | Shared open-ear AirPods artwork | Card tilt and flip |
+| AirPods 4 and AirPods 4 (ANC) | AirPods 4 earbuds with their open charging case | Card tilt and flip |
 | AirPods Pro 1, 2 (Lightning and USB-C), and 3 | Shared AirPods Pro artwork | Shared AirPods Pro USDZ model |
 | AirPods Max (Lightning, USB-C) and AirPods Max 2 | Shared AirPods Max artwork and finish choices | Shared AirPods Max USDZ model |
 
-Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Beats, Bose, Redmi, sanag, and other devices without supported collectible artwork remain in the listening history. They are excluded when publishing Collection cards and widget shelves. Collectibles preserve each source accessory identifier.
+Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Beats, Bose, Redmi, sanag, and other devices without supported collectible artwork remain in the listening history. They are excluded when publishing Collection cards and widget shelves.
 
 ## Attribution Table (CC-BY 4.0)
 
@@ -19,6 +20,8 @@ Generation names come from the HealthKit product catalog. Artwork and interactiv
 | `AirPodsMax.usdz` | Airpods max sky blue | [polyman Studio (`Polyman_3D`)](https://sketchfab.com/Polyman_3D) | [Sketchfab](https://sketchfab.com/3d-models/airpods-max-sky-blue-3d0643db08fc4ef89bda55a74077ece4) | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 87,701 → 41,968 tris | 5.51 MB (5,777,710 B) | 1024 px | Decimated to ~42k tris; removed unused UV channels; joined meshes per material (137 → 20); centered & normalized (Y-up, +Z); baked glTF PBR metallic/roughness factors; dropped baked emissive maps; JPEG-compressed opaque textures (q85); added `opacityThreshold = 0.5` on knit headband canopy cutout materials; converted glTF → USDZ. |
 | `AirPodsPro.usdz` | Airpods Pro With Magsafe Charging Case Ios15 | [polyman Studio (`Polyman_3D`)](https://sketchfab.com/Polyman_3D) | [Sketchfab](https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689) | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 96,992 → 47,975 tris | 3.95 MB (4,139,743 B) | 1024 px | Removed internal black occlusion shell (`rfmqyaJLfjAyTkY`) that poked through after decimation; decimated to ~48k tris; joined meshes per material (48 → 14); centered & normalized (Y-up, +Z); baked glTF `metallicFactor = 0` so glossy white plastic exports accurately to `UsdPreviewSurface`; dropped baked emissive maps; JPEG-compressed opaque textures (q88); converted glTF → USDZ. |
 | `HeadphoneGeneric.usdz` | Studio Headphones | [crow (`crow.bite`)](https://sketchfab.com/crow.bite) | [Sketchfab](https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8) | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 64,544 → 51,995 tris | 4.68 MB (4,902,775 B) | 2048 px | Decimated to ~52k tris; joined 6 parts into 1 mesh; centered & normalized (Y-up, +Z); baked glTF `roughnessFactor` into metallic-roughness map; downscaled 4096 px textures to 2048 px and JPEG-compressed opaque maps (q90); converted glTF → USDZ. |
+
+The AirPods 4 artwork uses the published front render of [*AirPods 4* by Falah3D](https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)). Earprint crops the render, removes its background, and resizes it for the card. The interactive geometry is available through Sketchfab’s authenticated download.
 
 ### Required CC-BY 4.0 Credit Text
 

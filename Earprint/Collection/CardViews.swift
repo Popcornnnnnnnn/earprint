@@ -237,8 +237,51 @@ struct CardBack: View {
     let card: HeadphoneCard
     /// Numbers count up from zero when this becomes true.
     var revealed: Bool
+    var openDossier: (() -> Void)? = nil
+    var flip: (() -> Void)? = nil
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let flip {
+                stats
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: flip)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAction(named: Text("Flip card"), flip)
+            } else {
+                stats
+            }
+            HStack(spacing: 16) {
+                tierProgress
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let openDossier {
+                    Button(action: openDossier) {
+                        Label("Dossier", systemImage: "doc.text")
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 44)
+                            .background(.white.opacity(0.1), in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(20)
+        .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
+        .background(
+            ZStack {
+                Color(red: 0.07, green: 0.07, blue: 0.10)
+                RadialGradient(colors: [card.rarity.glow.opacity(0.35), .clear], center: .top, startRadius: 0, endRadius: 320)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
+            .strokeBorder(LinearGradient(colors: card.rarity.baseColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2))
+    }
+
+    private var stats: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("STATS").font(.system(size: 11, weight: .heavy)).tracking(2).opacity(0.6)
@@ -268,20 +311,7 @@ struct CardBack: View {
             }
 
             Spacer(minLength: 0)
-            tierProgress
         }
-        .foregroundStyle(.white)
-        .padding(20)
-        .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
-        .background(
-            ZStack {
-                Color(red: 0.07, green: 0.07, blue: 0.10)
-                RadialGradient(colors: [card.rarity.glow.opacity(0.35), .clear], center: .top, startRadius: 0, endRadius: 320)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-            .strokeBorder(LinearGradient(colors: card.rarity.baseColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2))
     }
 
     private enum Unit { case minutes, count, decibels }

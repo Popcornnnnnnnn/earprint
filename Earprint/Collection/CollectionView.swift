@@ -71,7 +71,8 @@ struct CollectionView: View {
             .scrollIndicators(.hidden)
             .readLayoutSpace($space)
 
-            if let card = selected {
+            if let selection = selected {
+                let card = cards.first(where: { $0.matches(id: selection.id) }) ?? selection
                 CardDetail(
                     card: card,
                     cards: cards,
@@ -109,7 +110,7 @@ struct CollectionView: View {
     /// Keeps the request pending while HealthKit is still loading so cold-launch deep links resolve once real cards arrive.
     private func openPendingCard() {
         guard let router, let id = router.pendingCardID else { return }
-        if let card = cards.first(where: { $0.id == id }) {
+        if let card = cards.first(where: { $0.matches(id: id) }) {
             router.pendingCardID = nil
             withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
         } else if !isLoading && !isSampleData {
@@ -587,7 +588,7 @@ struct CardDetail: View {
         let size = space.size
         switch mode {
         case .single:
-            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 230 : 180) : 134
+            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 192 : 126) : 78
             let scale = min(space.isWide ? 1.35 : 1.14, (size.height - controlsHeight) / design.height, (size.width - 36) / design.width)
             VStack(spacing: 18) {
                 cardStack(scale: scale)
@@ -701,11 +702,19 @@ struct CardDetail: View {
                 }
             }
             .opacity(frontVisible ? 1 : 0)
+            .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+            .onTapGesture { flip() }
+            .accessibilityElement(children: .contain)
+            .accessibilityAction(named: Text("Flip card")) { flip() }
+            .allowsHitTesting(frontVisible && !flipped)
+            .accessibilityHidden(!frontVisible || flipped || !isTop)
 
             if isTop {
-                CardBack(card: item, revealed: flipped)
+                CardBack(card: item, revealed: flipped, openDossier: openDossier, flip: { flip() })
                     .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
                     .opacity(frontVisible ? 0 : 1)
+                    .allowsHitTesting(!frontVisible && flipped)
+                    .accessibilityHidden(frontVisible || !flipped)
             }
         }
         .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
@@ -721,13 +730,12 @@ struct CardDetail: View {
         )
         .allowsHitTesting(isTop)
         .gesture(isTop ? dragToTilt : nil)
-        .onTapGesture { if isTop { flip() } }
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        return CardBack(card: card, revealed: appeared)
+        return CardBack(card: card, revealed: appeared, openDossier: openDossier)
             .id(card.id)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
@@ -736,43 +744,25 @@ struct CardDetail: View {
     }
 
     private var cardControls: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 0) {
             if deckCards.count > 1 {
-                HStack(spacing: 10) {
+                HStack(spacing: 4) {
                     navigationButton(step: -1, symbol: "chevron.left", label: "Previous card")
-                    VStack(spacing: 3) {
-                        Text("Card \(activeIndex + 1) of \(deckCards.count)")
-                            .font(.subheadline.weight(.semibold).monospacedDigit())
-                        Text("Swipe here to browse")
-                            .font(.caption)
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .frame(maxWidth: .infinity)
+                    Text("\(activeIndex + 1) / \(deckCards.count)")
+                        .font(.caption.monospacedDigit())
+                        .accessibilityLabel(Text("Card \(activeIndex + 1) of \(deckCards.count)"))
                     navigationButton(step: 1, symbol: "chevron.right", label: "Next card")
                 }
-                .padding(6)
-                .background(.ultraThinMaterial, in: Capsule())
-                .contentShape(Capsule())
+                .frame(maxWidth: 340)
+                .contentShape(Rectangle())
                 .gesture(cardNavigationSwipe)
-                .frame(maxWidth: 280)
             }
-
-            HStack(spacing: 10) {
-                if mode == .sideBySide {
-                    Text("Drag to tilt")
-                } else {
-                    Text("Tap to flip · drag to tilt")
-                }
-                Button(action: openDossier) {
-                    Label("Dossier", systemImage: "doc.text")
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(0.90))
+            if mode != .sideBySide && !flipped {
+                Text("Tap to flip")
+                    .font(.caption2)
             }
-            .font(.footnote)
-            .foregroundStyle(Theme.secondaryText)
         }
+        .foregroundStyle(Theme.secondaryText)
         .opacity(appeared ? 1 : 0)
     }
 
@@ -782,9 +772,9 @@ struct CardDetail: View {
             selectNeighbor(step: step)
         } label: {
             Image(systemName: symbol)
-                .font(.subheadline.weight(.semibold))
+                .font(.caption.weight(.semibold))
                 .frame(width: 44, height: 44)
-                .background(.white.opacity(0.12), in: Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -896,7 +886,14 @@ struct CardDetail: View {
 
     /// With `-demo`, play tilt and flip so the simulator recording shows every effect.
     private func runDemoIfNeeded() async {
-        guard ProcessInfo.processInfo.arguments.contains("-demo") else { return }
+        let args = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        if args.contains("-cardDetail"), args.contains("-cardBack") {
+            flip()
+            return
+        }
+        #endif
+        guard args.contains("-demo") else { return }
         try? await Task.sleep(for: .seconds(1.0))
         for step in 0..<60 {
             let t = Double(step) / 59

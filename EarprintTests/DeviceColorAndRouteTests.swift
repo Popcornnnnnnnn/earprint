@@ -12,6 +12,7 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertTrue(DeviceColorOption.options(for: .airpodsPro).isEmpty)
         XCTAssertTrue(DeviceColorOption.options(for: .airpods).isEmpty)
         XCTAssertTrue(DeviceColorOption.options(for: .airpods3).isEmpty)
+        XCTAssertTrue(DeviceColorOption.options(for: .airpods4).isEmpty)
     }
 
     @MainActor
@@ -33,6 +34,19 @@ final class DeviceColorAndRouteTests: XCTestCase {
 
         let store2 = DeviceColorStore(defaults: defaults)
         XCTAssertEqual(store2.selectedColor(for: maxCard)?.id, "apm.orange")
+
+        var combined = HeadphoneCard(id: "first", nickname: maxCard.nickname, model: maxCard.model,
+                                     symbol: maxCard.symbol, lifetimeMinutes: maxCard.lifetimeMinutes,
+                                     sessions: maxCard.sessions, longestMinutes: maxCard.longestMinutes,
+                                     averageDecibels: maxCard.averageDecibels, firstMet: maxCard.firstMet,
+                                     lastUsed: maxCard.lastUsed, serial: maxCard.serial, grid: maxCard.grid,
+                                     modelKey: .airpodsMax, aliasIDs: [maxCard.id])
+        XCTAssertEqual(store2.selectedColor(for: combined)?.id, "apm.orange")
+        let blue = DeviceColorOption.airPodsMaxFinishes.first { $0.id == "apm.blue" }!
+        store2.select(blue, for: combined)
+        XCTAssertEqual(store2.selectedColor(for: combined)?.id, "apm.blue")
+        combined.aliasIDs = []
+        XCTAssertEqual(store2.selectedColor(for: combined)?.id, "apm.blue")
     }
 
     func testActiveAudioRouteMatchingNormalizesApostrophesAndCase() {

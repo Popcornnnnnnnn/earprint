@@ -195,7 +195,7 @@ struct DeviceColorOption: Identifiable, Equatable, Hashable {
             return beatsEarbudFinishes
         case .beatsOverEar:
             return beatsOverEarFinishes
-        case .airpods, .airpods3, .airpodsPro, .earbudsGeneric, .overEarGeneric:
+        case .airpods, .airpods3, .airpods4, .airpodsPro, .earbudsGeneric, .overEarGeneric:
             return []
         }
     }
@@ -235,8 +235,10 @@ final class DeviceColorStore {
     func selectedColor(for card: HeadphoneCard) -> DeviceColorOption? {
         let options = availableColors(for: card)
         guard !options.isEmpty else { return nil }
-        if let savedID = selections[card.id], let match = options.first(where: { $0.id == savedID }) {
-            return match
+        for id in [card.id] + card.aliasIDs {
+            if let savedID = selections[id], let match = options.first(where: { $0.id == savedID }) {
+                return match
+            }
         }
         return DeviceColorOption.defaultOption(for: card.modelKey) ?? options.first
     }
