@@ -9,7 +9,6 @@ struct CollectionView: View {
     var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
 
-    @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
     #if DEBUG
@@ -85,7 +84,6 @@ struct CollectionView: View {
                 CardDetail(
                     card: card,
                     cards: cards,
-                    namespace: hero,
                     colorStore: colorStore,
                     routeMonitor: routeMonitor,
                     onSelectCard: { next in
@@ -98,7 +96,7 @@ struct CollectionView: View {
                         showCardTiers = true
                     }
                 ) {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
+                    selected = nil
                 }
                 .zIndex(1)
             }
@@ -133,7 +131,7 @@ struct CollectionView: View {
         guard let router, let id = router.pendingCardID else { return }
         if let card = cards.first(where: { $0.matches(id: id) }) {
             router.pendingCardID = nil
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+            selected = card
         } else if !isLoading && !isSampleData {
             router.pendingCardID = nil
         }
@@ -221,28 +219,20 @@ struct CollectionView: View {
         let disableTilt = reduceMotion
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+            selected = card
         } label: {
-            ZStack {
-                if selected != card {
-                    LiveTiltView(isActive: listMotionActive) { liveTilt in
-                        CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
-                            .overlay {
-                                ScrollSheenSweep(cornerRadius: 24)
-                            }
-                            .background {
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(Color.black)
-                                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
-                            }
-                            .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-                            .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+            LiveTiltView(isActive: listMotionActive) { liveTilt in
+                CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
+                    .overlay {
+                        ScrollSheenSweep(cornerRadius: 24)
                     }
-                    .matchedGeometryEffect(id: card.id, in: hero)
-                    .transition(.identity)
-                } else {
-                    Color.clear.frame(height: 188)
-                }
+                    .background {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color.black)
+                            .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                    }
+                    .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                    .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
             }
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
@@ -264,28 +254,20 @@ struct CollectionView: View {
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+            selected = card
         } label: {
-            ZStack {
-                if selected != card {
-                    LiveTiltView(isActive: listMotionActive) { liveTilt in
-                        ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
-                            .overlay {
-                                ScrollSheenSweep(cornerRadius: 22)
-                            }
-                            .background {
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Color.black)
-                                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
-                            }
-                            .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-                            .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+            LiveTiltView(isActive: listMotionActive) { liveTilt in
+                ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
+                    .overlay {
+                        ScrollSheenSweep(cornerRadius: 22)
                     }
-                    .matchedGeometryEffect(id: card.id, in: hero)
-                    .transition(.identity)
-                } else {
-                    Color.clear.aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
-                }
+                    .background {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(Color.black)
+                            .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                    }
+                    .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                    .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
             }
         }
         .buttonStyle(CollectorCardPressStyle())
@@ -360,7 +342,7 @@ struct CollectionView: View {
         guard args.contains("-demo") else { return }
         demoStarted = true
         try? await Task.sleep(for: .seconds(1.2))
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = cards[index] }
+        selected = cards[index]
     }
 }
 
@@ -515,7 +497,6 @@ enum ModelGalleryCatalog {
 struct ModelGalleryView: View {
     var ownedCards: [HeadphoneCard] = []
 
-    @Namespace private var hero
     @State private var selection: HeadphoneCard?
     @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
 
@@ -613,7 +594,6 @@ struct ModelGalleryView: View {
                 CardDetail(
                     card: selection,
                     cards: ModelGalleryCatalog.allCards,
-                    namespace: hero,
                     isModelPreview: true,
                     unlockedPreviewIDs: unlockedIDs,
                     catalogDetails: ModelGalleryCatalog.detailsByCardID,
@@ -740,7 +720,6 @@ enum CardFlipDirection: Double {
 struct CardDetail: View {
     let card: HeadphoneCard
     var cards: [HeadphoneCard] = []
-    let namespace: Namespace.ID
     var isModelPreview = false
     var unlockedPreviewIDs: Set<String> = []
     var catalogDetails: [String: String] = [:]
@@ -767,6 +746,8 @@ struct CardDetail: View {
     @State private var ready3DCardIDs: Set<String> = []
     @State private var settle3DTask: Task<Void, Never>? = nil
     @State private var appeared = false
+    @State private var isDismissing = false
+    @State private var holdsMotionHub = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
 
@@ -780,6 +761,13 @@ struct CardDetail: View {
 
     private var availableColors: [DeviceColorOption] {
         colorStore?.availableColors(for: card) ?? DeviceColorOption.options(for: card.modelKey)
+    }
+
+    private var deckHasColorChoices: Bool {
+        deckCards.contains { item in
+            let options = colorStore?.availableColors(for: item) ?? DeviceColorOption.options(for: item.modelKey)
+            return options.count > 1
+        }
     }
 
     private var selectedColor: DeviceColorOption? {
@@ -831,16 +819,25 @@ struct CardDetail: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(Color.black.opacity(0.55))
-                .ignoresSafeArea()
-                .opacity(appeared ? 1 : 0)
-                .contentShape(Rectangle())
-                .gesture(cardNavigationSwipe)
-                .onTapGesture(perform: close)
+            ZStack {
+                Color(red: 0.03, green: 0.03, blue: 0.05).opacity(0.94)
+                RadialGradient(
+                    colors: [card.rarity.glow.opacity(0.20), .clear],
+                    center: UnitPoint(x: 0.5, y: 0.42),
+                    startRadius: 20,
+                    endRadius: 340
+                )
+                .animation(.easeInOut(duration: 0.35), value: card.id)
+            }
+            .ignoresSafeArea()
+            .opacity(appeared ? 1 : 0)
+            .contentShape(Rectangle())
+            .gesture(cardNavigationSwipe)
+            .onTapGesture(perform: dismissDetail)
 
             layout
+                .scaleEffect(appeared ? 1 : 0.94)
+                .opacity(appeared ? 1 : 0)
         }
         .overlay(alignment: .topTrailing) {
             topCloseButton
@@ -867,10 +864,10 @@ struct CardDetail: View {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) {
                 deckPosition = CGFloat(activeIndex)
             }
-            // Wait for the card stack spring to settle before attaching RealityKit so swipes stay locked at 120Hz.
+            // Wait until the outgoing card has cleared offscreen before detaching/attaching RealityKit.
             let targetID = card.id
             settle3DTask = Task {
-                try? await Task.sleep(for: .milliseconds(220))
+                try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
                 active3DCardID = targetID
                 await prewarmNeighbors(around: activeIndex)
@@ -879,13 +876,37 @@ struct CardDetail: View {
         .onAppear {
             deckPosition = CGFloat(activeIndex)
             active3DCardID = card.id
-            withAnimation(.easeOut(duration: 0.35)) { appeared = true }
+            if !reduceMotion && !holdsMotionHub {
+                holdsMotionHub = true
+                MotionHub.shared.acquire()
+            }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { appeared = true }
             Task { await prewarmNeighbors(around: activeIndex) }
             Task { await runDemoIfNeeded() }
         }
         .onDisappear {
             settle3DTask?.cancel()
             MotionHub.shared.setScrolling(false, source: "cardDeck")
+            if holdsMotionHub {
+                holdsMotionHub = false
+                MotionHub.shared.release()
+            }
+        }
+    }
+
+    private func dismissDetail() {
+        guard !isDismissing else { return }
+        isDismissing = true
+        if reduceMotion {
+            close()
+            return
+        }
+        withAnimation(.easeOut(duration: 0.20)) {
+            appeared = false
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(200))
+            close()
         }
     }
 
@@ -899,7 +920,7 @@ struct CardDetail: View {
     }
 
     private var topCloseButton: some View {
-        Button(action: close) {
+        Button(action: dismissDetail) {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(.white.opacity(0.9))
@@ -983,11 +1004,13 @@ struct CardDetail: View {
         let size = space.size
         switch mode {
         case .single:
-            let controlsHeight: CGFloat = availableColors.count > 1 ? (showColorBar ? 204 : 138) : 90
+            let controlsHeight: CGFloat = deckHasColorChoices ? 142 : 94
             let scale = min(space.isWide ? 1.35 : 1.14, (size.height - controlsHeight) / design.height, (size.width - 36) / design.width)
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
                 cardStack(scale: scale)
                 cardControls
+                    .frame(minHeight: 42)
+                    .opacity(showColorBar ? 0 : 1)
                 colorControls
             }
         case .besideControls:
@@ -996,6 +1019,7 @@ struct CardDetail: View {
                 cardStack(scale: scale)
                 VStack(spacing: 18) {
                     cardControls
+                        .opacity(showColorBar ? 0 : 1)
                     colorControls
                 }
             }
@@ -1027,6 +1051,7 @@ struct CardDetail: View {
                 Color.clear.frame(height: fold.height)
                 VStack(spacing: 16) {
                     cardControls
+                        .opacity(showColorBar ? 0 : 1)
                     colorControls
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1048,7 +1073,6 @@ struct CardDetail: View {
             }
         }
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-        .matchedGeometryEffect(id: card.id, in: namespace)
     }
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
@@ -1092,6 +1116,7 @@ struct CardDetail: View {
                         radius: isTop ? 24 : 16,
                         y: isTop ? 16 : 12
                     )
+                    .animation(.easeOut(duration: 0.25), value: isTop)
                     .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             }
             .scaleEffect(scale)
@@ -1243,16 +1268,29 @@ struct CardDetail: View {
 
     @ViewBuilder
     private var colorControls: some View {
-        if availableColors.count > 1, let active = selectedColor {
-            VStack(spacing: 12) {
-                if showColorBar {
-                    deviceColorStrip
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+        if deckHasColorChoices {
+            ZStack {
+                if availableColors.count > 1, let active = selectedColor {
+                    colorToggleButton(active)
+                } else {
+                    Color.clear
                 }
-                colorToggleButton(active)
+            }
+            .frame(height: 46)
+            .allowsHitTesting(availableColors.count > 1)
+            .overlay(alignment: .top) {
+                if showColorBar && availableColors.count > 1 {
+                    let stripOffset: CGFloat = mode == .sideBySide ? 56 : -62
+                    let stripAnchor: UnitPoint = mode == .sideBySide ? .top : .bottom
+                    let stripMaxWidth = min(max(space.size.width - 48, 220), 330)
+                    deviceColorStrip
+                        .frame(width: stripMaxWidth)
+                        .offset(y: stripOffset)
+                        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: stripAnchor)))
+                }
             }
             .opacity(appeared ? 1 : 0)
-            .animation(.spring(response: 0.32, dampingFraction: 0.84), value: showColorBar)
+            .animation(.spring(response: 0.30, dampingFraction: 0.84), value: showColorBar)
         }
     }
 

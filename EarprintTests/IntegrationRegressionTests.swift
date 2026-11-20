@@ -332,4 +332,39 @@ final class IntegrationRegressionTests: XCTestCase {
             try png.write(to: URL(fileURLWithPath: outPath))
         }
     }
+
+    @MainActor
+    func testCardTiersFullBinderRendersCleanly() throws {
+        var maxHoloCard = SampleCards.all[0]
+        maxHoloCard.lifetimeMinutes = 2_100 * 60
+        let cards = [maxHoloCard] + SampleCards.all.dropFirst()
+        let view = NavigationStack {
+            CardTiersView(ownedCards: cards)
+        }
+        .preferredColorScheme(.dark)
+
+        let size = CGSize(width: 393, height: 1080)
+        let host = UIHostingController(rootView: view)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.frame = CGRect(origin: .zero, size: size)
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        window.isHidden = true
+
+        XCTAssertEqual(image.size.width, size.width, accuracy: 1)
+        XCTAssertEqual(image.size.height, size.height, accuracy: 1)
+
+        if let outPath = ProcessInfo.processInfo.environment["EARPRINT_TIERS_SNAPSHOT_PATH"],
+           let png = image.pngData() {
+            try png.write(to: URL(fileURLWithPath: outPath))
+        }
+    }
 }

@@ -75,6 +75,8 @@ final class ModelRig {
     var iblReceiver: ImageBasedLightReceiverComponent?
     private var subscription: EventSubscription?
     private var lastTranslation: CGSize = .zero
+    private var onFirstFrameRendered: (() -> Void)?
+    private var renderedFrames = 0
 
     init() {
         root.addChild(tiltPivot)
@@ -82,10 +84,23 @@ final class ModelRig {
         zoomPivot.addChild(spinPivot)
     }
 
-    func attach(to content: RealityViewCameraContent) {
+    func attach(to content: RealityViewCameraContent, onFirstFrame: @escaping () -> Void) {
         step(0)
+        onFirstFrameRendered = onFirstFrame
+        renderedFrames = 0
         subscription = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
-            MainActor.assumeIsolated { self?.step(Float(event.deltaTime)) }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.step(Float(event.deltaTime))
+                if let callback = self.onFirstFrameRendered {
+                    self.renderedFrames += 1
+                    // Wait until RealityKit has stepped at least 2 frames so the GPU texture is on-screen before fading out 2D fallback artwork.
+                    if self.renderedFrames >= 2 {
+                        self.onFirstFrameRendered = nil
+                        callback()
+                    }
+                }
+            }
         }
     }
 
@@ -194,8 +209,7 @@ struct HeadphoneModelView: View {
                 rig.iblReceiver = receiver
                 applyReceiver(receiver, to: model)
             }
-            rig.attach(to: content)
-            onModelReady()
+            rig.attach(to: content, onFirstFrame: onModelReady)
         } update: { _ in
             rig.idleSpin = reduceMotion ? 0 : 0.45
             rig.applyTilt(tilt)

@@ -28,30 +28,77 @@ struct WidgetBackdrop: View {
     }
 }
 
-/// Static foil for mini cards: the app's rarity gradient + fine diagonal lines + holo sheen.
+/// Static foil for mini cards: per-material natural gradients (no center pinwheel) + micro finish.
 struct MiniFoil: View {
     let rarity: Rarity
 
     var body: some View {
+        let colors = rarity.baseColors
+        let mid = colors.indices.contains(0) ? colors[0] : rarity.glow
+        let hi = colors.indices.contains(1) ? colors[1] : mid
+        let sh = colors.indices.contains(2) ? colors[2] : mid
+        let deep = colors.indices.contains(3) ? colors[3] : sh
+
         ZStack {
-            AngularGradient(colors: rarity.baseColors, center: UnitPoint(x: 0.5, y: 0.4), angle: .degrees(200))
+            switch rarity.material {
+            case .matteGrain:
+                LinearGradient(colors: [hi, mid, sh, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                RadialGradient(colors: [hi.opacity(0.40), .clear], center: UnitPoint(x: 0.20, y: 0.15), startRadius: 2, endRadius: 90)
+            case .brushed:
+                LinearGradient(colors: [mid, hi, mid, sh], startPoint: UnitPoint(x: 0.12, y: 0), endPoint: UnitPoint(x: 0.88, y: 1))
+                LinearGradient(colors: [.clear, .white.opacity(0.24), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.8, y: 0.75))
+                    .blendMode(.softLight)
+            case .satin:
+                LinearGradient(colors: [hi, mid, sh, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                RadialGradient(colors: [hi.opacity(0.45), .clear], center: UnitPoint(x: 0.82, y: 0.18), startRadius: 2, endRadius: 85)
+            case .frosted:
+                LinearGradient(colors: [hi, mid, sh], startPoint: .topTrailing, endPoint: .bottomLeading)
+                RadialGradient(colors: [.white.opacity(0.28), .clear], center: UnitPoint(x: 0.78, y: 0.18), startRadius: 4, endRadius: 95)
+            case .faceted:
+                LinearGradient(colors: [sh, mid, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [.clear, hi.opacity(0.32), .white.opacity(0.16), .clear], startPoint: .topLeading, endPoint: UnitPoint(x: 0.9, y: 0.7))
+                    .blendMode(.screen)
+            case .carbon:
+                LinearGradient(colors: [mid, deep, sh], startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [hi.opacity(0.55), rarity.glow.opacity(0.22), .clear], center: UnitPoint(x: 0.85, y: 0.12), startRadius: 2, endRadius: 75)
+            case .holo:
+                LinearGradient(colors: [colors[0], colors[1], colors[2], colors[3]], startPoint: .topLeading, endPoint: .bottomTrailing)
+                RadialGradient(colors: [colors[0].opacity(0.52), .clear], center: UnitPoint(x: 0.2, y: 0.2), startRadius: 2, endRadius: 75)
+                RadialGradient(colors: [colors[2].opacity(0.42), .clear], center: UnitPoint(x: 0.82, y: 0.45), startRadius: 2, endRadius: 75)
+            }
+
             Canvas { context, size in
                 var path = Path()
-                stride(from: -size.height, to: size.width, by: 3).forEach { x in
-                    path.move(to: CGPoint(x: x, y: size.height))
-                    path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                switch rarity.material {
+                case .brushed:
+                    stride(from: CGFloat(0), to: size.height, by: 2.5).forEach { y in
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    context.stroke(path, with: .color(.white.opacity(0.05)), lineWidth: 0.5)
+                case .carbon:
+                    stride(from: -size.height, to: size.width + size.height, by: 4).forEach { x in
+                        path.move(to: CGPoint(x: x, y: size.height))
+                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                    }
+                    context.stroke(path, with: .color(.white.opacity(0.06)), lineWidth: 0.6)
+                case .matteGrain, .frosted, .satin, .faceted, .holo:
+                    stride(from: -size.height, to: size.width, by: 3.5).forEach { x in
+                        path.move(to: CGPoint(x: x, y: size.height))
+                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    }
+                    context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.06 : 0.035)), lineWidth: 0.55)
                 }
-                context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.12 : 0.07)), lineWidth: 0.6)
             }
-            if rarity.sheenOpacity > 0 {
-                LinearGradient(colors: [.clear, .pink.opacity(0.35), .yellow.opacity(0.3), .cyan.opacity(0.35), .purple.opacity(0.3), .clear],
+
+            if rarity == .holo {
+                LinearGradient(colors: [.clear, .pink.opacity(0.24), .yellow.opacity(0.20), .cyan.opacity(0.26), .clear],
                                startPoint: UnitPoint(x: -0.1, y: 0), endPoint: UnitPoint(x: 1.1, y: 1))
                     .blendMode(.colorDodge)
-                    .opacity(rarity.sheenOpacity * 0.92)
+                    .opacity(0.55)
             }
-            LinearGradient(colors: [.clear, .white.opacity(0.5), .clear],
-                           startPoint: UnitPoint(x: 0.0, y: 0.0), endPoint: UnitPoint(x: 0.55, y: 0.6))
-                .blendMode(.overlay)
         }
     }
 }

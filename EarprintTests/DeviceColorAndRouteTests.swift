@@ -99,14 +99,15 @@ final class DeviceColorAndRouteTests: XCTestCase {
         let standard = try XCTUnwrap(DeviceColorOption.defaultOption(for: .airpodsMax))
         let orange = try XCTUnwrap(DeviceColorOption.airPodsMaxFinishes.first { $0.id == "apm.orange" })
         let max = await HeadphoneModelLoader.load(.overEar, finish: standard.modelFinish, modelKey: .airpodsMax)
-        let canopyNames: Set<String> = ["DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC"]
+        let canopyEntityNames: Set<String> = ["AExPvRSHRbARooZ", "AANWpKMFljrFwQj"]
 
-        func canopies(in entity: Entity) -> [PhysicallyBasedMaterial] {
-            let materials = (entity as? ModelEntity)?.model?.materials ?? []
-            let local = materials.compactMap { material -> PhysicallyBasedMaterial? in
-                guard let pbr = material as? PhysicallyBasedMaterial,
-                      let name = pbr.name, canopyNames.contains(name) else { return nil }
-                return pbr
+        func canopies(in entity: Entity) -> [(String, PhysicallyBasedMaterial)] {
+            let local: [(String, PhysicallyBasedMaterial)]
+            if let modelEntity = entity as? ModelEntity, canopyEntityNames.contains(modelEntity.name),
+               let pbr = modelEntity.model?.materials.first as? PhysicallyBasedMaterial {
+                local = [(modelEntity.name, pbr)]
+            } else {
+                local = []
             }
             return local + entity.children.flatMap { canopies(in: $0) }
         }
@@ -114,9 +115,73 @@ final class DeviceColorAndRouteTests: XCTestCase {
         for finish in [standard, orange] {
             HeadphoneModelLoader.applyFinish(finish.modelFinish, to: max, modelKey: .airpodsMax)
             let canopyMaterials = canopies(in: max)
-            XCTAssertEqual(Set(canopyMaterials.compactMap(\.name)), canopyNames)
-            XCTAssertTrue(canopyMaterials.allSatisfy { $0.baseColor.texture != nil })
+            XCTAssertEqual(Set(canopyMaterials.map(\.0)), canopyEntityNames)
+            XCTAssertTrue(canopyMaterials.allSatisfy { $0.1.baseColor.texture != nil })
         }
+    }
+
+    @MainActor
+    func testAirPodsMaxRepeatedColorSwitchesUpdateEarmuffsAndCanopy() async throws {
+        let sequenceIDs = ["apm.spaceGray", "apm.orange", "apm.green", "apm.pink"]
+        let finishes = try sequenceIDs.map { id in
+            try XCTUnwrap(DeviceColorOption.airPodsMaxFinishes.first { $0.id == id })
+        }
+        let initial = try XCTUnwrap(finishes.first)
+        let pink = try XCTUnwrap(finishes.last)
+        let model = await HeadphoneModelLoader.load(.overEar, finish: initial.modelFinish, modelKey: .airpodsMax)
+
+        // Apply multiple finishes sequentially on the SAME loaded entity to catch stripped material names.
+        for option in finishes.dropFirst() {
+            HeadphoneModelLoader.applyFinish(option.modelFinish, to: model, modelKey: .airpodsMax)
+        }
+
+        func material(forEntity target: String, in entity: Entity) -> PhysicallyBasedMaterial? {
+            if let modelEntity = entity as? ModelEntity, modelEntity.name == target,
+               let pbr = modelEntity.model?.materials.first as? PhysicallyBasedMaterial {
+                return pbr
+            }
+            for child in entity.children {
+                if let found = material(forEntity: target, in: child) {
+                    return found
+                }
+            }
+            return nil
+        }
+
+        func sRGBComponents(_ color: UIColor) -> [CGFloat] {
+            let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
+            let converted = color.cgColor.converted(to: srgb, intent: .defaultIntent, options: nil) ?? color.cgColor
+            return converted.components ?? []
+        }
+
+        func assertColorMatches(_ actual: UIColor, _ expected: UIColor, label: String) {
+            let a = sRGBComponents(actual)
+            let e = sRGBComponents(expected)
+            XCTAssertGreaterThanOrEqual(a.count, 3, label)
+            XCTAssertGreaterThanOrEqual(e.count, 3, label)
+            XCTAssertEqual(a[0], e[0], accuracy: 0.06, "\(label) R")
+            XCTAssertEqual(a[1], e[1], accuracy: 0.06, "\(label) G")
+            XCTAssertEqual(a[2], e[2], accuracy: 0.06, "\(label) B")
+        }
+
+        let expectedFinish = pink.modelFinish
+        let shell = try XCTUnwrap(material(forEntity: "BNOZVCaFckcMAnz", in: model))
+        let outerCushion = try XCTUnwrap(material(forEntity: "LSwgFSweioaiCgt", in: model))
+        let rightInnerMesh = try XCTUnwrap(material(forEntity: "QVkyuxLuHiwiZGe", in: model))
+        let leftInnerMesh = try XCTUnwrap(material(forEntity: "PNdaALJHbSHKuWS", in: model))
+        let headband = try XCTUnwrap(material(forEntity: "WWtYjswGShSaNES", in: model))
+        let canopyOuter = try XCTUnwrap(material(forEntity: "AExPvRSHRbARooZ", in: model))
+        let canopyInner = try XCTUnwrap(material(forEntity: "AANWpKMFljrFwQj", in: model))
+
+        assertColorMatches(shell.baseColor.tint, expectedFinish.shell, label: "shell")
+        assertColorMatches(outerCushion.baseColor.tint, expectedFinish.accent, label: "outerCushion")
+        assertColorMatches(rightInnerMesh.baseColor.tint, expectedFinish.cushion, label: "rightInnerMesh")
+        assertColorMatches(leftInnerMesh.baseColor.tint, expectedFinish.cushion, label: "leftInnerMesh")
+        assertColorMatches(headband.baseColor.tint, expectedFinish.cushion, label: "headband")
+        assertColorMatches(canopyOuter.baseColor.tint, expectedFinish.accent, label: "canopyOuter")
+        assertColorMatches(canopyInner.baseColor.tint, expectedFinish.accent, label: "canopyInner")
+        XCTAssertNotNil(canopyOuter.baseColor.texture)
+        XCTAssertNotNil(canopyInner.baseColor.texture)
     }
 
     func testCardStackPoseForActiveBehindAndDealtCards() {

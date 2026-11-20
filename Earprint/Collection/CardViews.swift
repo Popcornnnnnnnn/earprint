@@ -31,91 +31,396 @@ private struct FoilTexturePattern: View, Equatable {
     var body: some View {
         Canvas { context, size in
             switch material {
-            case .brushed:
-                var path = Path()
-                stride(from: CGFloat(0), to: size.height, by: 3.5).forEach { y in
-                    path.move(to: CGPoint(x: 0, y: y))
-                    path.addLine(to: CGPoint(x: size.width, y: y))
+            case .matteGrain:
+                // Bead-blasted anodized micro-stipple (no linear grooves).
+                var stipple = Path()
+                let step: CGFloat = 6
+                var row = 0
+                stride(from: CGFloat(1), to: size.height, by: step).forEach { y in
+                    let shift: CGFloat = row.isMultiple(of: 2) ? 0 : step * 0.5
+                    stride(from: shift + 1, to: size.width, by: step).forEach { x in
+                        stipple.addRect(CGRect(x: x, y: y, width: 1.1, height: 1.1))
+                    }
+                    row += 1
                 }
-                context.stroke(path, with: .color(.white.opacity(0.065)), lineWidth: 0.75)
+                context.fill(stipple, with: .color(.white.opacity(0.042)))
+
+            case .brushed:
+                // Fine horizontal brushed alloy hairlines at subtle alternating weights.
+                var primary = Path()
+                var secondary = Path()
+                var idx = 0
+                stride(from: CGFloat(0), to: size.height, by: 3.0).forEach { y in
+                    let target = idx.isMultiple(of: 3) ? 0 : 1
+                    if target == 0 {
+                        primary.move(to: CGPoint(x: 0, y: y))
+                        primary.addLine(to: CGPoint(x: size.width, y: y))
+                    } else {
+                        secondary.move(to: CGPoint(x: 0, y: y))
+                        secondary.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    idx += 1
+                }
+                context.stroke(primary, with: .color(.white.opacity(0.055)), lineWidth: 0.75)
+                context.stroke(secondary, with: .color(.white.opacity(0.025)), lineWidth: 0.55)
+
+            case .satin:
+                // Ultra-fine vertical silk grain so satin finishes read smooth and directional.
+                var path = Path()
+                stride(from: CGFloat(0), to: size.width, by: 4.5).forEach { x in
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                context.stroke(path, with: .color(.white.opacity(0.028)), lineWidth: 0.6)
+
+            case .frosted:
+                // Soft staggered frosted mineral dust.
+                var mineral = Path()
+                var row = 0
+                stride(from: CGFloat(2), to: size.height, by: 7).forEach { y in
+                    let offset: CGFloat = CGFloat((row * 3) % 7)
+                    stride(from: offset, to: size.width, by: 7).forEach { x in
+                        mineral.addEllipse(in: CGRect(x: x, y: y, width: 1.4, height: 1.4))
+                    }
+                    row += 1
+                }
+                context.fill(mineral, with: .color(.white.opacity(0.036)))
+
+            case .faceted:
+                // Crisp architectural micro-fluting at a steep structural angle.
+                var flutes = Path()
+                stride(from: -size.height * 0.6, to: size.width + size.height * 0.6, by: 6).forEach { x in
+                    flutes.move(to: CGPoint(x: x, y: size.height))
+                    flutes.addLine(to: CGPoint(x: x + size.height * 0.45, y: 0))
+                }
+                context.stroke(flutes, with: .color(.white.opacity(0.045)), lineWidth: 0.8)
 
             case .carbon:
-                var pathA = Path()
-                stride(from: -size.height, to: size.width + size.height, by: 7).forEach { x in
-                    pathA.move(to: CGPoint(x: x, y: size.height))
-                    pathA.addLine(to: CGPoint(x: x + size.height, y: 0))
-                    pathA.move(to: CGPoint(x: x, y: 0))
-                    pathA.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                // Authentic 2×2 carbon-fiber twill weave.
+                var weave = Path()
+                stride(from: -size.height, to: size.width + size.height, by: 7.5).forEach { x in
+                    weave.move(to: CGPoint(x: x, y: size.height))
+                    weave.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    weave.move(to: CGPoint(x: x, y: 0))
+                    weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
                 }
-                context.stroke(pathA, with: .color(.white.opacity(0.055)), lineWidth: 1)
+                context.stroke(weave, with: .color(.white.opacity(0.062)), lineWidth: 1.0)
 
-            case .matteGrain, .frosted, .satin, .faceted, .holo:
-                var path = Path()
-                stride(from: -size.height, to: size.width, by: 5).forEach { x in
-                    path.move(to: CGPoint(x: x, y: size.height))
-                    path.addLine(to: CGPoint(x: x + size.height, y: 0))
+            case .holo:
+                // Delicate pearlescent cross-shimmer mesh.
+                var shimmer = Path()
+                stride(from: -size.height, to: size.width, by: 5.5).forEach { x in
+                    shimmer.move(to: CGPoint(x: x, y: size.height))
+                    shimmer.addLine(to: CGPoint(x: x + size.height, y: 0))
                 }
-                let lineOpacity: Double = switch material {
-                case .holo: 0.10
-                case .matteGrain, .frosted: 0.04
-                default: 0.06
-                }
-                context.stroke(path, with: .color(.white.opacity(lineOpacity)), lineWidth: 1)
+                context.stroke(shimmer, with: .color(.white.opacity(0.055)), lineWidth: 0.8)
             }
         }
     }
 }
 
-/// Foil surface: base gradient + finish-specific micro texture + prism sheen + specular highlight that move with tilt.
+/// Foil surface: distinct per-material lighting architecture + finish micro-texture that responds naturally to tilt.
 struct FoilSurface: View {
     let rarity: Rarity
     var tilt: CGSize = .zero
 
     var body: some View {
-        ZStack {
-            AngularGradient(colors: rarity.baseColors, center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.4 + tilt.height * 0.3),
-                            angle: .degrees(200 + tilt.width * 60))
+        let colors = rarity.baseColors
+        let mid = colors.indices.contains(0) ? colors[0] : rarity.glow
+        let hi = colors.indices.contains(1) ? colors[1] : mid
+        let sh = colors.indices.contains(2) ? colors[2] : mid
+        let deep = colors.indices.contains(3) ? colors[3] : sh
+        let tx = tilt.width
+        let ty = tilt.height
 
-            // Distinct surface finish pattern matching each tier's material craft (static, never redrawn on tilt).
+        ZStack {
+            // 1. Pinch-free base coat tailored to each tier's material physics.
+            baseLayer(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
+
+            // 2. Static finish micro-texture (Equatable -> zero CPU cost during tilt).
             FoilTexturePattern(material: rarity.material)
                 .equatable()
 
-            if rarity.material == .faceted {
+            // 3. Per-material natural light shape & specular behavior (no shared template!).
+            lightingOverlay(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
+        }
+    }
+
+    @ViewBuilder
+    private func baseLayer(mid: Color, hi: Color, sh: Color, deep: Color, tx: CGFloat, ty: CGFloat) -> some View {
+        switch rarity.material {
+        case .matteGrain:
+            LinearGradient(
+                colors: [hi, mid, sh, deep],
+                startPoint: UnitPoint(x: 0.08 + tx * 0.06, y: 0.02 + ty * 0.05),
+                endPoint: UnitPoint(x: 0.92 + tx * 0.06, y: 0.98 + ty * 0.05)
+            )
+        case .brushed:
+            if rarity == .silver {
                 LinearGradient(
-                    colors: [.clear, .white.opacity(0.16), .clear, .white.opacity(0.12), .clear],
-                    startPoint: UnitPoint(x: 0.0 + tilt.width * 0.4, y: 0.1),
-                    endPoint: UnitPoint(x: 1.0 + tilt.width * 0.4, y: 0.9)
+                    colors: [mid, hi, mid, sh],
+                    startPoint: UnitPoint(x: 0.12 + tx * 0.08, y: 0.0),
+                    endPoint: UnitPoint(x: 0.88 + tx * 0.08, y: 1.0)
                 )
-                .blendMode(.overlay)
-            } else if rarity.material == .satin {
+            } else {
+                // Fjord Teal: horizontal coastal gradient flow
                 LinearGradient(
-                    colors: [.clear, .white.opacity(0.18), .clear],
-                    startPoint: UnitPoint(x: 0.1 + tilt.width * 0.5, y: 0),
-                    endPoint: UnitPoint(x: 0.9 + tilt.width * 0.5, y: 1)
+                    colors: [sh, mid, hi, sh, deep],
+                    startPoint: UnitPoint(x: 0.0, y: 0.14 + ty * 0.06),
+                    endPoint: UnitPoint(x: 1.0, y: 0.88 + ty * 0.06)
+                )
+            }
+        case .satin:
+            if rarity == .gold {
+                // Champagne Titanium: soft top-leading luminous sweep into warm midtone
+                LinearGradient(
+                    colors: [hi, mid, sh],
+                    startPoint: UnitPoint(x: 0.0, y: 0.08 + ty * 0.06),
+                    endPoint: UnitPoint(x: 0.95, y: 0.95 + ty * 0.06)
+                )
+            } else {
+                // Deep Purple: rich velvet plum base with upper-right lift
+                LinearGradient(
+                    colors: [deep, sh, mid, deep],
+                    startPoint: UnitPoint(x: 0.05, y: 0.95),
+                    endPoint: UnitPoint(x: 0.95, y: 0.05)
+                )
+            }
+        case .frosted:
+            // Sage Mist: diffused mineral backlight from upper-right
+            LinearGradient(
+                colors: [hi, mid, sh, deep],
+                startPoint: UnitPoint(x: 0.90 + tx * 0.06, y: 0.05),
+                endPoint: UnitPoint(x: 0.10 + tx * 0.06, y: 0.95)
+            )
+        case .faceted:
+            if rarity == .amethyst {
+                LinearGradient(
+                    colors: [mid, sh, deep],
+                    startPoint: UnitPoint(x: 0.0, y: 0.0),
+                    endPoint: UnitPoint(x: 1.0, y: 1.0)
+                )
+            } else {
+                // Twilight Slate: smoked dusk top-to-bottom depth
+                LinearGradient(
+                    colors: [sh, deep, Color(red: 0.055, green: 0.047, blue: 0.102)],
+                    startPoint: UnitPoint(x: 0.25, y: 0.0),
+                    endPoint: UnitPoint(x: 0.78, y: 1.0)
+                )
+            }
+        case .carbon:
+            // Midnight Carbon stays authentically dark forged composite across its body.
+            LinearGradient(
+                colors: [mid, deep, sh, Color(red: 0.025, green: 0.032, blue: 0.055)],
+                startPoint: UnitPoint(x: 0.15, y: 0.0),
+                endPoint: UnitPoint(x: 0.85, y: 1.0)
+            )
+        case .holo:
+            LinearGradient(
+                colors: [
+                    rarity.baseColors[0].opacity(0.92),
+                    rarity.baseColors[1].opacity(0.88),
+                    rarity.baseColors[2].opacity(0.86),
+                    rarity.baseColors[3].opacity(0.92),
+                ],
+                startPoint: UnitPoint(x: 0.02 + tx * 0.08, y: 0.04 + ty * 0.06),
+                endPoint: UnitPoint(x: 0.98 + tx * 0.08, y: 0.96 + ty * 0.06)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func lightingOverlay(mid: Color, hi: Color, sh: Color, deep: Color, tx: CGFloat, ty: CGFloat) -> some View {
+        switch rarity.material {
+        case .matteGrain:
+            // Broad diffused top-left overhead dome + gentle matte roll-off
+            RadialGradient(
+                colors: [hi.opacity(0.45), mid.opacity(0.14), .clear],
+                center: UnitPoint(x: 0.20 + tx * 0.28, y: 0.14 + ty * 0.22),
+                startRadius: 8,
+                endRadius: 310
+            )
+            LinearGradient(
+                colors: [.white.opacity(0.16), .clear, .black.opacity(0.18)],
+                startPoint: UnitPoint(x: 0.1 + tx * 0.25, y: 0.0),
+                endPoint: UnitPoint(x: 0.9, y: 1.0)
+            )
+            .blendMode(.softLight)
+
+        case .brushed:
+            if rarity == .silver {
+                // Vertical-traveling anisotropic brushed aluminum sheen ribbon
+                LinearGradient(
+                    colors: [.clear, hi.opacity(0.46), .white.opacity(0.32), hi.opacity(0.28), .clear],
+                    startPoint: UnitPoint(x: 0.0, y: 0.10 + ty * 0.35),
+                    endPoint: UnitPoint(x: 0.95, y: 0.72 + ty * 0.35)
+                )
+                .blendMode(.screen)
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.22), .clear],
+                    startPoint: UnitPoint(x: -0.1 + tx * 0.5, y: 0.25),
+                    endPoint: UnitPoint(x: 0.75 + tx * 0.5, y: 0.85)
                 )
                 .blendMode(.softLight)
-            } else if rarity.material == .carbon {
+            } else {
+                // Fjord Teal: soft upper-right horizon light + horizontal brushed shimmer band
                 RadialGradient(
-                    colors: [.clear, Color.black.opacity(0.32)],
-                    center: .center,
-                    startRadius: 40,
+                    colors: [hi.opacity(0.36), .clear],
+                    center: UnitPoint(x: 0.84 + tx * 0.25, y: 0.16 + ty * 0.20),
+                    startRadius: 6,
                     endRadius: 240
+                )
+                LinearGradient(
+                    colors: [.clear, hi.opacity(0.30), .white.opacity(0.20), .clear],
+                    startPoint: UnitPoint(x: -0.1 + tx * 0.45, y: 0.35),
+                    endPoint: UnitPoint(x: 1.05 + tx * 0.45, y: 0.65)
+                )
+                .blendMode(.overlay)
+            }
+
+        case .satin:
+            if rarity == .gold {
+                // Mist Champagne: opposing soft warm ivory silk blooms
+                RadialGradient(
+                    colors: [Color.white.opacity(0.44), hi.opacity(0.22), .clear],
+                    center: UnitPoint(x: 0.18 + tx * 0.26, y: 0.15 + ty * 0.22),
+                    startRadius: 10,
+                    endRadius: 260
+                )
+                RadialGradient(
+                    colors: [hi.opacity(0.28), .clear],
+                    center: UnitPoint(x: 0.84 - tx * 0.22, y: 0.86 - ty * 0.18),
+                    startRadius: 4,
+                    endRadius: 210
+                )
+            } else {
+                // Deep Purple: dramatic curved off-axis silk rim + warm violet bounce
+                RadialGradient(
+                    colors: [hi.opacity(0.48), mid.opacity(0.20), .clear],
+                    center: UnitPoint(x: 0.82 + tx * 0.28, y: 0.18 + ty * 0.22),
+                    startRadius: 8,
+                    endRadius: 270
+                )
+                LinearGradient(
+                    colors: [.clear, hi.opacity(0.26), .white.opacity(0.14), .clear],
+                    startPoint: UnitPoint(x: 0.05 + tx * 0.35, y: 0.0),
+                    endPoint: UnitPoint(x: 0.85 + tx * 0.35, y: 0.95)
+                )
+                .blendMode(.softLight)
+            }
+
+        case .frosted:
+            // Calm ceramic glass cloud from upper-right + gentle cool bottom bounce
+            RadialGradient(
+                colors: [.white.opacity(0.32), hi.opacity(0.24), .clear],
+                center: UnitPoint(x: 0.78 + tx * 0.24, y: 0.18 + ty * 0.20),
+                startRadius: 12,
+                endRadius: 290
+            )
+            RadialGradient(
+                colors: [hi.opacity(0.22), .clear],
+                center: UnitPoint(x: 0.22 - tx * 0.20, y: 0.85 - ty * 0.15),
+                startRadius: 8,
+                endRadius: 220
+            )
+            LinearGradient(
+                colors: [.white.opacity(0.18), .clear],
+                startPoint: .top,
+                endPoint: UnitPoint(x: 0.5, y: 0.45)
+            )
+            .blendMode(.softLight)
+
+        case .faceted:
+            if rarity == .amethyst {
+                // Slate Indigo: crisp architectural two-plane bevel light
+                LinearGradient(
+                    colors: [hi.opacity(0.34), .white.opacity(0.14), .clear, .clear],
+                    startPoint: UnitPoint(x: 0.0 + tx * 0.30, y: 0.0 + ty * 0.20),
+                    endPoint: UnitPoint(x: 0.75 + tx * 0.30, y: 0.78 + ty * 0.20)
+                )
+                .blendMode(.screen)
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.16), hi.opacity(0.24), .clear],
+                    startPoint: UnitPoint(x: 0.35 - tx * 0.40, y: 0.0),
+                    endPoint: UnitPoint(x: 1.05 - tx * 0.40, y: 0.85)
+                )
+                .blendMode(.overlay)
+            } else {
+                // Twilight Slate: sculpted smoked dusk slash + upper-right violet edge catchlight
+                LinearGradient(
+                    colors: [.clear, hi.opacity(0.34), .white.opacity(0.16), .clear],
+                    startPoint: UnitPoint(x: 0.10 + tx * 0.45, y: -0.05),
+                    endPoint: UnitPoint(x: 0.95 + tx * 0.45, y: 0.70)
+                )
+                .blendMode(.screen)
+                RadialGradient(
+                    colors: [hi.opacity(0.30), .clear],
+                    center: UnitPoint(x: 0.18 - tx * 0.25, y: 0.86),
+                    startRadius: 8,
+                    endRadius: 210
                 )
             }
 
-            if rarity.sheenOpacity > 0 {
-                LinearGradient(colors: [.clear, .pink.opacity(0.35), .yellow.opacity(0.3), .cyan.opacity(0.35), .purple.opacity(0.3), .clear],
-                               startPoint: UnitPoint(x: -0.2 + tilt.width * 0.6, y: 0),
-                               endPoint: UnitPoint(x: 1.2 + tilt.width * 0.6, y: 1))
-                    .blendMode(.colorDodge)
-                    .opacity(rarity.sheenOpacity)
-            }
+        case .carbon:
+            // Midnight Carbon: directional DLC edge catchlight from upper-right + tight cyan-steel shimmer
+            RadialGradient(
+                colors: [hi.opacity(0.62), rarity.glow.opacity(0.24), .clear],
+                center: UnitPoint(x: 0.86 + tx * 0.32, y: 0.12 + ty * 0.22),
+                startRadius: 4,
+                endRadius: 235
+            )
+            LinearGradient(
+                colors: [.clear, rarity.glow.opacity(0.22), .white.opacity(0.14), .clear],
+                startPoint: UnitPoint(x: 0.25 + tx * 0.55, y: 0.0),
+                endPoint: UnitPoint(x: 0.95 + tx * 0.55, y: 0.85)
+            )
+            .blendMode(.screen)
+            LinearGradient(
+                colors: [.clear, Color.black.opacity(0.32)],
+                startPoint: UnitPoint(x: 0.5, y: 0.35),
+                endPoint: .bottomLeading
+            )
 
-            // Specular highlight that slides across as the card tilts.
-            LinearGradient(colors: [.clear, .white.opacity(rarity.material == .matteGrain ? 0.35 : 0.55), .clear],
-                           startPoint: UnitPoint(x: 0.1 + tilt.width * 0.8, y: 0.0 + tilt.height * 0.5),
-                           endPoint: UnitPoint(x: 0.6 + tilt.width * 0.8, y: 0.7 + tilt.height * 0.5))
-                .blendMode(.overlay)
+        case .holo:
+            // Liquid Holo: flowing multi-pool iridescent aurora + prism sweep (zero pinch!).
+            RadialGradient(
+                colors: [rarity.baseColors[0].opacity(0.56), .clear],
+                center: UnitPoint(x: 0.18 + tx * 0.32, y: 0.18 + ty * 0.26),
+                startRadius: 8,
+                endRadius: 250
+            )
+            RadialGradient(
+                colors: [rarity.baseColors[2].opacity(0.46), .clear],
+                center: UnitPoint(x: 0.84 - tx * 0.28, y: 0.36 + ty * 0.24),
+                startRadius: 8,
+                endRadius: 245
+            )
+            RadialGradient(
+                colors: [rarity.baseColors[3].opacity(0.44), .clear],
+                center: UnitPoint(x: 0.30 + tx * 0.26, y: 0.86 - ty * 0.22),
+                startRadius: 8,
+                endRadius: 230
+            )
+            LinearGradient(
+                colors: [
+                    .clear,
+                    .pink.opacity(0.26),
+                    .yellow.opacity(0.20),
+                    .cyan.opacity(0.28),
+                    .purple.opacity(0.22),
+                    .clear
+                ],
+                startPoint: UnitPoint(x: -0.15 + tx * 0.55, y: 0.0),
+                endPoint: UnitPoint(x: 1.10 + tx * 0.55, y: 1.0)
+            )
+            .blendMode(.colorDodge)
+            .opacity(0.48)
+            LinearGradient(
+                colors: [.clear, .white.opacity(0.36), .clear],
+                startPoint: UnitPoint(x: 0.0 + tx * 0.65, y: 0.05 + ty * 0.4),
+                endPoint: UnitPoint(x: 0.65 + tx * 0.65, y: 0.72 + ty * 0.4)
+            )
+            .blendMode(.overlay)
         }
     }
 }
