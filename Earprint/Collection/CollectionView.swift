@@ -96,7 +96,7 @@ struct CollectionView: View {
             DeviceDossierView(card: card, isSampleData: isSampleData) { dossierCard = nil }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(openIconPicker: openIconPicker)
+            SettingsView(ownedCards: cards, openIconPicker: openIconPicker)
                 .presentationDragIndicator(.visible)
         }
         .task { await runDemoIfNeeded() }
@@ -299,70 +299,239 @@ struct CollectionView: View {
     }
 }
 
-#if DEBUG || EARPRINT_MODEL_GALLERY
-struct ModelGalleryView: View {
-    private struct Preview: Identifiable {
-        let card: HeadphoneCard
-        let productID: String?
+/// Deduplicated, family-grouped catalog of supported headphone models used by `ModelGalleryView`.
+/// Merges hardware variant product IDs that share the exact same marketing name (e.g. AirPods 4 PIDs).
+enum ModelGalleryCatalog {
+    enum Family: String, CaseIterable, Identifiable {
+        case airPods = "AirPods"
+        case airPodsPro = "AirPods Pro"
+        case airPodsMax = "AirPods Max"
+        case beats = "Beats"
+        case generic = "Generic"
 
-        var id: String { card.id }
+        var id: String { rawValue }
     }
 
-    private static let previews: [Preview] = {
-        let products = HeadphoneModelCatalog.byProductID.values.sorted {
-            ($0.marketingName, $0.productID ?? 0) < ($1.marketingName, $1.productID ?? 0)
+    struct Entry: Identifiable, Equatable {
+        let id: String
+        let family: Family
+        let model: HeadphoneModelInfo
+        let productIDs: [Int]
+        let card: HeadphoneCard
+
+        var productIDSummary: String? {
+            guard !productIDs.isEmpty else { return nil }
+            return productIDs.map { String(format: "0x%04X", $0) }.joined(separator: " · ")
         }
-        let genericEarbuds = HeadphoneModelInfo(productID: nil, marketingName: "Generic earbuds", shortName: "Earbuds",
-                                                key: .earbudsGeneric, symbol: "earbuds", fallbackSymbol: "headphones",
-                                                isApple: false)
-        return (products + [genericEarbuds, HeadphoneModelCatalog.unknownHeadphones]).enumerated().map { index, model in
-            let card = HeadphoneCard(
-                id: "preview-\(model.productIDText ?? model.key.rawValue)", nickname: model.shortName,
-                model: model.marketingName, symbol: model.resolvedSymbol,
-                lifetimeMinutes: 24 * 60 + 15, sessions: 32, longestMinutes: 90, averageDecibels: 65,
-                firstMet: "2025.09.01", lastUsed: "Today", serial: index + 1, grid: SampleData.summary.grid,
-                modelKey: model.key, kind: model.key.kind
-            )
-            return Preview(card: card, productID: model.productIDText)
+
+        var hasDedicated3DModel: Bool {
+            card.modelAssetName != nil
         }
-    }()
-    private static let cards = previews.map(\.card)
+
+        static func == (lhs: Entry, rhs: Entry) -> Bool { lhs.id == rhs.id }
+    }
+
+    struct SectionGroup: Identifiable {
+        let family: Family
+        let entries: [Entry]
+        var id: String { family.id }
+    }
+
+    static func family(for model: HeadphoneModelInfo) -> Family {
+        switch model.key {
+        case .airpods, .airpods3, .airpods4: return .airPods
+        case .airpodsPro: return .airPodsPro
+        case .airpodsMax: return .airPodsMax
+        case .beatsEarbuds, .beatsEarhook, .beatsOverEar: return .beats
+        case .earbudsGeneric, .overEarGeneric: return .generic
+        }
+    }
+
+    static let sections: [SectionGroup] = buildSections(from: Array(HeadphoneModelCatalog.byProductID.values))
+    static let allEntries: [Entry] = sections.flatMap(\.entries)
+    static let allCards: [HeadphoneCard] = allEntries.map(\.card)
+    static let allAppleAndBeatsCount: Int = allEntries.filter { $0.family != .generic }.count
+
+    static func isUnlocked(_ entry: Entry, ownedCards: [HeadphoneCard]) -> Bool {
+        guard entry.family != .generic else { return false }
+        let target = entry.model.marketingName.lowercased()
+        return ownedCards.contains { $0.model.lowercased() == target }
+    }
+
+    static func unlockedCount(for ownedCards: [HeadphoneCard]) -> Int {
+        allEntries.filter { isUnlocked($0, ownedCards: ownedCards) }.count
+    }
+
+    static func buildSections(from products: [HeadphoneModelInfo]) -> [SectionGroup] {
+        // Deduplicate by marketingName while keeping all variant Bluetooth product IDs sorted.
+        var grouped: [String: (info: HeadphoneModelInfo, ids: [Int])] = [:]
+        for info in products {
+            let key = info.marketingName
+            if var existing = grouped[key] {
+                if let pid = info.productID, !existing.ids.contains(pid) {
+                    existing.ids.append(pid)
+                }
+                grouped[key] = existing
+            } else {
+                grouped[key] = (info, info.productID.map { [$0] } ?? [])
+            }
+        }
+
+        let genericEarbuds = HeadphoneModelInfo(
+            productID: nil, marketingName: "Generic earbuds", shortName: "Earbuds",
+            key: .earbudsGeneric, symbol: "earbuds", fallbackSymbol: "headphones", isApple: false
+        )
+        let genericOverEar = HeadphoneModelInfo(
+            productID: nil, marketingName: "Generic headphones", shortName: "Headphones",
+            key: .overEarGeneric, symbol: "headphones", fallbackSymbol: "headphones", isApple: false
+        )
+
+        var bucketed: [Family: [(info: HeadphoneModelInfo, ids: [Int])]] = [:]
+        for value in grouped.values {
+            let sortedIDs = value.ids.sorted()
+            bucketed[family(for: value.info), default: []].append((value.info, sortedIDs))
+        }
+        bucketed[.generic] = [(genericEarbuds, []), (genericOverEar, [])]
+
+        var serial = 1
+        var result: [SectionGroup] = []
+        for fam in Family.allCases {
+            guard var items = bucketed[fam], !items.isEmpty else { continue }
+            if fam != .generic {
+                items.sort { lhs, rhs in
+                    let lMin = lhs.ids.first ?? Int.max
+                    let rMin = rhs.ids.first ?? Int.max
+                    return (lMin, lhs.info.marketingName) < (rMin, rhs.info.marketingName)
+                }
+            }
+            let entries: [Entry] = items.map { item in
+                defer { serial += 1 }
+                let idSlug = item.info.marketingName.lowercased().replacingOccurrences(of: " ", with: "-")
+                let card = HeadphoneCard(
+                    id: "catalog-\(idSlug)",
+                    nickname: item.info.shortName,
+                    model: item.info.marketingName,
+                    symbol: item.info.resolvedSymbol,
+                    lifetimeMinutes: 0,
+                    sessions: 0,
+                    longestMinutes: 0,
+                    averageDecibels: 0,
+                    firstMet: "",
+                    lastUsed: "",
+                    serial: serial,
+                    grid: ListeningGrid(minutes: [], decibels: []),
+                    modelKey: item.info.key,
+                    kind: item.info.key.kind
+                )
+                return Entry(id: card.id, family: fam, model: item.info, productIDs: item.ids, card: card)
+            }
+            result.append(SectionGroup(family: fam, entries: entries))
+        }
+        return result
+    }
+}
+
+struct ModelGalleryView: View {
+    var ownedCards: [HeadphoneCard] = []
 
     @Namespace private var hero
     @State private var selection: HeadphoneCard?
     @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
 
+    private var unlockedCardIDs: Set<String> {
+        Set(ModelGalleryCatalog.allEntries.filter { ModelGalleryCatalog.isUnlocked($0, ownedCards: ownedCards) }.map(\.id))
+    }
+
+    private var catalogDetailsByCardID: [String: String] {
+        Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.compactMap { entry in
+            entry.productIDSummary.map { (entry.id, $0) }
+        })
+    }
+
     var body: some View {
         ZStack {
             List {
                 Section {
-                    ForEach(Self.previews) { preview in
-                        Button {
-                            selection = preview.card
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(preview.card.model)
-                                HStack {
-                                    Text(LocalizedStringKey(preview.card.modelAssetName == nil ? "Generic 3D preview" : "Shared 3D artwork"))
-                                    if let productID = preview.productID {
-                                        Text(productID).monospaced()
-                                    }
-                                }
+                    HStack(spacing: 12) {
+                        Image(systemName: "trophy.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color(red: 0.94, green: 0.78, blue: 0.36))
+                            .frame(width: 34, height: 34)
+                            .background(Color(red: 0.94, green: 0.78, blue: 0.36).opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(unlockedCardIDs.count) of \(ModelGalleryCatalog.allAppleAndBeatsCount) unlocked")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Listen with any supported pair to add it to your Collection.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            }
-                            .foregroundStyle(.primary)
                         }
                     }
-                } footer: {
-                    Text("Preview cards use sample listening stats.")
+                    .padding(.vertical, 2)
+                }
+
+                ForEach(ModelGalleryCatalog.sections) { section in
+                    Section(LocalizedStringKey(section.family.rawValue)) {
+                        ForEach(section.entries) { entry in
+                            let unlocked = unlockedCardIDs.contains(entry.id)
+                            Button {
+                                selection = entry.card
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: entry.model.resolvedSymbol)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(unlocked ? Color(red: 0.45, green: 0.90, blue: 0.76) : .secondary)
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            (unlocked ? Color(red: 0.45, green: 0.90, blue: 0.76).opacity(0.14) : Color.white.opacity(0.06)),
+                                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        )
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(entry.model.marketingName)
+                                            .font(.body)
+                                        HStack(spacing: 6) {
+                                            Text(LocalizedStringKey(entry.hasDedicated3DModel ? "3D model" : "Generic 3D preview"))
+                                            if let pids = entry.productIDSummary {
+                                                Text("·")
+                                                Text(pids).monospaced()
+                                            }
+                                        }
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                    }
+
+                                    Spacer(minLength: 8)
+
+                                    if unlocked {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(Color(red: 0.32, green: 0.86, blue: 0.56))
+                                            .accessibilityLabel("Unlocked")
+                                    } else {
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .foregroundStyle(.primary)
+                            }
+                        }
+                    }
                 }
             }
             .accessibilityHidden(selection != nil)
 
             if let selection {
-                CardDetail(card: selection, cards: Self.cards, namespace: hero, isModelPreview: true,
-                           colorStore: colors, onSelectCard: { self.selection = $0 }) {
+                CardDetail(
+                    card: selection,
+                    cards: ModelGalleryCatalog.allCards,
+                    namespace: hero,
+                    isModelPreview: true,
+                    unlockedPreviewIDs: unlockedCardIDs,
+                    catalogDetails: catalogDetailsByCardID,
+                    colorStore: colors,
+                    onSelectCard: { self.selection = $0 }
+                ) {
                     self.selection = nil
                 }
             }
@@ -371,7 +540,6 @@ struct ModelGalleryView: View {
         .toolbar(selection == nil ? .visible : .hidden, for: .navigationBar)
     }
 }
-#endif
 
 /// Pure helper for switching between cards in `CardDetail`.
 enum CardDeckNavigation {
@@ -471,6 +639,8 @@ struct CardDetail: View {
     var cards: [HeadphoneCard] = []
     let namespace: Namespace.ID
     var isModelPreview = false
+    var unlockedPreviewIDs: Set<String> = []
+    var catalogDetails: [String: String] = [:]
     var colorStore: DeviceColorStore? = nil
     var routeMonitor: ActiveAudioRouteMonitor? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
@@ -529,8 +699,8 @@ struct CardDetail: View {
 
     private var mode: Mode {
         if let fold = space.horizontalFold { return .foldStacked(fold) }
-        if space.verticalFold != nil { return .sideBySide }
-        if space.isWide {
+        if !isModelPreview, space.verticalFold != nil { return .sideBySide }
+        if !isModelPreview, space.isWide {
             let split = ColumnSplit(space: space, padding: 24, gap: 36)
             let fits = min(split.leading, split.trailing) / CardMetrics.size.width >= 0.85
                 && (space.size.height - 116) / CardMetrics.size.height >= 0.85
@@ -540,8 +710,12 @@ struct CardDetail: View {
         return .single
     }
 
+    private var canFlip: Bool {
+        !isModelPreview && mode != .sideBySide
+    }
+
     private var canShowFlipHint: Bool {
-        space.size.width > 0 && mode != .sideBySide
+        space.size.width > 0 && canFlip
     }
 
     private var repeatsFlipHint: Bool {
@@ -772,6 +946,10 @@ struct CardDetail: View {
         let activeAngle = isTop ? angle + dragAngle : 0
         let activeTilt = isTop ? tilt : .zero
 
+        let catalogBadge: LocalizedStringKey? = isModelPreview
+            ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
+            : nil
+
         return ZStack {
             ZStack {
                 CardFront(
@@ -780,7 +958,10 @@ struct CardDetail: View {
                     showSymbol: !is3DReady,
                     colorOption: itemColor,
                     isCurrentlyWorn: itemWorn,
-                    usesProductArtwork: !isModelPreview || item.modelAssetName != nil
+                    usesProductArtwork: !isModelPreview || item.modelAssetName != nil,
+                    showsListeningStats: !isModelPreview,
+                    badgeOverride: catalogBadge,
+                    catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
                 )
                 .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                 .gesture(isTop ? cardDrag : nil)
@@ -820,14 +1001,14 @@ struct CardDetail: View {
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-            .onTapGesture { flip() }
+            .onTapGesture { if canFlip { flip() } }
             .accessibilityElement(children: .contain)
-            .accessibilityAction(named: Text("Flip card")) { flip() }
+            .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
             .allowsHitTesting(!flipped)
             .accessibilityHidden(flipped || !isTop)
             .modifier(CardFaceRotation(angle: activeAngle))
 
-            if isTop {
+            if isTop && canFlip {
                 CardBack(card: item, openDossier: flipped && !isModelPreview ? openDossier : nil, flip: { flip() })
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                     .simultaneousGesture(cardDrag)
@@ -861,30 +1042,65 @@ struct CardDetail: View {
     }
 
     private var cardControls: some View {
-        VStack(spacing: 4) {
-            if canShowFlipHint && (repeatsFlipHint || showsFlipHintThisVisit) {
+        let showHints = repeatsFlipHint || showsFlipHintThisVisit
+        return VStack(spacing: 6) {
+            if canShowFlipHint && showHints {
                 Text("Tap or swipe the card to flip")
                     .font(.caption)
             }
             if deckCards.count > 1 {
-                Color.clear
-                    .frame(maxWidth: 340)
-                    .frame(height: 48)
-                    .contentShape(Rectangle())
-                    .gesture(cardNavigationSwipe)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(Text("Swipe here to switch cards"))
-                    .accessibilityAdjustableAction { direction in
-                        switch direction {
-                        case .increment: selectNeighbor(step: 1)
-                        case .decrement: selectNeighbor(step: -1)
-                        @unknown default: break
+                VStack(spacing: 8) {
+                    if showHints || isModelPreview {
+                        HStack(spacing: 5) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text("Swipe here to switch cards")
+                                .font(.caption)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
                         }
+                        .foregroundStyle(.white.opacity(0.60))
                     }
+                    deckPageIndicator
+                }
+                .frame(maxWidth: 340)
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
+                .gesture(cardNavigationSwipe)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Swipe here to switch cards"))
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: selectNeighbor(step: 1)
+                    case .decrement: selectNeighbor(step: -1)
+                    @unknown default: break
+                    }
+                }
             }
         }
         .foregroundStyle(Theme.secondaryText)
         .opacity(appeared ? 1 : 0)
+    }
+
+    @ViewBuilder
+    private var deckPageIndicator: some View {
+        if deckCards.count <= 8 {
+            HStack(spacing: 6) {
+                ForEach(deckCards.indices, id: \.self) { idx in
+                    Capsule()
+                        .fill(idx == activeIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.24))
+                        .frame(width: idx == activeIndex ? 16 : 6, height: 6)
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: activeIndex)
+        } else {
+            Text("\(activeIndex + 1) / \(deckCards.count)")
+                .font(.caption2.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.white.opacity(0.5))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(.white.opacity(0.08), in: Capsule())
+        }
     }
 
     @ViewBuilder
@@ -970,7 +1186,7 @@ struct CardDetail: View {
         DragGesture(minimumDistance: 5, coordinateSpace: .global)
             .onChanged { value in
                 let translation = value.translation
-                if mode != .sideBySide && CardFlipDirection.isHorizontal(translation) {
+                if canFlip && CardFlipDirection.isHorizontal(translation) {
                     dragAngle = max(-68, min(68, Double(translation.width) * 0.56))
                     dragTilt = .zero
                 } else {
@@ -980,7 +1196,7 @@ struct CardDetail: View {
                 }
             }
             .onEnded { value in
-                if mode != .sideBySide, let direction = CardFlipDirection.swipe(
+                if canFlip, let direction = CardFlipDirection.swipe(
                     translation: value.translation, predicted: value.predictedEndTranslation
                 ) {
                     flip(direction)
@@ -994,8 +1210,8 @@ struct CardDetail: View {
     }
 
     private func flip(_ direction: CardFlipDirection = .left) {
-        // Side by side already shows both faces.
-        guard mode != .sideBySide else { return }
+        // Side by side already shows both faces, and Model Gallery catalog cards have no stats back.
+        guard canFlip else { return }
         withAnimation(.snappy(duration: 0.38, extraBounce: 0)) {
             flipped.toggle()
             angle += direction.rawValue

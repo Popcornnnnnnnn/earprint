@@ -181,12 +181,16 @@ struct CardFront: View {
     var isCurrentlyWorn: Bool = false
     var showsChargingCase = true
     var usesProductArtwork = true
+    /// Catalog / Model Gallery cards hide listening hours, session counts, and dates.
+    var showsListeningStats = true
+    var badgeOverride: LocalizedStringKey? = nil
+    var catalogDetail: String? = nil
 
     var body: some View {
         let ink = card.rarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(LocalizedStringKey(card.rarity.title))
+                Text(badgeOverride ?? LocalizedStringKey(card.rarity.title))
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.6)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -209,25 +213,40 @@ struct CardFront: View {
 
             Spacer()
 
-            Text(card.model)
-                .font(.system(size: 17, weight: .bold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text(card.lifetimeMinutes.minutesText)
-                .font(.system(size: 42, weight: .black, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.58)
-                .padding(.top, 2)
+            if showsListeningStats {
+                Text(card.model)
+                    .font(.system(size: 17, weight: .bold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                Text(card.lifetimeMinutes.minutesText)
+                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+                    .padding(.top, 2)
 
-            HStack {
-                Label("\(card.sessions)", systemImage: "ear")
-                Spacer()
-                Text("since \(card.firstMet)")
+                HStack {
+                    Label("\(card.sessions)", systemImage: "ear")
+                    Spacer()
+                    Text("since \(card.firstMet)")
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .opacity(0.7)
+                .padding(.top, 6)
+            } else {
+                Text(card.model)
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                if let catalogDetail, !catalogDetail.isEmpty {
+                    Text(catalogDetail)
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .opacity(0.68)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.top, 5)
+                }
             }
-            .font(.system(size: 12, weight: .semibold))
-            .opacity(0.7)
-            .padding(.top, 6)
         }
         .foregroundStyle(ink)
         .padding(22)

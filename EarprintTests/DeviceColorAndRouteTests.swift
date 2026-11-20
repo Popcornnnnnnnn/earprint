@@ -140,4 +140,31 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertLessThan(dealt.opacity, 0.1)
         XCTAssertGreaterThan(dealt.zIndex, top.zIndex)
     }
+
+    func testModelGalleryDeduplicatesVariantsAndUsesZeroFakeStats() {
+        let entries = ModelGalleryCatalog.allEntries
+        let names = entries.map(\.model.marketingName)
+        XCTAssertEqual(Set(names).count, names.count, "Model Gallery must not show duplicate model names")
+
+        let airPods4 = entries.first { $0.model.marketingName == "AirPods 4" }
+        XCTAssertEqual(airPods4?.productIDs, [0x2019, 0x201C, 0x201E, 0x2020])
+        XCTAssertNotNil(entries.first { $0.model.marketingName == "AirPods 4 (ANC)" })
+
+        for entry in entries {
+            XCTAssertEqual(entry.card.lifetimeMinutes, 0)
+            XCTAssertEqual(entry.card.sessions, 0)
+            XCTAssertTrue(entry.card.firstMet.isEmpty)
+        }
+
+        // Sample cards include AirPods Pro 2 · USB-C, AirPods Max (generic sample name), Beats Fit Pro.
+        let owned = [
+            HeadphoneCard(
+                id: "test-1", nickname: "My AirPods", model: "AirPods 4 (ANC)", symbol: "airpods.gen4",
+                lifetimeMinutes: 600, sessions: 10, longestMinutes: 60, averageDecibels: 62,
+                firstMet: "2026.01.01", lastUsed: "Today", serial: 1, grid: ListeningGrid(minutes: [], decibels: []),
+                modelKey: .airpods4, kind: .earbuds
+            )
+        ]
+        XCTAssertEqual(ModelGalleryCatalog.unlockedCount(for: owned), 1)
+    }
 }

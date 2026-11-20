@@ -60,4 +60,4 @@ Use the gear in Collection to choose the app icon and switch between English and
 
 In Debug builds, press and hold the Collection gear, then choose **Developer Tools** and **Data Probe**. `-tab probe` opens the same screen directly.
 
-**Settings → Model Gallery** previews every entry in the headphone catalog using sample stats. Models without bundled 3D artwork use labeled generic shapes. The gallery is available in Debug builds. For a signed Release test build that also repeats the flip hint, use `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) EARPRINT_REPEAT_CARD_HINT EARPRINT_MODEL_GALLERY'`.
+**Settings → Model Gallery** acts as a supported-device catalog and unlock tracker for every distinct Apple/Beats model (with hardware variant IDs grouped per model and no fake listening stats). Models without bundled 3D artwork use labeled generic shapes. For a signed Release test build that also repeats the flip hint, use `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) EARPRINT_REPEAT_CARD_HINT'`.

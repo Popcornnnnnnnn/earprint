@@ -272,18 +272,27 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     private enum Destination: Hashable {
         case appIcon
-        #if DEBUG || EARPRINT_MODEL_GALLERY
         case modelGallery
-        #endif
     }
+
+    let ownedCards: [HeadphoneCard]
 
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
     @State private var iconManager = AppIconManager()
     @State private var path: [Destination]
 
-    init(openIconPicker: Bool = false) {
+    init(ownedCards: [HeadphoneCard] = [], openIconPicker: Bool = false) {
+        self.ownedCards = ownedCards
         _path = State(initialValue: openIconPicker ? [.appIcon] : [])
+    }
+
+    private var unlockedCount: Int {
+        ModelGalleryCatalog.unlockedCount(for: ownedCards)
+    }
+
+    private var totalCatalogModels: Int {
+        ModelGalleryCatalog.allAppleAndBeatsCount
     }
 
     var body: some View {
@@ -292,17 +301,23 @@ struct SettingsView: View {
                 NavigationLink(value: Destination.appIcon) {
                     Label("App Icon", systemImage: "app")
                 }
-                Picker("Language", selection: $language) {
+                Picker(selection: $language) {
                     ForEach(AppLanguage.allCases) { option in
                         Text(option.name).tag(option)
                     }
+                } label: {
+                    Label("Language", systemImage: "globe")
                 }
                 .pickerStyle(.navigationLink)
-                #if DEBUG || EARPRINT_MODEL_GALLERY
                 NavigationLink(value: Destination.modelGallery) {
-                    Label("Model Gallery", systemImage: "cube.transparent")
+                    HStack {
+                        Label("Model Gallery", systemImage: "cube.transparent")
+                        Spacer()
+                        Text("\(unlockedCount)/\(totalCatalogModels)")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                #endif
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -315,10 +330,8 @@ struct SettingsView: View {
                 switch destination {
                 case .appIcon:
                     AppIconPickerView(manager: iconManager)
-                #if DEBUG || EARPRINT_MODEL_GALLERY
                 case .modelGallery:
-                    ModelGalleryView()
-                #endif
+                    ModelGalleryView(ownedCards: ownedCards)
                 }
             }
         }

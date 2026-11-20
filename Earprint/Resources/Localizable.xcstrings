@@ -71,6 +71,16 @@
         }
       }
     },
+    "%lld of %lld unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁 %lld / %lld 款"
+          }
+        }
+      }
+    },
     "%lld record days": {
       "localizations": {
         "zh-Hans": {
@@ -207,6 +217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "近 28 天聆听图谱"
+          }
+        }
+      }
+    },
+    "3D model": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D 模型"
           }
         }
       }
@@ -451,12 +471,22 @@
         }
       }
     },
-    "Card number %lld": {
+    "CATALOG": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "卡片编号 %lld"
+            "value": "型号目录"
+          }
+        }
+      }
+    },
+    "COLLECTION NUMBER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号"
           }
         }
       }
@@ -467,6 +497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "第 %lld 张，共 %lld 张"
+          }
+        }
+      }
+    },
+    "Card number %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片编号 %lld"
           }
         }
       }
@@ -551,6 +591,16 @@
         }
       }
     },
+    "Collection numbers follow the order of first listening dates in Apple Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
+          }
+        }
+      }
+    },
     "Commute Soundtracker": {
       "localizations": {
         "zh-Hans": {
@@ -611,52 +661,12 @@
         }
       }
     },
-    "COLLECTION NUMBER": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收藏编号"
-          }
-        }
-      }
-    },
-    "Collection numbers follow the order of first listening dates in Apple Health.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
-          }
-        }
-      }
-    },
     "Currently connected": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "当前已连接"
-          }
-        }
-      }
-    },
-    "Device Dossier": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "设备档案"
-          }
-        }
-      }
-    },
-    "Dossier image preview": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "档案图片预览"
           }
         }
       }
@@ -721,22 +731,22 @@
         }
       }
     },
-    "Dossier details are illustrative.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "档案详情仅供示例。"
-          }
-        }
-      }
-    },
     "Developer Tools": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "开发者工具"
+          }
+        }
+      }
+    },
+    "Device Dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备档案"
           }
         }
       }
@@ -757,6 +767,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "档案"
+          }
+        }
+      }
+    },
+    "Dossier details are illustrative.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案详情仅供示例。"
+          }
+        }
+      }
+    },
+    "Dossier image preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案图片预览"
           }
         }
       }
@@ -891,16 +921,6 @@
         }
       }
     },
-    "Generic 3D preview": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "通用 3D 预览"
-          }
-        }
-      }
-    },
     "GOLD": {
       "localizations": {
         "zh-Hans": {
@@ -927,6 +947,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "评分"
+          }
+        }
+      }
+    },
+    "Generic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用型号"
+          }
+        }
+      }
+    },
+    "Generic 3D preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用 3D 预览"
+          }
+        }
+      }
+    },
+    "Generic headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用头戴式耳机"
           }
         }
       }
@@ -1117,6 +1167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "浅色"
+          }
+        }
+      }
+    },
+    "Listen with any supported pair to add it to your Collection.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用任一支持的耳机聆听，即可将其加入你的收藏。"
           }
         }
       }
@@ -1711,16 +1771,6 @@
         }
       }
     },
-    "Share dossier": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分享档案"
-          }
-        }
-      }
-    },
     "SILVER": {
       "localizations": {
         "zh-Hans": {
@@ -1737,16 +1787,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "银卡 · 稀有"
-          }
-        }
-      }
-    },
-    "Simple": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "简图"
           }
         }
       }
@@ -1861,12 +1901,12 @@
         }
       }
     },
-    "Shared 3D artwork": {
+    "Share dossier": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "共用 3D 模型"
+            "value": "分享档案"
           }
         }
       }
@@ -1891,12 +1931,32 @@
         }
       }
     },
+    "Shared 3D artwork": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共用 3D 模型"
+          }
+        }
+      }
+    },
     "Silver": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "银色"
+          }
+        }
+      }
+    },
+    "Simple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简图"
           }
         }
       }
@@ -1961,22 +2021,22 @@
         }
       }
     },
-    "Swipe here to switch cards": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在此滑动切换卡片"
-          }
-        }
-      }
-    },
     "Swipe here to browse": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "在此左右滑动切换"
+          }
+        }
+      }
+    },
+    "Swipe here to switch cards": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此滑动切换卡片"
           }
         }
       }
@@ -2021,26 +2081,6 @@
         }
       }
     },
-    "Tap or swipe the card to flip": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "轻点或滑动卡片即可翻面"
-          }
-        }
-      }
-    },
-    "Tap to flip": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "轻点翻面"
-          }
-        }
-      }
-    },
     "TIME": {
       "localizations": {
         "zh-Hans": {
@@ -2057,6 +2097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻点或按住拖动查看各时段 · 颜色表示音量"
+          }
+        }
+      }
+    },
+    "Tap or swipe the card to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点或滑动卡片即可翻面"
           }
         }
       }
@@ -2081,6 +2131,16 @@
         }
       }
     },
+    "Tap to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面"
+          }
+        }
+      }
+    },
     "Tap to flip · drag to tilt": {
       "localizations": {
         "zh-Hans": {
@@ -2101,12 +2161,32 @@
         }
       }
     },
+    "UNLOCKED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁"
+          }
+        }
+      }
+    },
     "Unknown headphones": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "未知耳机"
+          }
+        }
+      }
+    },
+    "Unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁"
           }
         }
       }
