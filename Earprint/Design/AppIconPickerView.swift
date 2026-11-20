@@ -273,6 +273,7 @@ struct SettingsView: View {
     private enum Destination: Hashable {
         case appIcon
         case modelGallery
+        case cardTiers
     }
 
     let ownedCards: [HeadphoneCard]
@@ -318,6 +319,9 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                NavigationLink(value: Destination.cardTiers) {
+                    Label("Card Tiers", systemImage: "trophy")
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -332,6 +336,8 @@ struct SettingsView: View {
                     AppIconPickerView(manager: iconManager)
                 case .modelGallery:
                     ModelGalleryView(ownedCards: ownedCards)
+                case .cardTiers:
+                    CardTiersView(ownedCards: ownedCards)
                 }
             }
         }

@@ -126,12 +126,21 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(top.scale, 1.0)
         XCTAssertEqual(top.rotationDegrees, 0)
         XCTAssertEqual(top.opacity, 1.0)
+        XCTAssertEqual(top.dimAmount, 0)
 
+        // Mid-swipe outgoing card stays 100% solid opaque while overlapping the deck (no ghosting).
+        let midSwipe = CardStackPose.pose(forDelta: -0.45)
+        XCTAssertEqual(midSwipe.opacity, 1.0)
+        XCTAssertLessThan(midSwipe.offsetX, -100)
+
+        // Waiting card tucked behind stays opaque and uses dark dimming instead of transparency.
         let behind = CardStackPose.pose(forDelta: 1)
         XCTAssertGreaterThan(behind.offsetX, 0)
         XCTAssertGreaterThan(behind.offsetY, 0)
         XCTAssertLessThan(behind.scale, 1.0)
         XCTAssertGreaterThan(behind.rotationDegrees, 0)
+        XCTAssertEqual(behind.opacity, 1.0)
+        XCTAssertGreaterThan(behind.dimAmount, 0.1)
         XCTAssertLessThan(behind.zIndex, top.zIndex)
 
         let dealt = CardStackPose.pose(forDelta: -1)
@@ -139,6 +148,30 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertLessThan(dealt.rotationDegrees, -10)
         XCTAssertLessThan(dealt.opacity, 0.1)
         XCTAssertGreaterThan(dealt.zIndex, top.zIndex)
+    }
+
+    func testSixTierAchievementProgressionUpTo2000Hours() {
+        XCTAssertEqual(Rarity.allAscending, [.bronze, .silver, .gold, .platinum, .obsidian, .holo])
+        XCTAssertEqual(Rarity(minutes: 0), .bronze)
+        XCTAssertEqual(Rarity(minutes: 24.9 * 60), .bronze)
+        XCTAssertEqual(Rarity(minutes: 25 * 60), .silver)
+        XCTAssertEqual(Rarity(minutes: 100 * 60), .gold)
+        XCTAssertEqual(Rarity(minutes: 350 * 60), .platinum)
+        XCTAssertEqual(Rarity(minutes: 900 * 60), .obsidian)
+        XCTAssertEqual(Rarity(minutes: 1999.9 * 60), .obsidian)
+        XCTAssertEqual(Rarity(minutes: 2000 * 60), .holo)
+        XCTAssertEqual(Rarity(minutes: 5000 * 60), .holo)
+
+        XCTAssertEqual(Rarity.bronze.nextTier, .silver)
+        XCTAssertEqual(Rarity.obsidian.nextTier, .holo)
+        XCTAssertNil(Rarity.holo.nextTier)
+        XCTAssertEqual(Rarity.gold.progressToNextTier(minutes: 225 * 60), 0.5, accuracy: 0.001)
+        XCTAssertEqual(Rarity.holo.progressToNextTier(minutes: 2500 * 60), 1.0, accuracy: 0.001)
+    }
+
+    func testAirPodsProUsesOpenCaseSnapshotForCollectibleCard() {
+        XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2024]?.key.collectibleArtwork, "CardRenderAirPodsProCase")
+        XCTAssertEqual(HeadphoneModelCatalog.byProductID[0x2024]?.key.collectionArtwork, "CardRenderAirPodsPro")
     }
 
     func testModelGalleryDeduplicatesVariantsAndUsesZeroFakeStats() {

@@ -191,6 +191,16 @@
         }
       }
     },
+    "%lld+ listening hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计聆听满 %lld 小时"
+          }
+        }
+      }
+    },
     "%lldh": {
       "localizations": {
         "zh-Hans": {
@@ -201,12 +211,32 @@
         }
       }
     },
+    "%lldh to %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距 %2$@ 还差 %1$lld 小时"
+          }
+        }
+      }
+    },
     "%lldh to next tier": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "距下一等级还差 %lld 小时"
+          }
+        }
+      }
+    },
+    "100+ hours of shared playlists and calls": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百小时音乐与通话的默契伙伴"
           }
         }
       }
@@ -257,6 +287,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备近 7 天的声音暴露 · 世界卫生组织参考值为 80 dB(A) 下 40 小时"
+          }
+        }
+      }
+    },
+    "A regular companion in your rotation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常伴左右的日常主力耳机"
           }
         }
       }
@@ -491,6 +531,16 @@
         }
       }
     },
+    "CURRENT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前等级"
+          }
+        }
+      }
+    },
     "Card %lld of %lld": {
       "localizations": {
         "zh-Hans": {
@@ -501,12 +551,32 @@
         }
       }
     },
+    "Card Tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片等级"
+          }
+        }
+      }
+    },
     "Card number %lld": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "卡片编号 %lld"
+          }
+        }
+      }
+    },
+    "Cards upgrade automatically with lifetime listening hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片会随累计聆听时长自动升级"
           }
         }
       }
@@ -731,6 +801,16 @@
         }
       }
     },
+    "Deep daily driver with brushed ice-titanium sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝冰钛金属光泽的深度日常伴侣"
+          }
+        }
+      }
+    },
     "Developer Tools": {
       "localizations": {
         "zh-Hans": {
@@ -891,6 +971,16 @@
         }
       }
     },
+    "Every pair starts at Bronze on its first listen and climbs all the way to Holo Legendary at 2,000 hours.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每副耳机首次聆听即铸造为青铜卡，累计满 2,000 小时升级为全息传说卡。"
+          }
+        }
+      }
+    },
     "FIRMWARE": {
       "localizations": {
         "zh-Hans": {
@@ -907,6 +997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "首次聆听"
+          }
+        }
+      }
+    },
+    "First listen (0h+)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听（0 小时起）"
           }
         }
       }
@@ -1411,6 +1511,16 @@
         }
       }
     },
+    "Minted on your very first listen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听即铸造的起始卡面"
+          }
+        }
+      }
+    },
     "Model Gallery": {
       "localizations": {
         "zh-Hans": {
@@ -1541,6 +1651,16 @@
         }
       }
     },
+    "OBSIDIAN · PRESTIGE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑曜 · 臻享"
+          }
+        }
+      }
+    },
     "One ring per day, newest on the outside. Midnight is at the top.": {
       "localizations": {
         "zh-Hans": {
@@ -1557,6 +1677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "橙色"
+          }
+        }
+      }
+    },
+    "PLATINUM · MASTER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "铂金 · 大师"
           }
         }
       }
@@ -2021,6 +2151,16 @@
         }
       }
     },
+    "Stealth carbon-aurora prestige finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深邃碳黑极光臻享卡面"
+          }
+        }
+      }
+    },
     "Swipe here to browse": {
       "localizations": {
         "zh-Hans": {
@@ -2151,6 +2291,16 @@
         }
       }
     },
+    "The 2,000-hour full-spectrum holographic crown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2,000 小时满级全光谱全息皇冠"
+          }
+        }
+      }
+    },
     "Today": {
       "localizations": {
         "zh-Hans": {
@@ -2187,6 +2337,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "已解锁"
+          }
+        }
+      }
+    },
+    "View all card tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看全部卡片等级"
           }
         }
       }

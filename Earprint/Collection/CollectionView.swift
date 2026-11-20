@@ -11,6 +11,7 @@ struct CollectionView: View {
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
+    @State private var showCardTiers = false
     #if DEBUG
     private let openIconPicker = ProcessInfo.processInfo.arguments.contains("-iconPicker")
     @State private var showSettings = ProcessInfo.processInfo.arguments.contains("-iconPicker")
@@ -84,6 +85,9 @@ struct CollectionView: View {
                     },
                     openDossier: {
                         dossierCard = card
+                    },
+                    openTiers: {
+                        showCardTiers = true
                     }
                 ) {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { selected = nil }
@@ -94,6 +98,13 @@ struct CollectionView: View {
         .foregroundStyle(.white)
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(card: card, isSampleData: isSampleData) { dossierCard = nil }
+        }
+        .sheet(isPresented: $showCardTiers) {
+            NavigationStack {
+                CardTiersView(ownedCards: cards, showsDoneButton: true)
+            }
+            .preferredColorScheme(.dark)
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(ownedCards: cards, openIconPicker: openIconPicker)
@@ -448,6 +459,23 @@ struct ModelGalleryView: View {
         })
     }
 
+    private var catalogSurfacesByCardID: [String: Rarity] {
+        let unlocked = unlockedCardIDs
+        return Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.map { entry in
+            if unlocked.contains(entry.id) {
+                return (entry.id, Rarity.holo)
+            }
+            let surface: Rarity = switch entry.family {
+            case .airPods: .silver
+            case .airPodsPro: .platinum
+            case .airPodsMax: .obsidian
+            case .beats: .gold
+            case .generic: .bronze
+            }
+            return (entry.id, surface)
+        })
+    }
+
     var body: some View {
         ZStack {
             List {
@@ -529,6 +557,7 @@ struct ModelGalleryView: View {
                     isModelPreview: true,
                     unlockedPreviewIDs: unlockedCardIDs,
                     catalogDetails: catalogDetailsByCardID,
+                    catalogSurfaces: catalogSurfacesByCardID,
                     colorStore: colors,
                     onSelectCard: { self.selection = $0 }
                 ) {
@@ -558,33 +587,40 @@ enum CardDeckNavigation {
 
 /// Pure geometric pose for one card in the physical Card Stack Deal (`Option B`) given its signed offset
 /// `delta = cardIndex - visualPosition` (`0` = active top card, `> 0` = tucked behind in the deck, `< 0` = dealt off left).
+/// Cards stay opaque on screen and use `dimAmount` to shade depth so stacked cards never ghost through each other.
 struct CardStackPose: Equatable {
     var offsetX: CGFloat
     var offsetY: CGFloat
     var scale: CGFloat
     var rotationDegrees: Double
     var opacity: Double
+    var dimAmount: Double
     var zIndex: Double
 
     static func pose(forDelta d: CGFloat) -> CardStackPose {
         if d < 0 {
             let p = min(1.5, -d)
+            // Stay solid opaque while overlapping the deck; fade out cleanly only after clearing the card edge.
+            let fade = p <= 0.78 ? 1.0 : max(0, Double(1 - (p - 0.78) / 0.22))
             return CardStackPose(
-                offsetX: -p * 340,
-                offsetY: p * 22,
+                offsetX: -p * 390,
+                offsetY: p * 24,
                 scale: 1.0,
                 rotationDegrees: Double(-p * 15),
-                opacity: max(0, Double(1 - p * 0.96)),
+                opacity: fade,
+                dimAmount: 0,
                 zIndex: 120 - Double(p * 10)
             )
         } else {
             let depth = min(2.6, d)
+            let fade = depth <= 2.1 ? 1.0 : max(0, Double(1 - (depth - 2.1) / 0.5))
             return CardStackPose(
                 offsetX: depth * 15,
                 offsetY: depth * 14,
                 scale: max(0.80, 1 - depth * 0.08),
                 rotationDegrees: Double(depth * 3.2),
-                opacity: max(0, Double(1 - depth * 0.34)),
+                opacity: fade,
+                dimAmount: min(0.56, Double(depth * 0.25)),
                 zIndex: 100 - Double(depth * 20)
             )
         }
@@ -608,6 +644,13 @@ private struct CardStackEffect: ViewModifier, Animatable {
         let pose = CardStackPose.pose(forDelta: delta)
         let effectiveOpacity = abs(delta) < 0.01 ? pose.opacity : (appeared ? pose.opacity : 0)
         content
+            .overlay {
+                if pose.dimAmount > 0.005 {
+                    RoundedRectangle(cornerRadius: CardMetrics.corner * cardScale, style: .continuous)
+                        .fill(Color.black.opacity(pose.dimAmount))
+                        .allowsHitTesting(false)
+                }
+            }
             .scaleEffect(pose.scale)
             .rotationEffect(.degrees(pose.rotationDegrees))
             .offset(x: pose.offsetX * cardScale, y: pose.offsetY * cardScale)
@@ -641,10 +684,12 @@ struct CardDetail: View {
     var isModelPreview = false
     var unlockedPreviewIDs: Set<String> = []
     var catalogDetails: [String: String] = [:]
+    var catalogSurfaces: [String: Rarity] = [:]
     var colorStore: DeviceColorStore? = nil
     var routeMonitor: ActiveAudioRouteMonitor? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
+    var openTiers: (() -> Void)? = nil
     let close: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -935,86 +980,32 @@ struct CardDetail: View {
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
         let isTop = index == activeIndex
-        let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
-        let itemFinish = itemColor?.modelFinish ?? item.finish
-        let itemFinishID = itemColor?.id ?? "default"
-        let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
-        let assetName = item.modelAssetName ?? (isModelPreview ? "" : nil)
-        let show3D = isTop && dragStartPosition == nil && assetName != nil
-        let is3DReady = show3D && ready3DCardID == item.id
-        let revealLift: CGFloat = item.kind == .earbuds ? 12 : 4
         let activeAngle = isTop ? angle + dragAngle : 0
         let activeTilt = isTop ? tilt : .zero
-
-        let catalogBadge: LocalizedStringKey? = isModelPreview
-            ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
-            : nil
+        let surfaceRarity = isModelPreview ? (catalogSurfaces[item.id] ?? .silver) : item.rarity
 
         return ZStack {
-            ZStack {
-                CardFront(
-                    card: item,
-                    tilt: activeTilt,
-                    showSymbol: !is3DReady,
-                    colorOption: itemColor,
-                    isCurrentlyWorn: itemWorn,
-                    usesProductArtwork: !isModelPreview || item.modelAssetName != nil,
-                    showsListeningStats: !isModelPreview,
-                    badgeOverride: catalogBadge,
-                    catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
-                )
+            deckFrontFace(item, isTop: isTop, activeTilt: activeTilt, surfaceRarity: surfaceRarity)
                 .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                .gesture(isTop ? cardDrag : nil)
-
-                if show3D, let assetName {
-                    Ellipse()
-                        .fill(.black.opacity(0.30))
-                        .frame(width: 146, height: 16)
-                        .blur(radius: 10)
-                        .offset(x: -activeTilt.width * 8, y: 37)
-                        .opacity(is3DReady ? 1 : 0)
-                        .allowsHitTesting(false)
-                    HeadphoneModelView(
-                        kind: item.kind,
-                        finish: itemFinish,
-                        finishID: itemFinishID,
-                        modelKey: item.modelKey,
-                        assetName: assetName,
-                        modelSize: 0.18,
-                        tint: item.foilTint,
-                        tilt: activeTilt,
-                        onManipulationChanged: { manipulating in
-                            modelInteractionTilt = manipulating ? tilt : nil
-                        },
-                        onModelReady: {
-                            withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
-                                ready3DCardID = item.id
-                            }
-                        }
-                    )
-                    .frame(width: 300, height: 230)
-                    .scaleEffect(is3DReady || reduceMotion ? 1 : 0.96)
-                    .offset(y: -47 + (is3DReady || reduceMotion ? 0 : revealLift))
-                    .opacity(is3DReady ? 1 : 0)
-                    .allowsHitTesting(is3DReady)
-                    .accessibilityHidden(!is3DReady)
-                }
-            }
-            .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-            .onTapGesture { if canFlip { flip() } }
-            .accessibilityElement(children: .contain)
-            .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
-            .allowsHitTesting(!flipped)
-            .accessibilityHidden(flipped || !isTop)
-            .modifier(CardFaceRotation(angle: activeAngle))
+                .onTapGesture { if canFlip { flip() } }
+                .accessibilityElement(children: .contain)
+                .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
+                .allowsHitTesting(!flipped)
+                .accessibilityHidden(flipped || !isTop)
+                .modifier(CardFaceRotation(angle: activeAngle))
 
             if isTop && canFlip {
-                CardBack(card: item, openDossier: flipped && !isModelPreview ? openDossier : nil, flip: { flip() })
-                    .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                    .simultaneousGesture(cardDrag)
-                    .allowsHitTesting(flipped)
-                    .accessibilityHidden(!flipped)
-                    .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
+                CardBack(
+                    card: item,
+                    openDossier: flipped && !isModelPreview ? openDossier : nil,
+                    openTiers: flipped && !isModelPreview ? openTiers : nil,
+                    flip: { flip() }
+                )
+                .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+                .simultaneousGesture(cardDrag)
+                .allowsHitTesting(flipped)
+                .accessibilityHidden(!flipped)
+                .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
             }
         }
         .scaleEffect(scale)
@@ -1022,7 +1013,7 @@ struct CardDetail: View {
         .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
         .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
         .shadow(
-            color: isTop ? item.rarity.glow.opacity(0.52) : .black.opacity(0.45),
+            color: isTop ? surfaceRarity.glow.opacity(0.52) : .black.opacity(0.45),
             radius: isTop ? 28 : 20,
             x: isTop ? -activeTilt.width * 14 : 0,
             y: isTop ? 18 - activeTilt.height * 10 : 12
@@ -1031,9 +1022,83 @@ struct CardDetail: View {
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
+    private func deckFrontFace(
+        _ item: HeadphoneCard,
+        isTop: Bool,
+        activeTilt: CGSize,
+        surfaceRarity: Rarity
+    ) -> some View {
+        let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
+        let itemFinish = itemColor?.modelFinish ?? item.finish
+        let itemFinishID = itemColor?.id ?? "default"
+        let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
+        let assetName = item.modelAssetName ?? (isModelPreview ? "" : nil)
+        // Option 1: keep the active card's live 3D RealityView alive throughout the swipe drag
+        // instead of tearing it down on touch-down, while waiting cards underneath show their
+        // pixel-matched 3D open-case snapshot so there is never an empty or mismatched card.
+        let show3D = isTop && assetName != nil
+        let is3DReady = show3D && ready3DCardID == item.id
+        let revealLift: CGFloat = item.kind == .earbuds ? 12 : 4
+        let surfaceTint: [UIColor] = surfaceRarity.baseColors.map { UIColor($0) }
+        let catalogBadge: LocalizedStringKey? = isModelPreview
+            ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
+            : nil
+
+        return ZStack {
+            CardFront(
+                card: item,
+                tilt: activeTilt,
+                showSymbol: !is3DReady,
+                colorOption: itemColor,
+                isCurrentlyWorn: itemWorn,
+                usesProductArtwork: !isModelPreview || item.modelAssetName != nil,
+                showsListeningStats: !isModelPreview,
+                surfaceRarityOverride: isModelPreview ? surfaceRarity : nil,
+                badgeOverride: catalogBadge,
+                catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
+            )
+            .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+            .gesture(isTop ? cardDrag : nil)
+
+            if show3D, let assetName {
+                Ellipse()
+                    .fill(.black.opacity(0.30))
+                    .frame(width: 146, height: 16)
+                    .blur(radius: 10)
+                    .offset(x: -activeTilt.width * 8, y: 37)
+                    .opacity(is3DReady ? 1 : 0)
+                    .allowsHitTesting(false)
+                HeadphoneModelView(
+                    kind: item.kind,
+                    finish: itemFinish,
+                    finishID: itemFinishID,
+                    modelKey: item.modelKey,
+                    assetName: assetName,
+                    modelSize: 0.18,
+                    tint: surfaceTint,
+                    tilt: activeTilt,
+                    onManipulationChanged: { manipulating in
+                        modelInteractionTilt = manipulating ? tilt : nil
+                    },
+                    onModelReady: {
+                        withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
+                            ready3DCardID = item.id
+                        }
+                    }
+                )
+                .frame(width: 300, height: 230)
+                .scaleEffect(is3DReady || reduceMotion ? 1 : 0.96)
+                .offset(y: -47 + (is3DReady || reduceMotion ? 0 : revealLift))
+                .opacity(is3DReady ? 1 : 0)
+                .allowsHitTesting(is3DReady)
+                .accessibilityHidden(!is3DReady)
+            }
+        }
+    }
+
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier)
+        return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
             .id(card.id)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)

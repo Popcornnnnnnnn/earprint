@@ -44,12 +44,12 @@ struct FoilSurface: View {
                 context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.10 : 0.06)), lineWidth: 1)
             }
 
-            if rarity == .holo || rarity == .gold {
+            if rarity == .holo || rarity == .obsidian || rarity == .platinum || rarity == .gold {
                 LinearGradient(colors: [.clear, .pink.opacity(0.35), .yellow.opacity(0.3), .cyan.opacity(0.35), .purple.opacity(0.3), .clear],
                                startPoint: UnitPoint(x: -0.2 + tilt.width * 0.6, y: 0),
                                endPoint: UnitPoint(x: 1.2 + tilt.width * 0.6, y: 1))
                     .blendMode(.colorDodge)
-                    .opacity(rarity == .holo ? 0.9 : 0.4)
+                    .opacity(rarity == .holo ? 0.9 : (rarity == .obsidian ? 0.65 : (rarity == .platinum ? 0.35 : 0.4)))
             }
 
             // Specular highlight that slides across as the card tilts.
@@ -183,14 +183,16 @@ struct CardFront: View {
     var usesProductArtwork = true
     /// Catalog / Model Gallery cards hide listening hours, session counts, and dates.
     var showsListeningStats = true
+    var surfaceRarityOverride: Rarity? = nil
     var badgeOverride: LocalizedStringKey? = nil
     var catalogDetail: String? = nil
 
     var body: some View {
-        let ink = card.rarity.ink
+        let surfaceRarity = surfaceRarityOverride ?? card.rarity
+        let ink = surfaceRarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(badgeOverride ?? LocalizedStringKey(card.rarity.title))
+                Text(badgeOverride ?? LocalizedStringKey(surfaceRarity.title))
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.6)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -206,7 +208,7 @@ struct CardFront: View {
 
             HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
                              usesProductArtwork: usesProductArtwork)
-                .frame(height: 165)
+                .frame(height: showsChargingCase ? 186 : 165)
                 .opacity(showSymbol ? 1 : 0)
                 .offset(x: tilt.width * -8, y: tilt.height * -8)
                 .frame(maxWidth: .infinity)
@@ -251,7 +253,7 @@ struct CardFront: View {
         .foregroundStyle(ink)
         .padding(22)
         .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
-        .background(FoilSurface(rarity: card.rarity, tilt: tilt))
+        .background(FoilSurface(rarity: surfaceRarity, tilt: tilt))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
             .strokeBorder(.white.opacity(0.45), lineWidth: 1.5))
@@ -261,6 +263,7 @@ struct CardFront: View {
 struct CardBack: View {
     let card: HeadphoneCard
     var openDossier: (() -> Void)? = nil
+    var openTiers: (() -> Void)? = nil
     var flip: (() -> Void)? = nil
 
     var body: some View {
@@ -358,15 +361,43 @@ struct CardBack: View {
     }
 
     @ViewBuilder private var tierProgress: some View {
+        let content = tierProgressBody
+        if let openTiers {
+            Button(action: openTiers) {
+                content
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("View all card tiers")
+        } else {
+            content
+        }
+    }
+
+    @ViewBuilder private var tierProgressBody: some View {
         let hours = card.lifetimeMinutes / 60
         if let next = card.rarity.nextTierHours {
+            let remaining = max(1, Int(ceil(next - hours)))
             VStack(alignment: .leading, spacing: 6) {
-                Text("\(Int(next - hours))h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.7)
-                ProgressView(value: min(hours / next, 1))
+                HStack(spacing: 4) {
+                    Text("\(remaining)h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.72)
+                    if openTiers != nil {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .opacity(0.55)
+                    }
+                }
+                ProgressView(value: card.rarity.progressToNextTier(minutes: card.lifetimeMinutes))
                     .tint(card.rarity.glow)
             }
         } else {
-            Text("Max tier reached ✦").font(.system(size: 12, weight: .semibold)).foregroundStyle(card.rarity.glow)
+            HStack(spacing: 5) {
+                Text("Max tier reached ✦").font(.system(size: 12, weight: .semibold)).foregroundStyle(card.rarity.glow)
+                if openTiers != nil {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(card.rarity.glow.opacity(0.7))
+                }
+            }
         }
     }
 }
