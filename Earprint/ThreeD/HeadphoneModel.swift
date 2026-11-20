@@ -225,6 +225,17 @@ enum HeadphoneModelLoader {
         "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
     ]
 
+    /// Pre-loads a USDZ template into `templateCache` ahead of card switches so settling is hitch-free.
+    @MainActor
+    static func prewarm(assetName: String) async {
+        guard !assetName.isEmpty,
+              templateCache[assetName] == nil,
+              Bundle.main.url(forResource: assetName, withExtension: "usdz") != nil else { return }
+        if let asset = try? await Entity(named: assetName, in: .main) {
+            templateCache[assetName] = asset
+        }
+    }
+
     /// Loads the bundled USDZ if present (cached & cloned for instant card switching), otherwise the procedural model.
     @MainActor
     static func load(_ kind: HeadphoneKind, finish: HeadphoneFinish, assetName: String? = nil, modelKey: HeadphoneModelKey = .overEarGeneric, size: Float = 0.2) async -> Entity {

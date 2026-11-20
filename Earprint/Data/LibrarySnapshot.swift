@@ -236,7 +236,70 @@ extension LibrarySnapshot {
 
     func homeSummary(now: Date = Date(), calendar: Calendar = .current) -> ListeningSummary? {
         guard let d = primary else { return nil }
+        return Self.listeningSummary(for: d, now: now, calendar: calendar)
+    }
+
+    func summary(for deviceID: String, now: Date = Date(), calendar: Calendar = .current) -> ListeningSummary? {
+        guard let d = devices.first(where: { $0.id == deviceID || $0.aliasIDs.contains(deviceID) }) else { return nil }
+        return Self.listeningSummary(for: d, now: now, calendar: calendar)
+    }
+
+    /// Combines every discovered headphone pair into an all-devices weekly Earprint & WHO exposure summary.
+    func combinedHomeSummary(now: Date = Date(), calendar: Calendar = .current) -> ListeningSummary? {
+        guard !devices.isEmpty else { return nil }
+        if devices.count == 1, let only = devices.first {
+            return Self.listeningSummary(for: only, now: now, calendar: calendar)
+        }
+
+        let dayCount = devices.map(\.grid.days).max() ?? Self.gridDays
+        var combinedMinutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        var combinedEnergy = combinedMinutes
+
+        for d in devices {
+            let dayOffset = max(0, dayCount - d.grid.days)
+            for day in 0..<d.grid.days {
+                let targetDay = dayOffset + day
+                for hour in 0..<24 {
+                    let mins = d.grid.minutes[day][hour]
+                    guard mins > 0 else { continue }
+                    let db = d.grid.decibels[day][hour]
+                    combinedMinutes[targetDay][hour] += mins
+                    combinedEnergy[targetDay][hour] += pow(10, db / 10) * mins
+                }
+            }
+        }
+
+        var combinedDecibels = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        for day in 0..<dayCount {
+            for hour in 0..<24 where combinedMinutes[day][hour] > 0 {
+                combinedDecibels[day][hour] = 10 * log10(combinedEnergy[day][hour] / combinedMinutes[day][hour])
+            }
+        }
+
+        let totalLifetimeSeconds = devices.reduce(0) { $0 + $1.lifetimeSeconds }
+        let totalSessions = devices.reduce(0) { $0 + $1.sessionCount }
+        let longest = devices.map(\.longestSession).max() ?? 0
+        let avgSession = totalSessions > 0 ? totalLifetimeSeconds / Double(totalSessions) : 0
+        let earliestFirst = devices.compactMap(\.first).min()
+        let totalBudget = devices.reduce(0) { $0 + $1.weeklyBudget }
+
         return ListeningSummary(
+            deviceName: AppLanguage.current.text("All Headphones"),
+            deviceModel: AppLanguage.current.text("%lld pairs", devices.count),
+            deviceSymbol: "headphones",
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            grid: ListeningGrid(minutes: combinedMinutes, decibels: combinedDecibels),
+            lifetimeMinutes: totalLifetimeSeconds / 60,
+            sessions: totalSessions,
+            averageSessionMinutes: avgSession / 60,
+            longestSessionMinutes: longest / 60,
+            firstUse: earliestFirst.map { DateText.monthDay($0, calendar: calendar) } ?? "—",
+            weeklyBudgetOverride: totalBudget
+        )
+    }
+
+    private static func listeningSummary(for d: DeviceSummary, now: Date, calendar: Calendar) -> ListeningSummary {
+        ListeningSummary(
             deviceName: d.nickname,
             deviceModel: d.model.marketingName,
             deviceSymbol: d.model.resolvedSymbol,

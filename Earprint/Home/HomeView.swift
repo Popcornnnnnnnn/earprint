@@ -3,6 +3,8 @@ import SwiftUI
 struct HomeView: View {
     let summary: ListeningSummary
     var primaryCard: HeadphoneCard? = nil
+    var cards: [HeadphoneCard] = []
+    var summaryForCardID: ((String?) -> ListeningSummary)? = nil
     var isSampleData: Bool = false
     var sampleBadgeText: LocalizedStringKey = "Sample data"
     var statusMessage: LocalizedStringKey? = nil
@@ -16,6 +18,7 @@ struct HomeView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @StateObject private var motion = TiltMotion()
+    @State private var selectedCardID: String? = nil
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
     @State private var space = LayoutSpace()
     @ScaledMetric(relativeTo: .largeTitle) private var listeningTimeSize: CGFloat = 40
@@ -23,18 +26,39 @@ struct HomeView: View {
     private var motionActive: Bool { !reduceMotion && !showShare }
     private var liveTilt: CGSize { motionActive ? motion.tilt : .zero }
 
+    private var selectedCard: HeadphoneCard? {
+        if let selectedCardID, let matched = cards.first(where: { $0.matches(id: selectedCardID) }) {
+            return matched
+        }
+        if cards.count == 1 {
+            return cards.first
+        }
+        return primaryCard
+    }
+
+    private var activeSummary: ListeningSummary {
+        if let summaryForCardID {
+            return summaryForCardID(selectedCard?.id)
+        }
+        return summary
+    }
+
     private var activeRarity: Rarity {
-        primaryCard?.rarity ?? Rarity(minutes: summary.lifetimeMinutes)
+        selectedCard?.rarity ?? Rarity(minutes: activeSummary.lifetimeMinutes)
     }
 
-    private var primaryColor: DeviceColorOption? {
-        guard let primaryCard else { return nil }
-        return colorStore?.selectedColor(for: primaryCard) ?? DeviceColorOption.defaultOption(for: primaryCard.modelKey)
+    private var selectedColor: DeviceColorOption? {
+        guard let selectedCard else { return nil }
+        return colorStore?.selectedColor(for: selectedCard) ?? DeviceColorOption.defaultOption(for: selectedCard.modelKey)
     }
 
-    private var isPrimaryWorn: Bool {
-        guard let primaryCard else { return false }
-        return routeMonitor?.isCurrentlyWorn(primaryCard) ?? false
+    private var isSelectedWorn: Bool {
+        guard let selectedCard else { return false }
+        return routeMonitor?.isCurrentlyWorn(selectedCard) ?? false
+    }
+
+    private var showingAllPairs: Bool {
+        selectedCard == nil && cards.count > 1
     }
 
     var body: some View {
@@ -81,7 +105,7 @@ struct HomeView: View {
         }
         .foregroundStyle(.white)
         .sheet(isPresented: $showShare) {
-            ShareSheet(summary: summary, primaryCard: primaryCard, colorOption: primaryColor)
+            ShareSheet(summary: activeSummary, primaryCard: selectedCard, colorOption: selectedColor)
         }
         .onAppear {
             if motionActive { motion.start() }
@@ -107,14 +131,22 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Header & Active Pair Pill
+    // MARK: - Header & Active Pair Pill / Switcher
 
     private var header: some View {
-        let pairName = isSampleData
-            ? (primaryCard?.model ?? summary.deviceModel)
-            : (primaryCard?.nickname ?? summary.deviceName)
-        let pairModel = primaryCard?.model ?? summary.deviceModel
-        let pairSubtitle: String? = (!isSampleData && pairModel != pairName) ? pairModel : nil
+        let pairName: String = if let card = selectedCard {
+            isSampleData ? card.model : card.nickname
+        } else {
+            activeSummary.deviceName
+        }
+        let pairModel = selectedCard?.model ?? activeSummary.deviceModel
+        let pairSubtitle: String? = if selectedCard == nil {
+            pairModel != pairName ? pairModel : nil
+        } else if !isSampleData && pairModel != pairName {
+            pairModel
+        } else {
+            nil
+        }
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
@@ -133,23 +165,69 @@ struct HomeView: View {
                 .accessibilityLabel("Share my Earprint")
             }
 
-            if let card = primaryCard {
+            if cards.count > 1 {
+                Menu {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        selectedCardID = nil
+                    } label: {
+                        HStack {
+                            Text("All Headphones")
+                            if selectedCard == nil {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    ForEach(cards) { card in
+                        let label = isSampleData ? card.model : card.nickname
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            selectedCardID = card.id
+                        } label: {
+                            HStack {
+                                Text("\(label) · \(card.lifetimeMinutes.minutesText)")
+                                if selectedCard?.id == card.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+
+                    if let card = selectedCard {
+                        Divider()
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            router?.pendingCardID = card.id
+                            router?.tab = .collection
+                        } label: {
+                            Label("Open 3D Card", systemImage: "rectangle.stack")
+                        }
+                    }
+                } label: {
+                    activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: "chevron.up.chevron.down")
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Switch between all headphones or a single pair")
+            } else if let card = selectedCard {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     router?.pendingCardID = card.id
                     router?.tab = .collection
                 } label: {
-                    activePairPill(name: pairName, subtitle: pairSubtitle, showsChevron: true)
+                    activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: "chevron.right")
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View card in Collection")
             } else {
-                activePairPill(name: pairName, subtitle: pairSubtitle, showsChevron: false)
+                activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: nil)
             }
         }
     }
 
-    private func activePairPill(name: String, subtitle: String?, showsChevron: Bool) -> some View {
+    private func activePairPill(name: String, subtitle: String?, trailingSymbol: String?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         return HStack(spacing: 10) {
             ZStack {
@@ -162,11 +240,11 @@ struct HomeView: View {
                             endRadius: 22
                         )
                     )
-                if let card = primaryCard {
-                    HeadphoneArtwork(card: card, colorOption: primaryColor, showsChargingCase: false)
+                if let card = selectedCard {
+                    HeadphoneArtwork(card: card, colorOption: selectedColor, showsChargingCase: false)
                         .padding(3)
                 } else {
-                    Image(systemName: summary.deviceSymbol)
+                    Image(systemName: activeSummary.deviceSymbol)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(activeRarity.accent)
                 }
@@ -180,7 +258,7 @@ struct HomeView: View {
                         .font(.system(size: 14.5, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
-                    if isPrimaryWorn {
+                    if isSelectedWorn {
                         ActiveWearDot()
                     }
                 }
@@ -206,8 +284,8 @@ struct HomeView: View {
                     .overlay(Capsule().strokeBorder(activeRarity.accent.opacity(0.38), lineWidth: 1))
                     .foregroundStyle(activeRarity.accent)
 
-                if showsChevron {
-                    Image(systemName: "chevron.right")
+                if let trailingSymbol {
+                    Image(systemName: trailingSymbol)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(DossierPalette.faint)
                         .accessibilityHidden(true)
@@ -232,7 +310,7 @@ struct HomeView: View {
 
     private var heroEarprint: some View {
         let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
-        let has28DayData = summary.grid.totalMinutes(lastDays: 28) > 0
+        let has28DayData = activeSummary.grid.totalMinutes(lastDays: 28) > 0
 
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 8) {
@@ -240,9 +318,9 @@ struct HomeView: View {
                 Spacer(minLength: 8)
                 if has28DayData {
                     HStack(spacing: 5) {
-                        Text(summary.persona.emoji)
+                        Text(activeSummary.persona.emoji)
                             .font(.caption2)
-                        Text(LocalizedStringKey(summary.persona.title))
+                        Text(LocalizedStringKey(activeSummary.persona.title))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.white.opacity(0.9))
                             .lineLimit(1)
@@ -255,7 +333,7 @@ struct HomeView: View {
             }
 
             ZStack {
-                EarprintGlyph(grid: summary.grid, showHourLabels: true)
+                EarprintGlyph(grid: activeSummary.grid, showHourLabels: true)
                     .frame(maxWidth: 224)
                     .background {
                         Circle()
@@ -271,14 +349,14 @@ struct HomeView: View {
                     .accessibilityHidden(true)
 
                 VStack(spacing: 4) {
-                    Text(summary.weekMinutes.minutesText)
+                    Text(activeSummary.weekMinutes.minutesText)
                         .font(.system(size: 15.5, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
                         .foregroundStyle(.white)
-                    if summary.weekMinutes > 0 {
-                        let db = summary.weekDecibels
+                    if activeSummary.weekMinutes > 0 {
+                        let db = activeSummary.weekDecibels
                         let dbColor = Theme.levelColor(db: db)
                         Text("\(Int(db.rounded())) dB")
                             .font(.system(size: 9.5, weight: .bold, design: .rounded))
@@ -356,7 +434,7 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Eyebrow("LAST 7 DAYS")
                 Spacer(minLength: 8)
-                Text(summary.periodLabel)
+                Text(activeSummary.periodLabel)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(DossierPalette.dim)
             }
@@ -380,7 +458,7 @@ struct HomeView: View {
 
     private var weeklyListeningTime: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(summary.weekMinutes.minutesText)
+            Text(activeSummary.weekMinutes.minutesText)
                 .font(.system(size: listeningTimeSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
             Text("Listening time")
@@ -391,17 +469,17 @@ struct HomeView: View {
     }
 
     private var weeklyLevel: some View {
-        let level = summary.weekDecibels
+        let level = activeSummary.weekDecibels
         return VStack(alignment: .leading, spacing: 3) {
             Group {
-                if summary.weekMinutes > 0 {
+                if activeSummary.weekMinutes > 0 {
                     Text("\(Int(level.rounded())) dB")
                 } else {
                     Text(verbatim: "—")
                 }
             }
             .font(.title2.weight(.bold).monospacedDigit())
-            .foregroundStyle(summary.weekMinutes > 0 ? Theme.levelColor(db: level) : Theme.secondaryText)
+            .foregroundStyle(activeSummary.weekMinutes > 0 ? Theme.levelColor(db: level) : Theme.secondaryText)
             Text("Avg. level")
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
@@ -410,9 +488,9 @@ struct HomeView: View {
     }
 
     private var dailyListeningBars: some View {
-        let start = max(0, summary.grid.days - 7)
-        let dayIndices = Array(start..<summary.grid.days)
-        let dailyMinutes = dayIndices.map { summary.grid.minutes[$0].reduce(0, +) }
+        let start = max(0, activeSummary.grid.days - 7)
+        let dayIndices = Array(start..<activeSummary.grid.days)
+        let dailyMinutes = dayIndices.map { activeSummary.grid.minutes[$0].reduce(0, +) }
         let maxMinutes = max(dailyMinutes.max() ?? 0, 1)
 
         return HStack(alignment: .bottom, spacing: 6) {
@@ -420,7 +498,7 @@ struct HomeView: View {
                 let minutes = dailyMinutes[offset]
                 let dayDB = dayAverageDecibels(dayIndex: dayIdx)
                 let barColor = dayDB.map { Theme.levelColor(db: $0) } ?? Theme.quiet.color
-                let isToday = (dayIdx == summary.grid.days - 1)
+                let isToday = (dayIdx == activeSummary.grid.days - 1)
 
                 ZStack(alignment: .bottom) {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -456,14 +534,14 @@ struct HomeView: View {
     }
 
     private func dayAverageDecibels(dayIndex: Int) -> Double? {
-        guard summary.grid.minutes.indices.contains(dayIndex),
-              summary.grid.decibels.indices.contains(dayIndex) else { return nil }
+        guard activeSummary.grid.minutes.indices.contains(dayIndex),
+              activeSummary.grid.decibels.indices.contains(dayIndex) else { return nil }
         var energy = 0.0
         var weight = 0.0
         for hour in 0..<24 {
-            let minutes = summary.grid.minutes[dayIndex][hour]
+            let minutes = activeSummary.grid.minutes[dayIndex][hour]
             guard minutes > 0 else { continue }
-            let db = summary.grid.decibels[dayIndex][hour]
+            let db = activeSummary.grid.decibels[dayIndex][hour]
             energy += pow(10, db / 10) * minutes
             weight += minutes
         }
@@ -475,7 +553,7 @@ struct HomeView: View {
 
     private var hearingBudget: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        let used = summary.weeklyBudgetUsed
+        let used = activeSummary.weeklyBudgetUsed
         let tint = used >= 1 ? Theme.loud.color : (used >= 0.75 ? Theme.moderate.color : Theme.quiet.color)
         let clamped = min(max(used, 0), 1)
 
@@ -517,9 +595,13 @@ struct HomeView: View {
             .frame(height: 8)
             .accessibilityHidden(true)
 
-            Text("7-day exposure for this pair · WHO reference: 40 hours at 80 dB(A)")
-                .font(.caption)
-                .foregroundStyle(Theme.secondaryText)
+            Text(
+                showingAllPairs
+                    ? "7-day exposure across all pairs · WHO reference: 40 hours at 80 dB(A)"
+                    : "7-day exposure for this pair · WHO reference: 40 hours at 80 dB(A)"
+            )
+            .font(.caption)
+            .foregroundStyle(Theme.secondaryText)
         }
         .padding(18)
         .background(DossierPalette.panel, in: shape)
@@ -535,8 +617,8 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Eyebrow("ALL-TIME ARCHIVE")
                 Spacer(minLength: 8)
-                if summary.firstUse != "—" {
-                    Text("Since \(summary.firstUse)")
+                if activeSummary.firstUse != "—" {
+                    Text("Since \(activeSummary.firstUse)")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(DossierPalette.dim)
                 }
@@ -544,20 +626,20 @@ struct HomeView: View {
 
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(spacing: 10) {
-                    statWell("Listening time", summary.lifetimeMinutes.minutesText)
-                    statWell("Sessions", summary.sessions.formatted())
-                    statWell("Avg. session", summary.averageSessionMinutes.minutesText)
-                    statWell("Longest session", summary.longestSessionMinutes.minutesText)
+                    statWell("Listening time", activeSummary.lifetimeMinutes.minutesText)
+                    statWell("Sessions", activeSummary.sessions.formatted())
+                    statWell("Avg. session", activeSummary.averageSessionMinutes.minutesText)
+                    statWell("Longest session", activeSummary.longestSessionMinutes.minutesText)
                 }
             } else {
                 Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                     GridRow {
-                        statWell("Listening time", summary.lifetimeMinutes.minutesText)
-                        statWell("Sessions", summary.sessions.formatted())
+                        statWell("Listening time", activeSummary.lifetimeMinutes.minutesText)
+                        statWell("Sessions", activeSummary.sessions.formatted())
                     }
                     GridRow {
-                        statWell("Avg. session", summary.averageSessionMinutes.minutesText)
-                        statWell("Longest session", summary.longestSessionMinutes.minutesText)
+                        statWell("Avg. session", activeSummary.averageSessionMinutes.minutesText)
+                        statWell("Longest session", activeSummary.longestSessionMinutes.minutesText)
                     }
                 }
             }

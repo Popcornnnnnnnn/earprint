@@ -24,8 +24,10 @@ struct EarprintApp: App {
                 .tag(DeepLinkRouter.Tab.collection)
 
                 HomeView(
-                    summary: library.homeSummary,
-                    primaryCard: library.cards.first,
+                    summary: library.summary(forCardID: nil),
+                    primaryCard: library.cards.count == 1 ? library.cards.first : nil,
+                    cards: library.cards,
+                    summaryForCardID: { library.summary(forCardID: $0) },
                     isSampleData: library.isShowingSampleData,
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.state == .idle ? nil : library.statusMessage,

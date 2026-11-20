@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@, graded %@, %@. %@, product ID %@.": {
       "localizations": {
         "zh-Hans": {
@@ -97,6 +107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "已解锁 %lld / %lld 款"
+          }
+        }
+      }
+    },
+    "%lld pairs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 副耳机"
           }
         }
       }
@@ -391,6 +411,16 @@
         }
       }
     },
+    "7-day exposure across all pairs · WHO reference: 40 hours at 80 dB(A)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近 7 天全部耳机累计暴露 · WHO 参考标准：每周 80 dB(A) 40 小时"
+          }
+        }
+      }
+    },
     "7-day exposure for this pair · WHO reference: 40 hours at 80 dB(A)": {
       "localizations": {
         "zh-Hans": {
@@ -491,6 +521,16 @@
         }
       }
     },
+    "All Headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部耳机"
+          }
+        }
+      }
+    },
     "All-Day Listener": {
       "localizations": {
         "zh-Hans": {
@@ -521,6 +561,26 @@
         }
       }
     },
+    "Anodized Indigo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阳极靛岩蓝"
+          }
+        }
+      }
+    },
+    "Anodized Matte": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哑光阳极铜"
+          }
+        }
+      }
+    },
     "App Icon": {
       "localizations": {
         "zh-Hans": {
@@ -537,6 +597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备无法使用 Apple 健康，目前显示示例数据。"
+          }
+        }
+      }
+    },
+    "Architectural frosted plum finish at 550+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "550 小时解锁的建筑感深紫磨砂卡面"
           }
         }
       }
@@ -626,7 +696,27 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "铜卡"
+            "value": "青铜"
+          }
+        }
+      }
+    },
+    "BRONZE SLATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青铜岩"
+          }
+        }
+      }
+    },
+    "BRONZE tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青铜岩等级"
           }
         }
       }
@@ -637,6 +727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "背景"
+          }
+        }
+      }
+    },
+    "Beaded Alloy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "微珠喷砂铝"
           }
         }
       }
@@ -681,12 +781,32 @@
         }
       }
     },
+    "Brushed Slate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝石青绿"
+          }
+        }
+      }
+    },
     "Brushed ice-titanium master finish": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "拉丝冰钛金属大师卡面"
+          }
+        }
+      }
+    },
+    "CARBON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "碳纤"
           }
         }
       }
@@ -701,12 +821,32 @@
         }
       }
     },
+    "CHAMPAGNE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香槟"
+          }
+        }
+      }
+    },
     "COLLECTION NUMBER": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "收藏编号"
+          }
+        }
+      }
+    },
+    "COLLECTOR BINDER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏图鉴册"
           }
         }
       }
@@ -721,12 +861,22 @@
         }
       }
     },
+    "Carbon tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "碳纤等级"
+          }
+        }
+      }
+    },
     "Card %lld of %lld": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "第 %lld 张，共 %lld 张"
+            "value": "第 %1$lld / %2$lld 张卡片"
           }
         }
       }
@@ -751,6 +901,16 @@
         }
       }
     },
+    "Cards upgrade automatically from Bronze Slate (0h+) to Liquid Holo (2,000h+).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片会随累计时长自动升级，从青铜岩（0h+）一路进阶至流光全息（2,000h+）。"
+          }
+        }
+      }
+    },
     "Cards upgrade automatically with lifetime listening hours": {
       "localizations": {
         "zh-Hans": {
@@ -771,6 +931,16 @@
         }
       }
     },
+    "Champagne tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香槟等级"
+          }
+        }
+      }
+    },
     "Change device color, currently %@": {
       "localizations": {
         "zh-Hans": {
@@ -787,6 +957,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "经典配色"
+          }
+        }
+      }
+    },
+    "Classic bead-blasted silver aluminum unibody": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经典微珠喷砂银灰一体成型质感"
           }
         }
       }
@@ -881,6 +1061,16 @@
         }
       }
     },
+    "Cool brushed coastal slate-teal at 160+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "160 小时解锁的冷冽拉丝峡湾岩青"
+          }
+        }
+      }
+    },
     "Copied": {
       "localizations": {
         "zh-Hans": {
@@ -951,12 +1141,32 @@
         }
       }
     },
+    "DEEP PURPLE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深紫"
+          }
+        }
+      }
+    },
     "DIAMOND · PRISM": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "钻石 · 棱镜"
+          }
+        }
+      }
+    },
+    "DLC Coating": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类钻碳涂层"
           }
         }
       }
@@ -1021,6 +1231,16 @@
         }
       }
     },
+    "Deep Purple tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深紫等级"
+          }
+        }
+      }
+    },
     "Deep cobalt luster for long-haul commutes": {
       "localizations": {
         "zh-Hans": {
@@ -1057,6 +1277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "设备档案"
+          }
+        }
+      }
+    },
+    "Diamond-like forged carbon midnight prestige finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1,400 小时锻造碳纤维类钻黑臻享卡面"
           }
         }
       }
@@ -1261,6 +1491,26 @@
         }
       }
     },
+    "FJORD": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青"
+          }
+        }
+      }
+    },
+    "FJORD TEAL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青"
+          }
+        }
+      }
+    },
     "First listen (0h+)": {
       "localizations": {
         "zh-Hans": {
@@ -1281,12 +1531,42 @@
         }
       }
     },
+    "Fjord tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青等级"
+          }
+        }
+      }
+    },
     "Flip card": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "翻转卡片"
+          }
+        }
+      }
+    },
+    "Frosted Mineral": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "磨砂矿石绿"
+          }
+        }
+      }
+    },
+    "Frosted Plum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哑光深紫釉"
           }
         }
       }
@@ -1406,7 +1686,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "幻彩"
+            "value": "全息"
           }
         }
       }
@@ -1471,12 +1751,32 @@
         }
       }
     },
+    "Holo tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全息等级"
+          }
+        }
+      }
+    },
     "Hours": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "小时"
+          }
+        }
+      }
+    },
+    "INDIGO": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青"
           }
         }
       }
@@ -1497,6 +1797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "图片不可用"
+          }
+        }
+      }
+    },
+    "Indigo tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青等级"
           }
         }
       }
@@ -1527,6 +1837,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "累计时长"
+          }
+        }
+      }
+    },
+    "LIQUID HOLO · LEGENDARY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流光全息 · 传说"
           }
         }
       }
@@ -1711,6 +2031,16 @@
         }
       }
     },
+    "Low-key frosted mineral sage at 80+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "80 小时解锁的低调磨砂鼠尾草矿石色"
+          }
+        }
+      }
+    },
     "Lower volume, a lighter weekly dose and fewer loud or late sessions keep the grade high. Based on the WHO safe-listening guide (80 dB(A) for 40 h a week).": {
       "localizations": {
         "zh-Hans": {
@@ -1741,6 +2071,16 @@
         }
       }
     },
+    "MIDNIGHT CARBON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "午夜碳纤"
+          }
+        }
+      }
+    },
     "MINTED": {
       "localizations": {
         "zh-Hans": {
@@ -1757,6 +2097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "生成于 %@"
+          }
+        }
+      }
+    },
+    "MIST CHAMPAGNE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾金香槟"
           }
         }
       }
@@ -1871,6 +2221,26 @@
         }
       }
     },
+    "Muted anodized indigo with subtle bevel highlights": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "含蓄沉稳的阳极氧化靛岩蓝斜切高光"
+          }
+        }
+      }
+    },
+    "Muted champagne titanium with warm satin sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低饱和缎面香槟钛金属温润微光"
+          }
+        }
+      }
+    },
     "My Earprint": {
       "localizations": {
         "zh-Hans": {
@@ -1897,6 +2267,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一项"
+          }
+        }
+      }
+    },
+    "NOW": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "Natural bronze slate starter cast on your first listen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听即铸造的自然青铜岩起始卡面"
           }
         }
       }
@@ -1991,6 +2381,16 @@
         }
       }
     },
+    "Open 3D Card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 3D 卡片"
+          }
+        }
+      }
+    },
     "Orange": {
       "localizations": {
         "zh-Hans": {
@@ -2067,6 +2467,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一张卡片"
+          }
+        }
+      }
+    },
+    "Prism Oxide": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "液态全息镀膜"
           }
         }
       }
@@ -2231,6 +2641,26 @@
         }
       }
     },
+    "SAGE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鼠尾草"
+          }
+        }
+      }
+    },
+    "SAGE MIST": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾霭鼠尾草"
+          }
+        }
+      }
+    },
     "SAMPLES READ": {
       "localizations": {
         "zh-Hans": {
@@ -2256,7 +2686,17 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "银卡"
+            "value": "银铝"
+          }
+        }
+      }
+    },
+    "SILVER ALUMINUM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银灰铝"
           }
         }
       }
@@ -2281,6 +2721,16 @@
         }
       }
     },
+    "SLATE INDIGO": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青岩"
+          }
+        }
+      }
+    },
     "SOURCE BUNDLE": {
       "localizations": {
         "zh-Hans": {
@@ -2297,6 +2747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "统计"
+          }
+        }
+      }
+    },
+    "Sage tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鼠尾草等级"
           }
         }
       }
@@ -2337,6 +2797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "示例数据 · 模拟器"
+          }
+        }
+      }
+    },
+    "Satin Titanium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缎面香槟钛"
           }
         }
       }
@@ -2451,6 +2921,16 @@
         }
       }
     },
+    "Silver tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银铝等级"
+          }
+        }
+      }
+    },
     "Simple": {
       "localizations": {
         "zh-Hans": {
@@ -2487,6 +2967,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "天蓝色"
+          }
+        }
+      }
+    },
+    "Smoked Dusk": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏暮夜紫"
+          }
+        }
+      }
+    },
+    "Smoked twilight dusk slate near the thousand-hour mark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "临近千小时门槛的烟熏暮夜蓝紫卡面"
           }
         }
       }
@@ -2561,6 +3061,26 @@
         }
       }
     },
+    "Swipe to browse models": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右滑动浏览型号"
+          }
+        }
+      }
+    },
+    "Switch between all headphones or a single pair": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换查看全部耳机或单副耳机数据"
+          }
+        }
+      }
+    },
     "Sync Apple Health": {
       "localizations": {
         "zh-Hans": {
@@ -2607,6 +3127,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "时长"
+          }
+        }
+      }
+    },
+    "TWILIGHT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色"
+          }
+        }
+      }
+    },
+    "TWILIGHT SLATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色岩蓝"
+          }
+        }
+      }
+    },
+    "Tap card to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点卡片翻面"
           }
         }
       }
@@ -2671,12 +3221,32 @@
         }
       }
     },
+    "Tap to flip · swipe to switch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面 · 左右滑动切换卡片"
+          }
+        }
+      }
+    },
     "The 2,000-hour full-spectrum holographic crown": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "2,000 小时满级全光谱全息皇冠"
+          }
+        }
+      }
+    },
+    "The 2,000-hour full-spectrum liquid holographic crown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2,000 小时满级全光谱流光全息皇冠"
           }
         }
       }
@@ -2697,6 +3267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "温润 24K 金光泽的可靠日常伙伴"
+          }
+        }
+      }
+    },
+    "Twilight tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色等级"
           }
         }
       }

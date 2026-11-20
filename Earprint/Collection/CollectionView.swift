@@ -11,12 +11,13 @@ struct CollectionView: View {
     @Namespace private var hero
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
-    @State private var showCardTiers = false
     #if DEBUG
+    @State private var showCardTiers = ProcessInfo.processInfo.arguments.contains("-cardTiers")
     private let openIconPicker = ProcessInfo.processInfo.arguments.contains("-iconPicker")
     @State private var showSettings = ProcessInfo.processInfo.arguments.contains("-iconPicker")
         || ProcessInfo.processInfo.arguments.contains("-settings")
     #else
+    @State private var showCardTiers = false
     private let openIconPicker = false
     @State private var showSettings = false
     #endif
@@ -749,14 +750,15 @@ struct CardDetail: View {
     @StateObject private var motion = TiltMotion()
     @State private var flipped = false
     @State private var angle: Double = 0
-    @State private var dragAngle: Double = 0
     @State private var dragTilt: CGSize = .zero
     @State private var modelInteractionTilt: CGSize?
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
-    /// Set when the live 3D model has finished attaching so 2D artwork crossfades smoothly away.
-    @State private var ready3DCardID: String? = nil
+    /// Keeps the active card's 3D RealityView settled and immune to half-swipe cancellation glitches.
+    @State private var active3DCardID: String? = nil
+    @State private var ready3DCardIDs: Set<String> = []
+    @State private var settle3DTask: Task<Void, Never>? = nil
     @State private var appeared = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
@@ -832,6 +834,7 @@ struct CardDetail: View {
                 .ignoresSafeArea()
                 .opacity(appeared ? 1 : 0)
                 .contentShape(Rectangle())
+                .gesture(cardNavigationSwipe)
                 .onTapGesture(perform: close)
 
             layout
@@ -849,28 +852,48 @@ struct CardDetail: View {
             if newMode == .sideBySide {
                 flipped = false
                 angle = 0
-                dragAngle = 0
             }
         }
         .onChange(of: card.id) { _, _ in
             flipped = false
             angle = 0
-            dragAngle = 0
             dragTilt = .zero
             modelInteractionTilt = nil
-            ready3DCardID = nil
             showColorBar = false
-            withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) {
+            settle3DTask?.cancel()
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) {
                 deckPosition = CGFloat(activeIndex)
+            }
+            // Wait for the card stack spring to settle before attaching RealityKit so swipes stay locked at 120Hz.
+            let targetID = card.id
+            settle3DTask = Task {
+                try? await Task.sleep(for: .milliseconds(220))
+                guard !Task.isCancelled else { return }
+                active3DCardID = targetID
+                await prewarmNeighbors(around: activeIndex)
             }
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
+            active3DCardID = card.id
             motion.start()
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
+            Task { await prewarmNeighbors(around: activeIndex) }
             Task { await runDemoIfNeeded() }
         }
-        .onDisappear { motion.stop() }
+        .onDisappear {
+            settle3DTask?.cancel()
+            motion.stop()
+        }
+    }
+
+    private func prewarmNeighbors(around index: Int) async {
+        for offset in [-1, 1] {
+            let idx = index + offset
+            guard deckCards.indices.contains(idx),
+                  let asset = deckCards[idx].modelAssetName else { continue }
+            await HeadphoneModelLoader.prewarm(assetName: asset)
+        }
     }
 
     private var topCloseButton: some View {
@@ -890,7 +913,8 @@ struct CardDetail: View {
         .accessibilityLabel("Close")
     }
 
-    /// Only the controls beneath the card handle horizontal paging.
+    /// Horizontal swipe across the card or stage deals to neighboring cards.
+    /// Does NOT tear down the active card's 3D view during the drag so cancelling half-way never leaves it stuck.
     private var cardNavigationSwipe: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
@@ -901,8 +925,6 @@ struct CardDetail: View {
 
                 if dragStartPosition == nil {
                     dragStartPosition = CGFloat(activeIndex)
-                    // Keep the live view out of the deck while it is tracking the finger.
-                    ready3DCardID = nil
                     motion.stop()
                 }
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
@@ -1031,7 +1053,7 @@ struct CardDetail: View {
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
         let isTop = index == activeIndex
-        let activeAngle = isTop ? angle + dragAngle : 0
+        let activeAngle = isTop ? angle : 0
         let activeTilt = isTop ? tilt : .zero
         let surfaceRarity = isModelPreview ? (catalogSurfaces[item.id] ?? .silver) : item.rarity
 
@@ -1053,7 +1075,7 @@ struct CardDetail: View {
                     flip: { flip() }
                 )
                 .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                .simultaneousGesture(cardDrag)
+                .simultaneousGesture(cardNavigationSwipe)
                 .allowsHitTesting(flipped)
                 .accessibilityHidden(!flipped)
                 .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
@@ -1084,12 +1106,9 @@ struct CardDetail: View {
         let itemFinishID = itemColor?.id ?? "default"
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
         let assetName = item.modelAssetName ?? (isModelPreview ? "" : nil)
-        // Option 1: keep the active card's live 3D RealityView alive throughout the swipe drag
-        // instead of tearing it down on touch-down, while waiting cards underneath show their
-        // pixel-matched 3D open-case snapshot so there is never an empty or mismatched card.
-        let show3D = isTop && assetName != nil
-        let is3DReady = show3D && ready3DCardID == item.id
-        let revealLift: CGFloat = item.kind == .earbuds ? 12 : 4
+        // Keep the active 3D RealityView settled cleanly and undisturbed by half-swipes.
+        let show3D = item.id == active3DCardID && assetName != nil
+        let is3DReady = show3D && ready3DCardIDs.contains(item.id)
         let surfaceTint: [UIColor] = surfaceRarity.baseColors.map { UIColor($0) }
         let catalogBadge: LocalizedStringKey? = isModelPreview
             ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
@@ -1109,7 +1128,7 @@ struct CardDetail: View {
                 catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
             )
             .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-            .gesture(isTop ? cardDrag : nil)
+            .gesture(isTop ? cardNavigationSwipe : nil)
 
             if show3D, let assetName {
                 Ellipse()
@@ -1133,16 +1152,16 @@ struct CardDetail: View {
                     },
                     onModelReady: {
                         withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
-                            ready3DCardID = item.id
+                            _ = ready3DCardIDs.insert(item.id)
                         }
                     }
                 )
                 .frame(width: 300, height: 230)
-                .scaleEffect(is3DReady || reduceMotion ? 1 : 0.96)
-                .offset(y: -47 + (is3DReady || reduceMotion ? 0 : revealLift))
+                .offset(y: -47)
                 .opacity(is3DReady ? 1 : 0)
                 .allowsHitTesting(is3DReady)
                 .accessibilityHidden(!is3DReady)
+                .onDisappear { ready3DCardIDs.remove(item.id) }
             }
         }
     }
@@ -1159,39 +1178,30 @@ struct CardDetail: View {
 
     private var cardControls: some View {
         let showHints = repeatsFlipHint || showsFlipHintThisVisit
-        return VStack(spacing: 6) {
-            if canShowFlipHint && showHints {
-                Text("Tap or swipe the card to flip")
-                    .font(.caption)
+        return VStack(spacing: 8) {
+            if showHints {
+                if canFlip && deckCards.count > 1 {
+                    Text("Tap to flip · swipe to switch")
+                        .font(.caption)
+                } else if canFlip {
+                    Text("Tap card to flip")
+                        .font(.caption)
+                } else if isModelPreview && deckCards.count > 1 {
+                    Text("Swipe to browse models")
+                        .font(.caption)
+                }
             }
             if deckCards.count > 1 {
-                VStack(spacing: 8) {
-                    if showHints || isModelPreview {
-                        HStack(spacing: 5) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 9, weight: .semibold))
-                            Text("Swipe here to switch cards")
-                                .font(.caption)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 9, weight: .semibold))
+                deckPageIndicator
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text("Card \(activeIndex + 1) of \(deckCards.count)"))
+                    .accessibilityAdjustableAction { direction in
+                        switch direction {
+                        case .increment: selectNeighbor(step: 1)
+                        case .decrement: selectNeighbor(step: -1)
+                        @unknown default: break
                         }
-                        .foregroundStyle(.white.opacity(0.60))
                     }
-                    deckPageIndicator
-                }
-                .frame(maxWidth: 340)
-                .frame(minHeight: 48)
-                .contentShape(Rectangle())
-                .gesture(cardNavigationSwipe)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text("Swipe here to switch cards"))
-                .accessibilityAdjustableAction { direction in
-                    switch direction {
-                    case .increment: selectNeighbor(step: 1)
-                    case .decrement: selectNeighbor(step: -1)
-                    @unknown default: break
-                    }
-                }
             }
         }
         .foregroundStyle(Theme.secondaryText)
@@ -1298,40 +1308,12 @@ struct CardDetail: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
     }
 
-    private var cardDrag: some Gesture {
-        DragGesture(minimumDistance: 5, coordinateSpace: .global)
-            .onChanged { value in
-                let translation = value.translation
-                if canFlip && CardFlipDirection.isHorizontal(translation) {
-                    dragAngle = max(-68, min(68, Double(translation.width) * 0.56))
-                    dragTilt = .zero
-                } else {
-                    dragAngle = 0
-                    dragTilt = CGSize(width: max(-1, min(1, translation.width / 120)),
-                                      height: max(-1, min(1, translation.height / 160)))
-                }
-            }
-            .onEnded { value in
-                if canFlip, let direction = CardFlipDirection.swipe(
-                    translation: value.translation, predicted: value.predictedEndTranslation
-                ) {
-                    flip(direction)
-                } else {
-                    withAnimation(.snappy(duration: 0.32, extraBounce: 0)) {
-                        dragAngle = 0
-                        dragTilt = .zero
-                    }
-                }
-            }
-    }
-
     private func flip(_ direction: CardFlipDirection = .left) {
         // Side by side already shows both faces, and Model Gallery catalog cards have no stats back.
         guard canFlip else { return }
         withAnimation(.snappy(duration: 0.38, extraBounce: 0)) {
             flipped.toggle()
             angle += direction.rawValue
-            dragAngle = 0
             dragTilt = .zero
         }
     }

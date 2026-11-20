@@ -69,7 +69,7 @@ struct MiniCard: View {
         let rarity = card.rarity
         let ink = rarity.ink
         VStack(alignment: .leading, spacing: 0) {
-            Text(rarity.rawValue)
+            Text(rarity.shortName.uppercased())
                 .font(.system(size: 5.5 * s, weight: .heavy))
                 .tracking(0.6 * s)
                 .padding(.horizontal, 3.5 * s).padding(.vertical, 1.5 * s)

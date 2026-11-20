@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Visual illustration of Earprint's 10-tier card achievement system (0h Bronze → 2,000h Holo Legendary).
+/// Collector Trophy Binder + Interactive Spotlight illustration for Earprint's 10-tier system (0h → 2,000h).
 struct CardTiersView: View {
     var ownedCards: [HeadphoneCard] = []
     var showsDoneButton = false
+
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @StateObject private var motion = TiltMotion()
+    @State private var inspectedTier: Rarity?
 
     private var topCard: HeadphoneCard? {
         ownedCards.max(by: { $0.lifetimeMinutes < $1.lifetimeMinutes })
@@ -19,14 +23,42 @@ struct CardTiersView: View {
         return Rarity.allAscending.filter { highestHours >= $0.minimumHours }.count
     }
 
+    private var selectedTier: Rarity {
+        inspectedTier ?? topCard?.rarity ?? .bronze
+    }
+
+    private var liveTilt: CGSize {
+        reduceMotion ? .zero : motion.tilt
+    }
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                headerBanner
+            VStack(alignment: .leading, spacing: 16) {
+                spotlightHero(selectedTier)
 
-                VStack(spacing: 8) {
+                HStack {
+                    Text("COLLECTOR BINDER")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(1.6)
+                        .foregroundStyle(.white.opacity(0.55))
+                    Spacer()
+                    Text("\(unlockedTierCount)/\(Rarity.allAscending.count)")
+                        .font(.caption.weight(.bold).monospacedDigit())
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.white.opacity(0.08), in: Capsule())
+                        .foregroundStyle(selectedTier.accent)
+                }
+                .padding(.horizontal, 2)
+
+                LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(Array(Rarity.allAscending.enumerated()), id: \.element.id) { index, tier in
-                        tierRow(tier, rank: index + 1)
+                        binderCard(tier, rank: index + 1)
                     }
                 }
             }
@@ -34,7 +66,7 @@ struct CardTiersView: View {
             .padding(.vertical, 14)
             .padding(.bottom, 16)
         }
-        .background(Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea())
+        .background(Color(red: 0.035, green: 0.035, blue: 0.055).ignoresSafeArea())
         .foregroundStyle(.white)
         .navigationTitle("Card Tiers")
         .navigationBarTitleDisplayMode(.inline)
@@ -45,155 +77,221 @@ struct CardTiersView: View {
                 }
             }
         }
-    }
-
-    private var headerBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(Rarity.holo.accent)
-                Text("Cards upgrade automatically with lifetime listening hours")
-                    .font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
-                Text("\(unlockedTierCount)/\(Rarity.allAscending.count)")
-                    .font(.caption.weight(.bold).monospacedDigit())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.white.opacity(0.10), in: Capsule())
-                    .foregroundStyle(Rarity.holo.accent)
+        .onAppear {
+            if inspectedTier == nil {
+                inspectedTier = topCard?.rarity ?? .bronze
             }
-
-            if let topCard {
-                let tier = topCard.rarity
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Text(topCard.model)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.8))
-                        Spacer()
-                        Text(topCard.lifetimeMinutes.minutesText)
-                            .font(.caption.weight(.bold).monospacedDigit())
-                            .foregroundStyle(tier.accent)
-                    }
-                    if let next = tier.nextTier {
-                        let remaining = max(1, Int(ceil(next.minimumHours - highestHours)))
-                        ProgressView(value: tier.progressToNextTier(minutes: topCard.lifetimeMinutes))
-                            .tint(tier.accent)
-                        Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.55))
-                    } else {
-                        Text("Max tier reached ✦")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Rarity.holo.accent)
-                    }
-                }
-                .padding(.top, 2)
-            } else {
-                Text("10 tiers from Bronze on your first listen all the way to Holo Legendary at 2,000 hours.")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            if !reduceMotion { motion.start() }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.09), lineWidth: 1))
+        .onDisappear { motion.stop() }
+        .onChange(of: reduceMotion) { _, reduced in
+            if reduced { motion.stop() } else { motion.start() }
+        }
     }
 
-    private func tierRow(_ tier: Rarity, rank: Int) -> some View {
+    // MARK: - Interactive Spotlight Hero
+
+    private func spotlightHero(_ tier: Rarity) -> some View {
+        let rank = (Rarity.allAscending.firstIndex(of: tier) ?? 0) + 1
         let reached = !ownedCards.isEmpty && highestHours >= tier.minimumHours
-        let isTopCurrent = topCard?.rarity == tier
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        let ink = tier.ink
+        let badgeBg = Color.black.opacity(ink == .white ? 0.34 : 0.16)
 
-        return HStack(spacing: 12) {
-            // Compact live foil card swatch showing the exact card surface material
-            ZStack(alignment: .bottomLeading) {
-                FoilSurface(rarity: tier, tilt: CGSize(width: 0.25, height: -0.15))
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(String(format: "%02d", rank))
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                        .foregroundStyle(tier.ink.opacity(0.65))
-                    Spacer()
-                    Text(hoursLabel(tier.minimumHours))
-                        .font(.system(size: 11.5, weight: .black, design: .rounded))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .foregroundStyle(tier.ink)
-                }
-                .padding(6)
-            }
-            .frame(width: 54, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .strokeBorder(.white.opacity(reached ? 0.55 : 0.22), lineWidth: 1.1)
-            )
-            .shadow(color: tier.glow.opacity(reached ? 0.35 : 0.14), radius: 8, y: 3)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(LocalizedStringKey(tier.title))
-                        .font(.caption.weight(.heavy))
-                        .tracking(0.9)
-                        .foregroundStyle(tier.accent)
-                    if isTopCurrent {
-                        Text("CURRENT")
-                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                            .tracking(0.6)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(.white.opacity(0.14), in: Capsule())
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                Text(requirementText(tier))
-                    .font(.footnote.weight(.bold))
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Text(LocalizedStringKey(tier.title))
+                    .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                    .tracking(1.2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(badgeBg, in: Capsule())
                     .foregroundStyle(.white)
 
-                Text(LocalizedStringKey(tier.tagline))
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.58))
-                    .lineLimit(2)
+                Spacer(minLength: 6)
+
+                HStack(spacing: 4) {
+                    Image(systemName: reached ? "checkmark.circle.fill" : "lock.fill")
+                        .font(.system(size: 10.5, weight: .bold))
+                    Text(reached ? LocalizedStringKey("Unlocked") : LocalizedStringKey(hoursLabel(tier.minimumHours)))
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(badgeBg, in: Capsule())
+                .foregroundStyle(.white)
             }
 
-            Spacer(minLength: 4)
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("#\(String(format: "%02d", rank)) · \(Text(LocalizedStringKey(tier.finishLabel)))")
+                        .font(.caption.weight(.semibold))
+                        .opacity(0.76)
 
-            if reached {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.body)
-                    .foregroundStyle(Color(red: 0.32, green: 0.86, blue: 0.56))
-                    .accessibilityLabel("Unlocked")
-            } else {
-                Image(systemName: "lock.fill")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.24))
+                    Text(hoursLabel(tier.minimumHours))
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .monospacedDigit()
+
+                    Text(LocalizedStringKey(tier.tagline))
+                        .font(.caption.weight(.medium))
+                        .opacity(0.88)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: tier == .holo ? "sparkles" : (topCard?.symbol ?? "headphones"))
+                    .font(.system(size: 46, weight: .thin))
+                    .opacity(0.82)
+                    .offset(x: liveTilt.width * -6, y: liveTilt.height * -4)
+                    .accessibilityHidden(true)
+            }
+
+            // Live progress strip for the user's top pair (or general guidance when empty)
+            VStack(alignment: .leading, spacing: 6) {
+                Rectangle()
+                    .fill(ink.opacity(0.16))
+                    .frame(height: 1)
+
+                if let topCard {
+                    let currentTier = topCard.rarity
+                    HStack {
+                        Text("\(topCard.model) · \(topCard.lifetimeMinutes.minutesText)")
+                            .font(.caption.weight(.bold).monospacedDigit())
+                            .lineLimit(1)
+                        Spacer()
+                        Text(LocalizedStringKey(currentTier.shortName))
+                            .font(.caption2.weight(.heavy))
+                            .opacity(0.8)
+                    }
+
+                    ProgressView(value: currentTier.progressToNextTier(minutes: topCard.lifetimeMinutes))
+                        .tint(ink)
+
+                    if let next = currentTier.nextTier {
+                        let remaining = max(1, Int(ceil(next.minimumHours - highestHours)))
+                        Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
+                            .font(.caption2.weight(.semibold))
+                            .opacity(0.82)
+                    } else {
+                        Text("Max tier reached ✦")
+                            .font(.caption2.weight(.bold))
+                    }
+                } else {
+                    Text("Cards upgrade automatically from Bronze Slate (0h+) to Liquid Holo (2,000h+).")
+                        .font(.caption2.weight(.medium))
+                        .opacity(0.82)
+                }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isTopCurrent ? Color.white.opacity(0.09) : Color.white.opacity(0.045))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(isTopCurrent ? tier.accent.opacity(0.55) : Color.white.opacity(0.08), lineWidth: isTopCurrent ? 1.25 : 1)
-        )
+        .foregroundStyle(ink)
+        .padding(18)
+        .background(FoilSurface(rarity: tier, tilt: liveTilt))
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(.white.opacity(0.45), lineWidth: 1.4))
+        .shadow(color: tier.glow.opacity(0.35), radius: 22, x: -liveTilt.width * 8, y: 12)
+        .rotation3DEffect(.degrees(Double(liveTilt.width) * 4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+        .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - 2-Column Trophy Binder Tile
+
+    private func binderCard(_ tier: Rarity, rank: Int) -> some View {
+        let unlocked = !ownedCards.isEmpty && highestHours >= tier.minimumHours
+        let isTopCurrent = topCard?.rarity == tier
+        let isSelected = selectedTier == tier
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        let ink = tier.ink
+        let chipBg = Color.black.opacity(ink == .white ? 0.34 : 0.16)
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.snappy(duration: 0.24)) {
+                inspectedTier = tier
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Text(LocalizedStringKey(tier.shortName.uppercased()))
+                        .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+                        .tracking(0.8)
+                        .lineLimit(1)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(chipBg, in: Capsule())
+                        .foregroundStyle(.white)
+
+                    Spacer(minLength: 4)
+
+                    if isTopCurrent {
+                        Text("NOW")
+                            .font(.system(size: 8.5, weight: .black, design: .rounded))
+                            .tracking(0.5)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2.5)
+                            .background(.white, in: Capsule())
+                            .foregroundStyle(.black)
+                    } else if unlocked {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                    } else {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .opacity(0.75)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Text(hoursLabel(tier.minimumHours))
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                HStack(spacing: 4) {
+                    Text(String(format: "%02d", rank))
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .opacity(0.65)
+                    Text("·")
+                        .opacity(0.5)
+                    Text(LocalizedStringKey(tier.finishLabel))
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .opacity(0.82)
+                }
+                .padding(.top, 2)
+            }
+            .foregroundStyle(ink)
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
+            .background(FoilSurface(rarity: tier, tilt: liveTilt))
+            .clipShape(shape)
+            .saturation(unlocked || isSelected ? 1.0 : 0.72)
+            .opacity(unlocked || isSelected ? 1.0 : 0.68)
+            .overlay(
+                shape.strokeBorder(
+                    isSelected ? Color.white.opacity(0.92) : Color.white.opacity(unlocked ? 0.36 : 0.16),
+                    lineWidth: isSelected ? 2 : 1
+                )
+            )
+            .shadow(
+                color: isSelected ? tier.glow.opacity(0.38) : .clear,
+                radius: 10,
+                y: 4
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(Text(LocalizedStringKey(tier.title))), \(hoursLabel(tier.minimumHours))")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func hoursLabel(_ hours: Double) -> String {
-        hours == 0 ? "0h+" : "\(Int(hours))h"
-    }
-
-    private func requirementText(_ tier: Rarity) -> LocalizedStringKey {
-        if tier.minimumHours == 0 {
-            return "First listen (0h+)"
-        }
-        return "\(Int(tier.minimumHours))+ listening hours"
+        hours == 0 ? "0h+" : "\(Int(hours))h+"
     }
 }

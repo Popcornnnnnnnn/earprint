@@ -298,7 +298,7 @@ struct DeviceDossier: Identifiable {
             }
             for (mark, tier) in tiers where before < mark * 60 && cumulative >= mark * 60 {
                 let date = session.start.addingTimeInterval((mark * 60 - before) * 60)
-                result.append(.init(id: "t\(tier.rawValue)", kind: .tier, date: date, title: "\(tier.rawValue.capitalized) tier",
+                result.append(.init(id: "t\(tier.rawValue)", kind: .tier, date: date, title: "\(tier.shortName) tier",
                                     detail: "Card upgraded at \(Int(mark))h", tier: tier))
             }
         }
@@ -317,7 +317,7 @@ struct DeviceDossier: Identifiable {
             let eta = now.addingTimeInterval(daysLeft * 86400)
             let tier = tiers.first { $0.0 * 60 == next }?.1
             result.append(.init(id: "next", kind: .upcoming, date: eta,
-                                title: tier.map { "\($0.rawValue.capitalized) tier" } ?? "\(Int(next / 60)) hours",
+                                title: tier.map { "\($0.shortName) tier" } ?? "\(Int(next / 60)) hours",
                                 detail: "\((next - lifetimeMinutes).minutesText) to go · at your pace", tier: tier, isFuture: true))
         }
         return result.sorted { $0.date < $1.date }

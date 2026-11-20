@@ -24,7 +24,7 @@ struct CardFaceRotation: ViewModifier, Animatable {
     }
 }
 
-/// Foil surface: base gradient + rainbow sheen + specular highlight that move with tilt.
+/// Foil surface: base gradient + finish-specific micro texture + prism sheen + specular highlight that move with tilt.
 struct FoilSurface: View {
     let rarity: Rarity
     var tilt: CGSize = .zero
@@ -34,14 +34,63 @@ struct FoilSurface: View {
             AngularGradient(colors: rarity.baseColors, center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.4 + tilt.height * 0.3),
                             angle: .degrees(200 + tilt.width * 60))
 
-            // Fine diagonal foil lines.
+            // Distinct surface finish pattern matching each tier's material craft.
             Canvas { context, size in
-                var path = Path()
-                stride(from: -size.height, to: size.width, by: 5).forEach { x in
-                    path.move(to: CGPoint(x: x, y: size.height))
-                    path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                switch rarity.material {
+                case .brushed:
+                    var path = Path()
+                    stride(from: CGFloat(0), to: size.height, by: 3.5).forEach { y in
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    context.stroke(path, with: .color(.white.opacity(0.065)), lineWidth: 0.75)
+
+                case .carbon:
+                    var pathA = Path()
+                    stride(from: -size.height, to: size.width + size.height, by: 7).forEach { x in
+                        pathA.move(to: CGPoint(x: x, y: size.height))
+                        pathA.addLine(to: CGPoint(x: x + size.height, y: 0))
+                        pathA.move(to: CGPoint(x: x, y: 0))
+                        pathA.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                    }
+                    context.stroke(pathA, with: .color(.white.opacity(0.055)), lineWidth: 1)
+
+                case .matteGrain, .frosted, .satin, .faceted, .holo:
+                    var path = Path()
+                    stride(from: -size.height, to: size.width, by: 5).forEach { x in
+                        path.move(to: CGPoint(x: x, y: size.height))
+                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    }
+                    let lineOpacity: Double = switch rarity.material {
+                    case .holo: 0.10
+                    case .matteGrain, .frosted: 0.04
+                    default: 0.06
+                    }
+                    context.stroke(path, with: .color(.white.opacity(lineOpacity)), lineWidth: 1)
                 }
-                context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.10 : 0.06)), lineWidth: 1)
+            }
+
+            if rarity.material == .faceted {
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.16), .clear, .white.opacity(0.12), .clear],
+                    startPoint: UnitPoint(x: 0.0 + tilt.width * 0.4, y: 0.1),
+                    endPoint: UnitPoint(x: 1.0 + tilt.width * 0.4, y: 0.9)
+                )
+                .blendMode(.overlay)
+            } else if rarity.material == .satin {
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.18), .clear],
+                    startPoint: UnitPoint(x: 0.1 + tilt.width * 0.5, y: 0),
+                    endPoint: UnitPoint(x: 0.9 + tilt.width * 0.5, y: 1)
+                )
+                .blendMode(.softLight)
+            } else if rarity.material == .carbon {
+                RadialGradient(
+                    colors: [.clear, Color.black.opacity(0.32)],
+                    center: .center,
+                    startRadius: 40,
+                    endRadius: 240
+                )
             }
 
             if rarity.sheenOpacity > 0 {
@@ -53,7 +102,7 @@ struct FoilSurface: View {
             }
 
             // Specular highlight that slides across as the card tilts.
-            LinearGradient(colors: [.clear, .white.opacity(0.55), .clear],
+            LinearGradient(colors: [.clear, .white.opacity(rarity.material == .matteGrain ? 0.35 : 0.55), .clear],
                            startPoint: UnitPoint(x: 0.1 + tilt.width * 0.8, y: 0.0 + tilt.height * 0.5),
                            endPoint: UnitPoint(x: 0.6 + tilt.width * 0.8, y: 0.7 + tilt.height * 0.5))
                 .blendMode(.overlay)

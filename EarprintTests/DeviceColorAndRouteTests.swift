@@ -175,6 +175,48 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertNil(Rarity.holo.nextTier)
         XCTAssertEqual(Rarity.sapphire.progressToNextTier(minutes: 230 * 60), 0.5, accuracy: 0.001)
         XCTAssertEqual(Rarity.holo.progressToNextTier(minutes: 2500 * 60), 1.0, accuracy: 0.001)
+
+        XCTAssertEqual(Set(Rarity.allCases.map(\.title)).count, 10)
+        XCTAssertTrue(Rarity.allCases.allSatisfy { !$0.finishLabel.isEmpty })
+        XCTAssertEqual(Rarity.obsidian.material, .carbon)
+        XCTAssertEqual(Rarity.holo.material, .holo)
+    }
+
+    func testMultiDeviceCombinedHomeSummaryAndSingleDeviceSelection() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = utc.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 15))!
+        let earlierStart = now.addingTimeInterval(-3600)
+        let maxDevice = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x201F", localIdentifier: "max-1")
+        let budsDevice = DeviceDescriptor(name: "AirPods 4", manufacturer: "Apple Inc.", model: "0x201B", localIdentifier: "ap4-1")
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            RawListeningSample(start: earlierStart, end: earlierStart.addingTimeInterval(600), decibels: 60, device: maxDevice),
+            RawListeningSample(start: earlierStart, end: earlierStart.addingTimeInterval(600), decibels: 70, device: budsDevice),
+            RawListeningSample(start: now.addingTimeInterval(-1800), end: now.addingTimeInterval(-600), decibels: 66, device: budsDevice),
+        ], now: now, calendar: utc)
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: utc)
+        XCTAssertEqual(snapshot.devices.count, 2)
+
+        let combined = snapshot.combinedHomeSummary(now: now, calendar: utc)
+        XCTAssertNotNil(combined)
+        XCTAssertEqual(combined?.lifetimeMinutes ?? 0, 40, accuracy: 0.001)
+        XCTAssertEqual(combined?.weekMinutes ?? 0, 40, accuracy: 0.001)
+        // Energy-weighted average across equal 60 dB + 70 dB overlapping 10m + 20m @ 66 dB
+        let expectedEnergy = HearingBudget.energy(decibels: 60, seconds: 600)
+            + HearingBudget.energy(decibels: 70, seconds: 600)
+            + HearingBudget.energy(decibels: 66, seconds: 1200)
+        XCTAssertEqual(
+            combined?.weeklyBudgetUsed ?? 0,
+            HearingBudget.dose(energy: expectedEnergy),
+            accuracy: 0.0001
+        )
+
+        let onlyMax = snapshot.summary(for: maxDevice.identityKey, now: now, calendar: utc)
+        XCTAssertEqual(onlyMax?.lifetimeMinutes ?? 0, 10, accuracy: 0.001)
+        let onlyBuds = snapshot.summary(for: budsDevice.identityKey, now: now, calendar: utc)
+        XCTAssertEqual(onlyBuds?.lifetimeMinutes ?? 0, 30, accuracy: 0.001)
     }
 
     func testAirPodsProUsesOpenCaseSnapshotForCollectibleCard() {

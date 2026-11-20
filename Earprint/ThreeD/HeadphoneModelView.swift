@@ -215,8 +215,8 @@ struct HeadphoneModelView: View {
                 }
             }
         }
-        // Keep the transparent margins available for swiping the card.
-        .contentShape(.interaction, Rectangle().scale(x: 0.67, y: 0.87))
+        // Keep outer margins free for swiping the card to switch between pairs.
+        .contentShape(.interaction, Rectangle().scale(x: 0.56, y: 0.72))
         .gesture(
             DragGesture(minimumDistance: 2)
                 .onChanged { rig.dragChanged($0) }

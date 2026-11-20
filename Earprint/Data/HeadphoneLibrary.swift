@@ -78,6 +78,85 @@ final class HeadphoneLibrary: ObservableObject {
         return SampleData.summary
     }
 
+    /// Summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
+    func summary(forCardID cardID: String?) -> ListeningSummary {
+        if let snapshot, !snapshot.isEmpty {
+            if let cardID, let deviceSummary = snapshot.summary(for: cardID) {
+                return deviceSummary
+            }
+            return snapshot.combinedHomeSummary() ?? snapshot.homeSummary() ?? SampleData.summary
+        }
+
+        let sampleCards = cards
+        if let cardID, let card = sampleCards.first(where: { $0.matches(id: cardID) }) {
+            return Self.sampleSummary(for: card)
+        }
+        if sampleCards.count > 1 {
+            return Self.combinedSampleSummary(from: sampleCards)
+        }
+        return SampleData.summary
+    }
+
+    private static func sampleSummary(for card: HeadphoneCard) -> ListeningSummary {
+        ListeningSummary(
+            deviceName: card.nickname,
+            deviceModel: card.model,
+            deviceSymbol: card.symbol,
+            periodLabel: SampleData.summary.periodLabel,
+            grid: card.grid,
+            lifetimeMinutes: card.lifetimeMinutes,
+            sessions: card.sessions,
+            averageSessionMinutes: card.sessions > 0 ? card.lifetimeMinutes / Double(card.sessions) : 0,
+            longestSessionMinutes: card.longestMinutes,
+            firstUse: card.firstMet
+        )
+    }
+
+    private static func combinedSampleSummary(from cards: [HeadphoneCard]) -> ListeningSummary {
+        let dayCount = cards.map(\.grid.days).max() ?? 28
+        var combinedMinutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        var combinedEnergy = combinedMinutes
+
+        for c in cards {
+            let dayOffset = max(0, dayCount - c.grid.days)
+            for day in 0..<c.grid.days {
+                let targetDay = dayOffset + day
+                for hour in 0..<24 {
+                    let mins = c.grid.minutes[day][hour]
+                    guard mins > 0 else { continue }
+                    let db = c.grid.decibels[day][hour]
+                    combinedMinutes[targetDay][hour] += mins
+                    combinedEnergy[targetDay][hour] += pow(10, db / 10) * mins
+                }
+            }
+        }
+
+        var combinedDecibels = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        for day in 0..<dayCount {
+            for hour in 0..<24 where combinedMinutes[day][hour] > 0 {
+                combinedDecibels[day][hour] = 10 * log10(combinedEnergy[day][hour] / combinedMinutes[day][hour])
+            }
+        }
+
+        let totalMinutes = cards.reduce(0) { $0 + $1.lifetimeMinutes }
+        let totalSessions = cards.reduce(0) { $0 + $1.sessions }
+        let longest = cards.map(\.longestMinutes).max() ?? 0
+        let avgSession = totalSessions > 0 ? totalMinutes / Double(totalSessions) : 0
+
+        return ListeningSummary(
+            deviceName: AppLanguage.current.text("All Headphones"),
+            deviceModel: AppLanguage.current.text("%lld pairs", cards.count),
+            deviceSymbol: "headphones",
+            periodLabel: SampleData.summary.periodLabel,
+            grid: ListeningGrid(minutes: combinedMinutes, decibels: combinedDecibels),
+            lifetimeMinutes: totalMinutes,
+            sessions: totalSessions,
+            averageSessionMinutes: avgSession,
+            longestSessionMinutes: longest,
+            firstUse: cards.map(\.firstMet).filter { $0 != "—" }.sorted().first ?? "—"
+        )
+    }
+
     /// Short badge label shown when falling back to sample data.
     var sampleBadgeText: LocalizedStringKey {
         #if targetEnvironment(simulator)
