@@ -25,9 +25,19 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-    @Published private(set) var snapshot: LibrarySnapshot?
+    @Published private(set) var snapshot: LibrarySnapshot? {
+        didSet { rebuildDerivedCache() }
+    }
     @Published private(set) var lastSyncDate: Date?
     @Published private(set) var lastNewSamples: Int = 0
+
+    /// Precomputed display models so SwiftUI reads stay O(1) with zero per-frame allocations or DateFormatter work.
+    private(set) var cards: [HeadphoneCard] = []
+    private(set) var homeSummary: ListeningSummary = SampleData.summary
+    private var cachedCombinedSummary: ListeningSummary = SampleData.summary
+    private var cachedSummariesByID: [String: ListeningSummary] = [:]
+    private var cacheDayStart: Date = Calendar.current.startOfDay(for: Date())
+    private var cacheLanguage: AppLanguage = AppLanguage.current
 
     #if DEBUG
     @Published private(set) var isSeeding = false
@@ -39,15 +49,17 @@ final class HeadphoneLibrary: ObservableObject {
     private var observing = false
 
     init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
-        self.ingestor = HealthIngestor(store: store, cache: cache)
-        // Instant launch: hydrate from the on-disk aggregate cache before the first frame renders.
-        if let saved = cache.load(), !saved.aggregate.isEmpty {
+        // Instant launch: decode the on-disk aggregate cache ONCE and share it with HealthIngestor.
+        let saved = cache.load()
+        self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved)
+        if let saved, !saved.aggregate.isEmpty {
             let cached = LibrarySnapshot(aggregate: saved.aggregate)
             self.snapshot = cached
             self.state = .ready
         } else if !HealthIngestor.isAvailable {
             self.state = .unavailable
         }
+        rebuildDerivedCache()
     }
 
     /// True when real HealthKit data is not available and views are displaying sample data.
@@ -60,59 +72,102 @@ final class HeadphoneLibrary: ObservableObject {
         return false
     }
 
-    var cards: [HeadphoneCard] {
-        if let snapshot, !snapshot.isEmpty {
-            return snapshot.cards()
-        }
-        #if DEBUG
-        return SampleCards.all
-        #else
-        return []
-        #endif
+    /// Rebuilds cached `cards` and `ListeningSummary` instances when language or local calendar day changes.
+    func refreshDerivedCacheIfNeeded(force: Bool = false) {
+        let today = Calendar.current.startOfDay(for: Date())
+        let lang = AppLanguage.current
+        guard force || today != cacheDayStart || lang != cacheLanguage else { return }
+        objectWillChange.send()
+        rebuildDerivedCache(now: Date())
     }
 
-    var homeSummary: ListeningSummary {
-        if let snapshot, let summary = snapshot.homeSummary() {
-            return summary
-        }
-        return SampleData.summary
-    }
+    private func rebuildDerivedCache(now: Date = Date(), calendar: Calendar = .current) {
+        cacheDayStart = calendar.startOfDay(for: now)
+        cacheLanguage = AppLanguage.current
 
-    /// Summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
-    func summary(forCardID cardID: String?) -> ListeningSummary {
         if let snapshot, !snapshot.isEmpty {
-            if let cardID, let deviceSummary = snapshot.summary(for: cardID) {
-                return deviceSummary
+            let builtCards = snapshot.cards(now: now, calendar: calendar)
+            let primarySummary = snapshot.homeSummary(now: now, calendar: calendar) ?? SampleData.summary
+            let combined = snapshot.combinedHomeSummary(now: now, calendar: calendar) ?? primarySummary
+            var byID: [String: ListeningSummary] = [:]
+            byID.reserveCapacity(snapshot.devices.count * 2)
+            for device in snapshot.devices {
+                if let summary = snapshot.summary(for: device.id, now: now, calendar: calendar) {
+                    byID[device.id] = summary
+                    for alias in device.aliasIDs {
+                        byID[alias] = summary
+                    }
+                }
             }
-            return snapshot.combinedHomeSummary() ?? snapshot.homeSummary() ?? SampleData.summary
+            self.cards = builtCards
+            self.homeSummary = primarySummary
+            self.cachedCombinedSummary = combined
+            self.cachedSummariesByID = byID
+        } else {
+            #if DEBUG
+            let sampleCards = SampleCards.all
+            #else
+            let sampleCards: [HeadphoneCard] = []
+            #endif
+            self.cards = sampleCards
+            let localizedSamplePrimary = Self.localizedSamplePrimary(now: now, calendar: calendar)
+            self.homeSummary = localizedSamplePrimary
+            self.cachedCombinedSummary = sampleCards.count > 1
+                ? Self.combinedSampleSummary(from: sampleCards, now: now, calendar: calendar)
+                : localizedSamplePrimary
+            var byID: [String: ListeningSummary] = [:]
+            byID.reserveCapacity(sampleCards.count)
+            for card in sampleCards {
+                let summary = Self.sampleSummary(for: card, now: now, calendar: calendar)
+                byID[card.id] = summary
+                for alias in card.aliasIDs {
+                    byID[alias] = summary
+                }
+            }
+            self.cachedSummariesByID = byID
         }
-
-        let sampleCards = cards
-        if let cardID, let card = sampleCards.first(where: { $0.matches(id: cardID) }) {
-            return Self.sampleSummary(for: card)
-        }
-        if sampleCards.count > 1 {
-            return Self.combinedSampleSummary(from: sampleCards)
-        }
-        return SampleData.summary
     }
 
-    private static func sampleSummary(for card: HeadphoneCard) -> ListeningSummary {
+    /// O(1) cached summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
+    func summary(forCardID cardID: String?) -> ListeningSummary {
+        if let cardID, let cached = cachedSummariesByID[cardID] {
+            return cached
+        }
+        return cachedCombinedSummary
+    }
+
+    private static func localizedSamplePrimary(now: Date, calendar: Calendar) -> ListeningSummary {
+        var summary = SampleData.summary
+        summary.periodLabel = DateText.weekRange(endingAt: now, calendar: calendar)
+        if let parsed = DateText.parse("2026.10.30", dateFormat: "yyyy.MM.dd", calendar: calendar) {
+            summary.firstUse = DateText.monthDay(parsed, calendar: calendar)
+        }
+        return summary
+    }
+
+    private static func localizedSampleFirstUse(_ dottedDate: String, calendar: Calendar) -> String {
+        guard let parsed = DateText.parse(dottedDate, dateFormat: "yyyy.MM.dd", calendar: calendar) else {
+            return dottedDate
+        }
+        return DateText.monthDay(parsed, calendar: calendar)
+    }
+
+    private static func sampleSummary(for card: HeadphoneCard, now: Date, calendar: Calendar) -> ListeningSummary {
         ListeningSummary(
             deviceName: card.nickname,
             deviceModel: card.model,
             deviceSymbol: card.symbol,
-            periodLabel: SampleData.summary.periodLabel,
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
             grid: card.grid,
             lifetimeMinutes: card.lifetimeMinutes,
             sessions: card.sessions,
             averageSessionMinutes: card.sessions > 0 ? card.lifetimeMinutes / Double(card.sessions) : 0,
             longestSessionMinutes: card.longestMinutes,
-            firstUse: card.firstMet
+            firstUse: localizedSampleFirstUse(card.firstMet, calendar: calendar)
         )
     }
 
-    private static func combinedSampleSummary(from cards: [HeadphoneCard]) -> ListeningSummary {
+    private static func combinedSampleSummary(from cards: [HeadphoneCard], now: Date, calendar: Calendar) -> ListeningSummary {
         let dayCount = cards.map(\.grid.days).max() ?? 28
         var combinedMinutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
         var combinedEnergy = combinedMinutes
@@ -142,18 +197,22 @@ final class HeadphoneLibrary: ObservableObject {
         let totalSessions = cards.reduce(0) { $0 + $1.sessions }
         let longest = cards.map(\.longestMinutes).max() ?? 0
         let avgSession = totalSessions > 0 ? totalMinutes / Double(totalSessions) : 0
+        let earliestFirst = cards
+            .compactMap { DateText.parse($0.firstMet, dateFormat: "yyyy.MM.dd", calendar: calendar) }
+            .min()
+            .map { DateText.monthDay($0, calendar: calendar) } ?? "—"
 
         return ListeningSummary(
             deviceName: AppLanguage.current.text("All Headphones"),
             deviceModel: AppLanguage.current.text("%lld pairs", cards.count),
             deviceSymbol: "headphones",
-            periodLabel: SampleData.summary.periodLabel,
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
             grid: ListeningGrid(minutes: combinedMinutes, decibels: combinedDecibels),
             lifetimeMinutes: totalMinutes,
             sessions: totalSessions,
             averageSessionMinutes: avgSession,
             longestSessionMinutes: longest,
-            firstUse: cards.map(\.firstMet).filter { $0 != "—" }.sorted().first ?? "—"
+            firstUse: earliestFirst
         )
     }
 
@@ -253,20 +312,30 @@ final class HeadphoneLibrary: ObservableObject {
         if !silent && snapshot == nil {
             state = .loading(samplesFetched: 0)
         }
+        let canReuseSnapshot = snapshot.map {
+            Calendar.current.isDate($0.generatedAt, inSameDayAs: Date())
+        } ?? false
+
         do {
-            let result = try await ingestor.sync { [weak self] fetched in
+            let result = try await ingestor.sync(skipSnapshotIfUnchanged: canReuseSnapshot) { [weak self] fetched in
                 Task { @MainActor [weak self] in
                     guard let self, self.snapshot == nil else { return }
                     self.state = .loading(samplesFetched: fetched)
                 }
             }
-            lastSyncDate = Date()
-            lastNewSamples = result.newSamples
-            if result.snapshot.isEmpty {
-                snapshot = nil
-                state = .empty
-            } else {
-                snapshot = result.snapshot
+            if !silent || result.newSamples > 0 || result.rebuilt || lastSyncDate == nil {
+                lastSyncDate = Date()
+            }
+            if lastNewSamples != result.newSamples {
+                lastNewSamples = result.newSamples
+            }
+            if result.isEmpty {
+                if snapshot != nil { snapshot = nil }
+                if state != .empty { state = .empty }
+            } else if let fresh = result.snapshot {
+                snapshot = fresh
+                if state != .ready { state = .ready }
+            } else if state != .ready {
                 state = .ready
             }
         } catch {

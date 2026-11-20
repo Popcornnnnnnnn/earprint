@@ -497,7 +497,7 @@ struct DossierShareSheet: View {
     private var longPage1Cover: some View {
         posterFrame(pageTag: "01 / 04 · COVER") {
             VStack(spacing: 12) {
-                GradingSlab(card: card, dossier: dossier, tilt: CGSize(width: 0.18, height: -0.12), flipped: false)
+                GradingSlab(card: card, dossier: dossier, tilt: CGSize(width: 0.18, height: -0.12), flipped: false, animateSeal: false)
                     .scaleEffect(0.73)
                     .frame(width: SlabMetrics.width * 0.73, height: SlabMetrics.height * 0.73)
 
@@ -646,7 +646,7 @@ struct DossierShareSheet: View {
         let highlightMilestones = Array(dossier.milestones.suffix(4))
         return posterFrame(pageTag: "04 / 04 · CERTIFICATE") {
             VStack(spacing: 10) {
-                CertificateLabel(card: card, dossier: dossier, tilt: CGSize(width: 0.16, height: -0.10))
+                CertificateLabel(card: card, dossier: dossier, tilt: CGSize(width: 0.16, height: -0.10), animateSeal: false)
                     .scaleEffect(0.92, anchor: .top)
                     .frame(height: 205, alignment: .top)
 

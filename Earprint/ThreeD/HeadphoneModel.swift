@@ -209,6 +209,8 @@ enum ProceduralHeadphones {
 enum HeadphoneModelLoader {
     /// In-memory cache of parsed USDZ templates so switching cards clones in <1ms instead of re-reading MBs from disk.
     @MainActor private static var templateCache: [String: Entity] = [:]
+    /// Deduplicates concurrent `prewarm` and `load` calls for the same USDZ asset.
+    @MainActor private static var inFlightTemplates: [String: Task<Entity?, Never>] = [:]
 
     /// AirPodsMax.usdz material name buckets discovered via `usdcat`.
     /// Neutral chrome stems, gold pins, and pure-black acoustic vents are intentionally excluded.
@@ -225,15 +227,32 @@ enum HeadphoneModelLoader {
         "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
     ]
 
+    @MainActor
+    private static func loadTemplate(named assetName: String) async -> Entity? {
+        guard !assetName.isEmpty,
+              Bundle.main.url(forResource: assetName, withExtension: "usdz") != nil else { return nil }
+        if let cached = templateCache[assetName] {
+            return cached
+        }
+        if let existing = inFlightTemplates[assetName] {
+            return await existing.value
+        }
+        let task = Task<Entity?, Never> { @MainActor in
+            let entity = try? await Entity(named: assetName, in: .main)
+            if let entity {
+                templateCache[assetName] = entity
+            }
+            inFlightTemplates[assetName] = nil
+            return entity
+        }
+        inFlightTemplates[assetName] = task
+        return await task.value
+    }
+
     /// Pre-loads a USDZ template into `templateCache` ahead of card switches so settling is hitch-free.
     @MainActor
     static func prewarm(assetName: String) async {
-        guard !assetName.isEmpty,
-              templateCache[assetName] == nil,
-              Bundle.main.url(forResource: assetName, withExtension: "usdz") != nil else { return }
-        if let asset = try? await Entity(named: assetName, in: .main) {
-            templateCache[assetName] = asset
-        }
+        _ = await loadTemplate(named: assetName)
     }
 
     /// Loads the bundled USDZ if present (cached & cloned for instant card switching), otherwise the procedural model.
@@ -242,19 +261,9 @@ enum HeadphoneModelLoader {
         let model: Entity
         let resolvedName = assetName ?? kind.assetName
         let loadedFromUSDZ: Bool
-        if !resolvedName.isEmpty,
-           Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil {
-            if let cached = templateCache[resolvedName] {
-                model = cached.clone(recursive: true)
-                loadedFromUSDZ = true
-            } else if let asset = try? await Entity(named: resolvedName, in: .main) {
-                templateCache[resolvedName] = asset
-                model = asset.clone(recursive: true)
-                loadedFromUSDZ = true
-            } else {
-                model = ProceduralHeadphones.make(kind, finish: finish)
-                loadedFromUSDZ = false
-            }
+        if let template = await loadTemplate(named: resolvedName) {
+            model = template.clone(recursive: true)
+            loadedFromUSDZ = true
         } else {
             model = ProceduralHeadphones.make(kind, finish: finish)
             loadedFromUSDZ = false

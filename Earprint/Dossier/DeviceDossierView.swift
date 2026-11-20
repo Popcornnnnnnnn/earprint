@@ -1,5 +1,38 @@
 import SwiftUI
 
+/// Caches generated sample dossiers so SwiftUI parent re-evaluations never regenerate sessions synchronously.
+@MainActor
+private enum DossierSampleCache {
+    private struct Key: Hashable {
+        let id: String
+        let minutes: Int
+        let sessions: Int
+        let firstMet: String
+        let lastUsed: String
+        let isDemo: Bool
+        let dayStart: TimeInterval
+    }
+
+    private static var entries: [Key: DeviceDossier] = [:]
+
+    static func dossier(for card: HeadphoneCard, isDemo: Bool, referenceDate: Date) -> DeviceDossier {
+        let key = Key(
+            id: card.id,
+            minutes: Int(card.lifetimeMinutes.rounded()),
+            sessions: card.sessions,
+            firstMet: card.firstMet,
+            lastUsed: card.lastUsed,
+            isDemo: isDemo,
+            dayStart: Calendar.current.startOfDay(for: referenceDate).timeIntervalSince1970
+        )
+        if let cached = entries[key] { return cached }
+        if entries.count > 12 { entries.removeAll(keepingCapacity: true) }
+        let built = DeviceDossier.sample(for: card, now: referenceDate)
+        entries[key] = built
+        return built
+    }
+}
+
 /// Full-screen dossier for a single headphone: PSA-style grading slab, period airtime,
 /// interactive trend & 24-hour charts, listening habits, milestones, and hardware certificate.
 struct DeviceDossierView: View {
@@ -11,14 +44,13 @@ struct DeviceDossierView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
-    @StateObject private var motion = TiltMotion()
 
     @State private var period: DossierPeriod = .month
     @State private var selectedDate: Date?
     @State private var selectedHour: Int?
     @State private var slabFlipped = false
     @State private var demoTilt: CGSize = .zero
-    @State private var scrollOffset: CGFloat = 0
+    @State private var showStickyIdentity = false
     @State private var demoStarted = false
     @State private var showShare = false
 
@@ -28,7 +60,7 @@ struct DeviceDossierView: View {
         let args = ProcessInfo.processInfo.arguments
         let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
         let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
-        self.dossier = dossier ?? DeviceDossier.sample(for: card, now: referenceDate)
+        self.dossier = dossier ?? DossierSampleCache.dossier(for: card, isDemo: isDemo, referenceDate: referenceDate)
         includesHealthDetails = dossier != nil
         self.isSampleData = isSampleData
         self.onClose = onClose
@@ -36,8 +68,8 @@ struct DeviceDossierView: View {
 
     private var stats: PeriodStats { dossier.stats(period) }
     private var rarity: Rarity { card.rarity }
-    private var tilt: CGSize { demoTilt == .zero ? motion.tilt : demoTilt }
-    private var showStickyIdentity: Bool { scrollOffset > 380 }
+    private var tiltActive: Bool { !showShare }
+    private var demoOverrideTilt: CGSize? { demoTilt == .zero ? nil : demoTilt }
 
     var body: some View {
         ZStack {
@@ -49,10 +81,13 @@ struct DeviceDossierView: View {
                     .padding(.bottom, 48)
                 }
                 .scrollIndicators(.hidden)
-                .onScrollGeometryChange(for: CGFloat.self) { geo in
-                    geo.contentOffset.y + geo.contentInsets.top
-                } action: { _, newValue in
-                    scrollOffset = newValue
+                .pauseMotionWhileScrolling("dossier")
+                .onScrollGeometryChange(for: Bool.self) { geo in
+                    (geo.contentOffset.y + geo.contentInsets.top) > 380
+                } action: { _, shouldShow in
+                    if showStickyIdentity != shouldShow {
+                        showStickyIdentity = shouldShow
+                    }
                 }
                 .safeAreaInset(edge: .top, spacing: 0) {
                     topBar(proxy: proxy)
@@ -72,12 +107,6 @@ struct DeviceDossierView: View {
                 color: colorStore?.selectedColor(for: card),
                 isSampleData: isSampleData
             )
-        }
-        .onAppear { if !showShare { motion.start() } }
-        .onDisappear { motion.stop() }
-        .onChange(of: showShare) { _, presenting in
-            // Pause 60Hz CoreMotion updates while the share sheet is up so parent redraws never interfere with taps.
-            if presenting { motion.stop() } else { motion.start() }
         }
         .onChange(of: period) {
             selectedDate = nil
@@ -110,7 +139,7 @@ struct DeviceDossierView: View {
                 .id("charts")
             habitsSection.padding(.top, 10).id("habits")
             milestonesSection.padding(.top, 10).id("milestones")
-            certificateSection(tilt: exporting ? .zero : tilt)
+            certificateSection(exporting: exporting)
                 .padding(.top, 10)
                 .id("certificate")
             if includesHealthDetails && !exporting { footerNote }
@@ -134,7 +163,7 @@ struct DeviceDossierView: View {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
                 colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.06), .clear],
-                center: UnitPoint(x: 0.5 + tilt.width * 0.12, y: 0.14),
+                center: UnitPoint(x: 0.5, y: 0.14),
                 startRadius: 20,
                 endRadius: 420
             )
@@ -251,18 +280,28 @@ struct DeviceDossierView: View {
     // MARK: - Hero Slab Stage
 
     private func slabStage(exporting: Bool) -> some View {
-        let slabTilt = exporting ? .zero : tilt
-        return VStack(spacing: 16) {
-            GradingSlab(card: card, dossier: dossier, tilt: slabTilt, flipped: !exporting && slabFlipped)
-                .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-                .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
-                        slabFlipped.toggle()
-                    }
+        VStack(spacing: 16) {
+            LiveTiltView(
+                isActive: !exporting && tiltActive && !showStickyIdentity,
+                overrideTilt: exporting ? .zero : demoOverrideTilt
+            ) { slabTilt in
+                GradingSlab(
+                    card: card,
+                    dossier: dossier,
+                    tilt: slabTilt,
+                    flipped: !exporting && slabFlipped,
+                    animateSeal: !exporting && !showShare && !showStickyIdentity
+                )
+                    .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+                    .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            }
+            .onTapGesture {
+                withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
+                    slabFlipped.toggle()
                 }
-                .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
-                .padding(.top, 4)
+            }
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
+            .padding(.top, 4)
 
             if !exporting {
                 HStack(spacing: 8) {
@@ -425,10 +464,20 @@ struct DeviceDossierView: View {
 
     // MARK: - 05 Certificate & Grade
 
-    private func certificateSection(tilt: CGSize) -> some View {
+    private func certificateSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             DossierSectionHeader(index: 5, title: "Certificate", trailing: dossier.hardware.productID, accent: rarity.accent)
-            CertificateLabel(card: card, dossier: dossier, tilt: tilt)
+            LiveTiltView(
+                isActive: !exporting && tiltActive && showStickyIdentity,
+                overrideTilt: exporting ? .zero : demoOverrideTilt
+            ) { liveTilt in
+                CertificateLabel(
+                    card: card,
+                    dossier: dossier,
+                    tilt: liveTilt,
+                    animateSeal: !exporting && !showShare && showStickyIdentity
+                )
+            }
             GradeBreakdown(grade: dossier.grade, accent: rarity.accent)
                 .dossierTile(tint: rarity.accent)
                 .id("grade")

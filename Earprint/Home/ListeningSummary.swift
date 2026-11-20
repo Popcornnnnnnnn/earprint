@@ -1,12 +1,24 @@
 import Foundation
 
 /// Everything the home screen shows. Built from HealthKit via `LibrarySnapshot`, or `SampleData` as fallback.
-struct ListeningSummary {
+struct ListeningSummary: Equatable {
+    struct DayMetrics: Equatable {
+        let dayIndex: Int
+        let minutes: Double
+        let decibels: Double?
+    }
+
     var deviceName: String
     var deviceModel: String
     var deviceSymbol: String = "airpodspro"
     var periodLabel: String
-    var grid: ListeningGrid
+    var grid: ListeningGrid {
+        didSet {
+            if grid != oldValue {
+                recomputeGridMetrics()
+            }
+        }
+    }
     var lifetimeMinutes: Double
     var sessions: Int
     var averageSessionMinutes: Double
@@ -15,33 +27,131 @@ struct ListeningSummary {
     /// Exact WHO weekly dose computed directly from raw 15-min slot energy when available.
     var weeklyBudgetOverride: Double? = nil
 
-    var weekMinutes: Double { grid.totalMinutes(lastDays: 7) }
-    var weekDecibels: Double { grid.averageDecibels(lastDays: 7) }
+    // Precomputed grid-derived metrics so SwiftUI body passes stay O(1) with zero per-frame pow/log10 scans.
+    private(set) var has28DayData: Bool = false
+    private(set) var weekMinutes: Double = 0
+    private(set) var weekDecibels: Double = 0
+    private(set) var computedWeeklyBudget: Double = 0
+    private(set) var persona: Persona = .allDay
+    private(set) var last7Days: [DayMetrics] = []
+
+    init(
+        deviceName: String,
+        deviceModel: String,
+        deviceSymbol: String = "airpodspro",
+        periodLabel: String,
+        grid: ListeningGrid,
+        lifetimeMinutes: Double,
+        sessions: Int,
+        averageSessionMinutes: Double,
+        longestSessionMinutes: Double,
+        firstUse: String,
+        weeklyBudgetOverride: Double? = nil
+    ) {
+        self.deviceName = deviceName
+        self.deviceModel = deviceModel
+        self.deviceSymbol = deviceSymbol
+        self.periodLabel = periodLabel
+        self.grid = grid
+        self.lifetimeMinutes = lifetimeMinutes
+        self.sessions = sessions
+        self.averageSessionMinutes = averageSessionMinutes
+        self.longestSessionMinutes = longestSessionMinutes
+        self.firstUse = firstUse
+        self.weeklyBudgetOverride = weeklyBudgetOverride
+        recomputeGridMetrics()
+    }
 
     /// Share of the WHO weekly safe-listening budget (80 dB(A) for 40 h) used this week.
     /// Every +3 dB halves the allowed time.
     var weeklyBudgetUsed: Double {
-        if let weeklyBudgetOverride { return weeklyBudgetOverride }
-        var used = 0.0
-        for (m, db) in zip(grid.minutes.suffix(7), grid.decibels.suffix(7)) {
-            for h in 0..<24 where m[h] > 0 {
-                used += HearingBudget.dose(decibels: db[h], seconds: m[h] * 60)
+        weeklyBudgetOverride ?? computedWeeklyBudget
+    }
+
+    private mutating func recomputeGridMetrics() {
+        let totalDays = grid.days
+        let start28 = max(0, totalDays - 28)
+        let start7 = max(0, totalDays - 7)
+
+        var total28 = 0.0
+        var night = 0.0
+        var commute = 0.0
+        var morning = 0.0
+
+        var weekMin = 0.0
+        var weekEnergy = 0.0
+        var weekDose = 0.0
+
+        var sevenDays: [DayMetrics] = []
+        sevenDays.reserveCapacity(max(0, totalDays - start7))
+
+        for dayIndex in start28..<totalDays {
+            let dayMinutes = grid.minutes[dayIndex]
+            let dayDB = grid.decibels.indices.contains(dayIndex) ? grid.decibels[dayIndex] : []
+            let count = min(dayMinutes.count, 24)
+            let isInLast7 = dayIndex >= start7
+
+            var thisDayMin = 0.0
+            var thisDayEnergy = 0.0
+
+            for h in 0..<count {
+                let v = dayMinutes[h]
+                guard v > 0 else { continue }
+                total28 += v
+                if h >= 22 || h <= 3 { night += v }
+                if h == 7 || h == 8 || h == 17 || h == 18 { commute += v }
+                if h >= 5 && h <= 7 { morning += v }
+
+                if isInLast7 {
+                    thisDayMin += v
+                    weekMin += v
+                    if h < dayDB.count {
+                        let db = dayDB[h]
+                        let e = pow(10, db / 10) * v
+                        thisDayEnergy += e
+                        weekEnergy += e
+                        weekDose += HearingBudget.dose(decibels: db, seconds: v * 60)
+                    }
+                }
+            }
+
+            if isInLast7 {
+                let db: Double? = (thisDayMin > 0 && thisDayEnergy > 0)
+                    ? 10 * log10(thisDayEnergy / thisDayMin)
+                    : nil
+                sevenDays.append(DayMetrics(dayIndex: dayIndex, minutes: thisDayMin, decibels: db))
             }
         }
-        return used
+
+        has28DayData = total28 > 0
+        weekMinutes = weekMin
+        weekDecibels = (weekMin > 0 && weekEnergy > 0) ? 10 * log10(weekEnergy / weekMin) : 0
+        computedWeeklyBudget = weekDose
+        last7Days = sevenDays
+
+        if total28 <= 0 {
+            persona = .allDay
+        } else {
+            let nightShare = night / total28
+            if nightShare >= 0.3 {
+                persona = .nightOwl(nightShare)
+            } else {
+                let commuteShare = commute / total28
+                if commuteShare >= 0.3 {
+                    persona = .commuter(commuteShare)
+                } else {
+                    let morningShare = morning / total28
+                    if morningShare >= 0.2 {
+                        persona = .earlyBird(morningShare)
+                    } else {
+                        persona = .allDay
+                    }
+                }
+            }
+        }
     }
 
-    var persona: Persona {
-        let night = grid.share(hours: [22, 23, 0, 1, 2, 3], lastDays: 28)
-        let commute = grid.share(hours: [7, 8, 17, 18], lastDays: 28)
-        let morning = grid.share(hours: [5, 6, 7], lastDays: 28)
-        if night >= 0.3 { return .nightOwl(night) }
-        if commute >= 0.3 { return .commuter(commute) }
-        if morning >= 0.2 { return .earlyBird(morning) }
-        return .allDay
-    }
-
-    enum Persona {
+    enum Persona: Equatable {
         case nightOwl(Double), commuter(Double), earlyBird(Double), allDay
 
         var emoji: String {

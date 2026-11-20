@@ -24,9 +24,7 @@ extension Date {
 
 enum DossierFormat {
     static func dot(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy.MM.dd"
-        return f.string(from: date)
+        DateText.dotted(date, calendar: .current)
     }
 
     static func range(_ start: Date, _ end: Date) -> String {
@@ -161,7 +159,7 @@ struct Eyebrow: View {
 }
 
 /// Deterministic barcode, like the strip on a grading label.
-struct DossierBarcode: View {
+struct DossierBarcode: View, Equatable {
     let seed: Int
     var color: Color = .white
 
@@ -169,52 +167,94 @@ struct DossierBarcode: View {
         Canvas { context, size in
             var rng = SplitMix64(seed: UInt64(seed) &* 2_654_435_761 &+ 97)
             var x: CGFloat = 0
+            var bars = Path()
             while x < size.width {
                 let w = CGFloat([1, 1, 2, 3][Int(rng.unit() * 4)])
                 if rng.unit() > 0.42 {
-                    context.fill(Path(CGRect(x: x, y: 0, width: w, height: size.height)), with: .color(color))
+                    bars.addRect(CGRect(x: x, y: 0, width: w, height: size.height))
                 }
                 x += w + 1
             }
+            context.fill(bars, with: .color(color))
         }
         .accessibilityHidden(true)
     }
 }
 
-/// Spinning rainbow hologram seal that reacts to tilt.
+/// Hologram seal that reacts to tilt; static ring & circular lettering stay isolated outside the animated sheen.
 struct HoloSeal: View {
     var tilt: CGSize = .zero
     var size: CGFloat = 44
     var text = "EARPRINT · AUTHENTIC · GRADED · "
+    var isAnimated = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let angle = Angle.degrees(t * 40 + tilt.width * 140 + tilt.height * 60)
-            ZStack {
-                Circle()
-                    .fill(AngularGradient(colors: [.pink, .yellow, .mint, .cyan, .purple, .pink], center: .center, angle: angle))
-                Circle()
-                    .fill(RadialGradient(colors: [.white.opacity(0.75), .clear], center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.35 + tilt.height * 0.3), startRadius: 0, endRadius: size * 0.6))
-                    .blendMode(.overlay)
-                ForEach(0..<12, id: \.self) { i in
-                    Capsule().fill(.white.opacity(0.35)).frame(width: 0.8, height: size * 0.5)
-                        .rotationEffect(.degrees(Double(i) * 15) + angle * 0.5)
+        ZStack {
+            if reduceMotion || !isAnimated {
+                shimmerLayer(angle: Angle.degrees(tilt.width * 140 + tilt.height * 60))
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 15)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    shimmerLayer(angle: Angle.degrees(t * 36 + tilt.width * 140 + tilt.height * 60))
                 }
-                .mask(Circle())
-                Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
-                Circle().inset(by: size * 0.17).strokeBorder(.white.opacity(0.55), lineWidth: 0.7)
-                CircularText(text: text, radius: size * 0.41, fontSize: max(4, size * 0.095))
-                Image(systemName: "ear.fill")
-                    .font(.system(size: size * 0.26, weight: .bold))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 1)
             }
-            .frame(width: size, height: size)
-            .compositingGroup()
-            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+
+            // Static foreground seal details (rings, lettering, ear mark) never rebuild per frame.
+            HoloSealStaticOverlay(size: size, text: text)
+                .equatable()
         }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
         .accessibilityLabel("Earprint hologram seal")
+    }
+
+    private func shimmerLayer(angle: Angle) -> some View {
+        ZStack {
+            Circle()
+                .fill(AngularGradient(colors: [.pink, .yellow, .mint, .cyan, .purple, .pink], center: .center, angle: angle))
+            Circle()
+                .fill(RadialGradient(
+                    colors: [.white.opacity(0.75), .clear],
+                    center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.35 + tilt.height * 0.3),
+                    startRadius: 0,
+                    endRadius: size * 0.6
+                ))
+                .blendMode(.overlay)
+            Canvas { context, canvasSize in
+                let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+                let halfLen = size * 0.25
+                var rays = Path()
+                let baseRad = angle.radians * 0.5
+                for i in 0..<12 {
+                    let a = Double(i) * (.pi / 12) + baseRad
+                    let dx = cos(a) * halfLen
+                    let dy = sin(a) * halfLen
+                    rays.move(to: CGPoint(x: center.x - dx, y: center.y - dy))
+                    rays.addLine(to: CGPoint(x: center.x + dx, y: center.y + dy))
+                }
+                context.stroke(rays, with: .color(.white.opacity(0.35)), lineWidth: 0.8)
+            }
+        }
+    }
+}
+
+private struct HoloSealStaticOverlay: View, Equatable {
+    let size: CGFloat
+    let text: String
+
+    var body: some View {
+        ZStack {
+            Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
+            Circle().inset(by: size * 0.17).strokeBorder(.white.opacity(0.55), lineWidth: 0.7)
+            CircularText(text: text, radius: size * 0.41, fontSize: max(4, size * 0.095))
+            Image(systemName: "ear.fill")
+                .font(.system(size: size * 0.26, weight: .bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.35), radius: 1)
+        }
     }
 }
 

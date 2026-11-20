@@ -15,6 +15,7 @@ struct GradingSlab: View {
     let dossier: DeviceDossier
     var tilt: CGSize = .zero
     var flipped = false
+    var animateSeal = true
 
     var body: some View {
         let grade = dossier.grade
@@ -114,7 +115,7 @@ struct GradingSlab: View {
                 .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            HoloSeal(tilt: tilt, size: 30)
+            HoloSeal(tilt: tilt, size: 30, isAnimated: animateSeal)
                 .offset(y: -4)
         }
         .foregroundStyle(.white.opacity(0.42))
@@ -125,6 +126,8 @@ struct GradingSlab: View {
     private func acrylic(rarity: Rarity) -> some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         return ZStack {
+            shape.fill(Color.black.opacity(0.65))
+                .shadow(color: rarity.glow.opacity(0.35), radius: 26, y: 14)
             shape.fill(LinearGradient(colors: [Color.white.opacity(0.13), Color.white.opacity(0.04), Color.white.opacity(0.09)],
                                       startPoint: .topLeading, endPoint: .bottomTrailing))
             shape.fill(.ultraThinMaterial.opacity(0.35))
@@ -137,7 +140,6 @@ struct GradingSlab: View {
             shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.15), .white.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
             shape.inset(by: 5).strokeBorder(.white.opacity(0.09), lineWidth: 1)
         }
-        .shadow(color: rarity.glow.opacity(0.35), radius: 30, y: 14)
     }
 
     private var certNumber: String {
@@ -151,6 +153,7 @@ struct CertificateLabel: View {
     let card: HeadphoneCard
     let dossier: DeviceDossier
     var tilt: CGSize = .zero
+    var animateSeal = true
 
     var body: some View {
         let hw = dossier.hardware
@@ -248,7 +251,7 @@ struct CertificateLabel: View {
                         .frame(height: 18)
                         .padding(.top, 4)
                 }
-                HoloSeal(tilt: tilt, size: 64)
+                HoloSeal(tilt: tilt, size: 64, isAnimated: animateSeal)
             }
         }
         .foregroundStyle(.white)
@@ -257,19 +260,9 @@ struct CertificateLabel: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(LinearGradient(colors: [Color(red: 0.11, green: 0.11, blue: 0.15), Color(red: 0.06, green: 0.06, blue: 0.09)], startPoint: .top, endPoint: .bottom))
                 .overlay {
-                    // Guilloché lines, like security printing.
-                    Canvas { context, size in
-                        for i in 0..<26 {
-                            var path = Path()
-                            let y0 = CGFloat(i) * size.height / 22
-                            path.move(to: CGPoint(x: 0, y: y0))
-                            for x in stride(from: 0, through: size.width, by: 6) {
-                                path.addLine(to: CGPoint(x: x, y: y0 + sin(x / 26 + CGFloat(i)) * 9))
-                            }
-                            context.stroke(path, with: .color(.white.opacity(0.025)), lineWidth: 0.8)
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    GuillochePattern()
+                        .equatable()
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
         }
         .overlay {
@@ -294,6 +287,23 @@ struct CertificateLabel: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Static guilloché security line pattern, isolated as `Equatable` so tilt updates never redraw 26 sine paths.
+private struct GuillochePattern: View, Equatable {
+    var body: some View {
+        Canvas { context, size in
+            var combined = Path()
+            for i in 0..<26 {
+                let y0 = CGFloat(i) * size.height / 22
+                combined.move(to: CGPoint(x: 0, y: y0))
+                for x in stride(from: 0, through: size.width, by: 6) {
+                    combined.addLine(to: CGPoint(x: x, y: y0 + sin(x / 26 + CGFloat(i)) * 9))
+                }
+            }
+            context.stroke(combined, with: .color(.white.opacity(0.025)), lineWidth: 0.8)
+        }
     }
 }
 

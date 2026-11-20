@@ -258,14 +258,29 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         UserDefaults.standard.string(forKey: storageKey).flatMap(Self.init(rawValue:)) ?? systemDefault
     }
 
+    private static let cachedBundles: [AppLanguage: Bundle] = {
+        var result: [AppLanguage: Bundle] = [:]
+        for lang in AppLanguage.allCases {
+            if let path = Bundle.main.path(forResource: lang.rawValue, ofType: "lproj"),
+               let bundle = Bundle(path: path) {
+                result[lang] = bundle
+            }
+        }
+        return result
+    }()
+
+    private static let cachedLocales: [AppLanguage: Locale] = [
+        .english: Locale(identifier: AppLanguage.english.rawValue),
+        .simplifiedChinese: Locale(identifier: AppLanguage.simplifiedChinese.rawValue)
+    ]
+
     func text(_ key: String, _ arguments: CVarArg...) -> String {
-        let path = Bundle.main.path(forResource: rawValue, ofType: "lproj")
-        let template = path.flatMap(Bundle.init(path:))?.localizedString(forKey: key, value: nil, table: nil) ?? key
+        let template = Self.cachedBundles[self]?.localizedString(forKey: key, value: nil, table: nil) ?? key
         return arguments.isEmpty ? template : String(format: template, locale: locale, arguments: arguments)
     }
 
     var id: String { rawValue }
-    var locale: Locale { Locale(identifier: rawValue) }
+    var locale: Locale { Self.cachedLocales[self] ?? Locale(identifier: rawValue) }
     var name: String { self == .english ? "English" : "简体中文" }
 }
 

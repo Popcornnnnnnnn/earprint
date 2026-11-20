@@ -18,6 +18,7 @@ struct EarprintApp: App {
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.statusMessage,
                     isLoading: library.isLoading,
+                    isActiveTab: router.tab == .collection,
                     onConnectHealth: { Task { await library.connectAndSync() } }
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
@@ -32,6 +33,7 @@ struct EarprintApp: App {
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.state == .idle ? nil : library.statusMessage,
                     isLoading: library.isLoading,
+                    isActiveTab: router.tab == .rings,
                     onConnectHealth: { Task { await library.connectAndSync() } }
                 )
                 .tabItem { Label("Rings", systemImage: "circle.hexagongrid") }
@@ -52,9 +54,12 @@ struct EarprintApp: App {
             .task {
                 applyLaunchTab()
                 routeMonitor.refresh()
-                publishWidgets()
+                let beforeStart = library.snapshot?.generatedAt
                 await library.start()
-                publishWidgets()
+                // Publish once if `onChange(of: library.snapshot?.generatedAt)` did not already trigger.
+                if library.snapshot?.generatedAt == beforeStart {
+                    publishWidgets()
+                }
                 if ProcessInfo.processInfo.arguments.contains("-startLiveActivity"),
                    let card = library.cards.first {
                     LiveActivityController.shared.start(
@@ -65,30 +70,36 @@ struct EarprintApp: App {
                     )
                 }
             }
-            .onChange(of: library.cards) { _, _ in
-                publishWidgets()
-            }
-            .onChange(of: library.lastSyncDate) { _, _ in
-                publishWidgets()
+            .onChange(of: language) { _, _ in
+                library.refreshDerivedCacheIfNeeded(force: true)
             }
             .onChange(of: library.snapshot?.generatedAt) { _, _ in
                 publishWidgets()
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { routeMonitor.refresh() }
+                if phase == .active {
+                    routeMonitor.refresh()
+                    library.refreshDerivedCacheIfNeeded()
+                }
                 if phase == .background { publishWidgets() }
             }
         }
     }
 
     private func publishWidgets() {
-        let snapshot = WidgetSnapshot(
-            summary: library.homeSummary,
-            cards: library.cards,
-            isSample: library.isShowingSampleData,
-            listening: library.snapshot
-        )
-        WidgetPublisher.publish(snapshot)
+        let summary = library.homeSummary
+        let cards = library.cards
+        let isSample = library.isShowingSampleData
+        let listening = library.snapshot
+        Task.detached(priority: .utility) {
+            let snapshot = WidgetSnapshot(
+                summary: summary,
+                cards: cards,
+                isSample: isSample,
+                listening: listening
+            )
+            WidgetPublisher.publish(snapshot)
+        }
     }
 
     private func applyLaunchTab() {

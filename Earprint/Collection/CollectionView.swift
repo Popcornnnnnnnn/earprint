@@ -6,6 +6,7 @@ struct CollectionView: View {
     var sampleBadgeText: LocalizedStringKey = "Sample data"
     var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
+    var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
 
     @Namespace private var hero
@@ -27,11 +28,10 @@ struct CollectionView: View {
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @StateObject private var motion = TiltMotion()
     @State private var space = LayoutSpace()
 
     private var listMotionActive: Bool {
-        !reduceMotion && selected == nil && dossierCard == nil && !showSettings && !showCardTiers
+        isActiveTab && !reduceMotion && selected == nil && dossierCard == nil && !showSettings && !showCardTiers
     }
 
     var body: some View {
@@ -77,6 +77,7 @@ struct CollectionView: View {
                 .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
+            .pauseMotionWhileScrolling("collection")
             .readLayoutSpace($space)
 
             if let selection = selected {
@@ -120,11 +121,6 @@ struct CollectionView: View {
         .task { await runDemoIfNeeded() }
         .onAppear {
             openPendingCard()
-            if listMotionActive { motion.start() }
-        }
-        .onDisappear { motion.stop() }
-        .onChange(of: listMotionActive) { _, active in
-            if active { motion.start() } else { motion.stop() }
         }
         .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
         .onChange(of: cards.map(\.id)) { _, _ in openPendingCard() }
@@ -222,27 +218,28 @@ struct CollectionView: View {
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
-        let liveTilt = listMotionActive ? motion.tilt : .zero
+        let disableTilt = reduceMotion
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
         } label: {
             ZStack {
                 if selected != card {
-                    CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
-                        .overlay {
-                            ScrollSheenSweep(cornerRadius: 24)
-                        }
-                        .matchedGeometryEffect(id: card.id, in: hero)
-                        .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-                        .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
-                        .shadow(
-                            color: card.rarity.glow.opacity(0.36),
-                            radius: 18,
-                            x: -liveTilt.width * 7,
-                            y: 9 - liveTilt.height * 5
-                        )
-                        .transition(.identity)
+                    LiveTiltView(isActive: listMotionActive) { liveTilt in
+                        CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
+                            .overlay {
+                                ScrollSheenSweep(cornerRadius: 24)
+                            }
+                            .background {
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .fill(Color.black)
+                                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                            }
+                            .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                            .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+                    }
+                    .matchedGeometryEffect(id: card.id, in: hero)
+                    .transition(.identity)
                 } else {
                     Color.clear.frame(height: 188)
                 }
@@ -255,7 +252,7 @@ struct CollectionView: View {
                 .scaleEffect(phase.isIdentity ? 1.0 : 0.955)
                 .opacity(phase.isIdentity ? 1.0 : 0.86)
                 .rotation3DEffect(
-                    .degrees(reduceMotion ? 0 : phase.value * -4.2),
+                    .degrees(disableTilt ? 0 : phase.value * -4.2),
                     axis: (x: 1, y: 0, z: 0),
                     perspective: 0.75
                 )
@@ -265,22 +262,27 @@ struct CollectionView: View {
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
-        let liveTilt = listMotionActive ? motion.tilt : .zero
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
         } label: {
             ZStack {
                 if selected != card {
-                    ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
-                        .overlay {
-                            ScrollSheenSweep(cornerRadius: 22)
-                        }
-                        .matchedGeometryEffect(id: card.id, in: hero)
-                        .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-                        .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
-                        .shadow(color: card.rarity.glow.opacity(0.35), radius: 14, y: 8)
-                        .transition(.identity)
+                    LiveTiltView(isActive: listMotionActive) { liveTilt in
+                        ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
+                            .overlay {
+                                ScrollSheenSweep(cornerRadius: 22)
+                            }
+                            .background {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(Color.black)
+                                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                            }
+                            .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                            .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+                    }
+                    .matchedGeometryEffect(id: card.id, in: hero)
+                    .transition(.identity)
                 } else {
                     Color.clear.aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
                 }
@@ -414,6 +416,22 @@ enum ModelGalleryCatalog {
     static let allEntries: [Entry] = sections.flatMap(\.entries)
     static let allCards: [HeadphoneCard] = allEntries.map(\.card)
     static let allAppleAndBeatsCount: Int = allEntries.filter { $0.family != .generic }.count
+    static let detailsByCardID: [String: String] = Dictionary(uniqueKeysWithValues: allEntries.compactMap { entry in
+        entry.productIDSummary.map { (entry.id, $0) }
+    })
+
+    static func unlockedIDs(for ownedCards: [HeadphoneCard]) -> Set<String> {
+        let ownedModels = Set(ownedCards.map { $0.model.lowercased() })
+        guard !ownedModels.isEmpty else { return [] }
+        var result: Set<String> = []
+        result.reserveCapacity(ownedModels.count)
+        for entry in allEntries where entry.family != .generic {
+            if ownedModels.contains(entry.model.marketingName.lowercased()) {
+                result.insert(entry.id)
+            }
+        }
+        return result
+    }
 
     static func isUnlocked(_ entry: Entry, ownedCards: [HeadphoneCard]) -> Bool {
         guard entry.family != .generic else { return false }
@@ -422,7 +440,7 @@ enum ModelGalleryCatalog {
     }
 
     static func unlockedCount(for ownedCards: [HeadphoneCard]) -> Int {
-        allEntries.filter { isUnlocked($0, ownedCards: ownedCards) }.count
+        unlockedIDs(for: ownedCards).count
     }
 
     static func buildSections(from products: [HeadphoneModelInfo]) -> [SectionGroup] {
@@ -501,19 +519,8 @@ struct ModelGalleryView: View {
     @State private var selection: HeadphoneCard?
     @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
 
-    private var unlockedCardIDs: Set<String> {
-        Set(ModelGalleryCatalog.allEntries.filter { ModelGalleryCatalog.isUnlocked($0, ownedCards: ownedCards) }.map(\.id))
-    }
-
-    private var catalogDetailsByCardID: [String: String] {
-        Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.compactMap { entry in
-            entry.productIDSummary.map { (entry.id, $0) }
-        })
-    }
-
-    private var catalogSurfacesByCardID: [String: Rarity] {
-        let unlocked = unlockedCardIDs
-        return Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.map { entry in
+    private func catalogSurfacesByCardID(unlocked: Set<String>) -> [String: Rarity] {
+        Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.map { entry in
             if unlocked.contains(entry.id) {
                 return (entry.id, Rarity.holo)
             }
@@ -529,6 +536,7 @@ struct ModelGalleryView: View {
     }
 
     var body: some View {
+        let unlockedIDs = ModelGalleryCatalog.unlockedIDs(for: ownedCards)
         ZStack {
             List {
                 Section {
@@ -539,7 +547,7 @@ struct ModelGalleryView: View {
                             .frame(width: 34, height: 34)
                             .background(Color(red: 0.94, green: 0.78, blue: 0.36).opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(unlockedCardIDs.count) of \(ModelGalleryCatalog.allAppleAndBeatsCount) unlocked")
+                            Text("\(unlockedIDs.count) of \(ModelGalleryCatalog.allAppleAndBeatsCount) unlocked")
                                 .font(.subheadline.weight(.semibold))
                             Text("Listen with any supported pair to add it to your Collection.")
                                 .font(.caption)
@@ -552,7 +560,7 @@ struct ModelGalleryView: View {
                 ForEach(ModelGalleryCatalog.sections) { section in
                     Section(LocalizedStringKey(section.family.rawValue)) {
                         ForEach(section.entries) { entry in
-                            let unlocked = unlockedCardIDs.contains(entry.id)
+                            let unlocked = unlockedIDs.contains(entry.id)
                             Button {
                                 selection = entry.card
                             } label: {
@@ -607,9 +615,9 @@ struct ModelGalleryView: View {
                     cards: ModelGalleryCatalog.allCards,
                     namespace: hero,
                     isModelPreview: true,
-                    unlockedPreviewIDs: unlockedCardIDs,
-                    catalogDetails: catalogDetailsByCardID,
-                    catalogSurfaces: catalogSurfacesByCardID,
+                    unlockedPreviewIDs: unlockedIDs,
+                    catalogDetails: ModelGalleryCatalog.detailsByCardID,
+                    catalogSurfaces: catalogSurfacesByCardID(unlocked: unlockedIDs),
                     colorStore: colors,
                     onSelectCard: { self.selection = $0 }
                 ) {
@@ -747,7 +755,6 @@ struct CardDetail: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("cardDetail.hasSeenFlipHint") private var hasSeenFlipHint = false
     @State private var showsFlipHintThisVisit = false
-    @StateObject private var motion = TiltMotion()
     @State private var flipped = false
     @State private var angle: Double = 0
     @State private var dragTilt: CGSize = .zero
@@ -777,10 +784,6 @@ struct CardDetail: View {
 
     private var selectedColor: DeviceColorOption? {
         colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
-    }
-
-    private var tilt: CGSize {
-        modelInteractionTilt ?? (dragTilt == .zero ? motion.tilt : dragTilt)
     }
 
     /// How the detail uses the space (see docs/IPHONE_DUO.md).
@@ -876,14 +879,13 @@ struct CardDetail: View {
         .onAppear {
             deckPosition = CGFloat(activeIndex)
             active3DCardID = card.id
-            motion.start()
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
             Task { await prewarmNeighbors(around: activeIndex) }
             Task { await runDemoIfNeeded() }
         }
         .onDisappear {
             settle3DTask?.cancel()
-            motion.stop()
+            MotionHub.shared.setScrolling(false, source: "cardDeck")
         }
     }
 
@@ -925,7 +927,7 @@ struct CardDetail: View {
 
                 if dragStartPosition == nil {
                     dragStartPosition = CGFloat(activeIndex)
-                    motion.stop()
+                    MotionHub.shared.setScrolling(true, source: "cardDeck")
                 }
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
                 let raw = origin - dx / 220
@@ -947,7 +949,7 @@ struct CardDetail: View {
             .onEnded { value in
                 guard let origin = dragStartPosition else { return }
                 dragStartPosition = nil
-                motion.start()
+                MotionHub.shared.setScrolling(false, source: "cardDeck")
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 let dy = value.translation.height
@@ -1036,10 +1038,8 @@ struct CardDetail: View {
     /// mid-flight) driven by `CardStackEffect` (`Animatable`) for locked 120Hz spring curves.
     private func cardStack(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        // The preview catalog is much larger than a listening collection. Only lay out the exposed cards.
-        let indices = isModelPreview
-            ? max(0, activeIndex - 2)..<min(deckCards.count, activeIndex + 5)
-            : deckCards.indices
+        // Window mounted cards to the visible stack neighborhood (at most 6 cards) so large collections stay fast.
+        let indices = max(0, activeIndex - 2)..<min(deckCards.count, activeIndex + 4)
         return ZStack {
             ForEach(Array(deckCards[indices].enumerated()), id: \.element.id) { offset, item in
                 let idx = indices.lowerBound + offset
@@ -1054,45 +1054,53 @@ struct CardDetail: View {
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
         let isTop = index == activeIndex
         let activeAngle = isTop ? angle : 0
-        let activeTilt = isTop ? tilt : .zero
         let surfaceRarity = isModelPreview ? (catalogSurfaces[item.id] ?? .silver) : item.rarity
+        let overrideTilt: CGSize? = isTop
+            ? (modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt))
+            : .zero
 
-        return ZStack {
-            deckFrontFace(item, isTop: isTop, activeTilt: activeTilt, surfaceRarity: surfaceRarity)
-                .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                .onTapGesture { if canFlip { flip() } }
-                .accessibilityElement(children: .contain)
-                .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
-                .allowsHitTesting(!flipped)
-                .accessibilityHidden(flipped || !isTop)
-                .modifier(CardFaceRotation(angle: activeAngle))
+        return LiveTiltView(isActive: isTop && !flipped, overrideTilt: overrideTilt) { activeTilt in
+            ZStack {
+                deckFrontFace(item, isTop: isTop, activeTilt: activeTilt, surfaceRarity: surfaceRarity)
+                    .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+                    .onTapGesture { if canFlip { flip() } }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
+                    .allowsHitTesting(!flipped)
+                    .accessibilityHidden(flipped || !isTop)
+                    .modifier(CardFaceRotation(angle: activeAngle))
 
-            if isTop && canFlip {
-                CardBack(
-                    card: item,
-                    openDossier: flipped && !isModelPreview ? openDossier : nil,
-                    openTiers: flipped && !isModelPreview ? openTiers : nil,
-                    flip: { flip() }
-                )
-                .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                .simultaneousGesture(cardNavigationSwipe)
-                .allowsHitTesting(flipped)
-                .accessibilityHidden(!flipped)
-                .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
+                if isTop && canFlip {
+                    CardBack(
+                        card: item,
+                        openDossier: flipped && !isModelPreview ? openDossier : nil,
+                        openTiers: flipped && !isModelPreview ? openTiers : nil,
+                        flip: { flip() }
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+                    .simultaneousGesture(cardNavigationSwipe)
+                    .allowsHitTesting(flipped)
+                    .accessibilityHidden(!flipped)
+                    .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
+                }
             }
+            .background {
+                RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
+                    .fill(Color.black)
+                    .shadow(
+                        color: isTop ? surfaceRarity.glow.opacity(0.48) : .black.opacity(0.42),
+                        radius: isTop ? 24 : 16,
+                        y: isTop ? 16 : 12
+                    )
+                    .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+            }
+            .scaleEffect(scale)
+            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+            .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .allowsHitTesting(isTop)
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
         }
-        .scaleEffect(scale)
-        .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-        .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-        .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-        .shadow(
-            color: isTop ? surfaceRarity.glow.opacity(0.52) : .black.opacity(0.45),
-            radius: isTop ? 28 : 20,
-            x: isTop ? -activeTilt.width * 14 : 0,
-            y: isTop ? 18 - activeTilt.height * 10 : 12
-        )
-        .allowsHitTesting(isTop)
-        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
     }
 
     private func deckFrontFace(
@@ -1109,7 +1117,7 @@ struct CardDetail: View {
         // Keep the active 3D RealityView settled cleanly and undisturbed by half-swipes.
         let show3D = item.id == active3DCardID && assetName != nil
         let is3DReady = show3D && ready3DCardIDs.contains(item.id)
-        let surfaceTint: [UIColor] = surfaceRarity.baseColors.map { UIColor($0) }
+        let surfaceTint = surfaceRarity.studioTint
         let catalogBadge: LocalizedStringKey? = isModelPreview
             ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
             : nil
@@ -1148,7 +1156,7 @@ struct CardDetail: View {
                     tint: surfaceTint,
                     tilt: activeTilt,
                     onManipulationChanged: { manipulating in
-                        modelInteractionTilt = manipulating ? tilt : nil
+                        modelInteractionTilt = manipulating ? activeTilt : nil
                     },
                     onModelReady: {
                         withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
@@ -1170,9 +1178,13 @@ struct CardDetail: View {
         let scale = max(scale, 0.3)
         return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
             .id(card.id)
+            .background {
+                RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
+                    .fill(Color.black)
+                    .shadow(color: card.rarity.glow.opacity(0.4), radius: 24, y: 14)
+            }
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-            .shadow(color: card.rarity.glow.opacity(0.4), radius: 24, y: 14)
             .opacity(appeared ? 1 : 0)
     }
 

@@ -213,6 +213,17 @@ struct DeviceDossier: Identifiable {
     let days: [DayStat]
     let periods: [DossierPeriod: PeriodStats]
 
+    // Precomputed lifetime summaries so SwiftUI body passes read O(1) stored values.
+    let lifetimeMinutes: Double
+    let recordDays: Int
+    let longestSession: WearSession?
+    let bestDay: DayStat?
+    let averageDecibels: Double
+    let nightShare: Double
+    let grade: EarGrade
+    let milestones: [DossierMilestone]
+    let careerRows: [CareerRow]
+
     /// - Parameter otherDevicesDailyMinutes: minutes on *other* headphones keyed by start of day.
     init(id: String, nickname: String, symbol: String, serial: Int, hardware: DossierHardware,
          sessions: [WearSession], otherDevicesDailyMinutes: [Date: Double], sampleCount: Int,
@@ -222,37 +233,61 @@ struct DeviceDossier: Identifiable {
         self.symbol = symbol
         self.serial = serial
         self.hardware = hardware
-        self.sessions = sessions.sorted { $0.start < $1.start }
+        let sortedSessions = sessions.sorted { $0.start < $1.start }
+        self.sessions = sortedSessions
         self.sampleCount = sampleCount
         self.lastSynced = lastSynced
         self.now = now
         self.calendar = calendar
-        let days = Self.buildDays(sessions: self.sessions, others: otherDevicesDailyMinutes, now: now, calendar: calendar)
+        let days = Self.buildDays(sessions: sortedSessions, others: otherDevicesDailyMinutes, now: now, calendar: calendar)
         self.days = days
         var periods: [DossierPeriod: PeriodStats] = [:]
         for period in DossierPeriod.allCases {
-            periods[period] = Self.stats(period, days: days, sessions: self.sessions, now: now, calendar: calendar)
+            periods[period] = Self.stats(period, days: days, sessions: sortedSessions, now: now, calendar: calendar)
         }
         self.periods = periods
+
+        let lifetime = sortedSessions.reduce(0) { $0 + $1.minutes }
+        let recDays = days.reduce(0) { $0 + ($1.minutes > 0 ? 1 : 0) }
+        let longest = sortedSessions.max { $0.minutes < $1.minutes }
+        let best = days.max { $0.minutes < $1.minutes }
+        let avgDB = Self.energyAverage(sortedSessions)
+        let monthStats = periods[.month]!
+        let monthHourTotal = monthStats.hours.reduce(0) { $0 + $1.minutes }
+        let night = monthHourTotal > 0
+            ? monthStats.hours.filter { $0.hour < 5 }.reduce(0) { $0 + $1.minutes } / monthHourTotal
+            : 0
+
+        self.lifetimeMinutes = lifetime
+        self.recordDays = recDays
+        self.longestSession = longest
+        self.bestDay = best
+        self.averageDecibels = avgDB
+        self.nightShare = night
+        self.grade = Self.buildGrade(recent: monthStats, fallbackDecibels: avgDB, nightShare: night)
+        self.milestones = Self.buildMilestones(
+            sessions: sortedSessions,
+            lifetimeMinutes: lifetime,
+            longestSession: longest,
+            bestDay: best,
+            pace: monthStats.dailyAverage,
+            now: now,
+            calendar: calendar
+        )
+        self.careerRows = Self.buildCareerRows(sessions: sortedSessions, calendar: calendar)
     }
 
     func stats(_ period: DossierPeriod) -> PeriodStats { periods[period]! }
 
     // MARK: Lifetime
 
-    var lifetimeMinutes: Double { sessions.reduce(0) { $0 + $1.minutes } }
     var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
     var firstWear: Date? { sessions.first?.start }
     var lastWear: WearSession? { sessions.last }
-    var recordDays: Int { days.filter { $0.minutes > 0 }.count }
     var historyDays: Int { days.count }
-    var longestSession: WearSession? { sessions.max { $0.minutes < $1.minutes } }
-    var bestDay: DayStat? { days.max { $0.minutes < $1.minutes } }
-    var averageDecibels: Double { Self.energyAverage(sessions) }
 
-    var grade: EarGrade {
-        let recent = stats(.month)
-        let db = recent.totalMinutes > 0 ? recent.averageDecibels : averageDecibels
+    private static func buildGrade(recent: PeriodStats, fallbackDecibels: Double, nightShare: Double) -> EarGrade {
+        let db = recent.totalMinutes > 0 ? recent.averageDecibels : fallbackDecibels
         let volume = max(0, db - 55) * 0.12
         let dose = min(3, recent.weeklyDose * 2.5)
         let loud = min(2, recent.loudShare * 8)
@@ -266,16 +301,17 @@ struct DeviceDossier: Identifiable {
         ])
     }
 
-    /// Share of last-30-day listening between midnight and 5 am.
-    var nightShare: Double {
-        let s = stats(.month)
-        let total = s.hours.reduce(0) { $0 + $1.minutes }
-        guard total > 0 else { return 0 }
-        return s.hours.filter { $0.hour < 5 }.reduce(0) { $0 + $1.minutes } / total
-    }
-
-    var milestones: [DossierMilestone] {
+    private static func buildMilestones(
+        sessions: [WearSession],
+        lifetimeMinutes: Double,
+        longestSession: WearSession?,
+        bestDay: DayStat?,
+        pace: Double,
+        now: Date,
+        calendar: Calendar
+    ) -> [DossierMilestone] {
         guard let first = sessions.first else { return [] }
+        let firstDayStart = calendar.startOfDay(for: first.start)
         var result: [DossierMilestone] = [
             .init(id: "minted", kind: .minted, date: first.start, title: "Minted",
                   detail: "First wear · \(first.minutes.minutesText)", tier: .bronze),
@@ -291,7 +327,7 @@ struct DeviceDossier: Identifiable {
             cumulative += session.minutes
             for mark in hourMarks where before < mark * 60 && cumulative >= mark * 60 {
                 let date = session.start.addingTimeInterval((mark * 60 - before) * 60)
-                let delta = daysBetween(first.start, date)
+                let delta = calendar.dateComponents([.day], from: firstDayStart, to: calendar.startOfDay(for: date)).day ?? 0
                 let dayDetail = delta == 0 ? "Same day as minting" : (delta == 1 ? "1 day after minting" : "\(delta) days after minting")
                 result.append(.init(id: "h\(Int(mark))", kind: .hours, date: date, title: "\(Int(mark)) hours",
                                     detail: dayDetail))
@@ -311,7 +347,6 @@ struct DeviceDossier: Identifiable {
                                 detail: "\(best.minutes.minutesText) across \(best.sessions) wears"))
         }
         // Next goal with an ETA from the last 30 days' pace.
-        let pace = stats(.month).dailyAverage
         if let next = (hourMarks.map { $0 * 60 } + tiers.map { $0.0 * 60 }).sorted().first(where: { $0 > lifetimeMinutes }), pace > 0 {
             let daysLeft = (next - lifetimeMinutes) / pace
             let eta = now.addingTimeInterval(daysLeft * 86400)
@@ -324,17 +359,16 @@ struct DeviceDossier: Identifiable {
     }
 
     /// Month-by-month "career" lines, newest first.
-    var careerRows: [CareerRow] {
+    private static func buildCareerRows(sessions: [WearSession], calendar: Calendar) -> [CareerRow] {
         var groups: [Date: [WearSession]] = [:]
         for s in sessions {
             let month = calendar.dateInterval(of: .month, for: s.start)!.start
             groups[month, default: []].append(s)
         }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM ’yy"
         return groups.keys.sorted(by: >).map { month in
             let list = groups[month]!
-            return CareerRow(id: month, label: formatter.string(from: month).uppercased(),
+            let label = DateText.format(month, dateFormat: "MMM ’yy", calendar: calendar, locale: Locale.current).uppercased()
+            return CareerRow(id: month, label: label,
                              minutes: list.reduce(0) { $0 + $1.minutes }, sessions: list.count,
                              longest: list.map(\.minutes).max() ?? 0, averageDecibels: Self.energyAverage(list))
         }
@@ -362,27 +396,63 @@ struct DeviceDossier: Identifiable {
         let lastSessionDay = sessions.map { calendar.startOfDay(for: $0.end) }.max() ?? start
         let today = max(start, max(lastSessionDay, calendar.startOfDay(for: now)))
         let count = max(1, (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1)
-        var days = (0..<count).map { DayStat(date: calendar.date(byAdding: .day, value: $0, to: start)!) }
-        func index(_ date: Date) -> Int? {
-            let i = calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: date)).day ?? -1
-            return days.indices.contains(i) ? i : nil
+
+        var days: [DayStat] = []
+        days.reserveCapacity(count)
+        var dayStarts = [Double](repeating: 0, count: count)
+        var dayEnds = [Double](repeating: 0, count: count)
+        var uniformDay = [Bool](repeating: false, count: count)
+        let tz = calendar.timeZone
+
+        for i in 0..<count {
+            let d = calendar.date(byAdding: .day, value: i, to: start)!
+            let nextD = calendar.date(byAdding: .day, value: i + 1, to: start)!
+            days.append(DayStat(date: d))
+            let s = d.timeIntervalSince1970
+            let e = nextD.timeIntervalSince1970
+            dayStarts[i] = s
+            dayEnds[i] = e
+            uniformDay[i] = (e - s == 86_400)
+                && tz.secondsFromGMT(for: d) == tz.secondsFromGMT(for: Date(timeIntervalSince1970: e - 1))
         }
+
+        let firstStart = dayStarts[0]
+        let lastEnd = dayEnds[count - 1]
+        func dayIndex(for epoch: Double) -> Int? {
+            guard epoch >= firstStart && epoch < lastEnd else { return nil }
+            var i = min(count - 1, max(0, Int((epoch - firstStart) / 86_400)))
+            while i + 1 < count && epoch >= dayStarts[i + 1] { i += 1 }
+            while i > 0 && epoch < dayStarts[i] { i -= 1 }
+            return (epoch >= dayStarts[i] && epoch < dayEnds[i]) ? i : nil
+        }
+
         for s in sessions {
-            if let i = index(s.start) { days[i].sessions += 1 }
+            let startEpoch = s.start.timeIntervalSince1970
+            let endEpoch = s.end.timeIntervalSince1970
+            if let i = dayIndex(for: startEpoch) { days[i].sessions += 1 }
             let level = pow(10, s.averageDecibels / 10)
-            var t = s.start
-            while t < s.end {
-                let hourEnd = calendar.dateInterval(of: .hour, for: t)!.end
-                let sliceEnd = min(hourEnd, s.end)
-                let minutes = sliceEnd.timeIntervalSince(t) / 60
-                if let i = index(t) {
-                    let h = calendar.component(.hour, from: t)
+            var t = startEpoch
+            while t < endEpoch {
+                guard let i = dayIndex(for: t) else { break }
+                let h: Int
+                let hourEndEpoch: Double
+                if uniformDay[i] {
+                    h = min(23, max(0, Int((t - dayStarts[i]) / 3600)))
+                    hourEndEpoch = dayStarts[i] + Double(h + 1) * 3600
+                } else {
+                    let date = Date(timeIntervalSince1970: t)
+                    h = calendar.component(.hour, from: date)
+                    hourEndEpoch = calendar.dateInterval(of: .hour, for: date)?.end.timeIntervalSince1970 ?? (t + 3600)
+                }
+                let sliceEnd = min(hourEndEpoch, endEpoch)
+                let minutes = (sliceEnd - t) / 60
+                if minutes > 0 {
                     days[i].minutes += minutes
                     days[i].energy += level * minutes
                     days[i].hourMinutes[h] += minutes
                     days[i].hourEnergy[h] += level * minutes
                 }
-                t = sliceEnd
+                t = max(sliceEnd, t + 1)
             }
         }
         for i in days.indices {
@@ -396,20 +466,38 @@ struct DeviceDossier: Identifiable {
         let lastDay = days.last?.date ?? firstDay
         let today = max(lastDay, calendar.startOfDay(for: now))
         let start = period.days.map { calendar.date(byAdding: .day, value: -($0 - 1), to: today)! } ?? firstDay
-        let inRange = days.filter { $0.date >= start }
-        let total = inRange.reduce(0) { $0 + $1.minutes }
-        let all = inRange.reduce(0) { $0 + $1.allDevicesMinutes }
-        var previous: Double?
-        if let n = period.days {
-            let prevStart = calendar.date(byAdding: .day, value: -n, to: start)!
-            previous = days.filter { $0.date >= prevStart && $0.date < start }.reduce(0) { $0 + $1.minutes }
+
+        // Single linear pass over sorted `days` for range totals, previous period, active days, and 24h bins.
+        let prevStart = period.days.map { calendar.date(byAdding: .day, value: -$0, to: start)! }
+        var total = 0.0
+        var all = 0.0
+        var energy = 0.0
+        var activeDays = 0
+        var prevTotal = 0.0
+        var hourMinutes = [Double](repeating: 0, count: 24)
+        var hourEnergy = [Double](repeating: 0, count: 24)
+
+        for day in days {
+            if day.date >= start {
+                total += day.minutes
+                all += day.allDevicesMinutes
+                energy += day.energy
+                if day.minutes > 0 { activeDays += 1 }
+                for h in 0..<24 {
+                    hourMinutes[h] += day.hourMinutes[h]
+                    hourEnergy[h] += day.hourEnergy[h]
+                }
+            } else if let prevStart, day.date >= prevStart {
+                prevTotal += day.minutes
+            }
         }
+        let previous: Double? = prevStart != nil ? prevTotal : nil
+
         let periodSessions = sessions.filter { $0.start >= start }
-        let energy = inRange.reduce(0) { $0 + $1.energy }
         let clippedStart = max(start, firstDay)
         let span = max(1, (calendar.dateComponents([.day], from: clippedStart, to: today).day ?? 0) + 1)
 
-        // Buckets for the trend chart.
+        // Buckets for the trend chart via O(days) two-pointer scan over sorted `days`.
         let unit: Calendar.Component
         switch period {
         case .week, .month: unit = .day
@@ -423,30 +511,48 @@ struct DeviceDossier: Identifiable {
             default: return calendar.dateInterval(of: unit, for: start)!.start
             }
         }()
+        var dayCursor = 0
+        while dayCursor < days.count && days[dayCursor].date < cursor {
+            dayCursor += 1
+        }
         while cursor <= today {
             let next = calendar.date(byAdding: unit, value: 1, to: cursor)!
-            let slice = days.filter { $0.date >= cursor && $0.date < next }
-            let m = slice.reduce(0) { $0 + $1.minutes }
-            let e = slice.reduce(0) { $0 + $1.energy }
+            var m = 0.0
+            var e = 0.0
+            var sCount = 0
+            while dayCursor < days.count && days[dayCursor].date < next {
+                let d = days[dayCursor]
+                m += d.minutes
+                e += d.energy
+                sCount += d.sessions
+                dayCursor += 1
+            }
             buckets.append(TrendBucket(id: buckets.count, start: cursor, end: next, minutes: m,
                                        averageDecibels: m > 0 ? 10 * log10(e / m) : 0,
-                                       sessions: slice.reduce(0) { $0 + $1.sessions }, isFuture: false))
+                                       sessions: sCount, isFuture: false))
             cursor = next
         }
 
         let hours = (0..<24).map { h in
-            let m = inRange.reduce(0) { $0 + $1.hourMinutes[h] }
-            let e = inRange.reduce(0) { $0 + $1.hourEnergy[h] }
+            let m = hourMinutes[h]
+            let e = hourEnergy[h]
             return HourStat(hour: h, minutes: m, averageDecibels: m > 0 ? 10 * log10(e / m) : 0)
         }
-        let dose = periodSessions.reduce(0) { $0 + $1.minutes / allowedWeeklyMinutes(db: $1.averageDecibels) } / max(1, Double(span) / 7)
-        let loud = periodSessions.filter { $0.averageDecibels >= 80 }.reduce(0) { $0 + $1.minutes }
+        var doseSum = 0.0
+        var loud = 0.0
+        var peakDB = 0.0
+        for s in periodSessions {
+            doseSum += s.minutes / allowedWeeklyMinutes(db: s.averageDecibels)
+            if s.averageDecibels >= 80 { loud += s.minutes }
+            if s.peakDecibels > peakDB { peakDB = s.peakDecibels }
+        }
+        let dose = doseSum / max(1, Double(span) / 7)
 
         return PeriodStats(period: period, start: start, end: now, totalMinutes: total, allDevicesMinutes: all,
                            previousMinutes: previous, sessions: periodSessions,
                            averageDecibels: total > 0 ? 10 * log10(energy / total) : 0,
-                           peakDecibels: periodSessions.map(\.peakDecibels).max() ?? 0,
-                           activeDays: inRange.filter { $0.minutes > 0 }.count, spanDays: span,
+                           peakDecibels: peakDB,
+                           activeDays: activeDays, spanDays: span,
                            buckets: buckets, bucketUnit: unit, hours: hours, weeklyDose: dose,
                            loudShare: total > 0 ? loud / total : 0)
     }

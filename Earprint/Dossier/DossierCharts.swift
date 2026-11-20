@@ -311,16 +311,22 @@ struct DayClock: View {
                 return p
             }
 
-            // Day and night band.
+            // Day & night outer band + 24 background tracks batched into 3 paths (instead of 48 draw calls).
+            var dayBand = Path()
+            var nightBand = Path()
+            var tracks = Path()
             for hour in 0..<24 {
-                let day = (6..<18).contains(hour)
-                context.fill(sector(hour, from: outer + 4, to: outer + 7, gap: 0.6),
-                             with: .color(day ? Theme.moderate.color.opacity(0.35) : Color(red: 0.45, green: 0.5, blue: 1).opacity(0.35)))
+                let band = sector(hour, from: outer + 4, to: outer + 7, gap: 0.6)
+                if (6..<18).contains(hour) {
+                    dayBand.addPath(band)
+                } else {
+                    nightBand.addPath(band)
+                }
+                tracks.addPath(sector(hour, from: inner, to: outer))
             }
-            // Tracks.
-            for hour in 0..<24 {
-                context.fill(sector(hour, from: inner, to: outer), with: .color(.white.opacity(0.035)))
-            }
+            context.fill(dayBand, with: .color(Theme.moderate.color.opacity(0.35)))
+            context.fill(nightBand, with: .color(Color(red: 0.45, green: 0.5, blue: 1).opacity(0.35)))
+            context.fill(tracks, with: .color(.white.opacity(0.035)))
             func bars(_ ctx: inout GraphicsContext) {
                 for stat in stats.hours where stat.minutes > 0 {
                     let t = CGFloat(stat.minutes / maxMinutes)

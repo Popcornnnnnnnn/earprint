@@ -9,22 +9,18 @@ struct HomeView: View {
     var sampleBadgeText: LocalizedStringKey = "Sample data"
     var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
+    var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
 
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .headline) private var pillTitleSize: CGFloat = 15.5
 
-    @StateObject private var motion = TiltMotion()
     @State private var selectedCardID: String? = nil
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
     @State private var space = LayoutSpace()
-    @ScaledMetric(relativeTo: .largeTitle) private var listeningTimeSize: CGFloat = 40
-
-    private var motionActive: Bool { !reduceMotion && !showShare }
-    private var liveTilt: CGSize { motionActive ? motion.tilt : .zero }
 
     private var selectedCard: HeadphoneCard? {
         if let selectedCardID, let matched = cards.first(where: { $0.matches(id: selectedCardID) }) {
@@ -36,34 +32,26 @@ struct HomeView: View {
         return primaryCard
     }
 
-    private var activeSummary: ListeningSummary {
+    private func resolveSummary(for card: HeadphoneCard?) -> ListeningSummary {
         if let summaryForCardID {
-            return summaryForCardID(selectedCard?.id)
+            return summaryForCardID(card?.id)
         }
         return summary
     }
 
-    private var activeRarity: Rarity {
-        selectedCard?.rarity ?? Rarity(minutes: activeSummary.lifetimeMinutes)
-    }
-
-    private var selectedColor: DeviceColorOption? {
-        guard let selectedCard else { return nil }
-        return colorStore?.selectedColor(for: selectedCard) ?? DeviceColorOption.defaultOption(for: selectedCard.modelKey)
-    }
-
-    private var isSelectedWorn: Bool {
-        guard let selectedCard else { return false }
-        return routeMonitor?.isCurrentlyWorn(selectedCard) ?? false
-    }
-
-    private var showingAllPairs: Bool {
-        selectedCard == nil && cards.count > 1
-    }
-
     var body: some View {
+        let currentCard = selectedCard
+        let currentSummary = resolveSummary(for: currentCard)
+        let currentRarity = currentCard?.rarity ?? Rarity(minutes: currentSummary.lifetimeMinutes)
+        let currentColor = currentCard.flatMap { card in
+            colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
+        }
+        let isWorn = currentCard.map { routeMonitor?.isCurrentlyWorn($0) ?? false } ?? false
+        let showingAllPairs = currentCard == nil && cards.count > 1
+        let tiltActive = isActiveTab && !showShare
+
         ZStack {
-            backdrop
+            backdrop(rarity: currentRarity)
 
             ScrollView {
                 Group {
@@ -71,27 +59,27 @@ struct HomeView: View {
                         let split = ColumnSplit(space: space, padding: 24, gap: 24)
                         HStack(alignment: .top, spacing: split.gap) {
                             VStack(alignment: .leading, spacing: 16) {
-                                header
+                                header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
                                 healthStatus
-                                weeklyOverview
-                                hearingBudget
+                                WeeklyRhythmCard(summary: currentSummary, rarity: currentRarity)
+                                HearingBudgetCard(summary: currentSummary, showingAllPairs: showingAllPairs)
                             }
                             .frame(width: split.leading)
                             VStack(alignment: .leading, spacing: 16) {
-                                heroEarprint
-                                history
+                                RingsHeroCard(summary: currentSummary, rarity: currentRarity, tiltActive: tiltActive)
+                                AllTimeArchiveCard(summary: currentSummary, rarity: currentRarity, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
                             }
                             .frame(width: split.trailing)
                         }
                         .padding(.horizontal, split.padding)
                     } else {
                         VStack(alignment: .leading, spacing: 16) {
-                            header
+                            header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
                             healthStatus
-                            heroEarprint
-                            weeklyOverview
-                            hearingBudget
-                            history
+                            RingsHeroCard(summary: currentSummary, rarity: currentRarity, tiltActive: tiltActive)
+                            WeeklyRhythmCard(summary: currentSummary, rarity: currentRarity)
+                            HearingBudgetCard(summary: currentSummary, showingAllPairs: showingAllPairs)
+                            AllTimeArchiveCard(summary: currentSummary, rarity: currentRarity, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
                         }
                         .padding(.horizontal, 18)
                     }
@@ -101,46 +89,53 @@ struct HomeView: View {
                 .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
+            .pauseMotionWhileScrolling("rings")
             .readLayoutSpace($space)
         }
         .foregroundStyle(.white)
         .sheet(isPresented: $showShare) {
-            ShareSheet(summary: activeSummary, primaryCard: selectedCard, colorOption: selectedColor)
-        }
-        .onAppear {
-            if motionActive { motion.start() }
-        }
-        .onDisappear { motion.stop() }
-        .onChange(of: motionActive) { _, active in
-            if active { motion.start() } else { motion.stop() }
+            ShareSheet(summary: currentSummary, primaryCard: currentCard, colorOption: currentColor)
         }
     }
 
-    // MARK: - Backdrop
+    // MARK: - Atmospheric Backdrop
 
-    private var backdrop: some View {
+    private func backdrop(rarity: Rarity) -> some View {
         ZStack {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
-                colors: [activeRarity.glow.opacity(0.22), activeRarity.accent.opacity(0.06), .clear],
+                colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.07), .clear],
                 center: .topTrailing,
                 startRadius: 16,
-                endRadius: 420
+                endRadius: 430
+            )
+            .ignoresSafeArea()
+            RadialGradient(
+                colors: [rarity.accent.opacity(0.10), .clear],
+                center: .bottomLeading,
+                startRadius: 10,
+                endRadius: 340
             )
             .ignoresSafeArea()
         }
     }
 
-    // MARK: - Header & Active Pair Pill / Switcher
+    // MARK: - Header & Collector Switcher Pill
 
-    private var header: some View {
-        let pairName: String = if let card = selectedCard {
+    private func header(
+        card: HeadphoneCard?,
+        summary: ListeningSummary,
+        rarity: Rarity,
+        color: DeviceColorOption?,
+        isWorn: Bool
+    ) -> some View {
+        let pairName: String = if let card {
             isSampleData ? card.model : card.nickname
         } else {
-            activeSummary.deviceName
+            summary.deviceName
         }
-        let pairModel = selectedCard?.model ?? activeSummary.deviceModel
-        let pairSubtitle: String? = if selectedCard == nil {
+        let pairModel = card?.model ?? summary.deviceModel
+        let pairSubtitle: String? = if card == nil {
             pairModel != pairName ? pairModel : nil
         } else if !isSampleData && pairModel != pairName {
             pairModel
@@ -148,18 +143,44 @@ struct HomeView: View {
             nil
         }
 
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
                 Text("Rings")
-                    .font(.system(size: 30, weight: .heavy))
+                    .font(.system(size: 32, weight: .heavy))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, .white.opacity(0.84)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                     .accessibilityAddTraits(.isHeader)
+
                 Spacer(minLength: 8)
+
                 Button { showShare = true } label: {
                     Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.92))
                         .frame(width: 44, height: 44)
-                        .background(Theme.card, in: Circle())
-                        .overlay(Circle().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                        .background(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.11), Color.white.opacity(0.03)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            in: Circle()
+                        )
+                        .overlay(
+                            Circle().strokeBorder(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.28), rarity.accent.opacity(0.24), .white.opacity(0.06)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                        )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Share my Earprint")
@@ -173,7 +194,7 @@ struct HomeView: View {
                     } label: {
                         HStack {
                             Text("All Headphones")
-                            if selectedCard == nil {
+                            if card == nil {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -181,22 +202,22 @@ struct HomeView: View {
 
                     Divider()
 
-                    ForEach(cards) { card in
-                        let label = isSampleData ? card.model : card.nickname
+                    ForEach(cards) { item in
+                        let label = isSampleData ? item.model : item.nickname
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            selectedCardID = card.id
+                            selectedCardID = item.id
                         } label: {
                             HStack {
-                                Text("\(label) · \(card.lifetimeMinutes.minutesText)")
-                                if selectedCard?.id == card.id {
+                                Text("\(label) · \(item.lifetimeMinutes.minutesText)")
+                                if card?.id == item.id {
                                     Image(systemName: "checkmark")
                                 }
                             }
                         }
                     }
 
-                    if let card = selectedCard {
+                    if let card {
                         Divider()
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -207,95 +228,229 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: "chevron.up.chevron.down")
+                    activePairPill(
+                        card: card,
+                        summary: summary,
+                        rarity: rarity,
+                        color: color,
+                        isWorn: isWorn,
+                        name: pairName,
+                        subtitle: pairSubtitle,
+                        trailingSymbol: "chevron.up.chevron.down"
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Switch between all headphones or a single pair")
-            } else if let card = selectedCard {
+            } else if let card {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     router?.pendingCardID = card.id
                     router?.tab = .collection
                 } label: {
-                    activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: "chevron.right")
+                    activePairPill(
+                        card: card,
+                        summary: summary,
+                        rarity: rarity,
+                        color: color,
+                        isWorn: isWorn,
+                        name: pairName,
+                        subtitle: pairSubtitle,
+                        trailingSymbol: "chevron.right"
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("View card in Collection")
             } else {
-                activePairPill(name: pairName, subtitle: pairSubtitle, trailingSymbol: nil)
+                activePairPill(
+                    card: nil,
+                    summary: summary,
+                    rarity: rarity,
+                    color: nil,
+                    isWorn: false,
+                    name: pairName,
+                    subtitle: pairSubtitle,
+                    trailingSymbol: nil
+                )
             }
         }
     }
 
-    private func activePairPill(name: String, subtitle: String?, trailingSymbol: String?) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-        return HStack(spacing: 10) {
+    private func activePairPill(
+        card: HeadphoneCard?,
+        summary: ListeningSummary,
+        rarity: Rarity,
+        color: DeviceColorOption?,
+        isWorn: Bool,
+        name: String,
+        subtitle: String?,
+        trailingSymbol: String?
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        let isPrestigeTier = rarity == .holo || rarity == .obsidian || rarity == .diamond
+        let clampedTitleSize = min(max(pillTitleSize, 14.5), 19.5)
+
+        return HStack(spacing: 11) {
+            // Collector emblem medallion with concentric metallic/foil rim
             ZStack {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [activeRarity.glow.opacity(0.22), .white.opacity(0.04)],
+                            colors: [rarity.glow.opacity(0.36), rarity.accent.opacity(0.10), Color.black.opacity(0.42)],
                             center: .center,
                             startRadius: 2,
-                            endRadius: 22
+                            endRadius: 24
                         )
                     )
-                if let card = selectedCard {
-                    HeadphoneArtwork(card: card, colorOption: selectedColor, showsChargingCase: false)
-                        .padding(3)
+                Circle()
+                    .inset(by: 3)
+                    .strokeBorder(.white.opacity(0.10), lineWidth: 0.7)
+                if isPrestigeTier {
+                    Circle()
+                        .strokeBorder(rarity.foil, lineWidth: 1.35)
                 } else {
-                    Image(systemName: activeSummary.deviceSymbol)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(activeRarity.accent)
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [.white.opacity(0.36), rarity.accent.opacity(0.58), .white.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.15
+                        )
+                }
+                if let card {
+                    HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: false, showsShadow: false)
+                        .padding(5)
+                } else {
+                    Image(systemName: summary.deviceSymbol)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.white, rarity.accent],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                 }
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 44, height: 44)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
+            // Single-line primary title + concise metadata subtitle
+            VStack(alignment: .leading, spacing: 2.5) {
+                HStack(spacing: 6) {
                     Text(name)
-                        .font(.system(size: 14.5, weight: .bold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    if isSelectedWorn {
+                        .font(.system(size: clampedTitleSize, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
+                    if isWorn {
                         ActiveWearDot()
                     }
                 }
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondaryText)
+
+                HStack(spacing: 5) {
+                    if let subtitle {
+                        Text(subtitle)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("·")
+                            .foregroundStyle(DossierPalette.faint)
+                    }
+                    Text(summary.lifetimeMinutes.minutesText)
+                        .monospacedDigit()
+                        .foregroundStyle(rarity.accent.opacity(0.92))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Theme.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 5) {
-                Text(LocalizedStringKey(activeRarity.title))
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .tracking(0.6)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(activeRarity.accent.opacity(0.15), in: Capsule())
-                    .overlay(Capsule().strokeBorder(activeRarity.accent.opacity(0.38), lineWidth: 1))
-                    .foregroundStyle(activeRarity.accent)
+            // Compact metallic foil tier badge + switcher chevron
+            HStack(spacing: 7) {
+                HStack(spacing: 3.5) {
+                    if isPrestigeTier {
+                        Image(systemName: "sparkle")
+                            .font(.system(size: 8.5, weight: .black))
+                    }
+                    Text(LocalizedStringKey(rarity.shortName.uppercased()))
+                        .font(.system(size: 9.5, weight: .black, design: .rounded))
+                        .tracking(0.8)
+                        .lineLimit(1)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(rarity.ink)
+                .shadow(color: rarity.ink == .white ? .black.opacity(0.32) : .clear, radius: 1, y: 0.5)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background {
+                    Capsule()
+                        .fill(rarity.foil)
+                        .shadow(color: rarity.glow.opacity(0.36), radius: 6, y: 2)
+                        .overlay(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.white.opacity(rarity.ink == .white ? 0.24 : 0.44), .clear],
+                                        startPoint: .top,
+                                        endPoint: .center
+                                    )
+                                )
+                        )
+                }
+                .overlay(Capsule().strokeBorder(.white.opacity(0.30), lineWidth: 0.75))
 
                 if let trailingSymbol {
                     Image(systemName: trailingSymbol)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(DossierPalette.faint)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.45))
                         .accessibilityHidden(true)
                 }
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(DossierPalette.panel, in: shape)
-        .overlay(shape.strokeBorder(DossierPalette.hairline, lineWidth: 1))
+        .background {
+            shape.fill(
+                LinearGradient(
+                    colors: [Color(red: 0.105, green: 0.105, blue: 0.15), Color(red: 0.065, green: 0.065, blue: 0.095)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .shadow(color: rarity.glow.opacity(0.14), radius: 14, y: 6)
+            .overlay {
+                RadialGradient(
+                    colors: [rarity.glow.opacity(0.20), .clear],
+                    center: .leading,
+                    startRadius: 4,
+                    endRadius: 160
+                )
+                .clipShape(shape)
+            }
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.22), rarity.accent.opacity(0.24), .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 1)
+                .padding(.horizontal, 20)
+            }
+        }
+        .overlay {
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: [.white.opacity(0.28), rarity.accent.opacity(0.25), .white.opacity(0.06)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1
+            )
+        }
         .accessibilityElement(children: .combine)
     }
 
@@ -305,294 +460,741 @@ struct HomeView: View {
                              isLoading: isLoading, onConnect: onConnectHealth)
         }
     }
+}
 
-    // MARK: - Hero 28-Day Earprint Stage
+// MARK: - Rings Surface Modifier
 
-    private var heroEarprint: some View {
-        let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
-        let has28DayData = activeSummary.grid.totalMinutes(lastDays: 28) > 0
+private struct RingsGlassPanel: ViewModifier {
+    var cornerRadius: CGFloat = 24
+    var tint: Color = .white
+    var tintCenter: UnitPoint = .topLeading
 
-        return VStack(alignment: .leading, spacing: 16) {
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .background {
+                shape.fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.098, green: 0.098, blue: 0.142), Color(red: 0.060, green: 0.060, blue: 0.090)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: .black.opacity(0.32), radius: 14, y: 8)
+                .overlay {
+                    RadialGradient(
+                        colors: [tint.opacity(0.13), .clear],
+                        center: tintCenter,
+                        startRadius: 8,
+                        endRadius: 230
+                    )
+                    .clipShape(shape)
+                }
+                .overlay(alignment: .top) {
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.18), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, 24)
+                }
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [.white.opacity(0.24), tint.opacity(0.18), .white.opacity(0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+            }
+    }
+}
+
+private extension View {
+    func ringsPanel(cornerRadius: CGFloat = 24, tint: Color = .white, tintCenter: UnitPoint = .topLeading) -> some View {
+        modifier(RingsGlassPanel(cornerRadius: cornerRadius, tint: tint, tintCenter: tintCenter))
+    }
+}
+
+// MARK: - Hero 28-Day Earprint Chronometer Card (Tilt-Isolated)
+
+private struct RingsHeroCard: View {
+    let summary: ListeningSummary
+    let rarity: Rarity
+    let tiltActive: Bool
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        let has28DayData = summary.has28DayData
+        let weekMinutes = summary.weekMinutes
+        let weekDB = summary.weekDecibels
+        let persona = summary.persona
+        let dbColor = weekMinutes > 0 ? Theme.levelColor(db: weekDB) : DossierPalette.dim
+
+        VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 8) {
-                Eyebrow("28-DAY EARPRINT")
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(rarity.accent)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: rarity.glow.opacity(0.85), radius: 4)
+                    Eyebrow("28-DAY EARPRINT", color: .white.opacity(0.70))
+                }
                 Spacer(minLength: 8)
                 if has28DayData {
                     HStack(spacing: 5) {
-                        Text(activeSummary.persona.emoji)
+                        Text(persona.emoji)
                             .font(.caption2)
-                        Text(LocalizedStringKey(activeSummary.persona.title))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.9))
+                        Text(LocalizedStringKey(persona.title))
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.white.opacity(0.94))
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(.white.opacity(0.07), in: Capsule())
-                    .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 5.5)
+                    .background(
+                        LinearGradient(
+                            colors: [.white.opacity(0.12), .white.opacity(0.04)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        in: Capsule()
+                    )
+                    .overlay(
+                        Capsule().strokeBorder(
+                            LinearGradient(
+                                colors: [.white.opacity(0.24), rarity.accent.opacity(0.32)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.9
+                        )
+                    )
                 }
             }
 
-            ZStack {
-                EarprintGlyph(grid: activeSummary.grid, showHourLabels: true)
-                    .frame(maxWidth: 224)
-                    .background {
+            // Proportional chronometer dial: center complication scales with the glyph so it never overlaps rings.
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                let wellSize = min(84, max(56, side * 0.345))
+
+                ZStack {
+                    // Soft collector aura behind the chronometer dial
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [rarity.glow.opacity(0.20), rarity.accent.opacity(0.06), .clear],
+                                center: .center,
+                                startRadius: side * 0.08,
+                                endRadius: side * 0.52
+                            )
+                        )
+                        .accessibilityHidden(true)
+
+                    EarprintGlyph(grid: summary.grid, showHourLabels: true)
+                        .equatable()
+                        .accessibilityHidden(true)
+
+                    // Recessed watch-complication center dial well with double concentric bezel
+                    ZStack {
                         Circle()
                             .fill(
                                 RadialGradient(
-                                    colors: [activeRarity.glow.opacity(0.14), .clear],
-                                    center: .center,
-                                    startRadius: 14,
-                                    endRadius: 114
+                                    colors: [
+                                        dbColor.opacity(weekMinutes > 0 ? 0.14 : 0.04),
+                                        Color(red: 0.075, green: 0.075, blue: 0.115).opacity(0.95),
+                                        Color(red: 0.042, green: 0.042, blue: 0.070).opacity(0.92)
+                                    ],
+                                    center: .top,
+                                    startRadius: 2,
+                                    endRadius: wellSize * 0.58
                                 )
                             )
-                    }
-                    .accessibilityHidden(true)
+                        Circle()
+                            .inset(by: 3)
+                            .strokeBorder(.white.opacity(0.07), lineWidth: 0.65)
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.22), rarity.accent.opacity(0.24), .white.opacity(0.05)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 0.95
+                            )
 
-                VStack(spacing: 4) {
-                    Text(activeSummary.weekMinutes.minutesText)
-                        .font(.system(size: 15.5, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                        .foregroundStyle(.white)
-                    if activeSummary.weekMinutes > 0 {
-                        let db = activeSummary.weekDecibels
-                        let dbColor = Theme.levelColor(db: db)
-                        Text("\(Int(db.rounded())) dB")
-                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(dbColor)
-                            .padding(.horizontal, 6.5)
-                            .padding(.vertical, 2)
-                            .background(dbColor.opacity(0.15), in: Capsule())
-                            .overlay(Capsule().strokeBorder(dbColor.opacity(0.35), lineWidth: 0.75))
-                    } else {
-                        Text("7d")
-                            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(DossierPalette.dim)
+                        VStack(spacing: 3.5) {
+                            Text(weekMinutes.minutesText)
+                                .font(.system(size: max(12.5, wellSize * 0.196), weight: .heavy, design: .rounded))
+                                .monospacedDigit()
+                                .minimumScaleFactor(0.6)
+                                .lineLimit(1)
+                                .foregroundStyle(
+                                    LinearGradient(colors: [.white, rarity.accent.opacity(0.94)], startPoint: .top, endPoint: .bottom)
+                                )
+                            if weekMinutes > 0 {
+                                Text("\(Int(weekDB.rounded())) dB")
+                                    .font(.system(size: max(8.5, wellSize * 0.112), weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(dbColor)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2)
+                                    .background(dbColor.opacity(0.16), in: Capsule())
+                                    .overlay(Capsule().strokeBorder(dbColor.opacity(0.42), lineWidth: 0.75))
+                            } else {
+                                Text("7d")
+                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(DossierPalette.dim)
+                            }
+                        }
+                        .padding(.horizontal, 6)
                     }
+                    .frame(width: wellSize, height: wellSize)
+                    .accessibilityElement(children: .combine)
                 }
-                .frame(width: 64)
-                .accessibilityElement(children: .combine)
+                .frame(width: geo.size.width, height: geo.size.height)
             }
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: 244)
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
 
-            HStack(spacing: 16) {
-                legendDot(Theme.quiet.color, "Quiet")
-                legendDot(Theme.moderate.color, "Moderate")
-                legendDot(Theme.loud.color, "Loud")
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.11), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+
+            HStack(spacing: 10) {
+                legendChip(Theme.quiet.color, "Quiet")
+                legendChip(Theme.moderate.color, "Moderate")
+                legendChip(Theme.loud.color, "Loud")
             }
             .frame(maxWidth: .infinity)
         }
         .padding(18)
         .background {
-            shape.fill(DossierPalette.panel)
-                .overlay {
-                    RadialGradient(
-                        colors: [activeRarity.glow.opacity(0.18), activeRarity.accent.opacity(0.06), .clear],
-                        center: UnitPoint(x: 0.5 + liveTilt.width * 0.14, y: 0.35 + liveTilt.height * 0.10),
-                        startRadius: 12,
-                        endRadius: 235
-                    )
-                    .clipShape(shape)
-                }
+            shape.fill(
+                LinearGradient(
+                    colors: [Color(red: 0.098, green: 0.098, blue: 0.145), Color(red: 0.054, green: 0.054, blue: 0.086)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .shadow(color: rarity.glow.opacity(0.16), radius: 18, y: 10)
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.24), rarity.accent.opacity(0.26), .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 1)
+                .padding(.horizontal, 28)
+            }
+            // Isolated tilt spotlight: only this lightweight gradient redraws on tilt; EarprintGlyph stays untouched.
+            RingsHeroTiltGlow(rarity: rarity, shape: shape, isActive: tiltActive)
         }
         .overlay {
-            shape.strokeBorder(
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.46),
-                        .white.opacity(0.10),
-                        activeRarity.glow.opacity(0.42),
-                        .white.opacity(0.30)
-                    ],
-                    startPoint: UnitPoint(x: 0.2 + liveTilt.width * 0.5, y: 0.0 + liveTilt.height * 0.4),
-                    endPoint: UnitPoint(x: 0.8 + liveTilt.width * 0.5, y: 1.0 + liveTilt.height * 0.4)
-                ),
-                lineWidth: 1.25
-            )
+            RingsHeroTiltBorder(rarity: rarity, shape: shape, isActive: tiltActive)
         }
     }
 
-    private func legendDot(_ color: Color, _ label: LocalizedStringKey) -> some View {
+    private func legendChip(_ color: Color, _ label: LocalizedStringKey) -> some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(color)
                 .frame(width: 6.5, height: 6.5)
-                .shadow(color: color.opacity(0.55), radius: 3)
+                .shadow(color: color.opacity(0.65), radius: 3)
             Text(label)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Theme.secondaryText)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.76))
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(.white.opacity(0.048), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 0.75))
+    }
+}
+
+private struct RingsHeroTiltGlow: View {
+    let rarity: Rarity
+    let shape: RoundedRectangle
+    let isActive: Bool
+
+    var body: some View {
+        LiveTiltView(isActive: isActive) { tilt in
+            RadialGradient(
+                colors: [rarity.glow.opacity(0.20), rarity.accent.opacity(0.07), .clear],
+                center: UnitPoint(x: 0.5 + tilt.width * 0.16, y: 0.32 + tilt.height * 0.12),
+                startRadius: 10,
+                endRadius: 245
+            )
+            .clipShape(shape)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct RingsHeroTiltBorder: View {
+    let rarity: Rarity
+    let shape: RoundedRectangle
+    let isActive: Bool
+
+    var body: some View {
+        LiveTiltView(isActive: isActive) { tilt in
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: [
+                        .white.opacity(0.46),
+                        .white.opacity(0.09),
+                        rarity.glow.opacity(0.48),
+                        rarity.accent.opacity(0.28)
+                    ],
+                    startPoint: UnitPoint(x: 0.15 + tilt.width * 0.45, y: 0.0 + tilt.height * 0.35),
+                    endPoint: UnitPoint(x: 0.85 + tilt.width * 0.45, y: 1.0 + tilt.height * 0.35)
+                ),
+                lineWidth: 1.25
+            )
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Cached Localized Weekday Symbols for WeeklyRhythmCard
+
+@MainActor
+private enum WeekdayLabelCache {
+    struct Labels {
+        let short: [String]
+        let full: [String]
     }
 
-    // MARK: - Last 7 Days Rhythm Card
+    private struct Key: Hashable {
+        let localeID: String
+        let dayStartEpoch: TimeInterval
+        let count: Int
+    }
 
-    private var weeklyOverview: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        return VStack(alignment: .leading, spacing: 15) {
-            HStack(alignment: .firstTextBaseline) {
-                Eyebrow("LAST 7 DAYS")
+    private static var lastKey: Key?
+    private static var lastLabels: Labels = Labels(short: [], full: [])
+
+    static func labels(locale: Locale, count: Int, now: Date = Date()) -> Labels {
+        var calendar = Calendar.current
+        calendar.locale = locale
+        let today = calendar.startOfDay(for: now)
+        let key = Key(localeID: locale.identifier, dayStartEpoch: today.timeIntervalSince1970, count: count)
+        if key == lastKey {
+            return lastLabels
+        }
+        let shortSymbols = calendar.shortStandaloneWeekdaySymbols
+        let fullSymbols = calendar.standaloneWeekdaySymbols
+        var short: [String] = []
+        var full: [String] = []
+        short.reserveCapacity(count)
+        full.reserveCapacity(count)
+        for offset in 0..<count {
+            let daysAgo = (count - 1) - offset
+            let date = calendar.date(byAdding: .day, value: -daysAgo, to: today) ?? today
+            let idx = max(0, min(6, calendar.component(.weekday, from: date) - 1))
+            short.append(shortSymbols.indices.contains(idx) ? shortSymbols[idx] : "")
+            full.append(fullSymbols.indices.contains(idx) ? fullSymbols[idx] : "")
+        }
+        let built = Labels(short: short, full: full)
+        lastKey = key
+        lastLabels = built
+        return built
+    }
+}
+
+// MARK: - Interactive Last 7 Days Rhythm Card
+
+private struct WeeklyRhythmCard: View {
+    let summary: ListeningSummary
+    let rarity: Rarity
+
+    @Environment(\.locale) private var locale
+    @ScaledMetric(relativeTo: .largeTitle) private var listeningTimeSize: CGFloat = 38
+    @State private var selectedOffset: Int? = nil
+
+    private struct DayPoint: Identifiable {
+        let id: Int
+        let minutes: Double
+        let decibels: Double?
+        let isToday: Bool
+        let shortWeekday: String
+        let fullWeekday: String
+    }
+
+    private func buildDayPoints() -> [DayPoint] {
+        let metrics = summary.last7Days
+        let count = metrics.count
+        guard count > 0 else { return [] }
+        let labels = WeekdayLabelCache.labels(locale: locale, count: count)
+        var result: [DayPoint] = []
+        result.reserveCapacity(count)
+        for offset in 0..<count {
+            let item = metrics[offset]
+            result.append(DayPoint(
+                id: offset,
+                minutes: item.minutes,
+                decibels: item.decibels,
+                isToday: offset == count - 1,
+                shortWeekday: labels.short.indices.contains(offset) ? labels.short[offset] : "",
+                fullWeekday: labels.full.indices.contains(offset) ? labels.full[offset] : ""
+            ))
+        }
+        return result
+    }
+
+    var body: some View {
+        let points = buildDayPoints()
+        let selected = selectedOffset.flatMap { idx in points.indices.contains(idx) ? points[idx] : nil }
+        let displayedMinutes = selected?.minutes ?? summary.weekMinutes
+        let displayedDB = selected?.decibels ?? (summary.weekMinutes > 0 ? summary.weekDecibels : nil)
+        let maxMinutes = max(points.map(\.minutes).max() ?? 0, 1)
+        let activeDayCount = points.filter { $0.minutes > 0 }.count
+        let averageMinutes = activeDayCount > 0 ? summary.weekMinutes / Double(points.count) : 0
+        let avgRatio = min(1, max(0, averageMinutes / maxMinutes))
+
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .center, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(rarity.accent)
+                        .accessibilityHidden(true)
+                    Eyebrow("LAST 7 DAYS", color: .white.opacity(0.68))
+                }
                 Spacer(minLength: 8)
-                Text(activeSummary.periodLabel)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(DossierPalette.dim)
+                Text(summary.periodLabel)
+                    .font(.system(.caption2, design: .monospaced, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.66))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.055), in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.09), lineWidth: 0.75))
             }
+
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .lastTextBaseline, spacing: 14) {
-                    weeklyListeningTime.fixedSize(horizontal: true, vertical: false)
+                    metricTime(minutes: displayedMinutes, selected: selected)
+                        .fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 0)
-                    weeklyLevel.fixedSize(horizontal: true, vertical: false)
+                    metricLevel(db: displayedDB)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 VStack(alignment: .leading, spacing: 10) {
-                    weeklyListeningTime
-                    weeklyLevel
+                    metricTime(minutes: displayedMinutes, selected: selected)
+                    metricLevel(db: displayedDB)
                 }
             }
-            dailyListeningBars
+
+            // Equalizer bars with dashed daily-average reference guide + localized weekday labels
+            VStack(spacing: 7) {
+                if averageMinutes > 0 {
+                    HStack(spacing: 5) {
+                        Spacer(minLength: 0)
+                        Path { path in
+                            path.move(to: CGPoint(x: 0, y: 1))
+                            path.addLine(to: CGPoint(x: 12, y: 1))
+                        }
+                        .stroke(.white.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [2.5, 2.5]))
+                        .frame(width: 12, height: 2)
+                        Text("AVG")
+                            .font(.system(size: 8.5, weight: .heavy, design: .rounded))
+                            .tracking(0.6)
+                            .foregroundStyle(.white.opacity(0.45))
+                        Text(averageMinutes.minutesText)
+                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    .accessibilityHidden(true)
+                }
+
+                ZStack(alignment: .bottom) {
+                    if averageMinutes > 0 {
+                        GeometryReader { geo in
+                            let lineY = geo.size.height * (1 - avgRatio)
+                            Path { path in
+                                path.move(to: CGPoint(x: 0, y: lineY))
+                                path.addLine(to: CGPoint(x: geo.size.width, y: lineY))
+                            }
+                            .stroke(.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                        }
+                        .allowsHitTesting(false)
+                    }
+
+                    HStack(alignment: .bottom, spacing: 7) {
+                        ForEach(points) { point in
+                            let barColor = point.decibels.map { Theme.levelColor(db: $0) } ?? Theme.quiet.color
+                            let isSelected = selected?.id == point.id
+                            let isHighlighted = selected == nil ? point.isToday : isSelected
+                            let isDimmed = selected != nil && !isSelected
+                            let barHeight = point.minutes > 0 ? max(6, 62 * point.minutes / maxMinutes) : 0
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                withAnimation(.snappy(duration: 0.22)) {
+                                    selectedOffset = (selectedOffset == point.id) ? nil : point.id
+                                }
+                            } label: {
+                                ZStack(alignment: .bottom) {
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .fill(
+                                            isSelected
+                                                ? rarity.accent.opacity(0.12)
+                                                : (point.isToday ? Color.white.opacity(0.075) : Color.white.opacity(0.04))
+                                        )
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                .strokeBorder(
+                                                    isSelected
+                                                        ? rarity.accent.opacity(0.38)
+                                                        : .white.opacity(point.isToday ? 0.15 : 0.055),
+                                                    lineWidth: isSelected ? 1 : 0.75
+                                                )
+                                        }
+
+                                    if point.minutes > 0 {
+                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: isHighlighted
+                                                        ? [barColor, barColor.opacity(0.68)]
+                                                        : [barColor.opacity(0.72), barColor.opacity(0.28)],
+                                                    startPoint: .top,
+                                                    endPoint: .bottom
+                                                )
+                                            )
+                                            .frame(height: barHeight)
+                                            .overlay(alignment: .top) {
+                                                Capsule()
+                                                    .fill(.white.opacity(isHighlighted ? 0.84 : 0.32))
+                                                    .frame(height: 2)
+                                                    .padding(.horizontal, 5)
+                                                    .padding(.top, 2)
+                                            }
+                                            .overlay {
+                                                if isHighlighted {
+                                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                        .strokeBorder(.white.opacity(0.58), lineWidth: 1)
+                                                }
+                                            }
+                                            .shadow(color: isHighlighted ? barColor.opacity(0.45) : .clear, radius: 6, y: 2)
+                                    }
+                                }
+                                .frame(height: 62)
+                                .opacity(isDimmed ? 0.42 : 1.0)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(point.isToday ? Text("Today") : Text(verbatim: point.fullWeekday))
+                            .accessibilityValue(Text(point.minutes.minutesText))
+                        }
+                    }
+                }
+                .frame(height: 62)
+
+                HStack(spacing: 7) {
+                    ForEach(points) { point in
+                        let isSelected = selected?.id == point.id
+                        VStack(spacing: 3) {
+                            Text(verbatim: point.shortWeekday)
+                                .font(.system(size: 10, weight: (point.isToday || isSelected) ? .bold : .medium, design: .rounded))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .foregroundStyle(
+                                    isSelected ? rarity.accent : (point.isToday ? .white.opacity(0.92) : DossierPalette.faint)
+                                )
+                            Circle()
+                                .fill(isSelected ? rarity.accent : (point.isToday ? rarity.accent.opacity(0.85) : .clear))
+                                .frame(width: 3.5, height: 3.5)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Daily listening, earliest to latest")
         }
         .padding(18)
-        .background(DossierPalette.panel, in: shape)
-        .overlay(shape.strokeBorder(DossierPalette.hairline, lineWidth: 1))
+        .ringsPanel(cornerRadius: 24, tint: rarity.accent, tintCenter: .topLeading)
+        .onChange(of: summary) { _, _ in
+            selectedOffset = nil
+        }
     }
 
-    private var weeklyListeningTime: some View {
+    private func metricTime(minutes: Double, selected: DayPoint?) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(activeSummary.weekMinutes.minutesText)
-                .font(.system(size: listeningTimeSize, weight: .bold, design: .rounded))
+            Text(minutes.minutesText)
+                .font(.system(size: listeningTimeSize, weight: .heavy, design: .rounded))
                 .monospacedDigit()
-            Text("Listening time")
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
+                .foregroundStyle(
+                    LinearGradient(colors: [.white, .white.opacity(0.84)], startPoint: .top, endPoint: .bottom)
+                )
+                .contentTransition(.numericText(value: minutes))
+            if let selected {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(rarity.accent)
+                        .frame(width: 5, height: 5)
+                    Group {
+                        if selected.isToday {
+                            Text("Today")
+                        } else {
+                            Text(verbatim: selected.fullWeekday)
+                        }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(rarity.accent)
+                }
+            } else {
+                Text("Listening time")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.secondaryText)
+            }
         }
         .accessibilityElement(children: .combine)
     }
 
-    private var weeklyLevel: some View {
-        let level = activeSummary.weekDecibels
-        return VStack(alignment: .leading, spacing: 3) {
-            Group {
-                if activeSummary.weekMinutes > 0 {
-                    Text("\(Int(level.rounded())) dB")
-                } else {
-                    Text(verbatim: "—")
+    private func metricLevel(db: Double?) -> some View {
+        let color = db.map { Theme.levelColor(db: $0) } ?? Theme.secondaryText
+        return VStack(alignment: .trailing, spacing: 3) {
+            HStack(spacing: 5) {
+                if db != nil {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: color.opacity(0.75), radius: 3)
                 }
+                Group {
+                    if let db {
+                        Text("\(Int(db.rounded())) dB")
+                    } else {
+                        Text(verbatim: "—")
+                    }
+                }
+                .font(.title2.weight(.bold).monospacedDigit())
+                .foregroundStyle(color)
             }
-            .font(.title2.weight(.bold).monospacedDigit())
-            .foregroundStyle(activeSummary.weekMinutes > 0 ? Theme.levelColor(db: level) : Theme.secondaryText)
             Text("Avg. level")
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
         }
         .accessibilityElement(children: .combine)
     }
+}
 
-    private var dailyListeningBars: some View {
-        let start = max(0, activeSummary.grid.days - 7)
-        let dayIndices = Array(start..<activeSummary.grid.days)
-        let dailyMinutes = dayIndices.map { activeSummary.grid.minutes[$0].reduce(0, +) }
-        let maxMinutes = max(dailyMinutes.max() ?? 0, 1)
+// MARK: - Hearing Budget Acoustic Telemetry Card
 
-        return HStack(alignment: .bottom, spacing: 6) {
-            ForEach(Array(dayIndices.enumerated()), id: \.offset) { offset, dayIdx in
-                let minutes = dailyMinutes[offset]
-                let dayDB = dayAverageDecibels(dayIndex: dayIdx)
-                let barColor = dayDB.map { Theme.levelColor(db: $0) } ?? Theme.quiet.color
-                let isToday = (dayIdx == activeSummary.grid.days - 1)
+private struct HearingBudgetCard: View {
+    let summary: ListeningSummary
+    let showingAllPairs: Bool
 
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(isToday ? Color.white.opacity(0.09) : Color.white.opacity(0.045))
-                        .overlay {
-                            if isToday && minutes <= 0 {
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .strokeBorder(.white.opacity(0.18), lineWidth: 1)
-                            }
-                        }
-
-                    if minutes > 0 {
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(isToday ? barColor : barColor.opacity(0.58))
-                            .frame(height: max(4, 46 * minutes / maxMinutes))
-                            .overlay {
-                                if isToday {
-                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                        .strokeBorder(.white.opacity(0.55), lineWidth: 1)
-                                }
-                            }
-                            .shadow(color: isToday ? barColor.opacity(0.45) : .clear, radius: 5)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Day \(offset + 1) of \(dayIndices.count)")
-                .accessibilityValue(Text(minutes.minutesText))
-            }
-        }
-        .frame(height: 46)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Daily listening, earliest to latest")
-    }
-
-    private func dayAverageDecibels(dayIndex: Int) -> Double? {
-        guard activeSummary.grid.minutes.indices.contains(dayIndex),
-              activeSummary.grid.decibels.indices.contains(dayIndex) else { return nil }
-        var energy = 0.0
-        var weight = 0.0
-        for hour in 0..<24 {
-            let minutes = activeSummary.grid.minutes[dayIndex][hour]
-            guard minutes > 0 else { continue }
-            let db = activeSummary.grid.decibels[dayIndex][hour]
-            energy += pow(10, db / 10) * minutes
-            weight += minutes
-        }
-        guard weight > 0 else { return nil }
-        return 10 * log10(energy / weight)
-    }
-
-    // MARK: - Hearing Budget Card
-
-    private var hearingBudget: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        let used = activeSummary.weeklyBudgetUsed
+    var body: some View {
+        let used = max(0, summary.weeklyBudgetUsed)
+        let displayPercent = Int((used * 100).rounded())
         let tint = used >= 1 ? Theme.loud.color : (used >= 0.75 ? Theme.moderate.color : Theme.quiet.color)
-        let clamped = min(max(used, 0), 1)
+        let clamped = min(used, 1)
+        let hasVisibleFill = displayPercent > 0
 
-        return VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "ear")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(tint)
-                        .accessibilityHidden(true)
-                    Eyebrow("HEARING BUDGET")
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(tint.opacity(0.16))
+                        Circle()
+                            .strokeBorder(tint.opacity(0.42), lineWidth: 0.85)
+                        Image(systemName: "ear")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(tint)
+                    }
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+
+                    Eyebrow("HEARING BUDGET", color: .white.opacity(0.68))
                 }
                 Spacer()
-                Text("\(Int((used * 100).rounded()))% used")
-                    .font(.subheadline.weight(.bold).monospacedDigit())
+                Text("\(displayPercent)% used")
+                    .font(.caption.weight(.heavy).monospacedDigit())
                     .foregroundStyle(tint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4.5)
+                    .background(tint.opacity(0.14), in: Capsule())
+                    .overlay(Capsule().strokeBorder(tint.opacity(0.40), lineWidth: 0.9))
             }
 
-            GeometryReader { geo in
-                let width = geo.size.width
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(.white.opacity(0.07))
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Theme.quiet.color, Theme.moderate.color, Theme.loud.color],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .mask(alignment: .leading) {
-                            Capsule()
-                                .frame(width: used > 0 ? max(8, width * clamped) : 0)
+            // Precision quarter-ticked acoustic gauge bar + scale markings
+            VStack(spacing: 5) {
+                GeometryReader { geo in
+                    let width = max(0, geo.size.width)
+                    let fillWidth = (hasVisibleFill && width > 0) ? min(width, max(10, width * clamped)) : 0
+                    let pipX: CGFloat = if width <= 10 {
+                        width / 2
+                    } else if hasVisibleFill {
+                        min(width - 5, max(5, fillWidth - 4))
+                    } else {
+                        5
+                    }
+
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.black.opacity(0.38))
+                            .overlay(Capsule().strokeBorder(.white.opacity(0.11), lineWidth: 0.8))
+
+                        // Quarter calibration ticks (25% / 50% / 75%)
+                        ForEach([0.25, 0.50, 0.75], id: \.self) { mark in
+                            Rectangle()
+                                .fill(.white.opacity(0.15))
+                                .frame(width: 1, height: 6)
+                                .offset(x: width * mark)
                         }
-                        .shadow(color: tint.opacity(0.42), radius: 5)
+
+                        if fillWidth > 0 {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Theme.quiet.color, Theme.moderate.color, Theme.loud.color],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .mask(alignment: .leading) {
+                                    Capsule().frame(width: fillWidth)
+                                }
+                                .shadow(color: tint.opacity(0.48), radius: 5)
+                        }
+
+                        // Luminous precision indicator bead
+                        Circle()
+                            .fill(hasVisibleFill ? .white : tint.opacity(0.85))
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().strokeBorder(tint, lineWidth: 1.5))
+                            .shadow(color: tint.opacity(0.75), radius: 4)
+                            .offset(x: max(1, pipX - 4))
+                    }
                 }
+                .frame(height: 10)
+
+                HStack {
+                    Text(verbatim: "0%")
+                    Spacer()
+                    Text(verbatim: "50%")
+                    Spacer()
+                    Text(verbatim: "100%")
+                }
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.30))
             }
-            .frame(height: 8)
             .accessibilityHidden(true)
 
             Text(
@@ -604,73 +1206,196 @@ struct HomeView: View {
             .foregroundStyle(Theme.secondaryText)
         }
         .padding(18)
-        .background(DossierPalette.panel, in: shape)
-        .overlay(shape.strokeBorder(DossierPalette.hairline, lineWidth: 1))
+        .ringsPanel(cornerRadius: 24, tint: tint, tintCenter: .topTrailing)
     }
+}
 
-    // MARK: - All-Time Archive Card
+// MARK: - All-Time Archive Vault Card
 
-    private var history: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+private struct AllTimeArchiveCard: View {
+    let summary: ListeningSummary
+    let rarity: Rarity
+    let isAccessibilitySize: Bool
 
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Eyebrow("ALL-TIME ARCHIVE")
+    var body: some View {
+        let hours = summary.lifetimeMinutes / 60
+        let progress = rarity.progressToNextTier(minutes: summary.lifetimeMinutes)
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(rarity.accent)
+                        .accessibilityHidden(true)
+                    Eyebrow("ALL-TIME ARCHIVE", color: .white.opacity(0.68))
+                }
                 Spacer(minLength: 8)
-                if activeSummary.firstUse != "—" {
-                    Text("Since \(activeSummary.firstUse)")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(DossierPalette.dim)
+                if summary.firstUse != "—" {
+                    Text("Since \(summary.firstUse)")
+                        .font(.system(.caption2, design: .monospaced, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.64))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(.white.opacity(0.055), in: Capsule())
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.09), lineWidth: 0.75))
                 }
             }
 
-            if dynamicTypeSize.isAccessibilitySize {
+            if isAccessibilitySize {
                 VStack(spacing: 10) {
-                    statWell("Listening time", activeSummary.lifetimeMinutes.minutesText)
-                    statWell("Sessions", activeSummary.sessions.formatted())
-                    statWell("Avg. session", activeSummary.averageSessionMinutes.minutesText)
-                    statWell("Longest session", activeSummary.longestSessionMinutes.minutesText)
+                    statWell("Listening time", summary.lifetimeMinutes.minutesText, icon: "clock.fill", tint: rarity.accent, featured: true)
+                    statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quiet.color)
+                    statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: .white.opacity(0.75))
+                    statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderate.color)
                 }
             } else {
                 Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                     GridRow {
-                        statWell("Listening time", activeSummary.lifetimeMinutes.minutesText)
-                        statWell("Sessions", activeSummary.sessions.formatted())
+                        statWell("Listening time", summary.lifetimeMinutes.minutesText, icon: "clock.fill", tint: rarity.accent, featured: true)
+                        statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quiet.color)
                     }
                     GridRow {
-                        statWell("Avg. session", activeSummary.averageSessionMinutes.minutesText)
-                        statWell("Longest session", activeSummary.longestSessionMinutes.minutesText)
+                        statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: .white.opacity(0.75))
+                        statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderate.color)
                     }
                 }
             }
+
+            // Sleek Collector Tier Progress footer tying Rings into the 10-tier vault
+            VStack(alignment: .leading, spacing: 7) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.11), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
+
+                HStack(spacing: 8) {
+                    Text(LocalizedStringKey(rarity.title))
+                        .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+                        .tracking(0.8)
+                        .foregroundStyle(rarity.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    Spacer(minLength: 6)
+
+                    if let next = rarity.nextTierHours {
+                        let remaining = max(1, Int(ceil(next - hours)))
+                        Text("\(remaining)h to next tier")
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.70))
+                            .lineLimit(1)
+                    } else {
+                        Text("Max tier reached ✦")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(rarity.accent)
+                            .lineLimit(1)
+                    }
+                }
+
+                GeometryReader { geo in
+                    let w = max(0, geo.size.width)
+                    let barW = w > 0 ? min(w, max(8, w * progress)) : 0
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(.white.opacity(0.08))
+                        if barW > 0 {
+                            Capsule()
+                                .fill(rarity.foil)
+                                .frame(width: barW)
+                                .overlay(alignment: .top) {
+                                    Capsule()
+                                        .fill(.white.opacity(0.32))
+                                        .frame(height: 1.5)
+                                        .padding(.horizontal, 3)
+                                }
+                                .shadow(color: rarity.glow.opacity(0.45), radius: 4)
+                        }
+                    }
+                }
+                .frame(height: 5.5)
+                .accessibilityHidden(true)
+            }
+            .padding(.top, 2)
         }
         .padding(18)
-        .background(DossierPalette.panel, in: shape)
-        .overlay(shape.strokeBorder(DossierPalette.hairline, lineWidth: 1))
+        .ringsPanel(cornerRadius: 24, tint: rarity.glow, tintCenter: .bottomTrailing)
     }
 
-    private func statWell(_ title: LocalizedStringKey, _ value: String) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-        return VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(Theme.secondaryText)
-                .lineLimit(1)
+    private func statWell(
+        _ title: LocalizedStringKey,
+        _ value: String,
+        icon: String,
+        tint: Color,
+        featured: Bool = false
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 4)
+                Image(systemName: icon)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(tint.opacity(0.90))
+                    .accessibilityHidden(true)
+            }
+
             Text(value)
-                .font(.system(.title3, design: .rounded).weight(.bold))
+                .font(.system(.title3, design: .rounded).weight(.heavy))
                 .monospacedDigit()
-                .foregroundStyle(.white)
+                .foregroundStyle(featured ? tint : .white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
-        .padding(12)
+        .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.opacity(0.24), in: shape)
-        .overlay(shape.strokeBorder(DossierPalette.hairline, lineWidth: 1))
+        .background {
+            shape.fill(
+                LinearGradient(
+                    colors: featured
+                        ? [tint.opacity(0.15), Color.black.opacity(0.28)]
+                        : [Color.white.opacity(0.048), Color.black.opacity(0.26)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(alignment: .top) {
+                if featured {
+                    LinearGradient(
+                        colors: [.clear, tint.opacity(0.45), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, 14)
+                }
+            }
+        }
+        .overlay {
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: featured
+                        ? [tint.opacity(0.42), .white.opacity(0.06)]
+                        : [.white.opacity(0.15), .white.opacity(0.04)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 0.9
+            )
+        }
         .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
-    HomeView(summary: SampleData.summary, primaryCard: SampleCards.all.first, isSampleData: true)
+    HomeView(summary: SampleData.summary, primaryCard: SampleCards.all.first, cards: SampleCards.all, isSampleData: true)
 }

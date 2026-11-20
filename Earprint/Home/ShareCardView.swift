@@ -170,6 +170,29 @@ struct ShareSheet: View {
 
     @Environment(\.displayScale) private var displayScale
     @Environment(\.locale) private var locale
+    @State private var renderedImage: Image?
+
+    private struct RenderKey: Hashable {
+        let cardID: String?
+        let deviceName: String
+        let periodLabel: String
+        let weekMinutes: Int
+        let lifetimeMinutes: Int
+        let colorID: String?
+        let localeID: String
+    }
+
+    private var renderKey: RenderKey {
+        RenderKey(
+            cardID: primaryCard?.id,
+            deviceName: summary.deviceName,
+            periodLabel: summary.periodLabel,
+            weekMinutes: Int(summary.weekMinutes.rounded()),
+            lifetimeMinutes: Int(summary.lifetimeMinutes.rounded()),
+            colorID: colorOption?.id,
+            localeID: locale.identifier
+        )
+    }
 
     var body: some View {
         // The share card keeps its 360×640 design size (it is also the exported image);
@@ -199,6 +222,10 @@ struct ShareSheet: View {
         }
         .background(DossierPalette.ink.ignoresSafeArea())
         .presentationDragIndicator(.visible)
+        .task(id: renderKey) {
+            await Task.yield()
+            renderedImage = renderImage()
+        }
     }
 
     private func preview(maxScale: CGFloat) -> some View {
@@ -210,7 +237,7 @@ struct ShareSheet: View {
     }
 
     @ViewBuilder private var shareButton: some View {
-        if let image = renderImage() {
+        if let image = renderedImage {
             ShareLink(item: image, preview: SharePreview(Text("My Earprint"), image: image)) {
                 Label("Share image", systemImage: "square.and.arrow.up")
                     .font(.headline)
@@ -219,6 +246,13 @@ struct ShareSheet: View {
                     .background(.white, in: Capsule())
                     .foregroundStyle(.black)
             }
+        } else {
+            Label("Share image", systemImage: "square.and.arrow.up")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(.white.opacity(0.45), in: Capsule())
+                .foregroundStyle(.black.opacity(0.5))
         }
     }
 

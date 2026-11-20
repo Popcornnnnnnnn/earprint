@@ -129,27 +129,56 @@ struct LibrarySnapshot: Sendable {
 
     /// Buckets 15-minute slots into local day × hour cells using the calendar's *current* time zone.
     /// DST: the repeated autumn hour adds into the same hour cell; the skipped spring hour stays empty.
+    /// Precomputes the `days` local day intervals once so normal 24-hour days resolve in O(1) arithmetic
+    /// without invoking `Calendar` on every 15-minute slot.
     static func gridWindow(slots: [Int: SlotTotals], now: Date, calendar: Calendar, days: Int) -> GridWindow {
         var seconds = Array(repeating: Array(repeating: 0.0, count: 24), count: days)
         var energy = seconds
+        guard days > 0 else {
+            return GridWindow(grid: ListeningGrid(minutes: [], decibels: []), weekSeconds: 0, weekEnergy: 0)
+        }
+
         let today = calendar.startOfDay(for: now)
         let firstDay = calendar.date(byAdding: .day, value: -(days - 1), to: today) ?? today
+
+        var dayStarts = [Double](repeating: 0, count: days)
+        var dayEnds = [Double](repeating: 0, count: days)
+        var uniformDay = [Bool](repeating: false, count: days)
+        let tz = calendar.timeZone
+
+        for d in 0..<days {
+            let startDate = calendar.date(byAdding: .day, value: d, to: firstDay) ?? firstDay
+            let endDate = calendar.date(byAdding: .day, value: d + 1, to: firstDay) ?? startDate.addingTimeInterval(86_400)
+            let s = startDate.timeIntervalSince1970
+            let e = endDate.timeIntervalSince1970
+            dayStarts[d] = s
+            dayEnds[d] = e
+            uniformDay[d] = (e - s == 86_400)
+                && tz.secondsFromGMT(for: startDate) == tz.secondsFromGMT(for: Date(timeIntervalSince1970: e - 1))
+        }
+
+        let firstStart = dayStarts[0]
+        let nowEpoch = now.timeIntervalSince1970
+        let lastDayEnd = dayEnds[days - 1]
         var weekSeconds = 0.0, weekEnergy = 0.0
-        var dayCache: [Date: Int] = [:]
 
         for (index, slot) in slots where slot.seconds > 0 {
-            let start = Date(timeIntervalSince1970: Double(index) * ListeningAggregate.slotLength)
-            guard start >= firstDay, start <= now else { continue }
-            let dayStart = calendar.startOfDay(for: start)
-            let day: Int
-            if let cached = dayCache[dayStart] {
-                day = cached
+            let t = Double(index) * ListeningAggregate.slotLength
+            guard t >= firstStart, t <= nowEpoch, t < lastDayEnd else { continue }
+
+            var day = min(days - 1, max(0, Int((t - firstStart) / 86_400)))
+            while day + 1 < days && t >= dayStarts[day + 1] { day += 1 }
+            while day > 0 && t < dayStarts[day] { day -= 1 }
+            guard t >= dayStarts[day] && t < dayEnds[day] else { continue }
+
+            let hour: Int
+            if uniformDay[day] {
+                hour = min(23, max(0, Int((t - dayStarts[day]) / 3600)))
             } else {
-                day = calendar.dateComponents([.day], from: firstDay, to: dayStart).day ?? -1
-                dayCache[dayStart] = day
+                hour = calendar.component(.hour, from: Date(timeIntervalSince1970: t))
             }
-            guard day >= 0, day < days else { continue }
-            let hour = calendar.component(.hour, from: start)
+            guard hour >= 0 && hour < 24 else { continue }
+
             seconds[day][hour] += slot.seconds
             energy[day][hour] += slot.energy
             if day >= days - 7 {
@@ -316,28 +345,95 @@ extension LibrarySnapshot {
 }
 
 enum DateText {
-    static func formatter(_ template: String, calendar: Calendar) -> DateFormatter {
-        let f = DateFormatter()
-        f.calendar = calendar
-        f.timeZone = calendar.timeZone
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = template
-        return f
+    private struct FormatterKey: Hashable {
+        let format: String
+        let isTemplate: Bool
+        let calendarID: Calendar.Identifier
+        let timeZoneID: String
+        let localeID: String
+    }
+
+    private final class FormatterPool: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cache: [FormatterKey: DateFormatter] = [:]
+
+        func string(from date: Date, format: String, isTemplate: Bool, calendar: Calendar, locale: Locale) -> String {
+            let key = FormatterKey(
+                format: format,
+                isTemplate: isTemplate,
+                calendarID: calendar.identifier,
+                timeZoneID: calendar.timeZone.identifier,
+                localeID: locale.identifier
+            )
+            lock.lock()
+            defer { lock.unlock() }
+            let formatter: DateFormatter
+            if let existing = cache[key] {
+                formatter = existing
+            } else {
+                let f = DateFormatter()
+                f.calendar = calendar
+                f.timeZone = calendar.timeZone
+                f.locale = locale
+                if isTemplate {
+                    f.setLocalizedDateFormatFromTemplate(format)
+                } else {
+                    f.dateFormat = format
+                }
+                cache[key] = f
+                formatter = f
+            }
+            return formatter.string(from: date)
+        }
+        func date(from text: String, format: String, calendar: Calendar, locale: Locale) -> Date? {
+            let key = FormatterKey(
+                format: format,
+                isTemplate: false,
+                calendarID: calendar.identifier,
+                timeZoneID: calendar.timeZone.identifier,
+                localeID: locale.identifier
+            )
+            lock.lock()
+            defer { lock.unlock() }
+            let formatter: DateFormatter
+            if let existing = cache[key] {
+                formatter = existing
+            } else {
+                let f = DateFormatter()
+                f.calendar = calendar
+                f.timeZone = calendar.timeZone
+                f.locale = locale
+                f.dateFormat = format
+                cache[key] = f
+                formatter = f
+            }
+            return formatter.date(from: text)
+        }
+    }
+
+    private static let pool = FormatterPool()
+    private static let posixLocale = Locale(identifier: "en_US_POSIX")
+
+    static func parse(_ text: String, dateFormat: String, calendar: Calendar, locale: Locale = posixLocale) -> Date? {
+        pool.date(from: text, format: dateFormat, calendar: calendar, locale: locale)
+    }
+
+    static func format(_ date: Date, dateFormat: String, calendar: Calendar, locale: Locale = posixLocale) -> String {
+        pool.string(from: date, format: dateFormat, isTemplate: false, calendar: calendar, locale: locale)
+    }
+
+    static func formatTemplate(_ date: Date, template: String, calendar: Calendar, locale: Locale) -> String {
+        pool.string(from: date, format: template, isTemplate: true, calendar: calendar, locale: locale)
     }
 
     /// "2026.10.30"
     static func dotted(_ date: Date, calendar: Calendar) -> String {
-        formatter("yyyy.MM.dd", calendar: calendar).string(from: date)
+        format(date, dateFormat: "yyyy.MM.dd", calendar: calendar)
     }
 
     /// "Oct 30"
     static func monthDay(_ date: Date, calendar: Calendar) -> String {
-        let format = DateFormatter()
-        format.calendar = calendar
-        format.timeZone = calendar.timeZone
-        format.locale = AppLanguage.current.locale
-        format.setLocalizedDateFormatFromTemplate("MMM d")
-        return format.string(from: date)
+        formatTemplate(date, template: "MMM d", calendar: calendar, locale: AppLanguage.current.locale)
     }
 
     /// Stable date strings consumed by the sample dossier's parser.
@@ -345,7 +441,7 @@ enum DateText {
         if calendar.isDate(date, inSameDayAs: now) { return "Today" }
         if let y = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: y) { return "Yesterday" }
         if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
-            return formatter("MMM d", calendar: calendar).string(from: date)
+            return format(date, dateFormat: "MMM d", calendar: calendar)
         }
         return dotted(date, calendar: calendar)
     }
@@ -356,7 +452,7 @@ enum DateText {
         let start = calendar.date(byAdding: .day, value: -6, to: end) ?? end
         let sameMonth = calendar.component(.month, from: start) == calendar.component(.month, from: end)
         let tail = sameMonth && AppLanguage.current == .english
-            ? formatter("d", calendar: calendar).string(from: end) : monthDay(end, calendar: calendar)
+            ? format(end, dateFormat: "d", calendar: calendar) : monthDay(end, calendar: calendar)
         return "\(monthDay(start, calendar: calendar)) – \(tail)"
     }
 }

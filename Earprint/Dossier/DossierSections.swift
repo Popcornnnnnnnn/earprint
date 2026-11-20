@@ -149,20 +149,29 @@ struct AirtimeHero: View {
         }
     }
 
-    /// Watch-style tick bezel.
+    /// Watch-style tick bezel (batched into 2 paths instead of 120 draw calls).
     private var bezel: some View {
         Canvas { context, size in
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             let r = min(size.width, size.height) / 2
+            var major = Path()
+            var minor = Path()
             for i in 0..<120 {
                 let a = Double(i) / 120 * 2 * .pi - .pi / 2
                 let long = i % 10 == 0
                 let r0 = r - (long ? 9 : 5)
-                var p = Path()
-                p.move(to: CGPoint(x: c.x + r0 * cos(a), y: c.y + r0 * sin(a)))
-                p.addLine(to: CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a)))
-                context.stroke(p, with: .color(.white.opacity(long ? 0.35 : 0.13)), lineWidth: long ? 1.5 : 1)
+                let start = CGPoint(x: c.x + r0 * cos(a), y: c.y + r0 * sin(a))
+                let end = CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a))
+                if long {
+                    major.move(to: start)
+                    major.addLine(to: end)
+                } else {
+                    minor.move(to: start)
+                    minor.addLine(to: end)
+                }
             }
+            context.stroke(minor, with: .color(.white.opacity(0.13)), lineWidth: 1)
+            context.stroke(major, with: .color(.white.opacity(0.35)), lineWidth: 1.5)
         }
     }
 
@@ -363,7 +372,7 @@ struct HabitsBento: View {
     }
 }
 
-/// Groups of five tally strokes, capped so it never overflows.
+/// Groups of five tally strokes, capped so it never overflows (batched into 2 paths).
 struct TallyMarks: View {
     let count: Int
     let color: Color
@@ -374,23 +383,24 @@ struct TallyMarks: View {
             let groups = min(Int(size.width / groupWidth), max(1, Int(ceil(Double(count) / 5))))
             let perGroupValue = max(1, Double(count) / Double(groups * 5))
             var drawn = 0
+            var verticals = Path()
+            var slashes = Path()
             for g in 0..<groups {
                 let x0 = CGFloat(g) * groupWidth
                 for i in 0..<4 where Double(drawn) * perGroupValue < Double(count) {
-                    var p = Path()
-                    p.move(to: CGPoint(x: x0 + CGFloat(i) * 4 + 2, y: 4))
-                    p.addLine(to: CGPoint(x: x0 + CGFloat(i) * 4 + 1, y: size.height - 4))
-                    context.stroke(p, with: .color(color.opacity(0.8)), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    verticals.move(to: CGPoint(x: x0 + CGFloat(i) * 4 + 2, y: 4))
+                    verticals.addLine(to: CGPoint(x: x0 + CGFloat(i) * 4 + 1, y: size.height - 4))
                     drawn += 1
                 }
                 if Double(drawn) * perGroupValue < Double(count) {
-                    var slash = Path()
-                    slash.move(to: CGPoint(x: x0 - 1, y: size.height - 7))
-                    slash.addLine(to: CGPoint(x: x0 + 17, y: 7))
-                    context.stroke(slash, with: .color(color), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    slashes.move(to: CGPoint(x: x0 - 1, y: size.height - 7))
+                    slashes.addLine(to: CGPoint(x: x0 + 17, y: 7))
                     drawn += 1
                 }
             }
+            let style = StrokeStyle(lineWidth: 1.6, lineCap: .round)
+            context.stroke(verticals, with: .color(color.opacity(0.8)), style: style)
+            context.stroke(slashes, with: .color(color), style: style)
         }
         .accessibilityHidden(true)
     }
@@ -469,14 +479,38 @@ struct DayDots: View {
 
     var body: some View {
         let columns = days.count <= 7 ? 7 : (days.count <= 14 ? 7 : 10)
+        let rows = max(1, Int(ceil(Double(days.count) / Double(columns))))
         let maxM = max(days.map(\.minutes).max() ?? 1, 1)
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: columns), spacing: 3) {
-            ForEach(days) { d in
-                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
-                    .fill(d.minutes > 0 ? color.opacity(0.25 + 0.75 * d.minutes / maxM) : .white.opacity(0.07))
-                    .aspectRatio(1, contentMode: .fit)
+        let spacing: CGFloat = 3
+
+        Canvas { context, size in
+            let cell = min(
+                (size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns),
+                (size.height - spacing * CGFloat(rows - 1)) / CGFloat(rows)
+            )
+            guard cell > 0 else { return }
+            var emptyPath = Path()
+            for (index, day) in days.enumerated() {
+                let col = index % columns
+                let row = index / columns
+                let rect = CGRect(
+                    x: CGFloat(col) * (cell + spacing),
+                    y: CGFloat(row) * (cell + spacing),
+                    width: cell,
+                    height: cell
+                )
+                let rounded = Path(roundedRect: rect, cornerRadius: 2.5, style: .continuous)
+                if day.minutes > 0 {
+                    context.fill(rounded, with: .color(color.opacity(0.25 + 0.75 * day.minutes / maxM)))
+                } else {
+                    emptyPath.addPath(rounded)
+                }
+            }
+            if !emptyPath.isEmpty {
+                context.fill(emptyPath, with: .color(.white.opacity(0.07)))
             }
         }
+        .frame(height: CGFloat(rows) * 11 + CGFloat(max(0, rows - 1)) * spacing)
         .accessibilityHidden(true)
     }
 }

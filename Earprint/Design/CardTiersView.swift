@@ -6,30 +6,7 @@ struct CardTiersView: View {
     var showsDoneButton = false
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @StateObject private var motion = TiltMotion()
     @State private var inspectedTier: Rarity?
-
-    private var topCard: HeadphoneCard? {
-        ownedCards.max(by: { $0.lifetimeMinutes < $1.lifetimeMinutes })
-    }
-
-    private var highestHours: Double {
-        (topCard?.lifetimeMinutes ?? 0) / 60
-    }
-
-    private var unlockedTierCount: Int {
-        guard !ownedCards.isEmpty else { return 0 }
-        return Rarity.allAscending.filter { highestHours >= $0.minimumHours }.count
-    }
-
-    private var selectedTier: Rarity {
-        inspectedTier ?? topCard?.rarity ?? .bronze
-    }
-
-    private var liveTilt: CGSize {
-        reduceMotion ? .zero : motion.tilt
-    }
 
     private let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -37,9 +14,17 @@ struct CardTiersView: View {
     ]
 
     var body: some View {
+        let topCard = ownedCards.max(by: { $0.lifetimeMinutes < $1.lifetimeMinutes })
+        let highestHours = (topCard?.lifetimeMinutes ?? 0) / 60
+        let hasCards = !ownedCards.isEmpty
+        let unlockedTierCount = hasCards ? Rarity.allAscending.filter { highestHours >= $0.minimumHours }.count : 0
+        let selectedTier = inspectedTier ?? topCard?.rarity ?? .bronze
+
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                spotlightHero(selectedTier)
+                LiveTiltView(isActive: true) { tilt in
+                    spotlightHero(selectedTier, tilt: tilt, topCard: topCard, highestHours: highestHours, hasCards: hasCards)
+                }
 
                 HStack {
                     Text("COLLECTOR BINDER")
@@ -58,7 +43,14 @@ struct CardTiersView: View {
 
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(Array(Rarity.allAscending.enumerated()), id: \.element.id) { index, tier in
-                        binderCard(tier, rank: index + 1)
+                        binderCard(
+                            tier,
+                            rank: index + 1,
+                            topCard: topCard,
+                            highestHours: highestHours,
+                            hasCards: hasCards,
+                            selectedTier: selectedTier
+                        )
                     }
                 }
             }
@@ -66,6 +58,7 @@ struct CardTiersView: View {
             .padding(.vertical, 14)
             .padding(.bottom, 16)
         }
+        .pauseMotionWhileScrolling("tiers")
         .background(Color(red: 0.035, green: 0.035, blue: 0.055).ignoresSafeArea())
         .foregroundStyle(.white)
         .navigationTitle("Card Tiers")
@@ -81,19 +74,20 @@ struct CardTiersView: View {
             if inspectedTier == nil {
                 inspectedTier = topCard?.rarity ?? .bronze
             }
-            if !reduceMotion { motion.start() }
-        }
-        .onDisappear { motion.stop() }
-        .onChange(of: reduceMotion) { _, reduced in
-            if reduced { motion.stop() } else { motion.start() }
         }
     }
 
     // MARK: - Interactive Spotlight Hero
 
-    private func spotlightHero(_ tier: Rarity) -> some View {
+    private func spotlightHero(
+        _ tier: Rarity,
+        tilt liveTilt: CGSize,
+        topCard: HeadphoneCard?,
+        highestHours: Double,
+        hasCards: Bool
+    ) -> some View {
         let rank = (Rarity.allAscending.firstIndex(of: tier) ?? 0) + 1
-        let reached = !ownedCards.isEmpty && highestHours >= tier.minimumHours
+        let reached = hasCards && highestHours >= tier.minimumHours
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         let ink = tier.ink
         let badgeBg = Color.black.opacity(ink == .white ? 0.34 : 0.16)
@@ -191,7 +185,10 @@ struct CardTiersView: View {
         .background(FoilSurface(rarity: tier, tilt: liveTilt))
         .clipShape(shape)
         .overlay(shape.strokeBorder(.white.opacity(0.45), lineWidth: 1.4))
-        .shadow(color: tier.glow.opacity(0.35), radius: 22, x: -liveTilt.width * 8, y: 12)
+        .background {
+            shape.fill(Color.black)
+                .shadow(color: tier.glow.opacity(0.35), radius: 20, y: 12)
+        }
         .rotation3DEffect(.degrees(Double(liveTilt.width) * 4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
         .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
         .accessibilityElement(children: .combine)
@@ -199,8 +196,15 @@ struct CardTiersView: View {
 
     // MARK: - 2-Column Trophy Binder Tile
 
-    private func binderCard(_ tier: Rarity, rank: Int) -> some View {
-        let unlocked = !ownedCards.isEmpty && highestHours >= tier.minimumHours
+    private func binderCard(
+        _ tier: Rarity,
+        rank: Int,
+        topCard: HeadphoneCard?,
+        highestHours: Double,
+        hasCards: Bool,
+        selectedTier: Rarity
+    ) -> some View {
+        let unlocked = hasCards && highestHours >= tier.minimumHours
         let isTopCurrent = topCard?.rarity == tier
         let isSelected = selectedTier == tier
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -269,7 +273,7 @@ struct CardTiersView: View {
             .foregroundStyle(ink)
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
-            .background(FoilSurface(rarity: tier, tilt: liveTilt))
+            .background(FoilSurface(rarity: tier, tilt: .zero))
             .clipShape(shape)
             .saturation(unlocked || isSelected ? 1.0 : 0.72)
             .opacity(unlocked || isSelected ? 1.0 : 0.68)
@@ -279,11 +283,12 @@ struct CardTiersView: View {
                     lineWidth: isSelected ? 2 : 1
                 )
             )
-            .shadow(
-                color: isSelected ? tier.glow.opacity(0.38) : .clear,
-                radius: 10,
-                y: 4
-            )
+            .background {
+                if isSelected {
+                    shape.fill(Color.black)
+                        .shadow(color: tier.glow.opacity(0.38), radius: 10, y: 4)
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

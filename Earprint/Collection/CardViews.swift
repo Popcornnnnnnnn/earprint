@@ -24,6 +24,48 @@ struct CardFaceRotation: ViewModifier, Animatable {
     }
 }
 
+/// Static micro-texture for `FoilSurface`, isolated as `Equatable` so tilt changes never redraw the Canvas.
+private struct FoilTexturePattern: View, Equatable {
+    let material: FoilMaterial
+
+    var body: some View {
+        Canvas { context, size in
+            switch material {
+            case .brushed:
+                var path = Path()
+                stride(from: CGFloat(0), to: size.height, by: 3.5).forEach { y in
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(path, with: .color(.white.opacity(0.065)), lineWidth: 0.75)
+
+            case .carbon:
+                var pathA = Path()
+                stride(from: -size.height, to: size.width + size.height, by: 7).forEach { x in
+                    pathA.move(to: CGPoint(x: x, y: size.height))
+                    pathA.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    pathA.move(to: CGPoint(x: x, y: 0))
+                    pathA.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                }
+                context.stroke(pathA, with: .color(.white.opacity(0.055)), lineWidth: 1)
+
+            case .matteGrain, .frosted, .satin, .faceted, .holo:
+                var path = Path()
+                stride(from: -size.height, to: size.width, by: 5).forEach { x in
+                    path.move(to: CGPoint(x: x, y: size.height))
+                    path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                }
+                let lineOpacity: Double = switch material {
+                case .holo: 0.10
+                case .matteGrain, .frosted: 0.04
+                default: 0.06
+                }
+                context.stroke(path, with: .color(.white.opacity(lineOpacity)), lineWidth: 1)
+            }
+        }
+    }
+}
+
 /// Foil surface: base gradient + finish-specific micro texture + prism sheen + specular highlight that move with tilt.
 struct FoilSurface: View {
     let rarity: Rarity
@@ -34,41 +76,9 @@ struct FoilSurface: View {
             AngularGradient(colors: rarity.baseColors, center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.4 + tilt.height * 0.3),
                             angle: .degrees(200 + tilt.width * 60))
 
-            // Distinct surface finish pattern matching each tier's material craft.
-            Canvas { context, size in
-                switch rarity.material {
-                case .brushed:
-                    var path = Path()
-                    stride(from: CGFloat(0), to: size.height, by: 3.5).forEach { y in
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: size.width, y: y))
-                    }
-                    context.stroke(path, with: .color(.white.opacity(0.065)), lineWidth: 0.75)
-
-                case .carbon:
-                    var pathA = Path()
-                    stride(from: -size.height, to: size.width + size.height, by: 7).forEach { x in
-                        pathA.move(to: CGPoint(x: x, y: size.height))
-                        pathA.addLine(to: CGPoint(x: x + size.height, y: 0))
-                        pathA.move(to: CGPoint(x: x, y: 0))
-                        pathA.addLine(to: CGPoint(x: x + size.height, y: size.height))
-                    }
-                    context.stroke(pathA, with: .color(.white.opacity(0.055)), lineWidth: 1)
-
-                case .matteGrain, .frosted, .satin, .faceted, .holo:
-                    var path = Path()
-                    stride(from: -size.height, to: size.width, by: 5).forEach { x in
-                        path.move(to: CGPoint(x: x, y: size.height))
-                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
-                    }
-                    let lineOpacity: Double = switch rarity.material {
-                    case .holo: 0.10
-                    case .matteGrain, .frosted: 0.04
-                    default: 0.06
-                    }
-                    context.stroke(path, with: .color(.white.opacity(lineOpacity)), lineWidth: 1)
-                }
-            }
+            // Distinct surface finish pattern matching each tier's material craft (static, never redrawn on tilt).
+            FoilTexturePattern(material: rarity.material)
+                .equatable()
 
             if rarity.material == .faceted {
                 LinearGradient(
@@ -121,27 +131,45 @@ struct ActiveWearDot: View {
     }
 }
 
+/// Caches asset catalog presence checks so `HeadphoneArtwork` doesn't probe `UIImage(named:)` repeatedly during scrolling.
+@MainActor
+private enum ArtworkAssetCache {
+    private static var availability: [String: Bool] = [:]
+
+    static func exists(_ name: String) -> Bool {
+        if let cached = availability[name] { return cached }
+        let present = UIImage(named: name) != nil
+        availability[name] = present
+        return present
+    }
+}
+
 /// Realistic transparent 3D product render for a headphone card (used on card faces & thumbnails).
 struct HeadphoneArtwork: View {
     let card: HeadphoneCard
     var colorOption: DeviceColorOption? = nil
     var showsChargingCase = true
     var usesProductArtwork = true
+    var showsShadow = true
 
     private var assetName: String? {
         guard usesProductArtwork else { return nil }
-        if let custom = colorOption?.cardAssetName, UIImage(named: custom) != nil {
+        if let custom = colorOption?.cardAssetName, ArtworkAssetCache.exists(custom) {
             return custom
         }
-        return showsChargingCase ? card.modelKey.collectibleArtwork : card.modelKey.collectionArtwork
+        let fallback = showsChargingCase ? card.modelKey.collectibleArtwork : card.modelKey.collectionArtwork
+        if let fallback, ArtworkAssetCache.exists(fallback) {
+            return fallback
+        }
+        return nil
     }
 
     var body: some View {
-        if let assetName, UIImage(named: assetName) != nil {
+        if let assetName {
             Image(assetName)
                 .resizable()
                 .scaledToFit()
-                .shadow(color: .black.opacity(0.28), radius: 10, y: 7)
+                .shadow(color: showsShadow ? .black.opacity(0.28) : .clear, radius: showsShadow ? 9 : 0, y: showsShadow ? 6 : 0)
         } else {
             Image(systemName: card.symbol)
                 .font(.system(size: 100, weight: .thin))
@@ -206,7 +234,6 @@ struct CardHorizontalFront: View {
                 HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
                     .frame(width: 128, height: 128)
                     .offset(x: -tilt.width * 10, y: -tilt.height * 8)
-                    .shadow(color: .black.opacity(0.22), radius: 10, x: tilt.width * 8, y: 7 + tilt.height * 6)
             }
         }
         .foregroundStyle(ink)
@@ -380,6 +407,7 @@ struct CardBack: View {
 
             ZStack {
                 EarprintGlyph(grid: card.grid, showHourLabels: false)
+                    .equatable()
                 VStack(spacing: 0) {
                     Text("4 weeks").font(.system(size: 10, weight: .semibold)).opacity(0.6)
                     Text("listening").font(.system(size: 10)).opacity(0.5)

@@ -15,7 +15,10 @@ enum StudioEnvironment {
             return "\(Int(r * 255))-\(Int(g * 255))-\(Int(b * 255))"
         }.joined(separator: "_")
         if let cached = cache[key] { return cached }
-        let image = render(tint: tint)
+        // Render the 1024×512 equirectangular IBL off the main actor to avoid launch/open hitches.
+        let image = await Task.detached(priority: .userInitiated) {
+            render(tint: tint)
+        }.value
         let resource = try await EnvironmentResource(equirectangular: image, withName: "studio-\(key)")
         cache[key] = resource
         return resource
@@ -246,6 +249,17 @@ struct HeadphoneModelView: View {
     }
 }
 
+extension Rarity {
+    /// Cached UIColor tint array for RealityKit IBL so view bodies never allocate per-frame arrays.
+    private static let cachedStudioTints: [Rarity: [UIColor]] = Dictionary(
+        uniqueKeysWithValues: Rarity.allCases.map { ($0, $0.baseColors.map { UIColor($0) }) }
+    )
+
+    var studioTint: [UIColor] {
+        Self.cachedStudioTints[self] ?? []
+    }
+}
+
 extension HeadphoneCard {
     var finish: HeadphoneFinish {
         switch kind {
@@ -255,7 +269,7 @@ extension HeadphoneCard {
         }
     }
 
-    var foilTint: [UIColor] { rarity.baseColors.map { UIColor($0) } }
+    var foilTint: [UIColor] { rarity.studioTint }
 
     /// The bundled model for this product family, when available.
     var modelAssetName: String? { modelKey.collectibleModel }
