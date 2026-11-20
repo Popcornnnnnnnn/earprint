@@ -2,19 +2,19 @@ import SwiftUI
 
 enum Theme {
     static let background = LinearGradient(
-        colors: [Color(red: 0.05, green: 0.06, blue: 0.12), Color(red: 0.02, green: 0.02, blue: 0.04)],
+        colors: [Color(red: 0.035, green: 0.035, blue: 0.055), Color(red: 0.05, green: 0.05, blue: 0.075)],
         startPoint: .top,
         endPoint: .bottom
     )
-    static let card = Color.white.opacity(0.06)
-    static let cardStroke = Color.white.opacity(0.08)
+    static let card = Color(red: 0.075, green: 0.075, blue: 0.105)
+    static let cardStroke = Color.white.opacity(0.09)
     static let secondaryText = Color.white.opacity(0.55)
 
-    static let quiet = RGB(0.36, 0.90, 0.80)
-    static let moderate = RGB(1.00, 0.76, 0.33)
-    static let loud = RGB(1.00, 0.38, 0.40)
+    static let quiet = RGB(0.32, 0.90, 0.86)
+    static let moderate = RGB(0.98, 0.78, 0.36)
+    static let loud = RGB(0.99, 0.34, 0.46)
 
-    /// Teal when quiet, amber around 70 dB(A), coral when loud.
+    /// Glacier mint when quiet, champagne gold around 70 dB(A), rose-crimson when loud.
     static func levelColor(db: Double) -> Color {
         switch db {
         case ..<60: return quiet.color

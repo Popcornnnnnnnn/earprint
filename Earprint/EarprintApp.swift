@@ -25,6 +25,7 @@ struct EarprintApp: App {
 
                 HomeView(
                     summary: library.homeSummary,
+                    primaryCard: library.cards.first,
                     isSampleData: library.isShowingSampleData,
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.state == .idle ? nil : library.statusMessage,

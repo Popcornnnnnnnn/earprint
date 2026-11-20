@@ -41,11 +41,16 @@ struct EarprintGlyph: View {
 
     var body: some View {
         Canvas { context, size in
+            let side = min(size.width, size.height)
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = min(size.width, size.height) / 2 * (showHourLabels ? 0.86 : 0.98)
-            let inner = outer * 0.42
+            let outer = side / 2 * (showHourLabels ? 0.82 : 0.94)
+            let inner = outer * 0.46
             let step = (outer - inner) / CGFloat(max(grid.days, 1))
             let maxMinutes = max(grid.maxMinutes, 1)
+            let bezelGap = max(1.4, step * 0.45)
+            let innerRingRadius = max(2, inner - bezelGap * 0.55)
+            let outerRingRadius = outer + bezelGap * 0.55
+            let hairlineWidth = max(0.75, min(1.0, side * 0.0045))
 
             func arc(day: Int, hour: Int) -> Path {
                 let r = inner + step * (CGFloat(day) + 0.5)
@@ -64,10 +69,26 @@ struct EarprintGlyph: View {
             // Faint tracks so empty hours still read as a clock.
             for day in 0..<grid.days {
                 for hour in 0..<24 {
-                    context.stroke(arc(day: day, hour: hour), with: .color(.white.opacity(0.045)),
+                    context.stroke(arc(day: day, hour: hour), with: .color(.white.opacity(0.055)),
                                    style: StrokeStyle(lineWidth: step * 0.55, lineCap: .round))
                 }
             }
+
+            // Concentric inner & outer precision chronometer hairline rings.
+            let innerRingRect = CGRect(
+                x: center.x - innerRingRadius,
+                y: center.y - innerRingRadius,
+                width: innerRingRadius * 2,
+                height: innerRingRadius * 2
+            )
+            let outerRingRect = CGRect(
+                x: center.x - outerRingRadius,
+                y: center.y - outerRingRadius,
+                width: outerRingRadius * 2,
+                height: outerRingRadius * 2
+            )
+            context.stroke(Path(ellipseIn: innerRingRect), with: .color(.white.opacity(0.08)), lineWidth: hairlineWidth)
+            context.stroke(Path(ellipseIn: outerRingRect), with: .color(.white.opacity(0.08)), lineWidth: hairlineWidth)
 
             func drawActive(_ ctx: inout GraphicsContext) {
                 for day in 0..<grid.days {
@@ -88,12 +109,38 @@ struct EarprintGlyph: View {
             }
             drawActive(&context)
 
-            if showHourLabels {
-                for (hour, label) in [(0, "0"), (6, "6"), (12, "12"), (18, "18")] {
-                    let angle = Double(hour) * 15 - 90
-                    let r = outer + 14
-                    let point = CGPoint(x: center.x + r * cos(angle * .pi / 180), y: center.y + r * sin(angle * .pi / 180))
-                    context.draw(Text(label).font(.caption2.weight(.medium)).foregroundStyle(Theme.secondaryText), at: point)
+            // Crisp cardinal tick dots at 0 / 6 / 12 / 18h on the outer bezel ring.
+            let dotDiameter = max(2.2, min(3.4, side * 0.015))
+            let cardinalHours: [(Int, String)] = [(0, "0"), (6, "6"), (12, "12"), (18, "18")]
+            for (hour, label) in cardinalHours {
+                let angle = (Double(hour) * 15 - 90) * .pi / 180
+                let tickPoint = CGPoint(
+                    x: center.x + outerRingRadius * cos(angle),
+                    y: center.y + outerRingRadius * sin(angle)
+                )
+                let dotRect = CGRect(
+                    x: tickPoint.x - dotDiameter / 2,
+                    y: tickPoint.y - dotDiameter / 2,
+                    width: dotDiameter,
+                    height: dotDiameter
+                )
+                context.fill(
+                    Path(ellipseIn: dotRect),
+                    with: .color(.white.opacity(hour == 0 ? 0.78 : 0.48))
+                )
+
+                if showHourLabels {
+                    let labelRadius = outerRingRadius + max(10, side * 0.052)
+                    let labelPoint = CGPoint(
+                        x: center.x + labelRadius * cos(angle),
+                        y: center.y + labelRadius * sin(angle)
+                    )
+                    context.draw(
+                        Text(label)
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Theme.secondaryText),
+                        at: labelPoint
+                    )
                 }
             }
         }

@@ -3,81 +3,171 @@ import SwiftUI
 /// 9:16 card sized for Xiaohongshu, TikTok and Instagram stories.
 struct ShareCardView: View {
     let summary: ListeningSummary
+    var primaryCard: HeadphoneCard? = nil
+    var colorOption: DeviceColorOption? = nil
+
+    private var rarity: Rarity {
+        primaryCard?.rarity ?? Rarity(minutes: summary.lifetimeMinutes)
+    }
+
+    private var resolvedColor: DeviceColorOption? {
+        guard let primaryCard else { return nil }
+        return colorOption ?? DeviceColorOption.defaultOption(for: primaryCard.modelKey)
+    }
 
     var body: some View {
+        let hasWeekListening = summary.weekMinutes > 0
+        let avgDBColor = hasWeekListening ? Theme.levelColor(db: summary.weekDecibels) : DossierPalette.dim
+
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("MY EARPRINT")
-                    .font(.caption.weight(.bold))
-                    .tracking(2)
-                    .foregroundStyle(Theme.secondaryText)
-                Text(summary.periodLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.secondaryText)
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("MY EARPRINT")
+                        .font(.caption.weight(.bold))
+                        .tracking(2)
+                        .foregroundStyle(rarity.accent)
+                    Text(summary.periodLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(DossierPalette.dim)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(LocalizedStringKey(rarity.title))
+                    .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+                    .tracking(1.0)
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(rarity.accent.opacity(0.16), in: Capsule())
+                    .overlay(Capsule().strokeBorder(rarity.accent.opacity(0.45), lineWidth: 0.9))
+                    .foregroundStyle(rarity.accent)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 10)
 
-            EarprintGlyph(grid: summary.grid, showHourLabels: false)
-                .padding(.horizontal, 8)
+            EarprintGlyph(grid: summary.grid, showHourLabels: true)
+                .frame(width: 224, height: 224)
+                .frame(maxWidth: .infinity)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 10)
 
             Text(summary.weekMinutes.minutesText)
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(size: 50, weight: .bold, design: .rounded))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             Text("in my headphones this week")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Text(summary.persona.emoji)
-                Text(LocalizedStringKey(summary.persona.title)).fontWeight(.semibold)
+                Text(LocalizedStringKey(summary.persona.title))
+                    .fontWeight(.semibold)
             }
-            .font(.title3)
-            .padding(.top, 16)
+            .font(.callout)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.white.opacity(0.07), in: Capsule())
+            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+            .padding(.top, 14)
 
             HStack(spacing: 0) {
                 mini("\(summary.sessions)", "sessions")
+                Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
                 mini(summary.longestSessionMinutes.minutesText, "longest")
-                mini("\(Int(summary.weekDecibels.rounded())) dB", "avg level")
+                Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
+                if hasWeekListening {
+                    mini("\(Int(summary.weekDecibels.rounded())) dB",
+                         "avg level",
+                         valueColor: avgDBColor)
+                } else {
+                    mini("—", "avg level", valueColor: avgDBColor)
+                }
             }
-            .padding(.top, 18)
+            .padding(.vertical, 12)
+            .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+            .padding(.top, 16)
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 14)
 
-            HStack {
-                Image(systemName: summary.deviceSymbol)
+            HStack(spacing: 10) {
+                if let primaryCard {
+                    HeadphoneArtwork(card: primaryCard, colorOption: resolvedColor, showsChargingCase: false)
+                        .frame(width: 28, height: 28)
+                        .padding(3)
+                        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 0.75))
+                } else {
+                    Image(systemName: summary.deviceSymbol)
+                        .font(.caption)
+                        .foregroundStyle(rarity.accent)
+                }
+
                 Text(summary.deviceModel)
-                Spacer()
-                Text("Earprint").fontWeight(.semibold)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 5) {
+                    Image(systemName: "ear.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(rarity.accent)
+                    Text("Earprint")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white.opacity(0.75))
+                }
             }
-            .font(.caption)
-            .foregroundStyle(Theme.secondaryText)
         }
-        .padding(28)
+        .padding(26)
         .frame(width: 360, height: 640)
         .background(
             ZStack {
-                Theme.background
-                RadialGradient(colors: [Theme.quiet.color.opacity(0.18), .clear], center: .init(x: 0.5, y: 0.35),
-                               startRadius: 10, endRadius: 320)
+                DossierPalette.ink
+                RadialGradient(
+                    colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.06), .clear],
+                    center: .topTrailing,
+                    startRadius: 10,
+                    endRadius: 340
+                )
+                RadialGradient(
+                    colors: [rarity.accent.opacity(0.12), .clear],
+                    center: UnitPoint(x: 0.45, y: 0.36),
+                    startRadius: 10,
+                    endRadius: 240
+                )
             }
         )
         .foregroundStyle(.white)
     }
 
-    private func mini(_ value: String, _ label: LocalizedStringKey) -> some View {
+    private func mini(_ value: String, _ label: LocalizedStringKey, valueColor: Color = .white) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(.headline, design: .rounded)).monospacedDigit()
-            Text(label).font(.caption2).foregroundStyle(Theme.secondaryText)
+            Text(value)
+                .font(.system(.headline, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Theme.secondaryText)
+                .lineLimit(1)
         }
+        .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 struct ShareSheet: View {
     let summary: ListeningSummary
+    var primaryCard: HeadphoneCard? = nil
+    var colorOption: DeviceColorOption? = nil
+
     @Environment(\.displayScale) private var displayScale
     @Environment(\.locale) private var locale
 
@@ -107,13 +197,13 @@ struct ShareSheet: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .background(Color(red: 0.08, green: 0.08, blue: 0.1).ignoresSafeArea())
+        .background(DossierPalette.ink.ignoresSafeArea())
         .presentationDragIndicator(.visible)
     }
 
     private func preview(maxScale: CGFloat) -> some View {
         FittedDesign(designSize: CGSize(width: 360, height: 640), maxScale: maxScale) {
-            ShareCardView(summary: summary)
+            ShareCardView(summary: summary, primaryCard: primaryCard, colorOption: colorOption)
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
         }
@@ -133,7 +223,10 @@ struct ShareSheet: View {
     }
 
     @MainActor private func renderImage() -> Image? {
-        let renderer = ImageRenderer(content: ShareCardView(summary: summary).environment(\.locale, locale))
+        let renderer = ImageRenderer(
+            content: ShareCardView(summary: summary, primaryCard: primaryCard, colorOption: colorOption)
+                .environment(\.locale, locale)
+        )
         renderer.scale = max(displayScale, 3)
         guard let ui = renderer.uiImage else { return nil }
         return Image(uiImage: ui)

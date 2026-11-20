@@ -41,6 +41,16 @@
         }
       }
     },
+    "%lld dB": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dB"
+          }
+        }
+      }
+    },
     "%lld days": {
       "localizations": {
         "zh-Hans": {
@@ -321,6 +331,16 @@
         }
       }
     },
+    "28-DAY EARPRINT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天声纹"
+          }
+        }
+      }
+    },
     "28-day pattern": {
       "localizations": {
         "zh-Hans": {
@@ -381,12 +401,32 @@
         }
       }
     },
+    "7d": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天"
+          }
+        }
+      }
+    },
     "A regular companion in your rotation": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "常伴左右的日常主力耳机"
+          }
+        }
+      }
+    },
+    "ALL-TIME ARCHIVE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计档案"
           }
         }
       }
@@ -1171,6 +1211,16 @@
         }
       }
     },
+    "Earprint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint"
+          }
+        }
+      }
+    },
     "Earprint hologram seal": {
       "localizations": {
         "zh-Hans": {
@@ -1341,6 +1391,16 @@
         }
       }
     },
+    "HEARING BUDGET": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音暴露限额"
+          }
+        }
+      }
+    },
     "HOLO": {
       "localizations": {
         "zh-Hans": {
@@ -1437,6 +1497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "图片不可用"
+          }
+        }
+      }
+    },
+    "LAST 7 DAYS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "过去 7 天"
           }
         }
       }
@@ -2677,6 +2747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "查看全部卡片等级"
+          }
+        }
+      }
+    },
+    "View card in Collection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在藏品中查看卡片"
           }
         }
       }
