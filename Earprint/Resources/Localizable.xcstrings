@@ -21,6 +21,16 @@
         }
       }
     },
+    "%lld / %lld · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld · %3$@"
+          }
+        }
+      }
+    },
     "%lld cards · %@ together": {
       "localizations": {
         "zh-Hans": {
@@ -141,6 +151,16 @@
         }
       }
     },
+    "%lld wears in %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ 共聆听 %1$lld 次"
+          }
+        }
+      }
+    },
     "%lld years ago": {
       "localizations": {
         "zh-Hans": {
@@ -231,6 +251,66 @@
         }
       }
     },
+    "01 / 04 · COVER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "01 / 04 · 封面"
+          }
+        }
+      }
+    },
+    "02 / 04 · RHYTHM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "02 / 04 · 节律"
+          }
+        }
+      }
+    },
+    "03 / 04 · HABITS & HEARING": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "03 / 04 · 习惯与听力"
+          }
+        }
+      }
+    },
+    "04 / 04 · CERTIFICATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "04 / 04 · 认证证书"
+          }
+        }
+      }
+    },
+    "1 page": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单页"
+          }
+        }
+      }
+    },
+    "10 tiers from Bronze on your first listen all the way to Holo Legendary at 2,000 hours.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 10 个等级，从首次聆听的青铜卡一路进阶至 2,000 小时全息传说卡。"
+          }
+        }
+      }
+    },
     "100+ hours of shared playlists and calls": {
       "localizations": {
         "zh-Hans": {
@@ -271,6 +351,16 @@
         }
       }
     },
+    "4 pages": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 页"
+          }
+        }
+      }
+    },
     "4 weeks": {
       "localizations": {
         "zh-Hans": {
@@ -301,12 +391,32 @@
         }
       }
     },
+    "AMETHYST · MYSTIC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紫水晶 · 秘境"
+          }
+        }
+      }
+    },
     "AVG": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "平均"
+          }
+        }
+      }
+    },
+    "Active days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃天数"
           }
         }
       }
@@ -431,6 +541,26 @@
         }
       }
     },
+    "Avg loudness": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均单次"
+          }
+        }
+      }
+    },
     "Avg. level": {
       "localizations": {
         "zh-Hans": {
@@ -507,6 +637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "蓝色"
+          }
+        }
+      }
+    },
+    "Brushed ice-titanium master finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝冰钛金属大师卡面"
           }
         }
       }
@@ -731,12 +871,52 @@
         }
       }
     },
+    "Cover": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封面"
+          }
+        }
+      }
+    },
+    "Crystalline prism cut near the thousand-hour mark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近千小时的晶莹钻石棱镜切面"
+          }
+        }
+      }
+    },
     "Currently connected": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "当前已连接"
+          }
+        }
+      }
+    },
+    "DAILY AVG": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均时长"
+          }
+        }
+      }
+    },
+    "DIAMOND · PRISM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "钻石 · 棱镜"
           }
         }
       }
@@ -797,6 +977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "第 %lld 天，共 %lld 天"
+          }
+        }
+      }
+    },
+    "Deep cobalt luster for long-haul commutes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "陪伴长途通勤的深海钴蓝光泽"
           }
         }
       }
@@ -931,6 +1121,26 @@
         }
       }
     },
+    "EARPRINT · DEVICE DOSSIER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT · 设备档案"
+          }
+        }
+      }
+    },
+    "EMERALD · VIVID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "祖母绿 · 灵动"
+          }
+        }
+      }
+    },
     "EST.": {
       "localizations": {
         "zh-Hans": {
@@ -1011,6 +1221,16 @@
         }
       }
     },
+    "First wear": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次佩戴"
+          }
+        }
+      }
+    },
     "Flip card": {
       "localizations": {
         "zh-Hans": {
@@ -1041,12 +1261,32 @@
         }
       }
     },
+    "GOLD · RARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黄金 · 稀有"
+          }
+        }
+      }
+    },
     "GRADE": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "评分"
+          }
+        }
+      }
+    },
+    "GRADE %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评级 %@"
           }
         }
       }
@@ -1117,6 +1357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "幻彩 · 传奇"
+          }
+        }
+      }
+    },
+    "Habits": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "习惯"
           }
         }
       }
@@ -1701,6 +1951,16 @@
         }
       }
     },
+    "Peak %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值 %@"
+          }
+        }
+      }
+    },
     "Pink": {
       "localizations": {
         "zh-Hans": {
@@ -1861,6 +2121,16 @@
         }
       }
     },
+    "Rendering preview…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在生成预览…"
+          }
+        }
+      }
+    },
     "Reset cache & resync": {
       "localizations": {
         "zh-Hans": {
@@ -1901,6 +2171,16 @@
         }
       }
     },
+    "SAPPHIRE · COBALT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蓝宝石 · 深海"
+          }
+        }
+      }
+    },
     "SILVER": {
       "localizations": {
         "zh-Hans": {
@@ -1917,6 +2197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "银卡 · 稀有"
+          }
+        }
+      }
+    },
+    "SILVER · UNCOMMON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "白银 · 进阶"
           }
         }
       }
@@ -2027,6 +2317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置"
+          }
+        }
+      }
+    },
+    "Share %lld images": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享 %lld 张图片"
           }
         }
       }
@@ -2157,6 +2457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "深邃碳黑极光臻享卡面"
+          }
+        }
+      }
+    },
+    "Summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "摘要"
           }
         }
       }
@@ -2311,6 +2621,16 @@
         }
       }
     },
+    "Trusted daily pick with warm 24k sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "温润 24K 金光泽的可靠日常伙伴"
+          }
+        }
+      }
+    },
     "UNLOCKED": {
       "localizations": {
         "zh-Hans": {
@@ -2341,6 +2661,16 @@
         }
       }
     },
+    "Velvet ultraviolet glow at 300+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "满 300 小时的丝绒紫晶微光"
+          }
+        }
+      }
+    },
     "View all card tiers": {
       "localizations": {
         "zh-Hans": {
@@ -2351,12 +2681,42 @@
         }
       }
     },
+    "Vivid jewel finish for steady listeners": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "献给稳定聆听者的祖母绿宝石质感"
+          }
+        }
+      }
+    },
+    "WEAR SHARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听占比"
+          }
+        }
+      }
+    },
     "WEARS": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "次数"
+          }
+        }
+      }
+    },
+    "WHO weekly dose": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WHO 周剂量"
           }
         }
       }
@@ -2397,6 +2757,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "聆听 · 过去 7 天"
+          }
+        }
+      }
+    },
+    "Warmed up and entering your rotation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "渐入佳境，成为常用主力耳机"
           }
         }
       }

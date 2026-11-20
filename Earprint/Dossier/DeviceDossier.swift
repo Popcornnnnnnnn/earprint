@@ -280,8 +280,11 @@ struct DeviceDossier: Identifiable {
             .init(id: "minted", kind: .minted, date: first.start, title: "Minted",
                   detail: "First wear · \(first.minutes.minutesText)", tier: .bronze),
         ]
-        let hourMarks: [Double] = [10, 50, 100, 200, 500, 1000, 2000]
-        let tiers: [(Double, Rarity)] = [(25, .silver), (100, .gold), (350, .platinum), (900, .obsidian), (2000, .holo)]
+        let hourMarks: [Double] = [50, 100, 250, 500, 1000, 2000]
+        let tiers: [(Double, Rarity)] = [
+            (10, .silver), (35, .gold), (80, .emerald), (160, .sapphire),
+            (300, .amethyst), (550, .platinum), (900, .diamond), (1400, .obsidian), (2000, .holo)
+        ]
         var cumulative = 0.0
         for session in sessions {
             let before = cumulative

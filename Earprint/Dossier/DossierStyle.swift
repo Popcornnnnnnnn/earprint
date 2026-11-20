@@ -60,8 +60,12 @@ extension Rarity {
     var accent: Color {
         switch self {
         case .holo: Color(red: 0.55, green: 0.95, blue: 0.88)
-        case .obsidian: Color(red: 0.72, green: 0.66, blue: 1.00)
+        case .obsidian: Color(red: 0.74, green: 0.66, blue: 1.00)
+        case .diamond: Color(red: 0.82, green: 0.96, blue: 1.00)
         case .platinum: Color(red: 0.72, green: 0.88, blue: 1.00)
+        case .amethyst: Color(red: 0.82, green: 0.60, blue: 1.00)
+        case .sapphire: Color(red: 0.48, green: 0.78, blue: 1.00)
+        case .emerald: Color(red: 0.38, green: 0.92, blue: 0.68)
         case .gold: Color(red: 0.99, green: 0.82, blue: 0.45)
         case .silver: Color(red: 0.82, green: 0.86, blue: 0.94)
         case .bronze: Color(red: 0.92, green: 0.64, blue: 0.45)

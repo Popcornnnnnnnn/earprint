@@ -65,12 +65,20 @@ struct DeviceDossierView: View {
         .foregroundStyle(.white)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showShare) {
-            DossierShareSheet(card: card, color: colorStore?.selectedColor(for: card), isSampleData: isSampleData) {
-                dossierContent(exporting: true)
-            }
+            DossierShareSheet(
+                card: card,
+                dossier: dossier,
+                period: period,
+                color: colorStore?.selectedColor(for: card),
+                isSampleData: isSampleData
+            )
         }
-        .onAppear { motion.start() }
+        .onAppear { if !showShare { motion.start() } }
         .onDisappear { motion.stop() }
+        .onChange(of: showShare) { _, presenting in
+            // Pause 60Hz CoreMotion updates while the share sheet is up so parent redraws never interfere with taps.
+            if presenting { motion.stop() } else { motion.start() }
+        }
         .onChange(of: period) {
             selectedDate = nil
             selectedHour = nil
@@ -619,7 +627,7 @@ private struct LifetimeLedgerCard: View {
 
 // MARK: - Milestone Timeline
 
-private struct MilestoneTimelineCard: View {
+struct MilestoneTimelineCard: View {
     let milestones: [DossierMilestone]
     let rarity: Rarity
 

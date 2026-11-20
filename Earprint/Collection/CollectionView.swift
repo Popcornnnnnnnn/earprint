@@ -25,7 +25,13 @@ struct CollectionView: View {
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @StateObject private var motion = TiltMotion()
     @State private var space = LayoutSpace()
+
+    private var listMotionActive: Bool {
+        !reduceMotion && selected == nil && dossierCard == nil && !showSettings && !showCardTiers
+    }
 
     var body: some View {
         ZStack {
@@ -111,7 +117,14 @@ struct CollectionView: View {
                 .presentationDragIndicator(.visible)
         }
         .task { await runDemoIfNeeded() }
-        .onAppear(perform: openPendingCard)
+        .onAppear {
+            openPendingCard()
+            if listMotionActive { motion.start() }
+        }
+        .onDisappear { motion.stop() }
+        .onChange(of: listMotionActive) { _, active in
+            if active { motion.start() } else { motion.stop() }
+        }
         .onChange(of: router?.pendingCardID) { _, _ in openPendingCard() }
         .onChange(of: cards.map(\.id)) { _, _ in openPendingCard() }
         .onChange(of: isLoading) { _, _ in openPendingCard() }
@@ -208,37 +221,75 @@ struct CollectionView: View {
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
-        return ZStack {
-            if selected != card {
-                CardHorizontalFront(card: card, colorOption: color, isCurrentlyWorn: worn)
-                    .matchedGeometryEffect(id: card.id, in: hero)
-                    .shadow(color: card.rarity.glow.opacity(0.32), radius: 16, y: 8)
-                    .transition(.identity)
-            } else {
-                Color.clear.frame(height: 188)
-            }
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .onTapGesture {
+        let liveTilt = listMotionActive ? motion.tilt : .zero
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        } label: {
+            ZStack {
+                if selected != card {
+                    CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
+                        .overlay {
+                            ScrollSheenSweep(cornerRadius: 24)
+                        }
+                        .matchedGeometryEffect(id: card.id, in: hero)
+                        .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                        .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+                        .shadow(
+                            color: card.rarity.glow.opacity(0.36),
+                            radius: 18,
+                            x: -liveTilt.width * 7,
+                            y: 9 - liveTilt.height * 5
+                        )
+                        .transition(.identity)
+                } else {
+                    Color.clear.frame(height: 188)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(CollectorCardPressStyle())
+        .scrollTransition(.interactive(timingCurve: .easeOut), axis: .vertical) { content, phase in
+            content
+                .scaleEffect(phase.isIdentity ? 1.0 : 0.955)
+                .opacity(phase.isIdentity ? 1.0 : 0.86)
+                .rotation3DEffect(
+                    .degrees(reduceMotion ? 0 : phase.value * -4.2),
+                    axis: (x: 1, y: 0, z: 0),
+                    perspective: 0.75
+                )
         }
     }
 
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
-        return ZStack {
-            if selected != card {
-                ScaledCard { CardFront(card: card, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
-                    .matchedGeometryEffect(id: card.id, in: hero)
-                    .shadow(color: card.rarity.glow.opacity(0.35), radius: 14, y: 8)
-                    .transition(.identity)
-            } else {
-                Color.clear.aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
+        let liveTilt = listMotionActive ? motion.tilt : .zero
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        } label: {
+            ZStack {
+                if selected != card {
+                    ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
+                        .overlay {
+                            ScrollSheenSweep(cornerRadius: 22)
+                        }
+                        .matchedGeometryEffect(id: card.id, in: hero)
+                        .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                        .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+                        .shadow(color: card.rarity.glow.opacity(0.35), radius: 14, y: 8)
+                        .transition(.identity)
+                } else {
+                    Color.clear.aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
+                }
             }
         }
-        .onTapGesture {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { selected = card }
+        .buttonStyle(CollectorCardPressStyle())
+        .scrollTransition(.interactive(timingCurve: .easeOut), axis: .vertical) { content, phase in
+            content
+                .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
+                .opacity(phase.isIdentity ? 1.0 : 0.88)
         }
     }
 

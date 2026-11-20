@@ -150,22 +150,30 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertGreaterThan(dealt.zIndex, top.zIndex)
     }
 
-    func testSixTierAchievementProgressionUpTo2000Hours() {
-        XCTAssertEqual(Rarity.allAscending, [.bronze, .silver, .gold, .platinum, .obsidian, .holo])
+    func testTenTierAchievementProgressionUpTo2000Hours() {
+        XCTAssertEqual(
+            Rarity.allAscending,
+            [.bronze, .silver, .gold, .emerald, .sapphire, .amethyst, .platinum, .diamond, .obsidian, .holo]
+        )
         XCTAssertEqual(Rarity(minutes: 0), .bronze)
-        XCTAssertEqual(Rarity(minutes: 24.9 * 60), .bronze)
-        XCTAssertEqual(Rarity(minutes: 25 * 60), .silver)
-        XCTAssertEqual(Rarity(minutes: 100 * 60), .gold)
-        XCTAssertEqual(Rarity(minutes: 350 * 60), .platinum)
-        XCTAssertEqual(Rarity(minutes: 900 * 60), .obsidian)
+        XCTAssertEqual(Rarity(minutes: 9.9 * 60), .bronze)
+        XCTAssertEqual(Rarity(minutes: 10 * 60), .silver)
+        XCTAssertEqual(Rarity(minutes: 35 * 60), .gold)
+        XCTAssertEqual(Rarity(minutes: 80 * 60), .emerald)
+        XCTAssertEqual(Rarity(minutes: 160 * 60), .sapphire)
+        XCTAssertEqual(Rarity(minutes: 300 * 60), .amethyst)
+        XCTAssertEqual(Rarity(minutes: 550 * 60), .platinum)
+        XCTAssertEqual(Rarity(minutes: 900 * 60), .diamond)
+        XCTAssertEqual(Rarity(minutes: 1400 * 60), .obsidian)
         XCTAssertEqual(Rarity(minutes: 1999.9 * 60), .obsidian)
         XCTAssertEqual(Rarity(minutes: 2000 * 60), .holo)
         XCTAssertEqual(Rarity(minutes: 5000 * 60), .holo)
 
         XCTAssertEqual(Rarity.bronze.nextTier, .silver)
+        XCTAssertEqual(Rarity.diamond.nextTier, .obsidian)
         XCTAssertEqual(Rarity.obsidian.nextTier, .holo)
         XCTAssertNil(Rarity.holo.nextTier)
-        XCTAssertEqual(Rarity.gold.progressToNextTier(minutes: 225 * 60), 0.5, accuracy: 0.001)
+        XCTAssertEqual(Rarity.sapphire.progressToNextTier(minutes: 230 * 60), 0.5, accuracy: 0.001)
         XCTAssertEqual(Rarity.holo.progressToNextTier(minutes: 2500 * 60), 1.0, accuracy: 0.001)
     }
 

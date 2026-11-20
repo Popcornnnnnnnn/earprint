@@ -43,11 +43,11 @@ struct MiniFoil: View {
                 }
                 context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.12 : 0.07)), lineWidth: 0.6)
             }
-            if rarity == .holo || rarity == .obsidian || rarity == .platinum || rarity == .gold {
+            if rarity.sheenOpacity > 0 {
                 LinearGradient(colors: [.clear, .pink.opacity(0.35), .yellow.opacity(0.3), .cyan.opacity(0.35), .purple.opacity(0.3), .clear],
                                startPoint: UnitPoint(x: -0.1, y: 0), endPoint: UnitPoint(x: 1.1, y: 1))
                     .blendMode(.colorDodge)
-                    .opacity(rarity == .holo ? 0.85 : (rarity == .obsidian ? 0.55 : 0.35))
+                    .opacity(rarity.sheenOpacity * 0.92)
             }
             LinearGradient(colors: [.clear, .white.opacity(0.5), .clear],
                            startPoint: UnitPoint(x: 0.0, y: 0.0), endPoint: UnitPoint(x: 0.55, y: 0.6))

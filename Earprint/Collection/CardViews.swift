@@ -44,12 +44,12 @@ struct FoilSurface: View {
                 context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.10 : 0.06)), lineWidth: 1)
             }
 
-            if rarity == .holo || rarity == .obsidian || rarity == .platinum || rarity == .gold {
+            if rarity.sheenOpacity > 0 {
                 LinearGradient(colors: [.clear, .pink.opacity(0.35), .yellow.opacity(0.3), .cyan.opacity(0.35), .purple.opacity(0.3), .clear],
                                startPoint: UnitPoint(x: -0.2 + tilt.width * 0.6, y: 0),
                                endPoint: UnitPoint(x: 1.2 + tilt.width * 0.6, y: 1))
                     .blendMode(.colorDodge)
-                    .opacity(rarity == .holo ? 0.9 : (rarity == .obsidian ? 0.65 : (rarity == .platinum ? 0.35 : 0.4)))
+                    .opacity(rarity.sheenOpacity)
             }
 
             // Specular highlight that slides across as the card tilts.
@@ -152,10 +152,12 @@ struct CardHorizontalFront: View {
                     .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .offset(x: tilt.width * 2.5, y: tilt.height * 1.8)
 
                 HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
                     .frame(width: 128, height: 128)
-                    .offset(x: tilt.width * -6, y: tilt.height * -6)
+                    .offset(x: -tilt.width * 10, y: -tilt.height * 8)
+                    .shadow(color: .black.opacity(0.22), radius: 10, x: tilt.width * 8, y: 7 + tilt.height * 6)
             }
         }
         .foregroundStyle(ink)
@@ -167,7 +169,19 @@ struct CardHorizontalFront: View {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(.white.opacity(0.42), lineWidth: 1.4)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.68),
+                            .white.opacity(0.18),
+                            card.rarity.glow.opacity(0.45),
+                            .white.opacity(0.50)
+                        ],
+                        startPoint: UnitPoint(x: 0.2 + tilt.width * 0.5, y: 0.0 + tilt.height * 0.4),
+                        endPoint: UnitPoint(x: 0.8 + tilt.width * 0.5, y: 1.0 + tilt.height * 0.4)
+                    ),
+                    lineWidth: 1.5
+                )
         )
     }
 }
@@ -413,5 +427,51 @@ struct ScaledCard<Content: View>: View {
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
         .aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
+    }
+}
+
+/// Tactile press-in 3D tilt/scale spring for collector cards in the Collection list.
+struct CollectorCardPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.968 : 1.0)
+            .rotation3DEffect(
+                .degrees(configuration.isPressed ? 3.2 : 0),
+                axis: (x: 1, y: 0, z: 0),
+                perspective: 0.7
+            )
+            .brightness(configuration.isPressed ? 0.03 : 0)
+            .animation(.spring(response: 0.24, dampingFraction: 0.72), value: configuration.isPressed)
+    }
+}
+
+/// Scroll-driven diagonal specular glint that sweeps smoothly across a collector card as it moves through the viewport.
+struct ScrollSheenSweep: View {
+    var cornerRadius: CGFloat = 24
+
+    var body: some View {
+        Color.clear
+            .overlay {
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.09), .white.opacity(0.26), .white.opacity(0.09), .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 210)
+                .rotationEffect(.degrees(20))
+                .scaleEffect(y: 2.4)
+                .visualEffect { content, proxy in
+                    let frame = proxy.frame(in: .scrollView(axis: .vertical))
+                    let bounds = proxy.bounds(of: .scrollView(axis: .vertical)) ?? CGRect(x: 0, y: 0, width: 390, height: 800)
+                    let progress = bounds.height > 0 ? (frame.midY / bounds.height) * 2 - 1 : 0
+                    let clamped = max(-1.3, min(1.3, progress))
+                    return content
+                        .offset(x: clamped * 220)
+                        .opacity(max(0, 1 - abs(clamped) * 0.72))
+                }
+            }
+            .blendMode(.overlay)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .allowsHitTesting(false)
     }
 }
