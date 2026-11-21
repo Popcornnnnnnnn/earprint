@@ -16,6 +16,9 @@ struct GradingSlab: View {
     var tilt: CGSize = .zero
     var flipped = false
     var animateSeal = true
+    var showsGrade = true
+    var showsHardwareID = true
+    var showsFirstWear = true
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -51,34 +54,38 @@ struct GradingSlab: View {
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                HStack(spacing: 5) {
-                    DossierBarcode(seed: card.serial * 7 + 3, color: DossierPalette.primaryText.opacity(0.75))
-                        .frame(width: 44, height: 11)
-                    Text(certNumber)
-                        .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(DossierPalette.dim)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                if showsHardwareID {
+                    HStack(spacing: 5) {
+                        DossierBarcode(seed: card.serial * 7 + 3, color: DossierPalette.primaryText.opacity(0.75))
+                            .frame(width: 44, height: 11)
+                        Text(certNumber)
+                            .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .padding(.top, 3)
                 }
-                .padding(.top, 3)
             }
             Spacer(minLength: 0)
-            Rectangle().fill(DossierPalette.hairline).frame(width: 1).padding(.vertical, 6)
-            VStack(spacing: 0) {
-                Text("EAR GRADE")
-                    .font(.system(size: 7.5, weight: .heavy, design: .rounded))
-                    .tracking(1.2)
-                    .foregroundStyle(DossierPalette.dim)
-                Text(grade.scoreText)
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .foregroundStyle(rarity.foil)
-                    .shadow(color: rarity.glow.opacity(colorScheme == .light ? 0.28 : 0.5), radius: 6)
-                Text(LocalizedStringKey(grade.label))
-                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                    .tracking(1)
-                    .foregroundStyle(rarity.accent)
+            if showsGrade {
+                Rectangle().fill(DossierPalette.hairline).frame(width: 1).padding(.vertical, 6)
+                VStack(spacing: 0) {
+                    Text("EAR GRADE")
+                        .font(.system(size: 7.5, weight: .heavy, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(DossierPalette.dim)
+                    Text(grade.scoreText)
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .foregroundStyle(rarity.foil)
+                        .shadow(color: rarity.glow.opacity(colorScheme == .light ? 0.28 : 0.5), radius: 6)
+                    Text(LocalizedStringKey(grade.label))
+                        .font(.system(size: 8.5, weight: .heavy, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(rarity.accent)
+                }
+                .frame(width: 74)
             }
-            .frame(width: 74)
         }
         .foregroundStyle(DossierPalette.primaryText)
         .padding(.horizontal, 12)
@@ -117,10 +124,12 @@ struct GradingSlab: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
-            Text("MINTED \(dossier.firstWear.map(DossierFormat.dot) ?? "—")")
-                .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            if showsFirstWear {
+                Text("MINTED \(dossier.firstWear.map(DossierFormat.dot) ?? "—")")
+                    .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
             HoloSeal(tilt: tilt, size: 30, isAnimated: animateSeal)
                 .offset(y: -4)
         }
@@ -162,8 +171,10 @@ struct GradingSlab: View {
     }
 
     private var certNumber: String {
+        let prefix = String(format: "#%04d·", card.serial) + dossier.hardware.productID.dropFirst(2)
+        guard showsFirstWear else { return prefix }
         let date = dossier.firstWear.map { DossierFormat.dot($0).replacingOccurrences(of: ".", with: "").suffix(4) } ?? "0000"
-        return String(format: "#%04d·", card.serial) + dossier.hardware.productID.dropFirst(2) + "·" + date
+        return prefix + "·" + date
     }
 }
 
@@ -173,6 +184,11 @@ struct CertificateLabel: View {
     let dossier: DeviceDossier
     var tilt: CGSize = .zero
     var animateSeal = true
+    var showsGrade = true
+    var showsHardwareDetails = true
+    var showsSourceMetadata = true
+    var showsFirstWear = true
+    var compact = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -181,105 +197,138 @@ struct CertificateLabel: View {
         let grade = dossier.grade
         let rarity = card.rarity
         let isLight = colorScheme == .light
+        let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata
+        let cardPadding: CGFloat = compact ? 11 : 18
+        let perfPadding: CGFloat = compact ? 5 : 14
+        let notchInset: CGFloat = compact ? 17 : 24
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("EARPRINT GRADING AUTHORITY")
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .tracking(1.8)
+                    .font(.system(size: compact ? 8 : 9, weight: .heavy, design: .rounded))
+                    .tracking(compact ? 1.4 : 1.8)
                     .foregroundStyle(rarity.accent)
                 Spacer()
-                Text(String(format: "CERT %04d-%@", card.serial, String(hw.productID.dropFirst(2))))
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(DossierPalette.dim)
-            }
-            .padding(.bottom, 12)
-
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(card.model)
-                        .font(.system(.title3, design: .rounded, weight: .bold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    Text("\(hw.manufacturer) · \(hw.productID)")
-                        .font(.system(.footnote, design: .monospaced, weight: .semibold))
+                if showsHardwareDetails {
+                    Text(String(format: "CERT %04d-%@", card.serial, String(hw.productID.dropFirst(2))))
+                        .font(.system(size: compact ? 8 : 9, weight: .semibold, design: .monospaced))
                         .foregroundStyle(DossierPalette.dim)
+                }
+            }
+            .padding(.bottom, compact ? 6 : 12)
+
+            HStack(alignment: .top, spacing: compact ? 10 : 14) {
+                VStack(alignment: .leading, spacing: compact ? 2 : 4) {
+                    Text(card.model)
+                        .font(.system(compact ? .headline : .title3, design: .rounded, weight: .bold))
+                        .lineLimit(compact ? 1 : 2)
+                        .minimumScaleFactor(0.8)
+                    if showsHardwareDetails {
+                        Text("\(hw.manufacturer) · \(hw.productID)")
+                            .font(.system(compact ? .caption2 : .footnote, design: .monospaced, weight: .semibold))
+                            .foregroundStyle(DossierPalette.dim)
+                    }
                 }
                 Spacer(minLength: 0)
-                VStack(spacing: 2) {
-                    Text("EAR GRADE")
-                        .font(.system(size: 8, weight: .heavy, design: .rounded)).tracking(1.2)
-                        .foregroundStyle(DossierPalette.dim)
-                    Text(grade.scoreText)
-                        .font(.system(size: 44, weight: .black, design: .rounded))
-                        .foregroundStyle(rarity.foil)
-                        .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.45), radius: 8)
-                    Text(LocalizedStringKey(grade.label))
-                        .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
-                        .foregroundStyle(rarity.accent)
-                }
-                .padding(.vertical, 8)
-                .frame(width: 104)
-                .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(rarity.foil, lineWidth: 1))
-            }
-
-            Perforation().padding(.vertical, 14)
-
-            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 10) {
-                GridRow {
-                    engraved("MANUFACTURER", hw.manufacturer)
-                    engraved("PRODUCT ID", hw.productID)
-                }
-                GridRow {
-                    engraved("MODEL", hw.modelName)
-                    engraved("HARDWARE", hw.hardwareVersion ?? "Not reported")
-                }
-                GridRow {
-                    engraved("FIRMWARE", hw.firmwareVersion ?? "Not reported")
-                    engraved("MINTED", dossier.firstWear.map(DossierFormat.dot) ?? "—")
-                }
-                GridRow {
-                    engraved("RECORDED BY", hw.sourceName)
-                    engraved("SAMPLES READ", DossierFormat.grouped(dossier.sampleCount))
-                }
-                GridRow {
-                    engraved("COLLECTION NUMBER", String(format: "#%04d", card.serial))
-                        .gridCellColumns(2)
-                }
-                GridRow {
-                    engraved("SOURCE BUNDLE", hw.sourceBundleID)
-                        .gridCellColumns(2)
+                if showsGrade {
+                    VStack(spacing: compact ? 1 : 2) {
+                        Text("EAR GRADE")
+                            .font(.system(size: compact ? 7 : 8, weight: .heavy, design: .rounded)).tracking(1.1)
+                            .foregroundStyle(DossierPalette.dim)
+                        Text(grade.scoreText)
+                            .font(.system(size: compact ? 24 : 44, weight: .black, design: .rounded))
+                            .foregroundStyle(rarity.foil)
+                            .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.45), radius: compact ? 4 : 8)
+                        Text(LocalizedStringKey(grade.label))
+                            .font(.system(size: compact ? 7.5 : 9, weight: .heavy, design: .rounded)).tracking(0.8)
+                            .foregroundStyle(rarity.accent)
+                    }
+                    .padding(.vertical, compact ? 4 : 8)
+                    .frame(width: compact ? 80 : 104)
+                    .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous).strokeBorder(rarity.foil, lineWidth: 1))
                 }
             }
 
-            Text("Collection numbers follow the order of first listening dates in Apple Health.")
-                .font(.caption2)
-                .foregroundStyle(DossierPalette.dim)
-                .padding(.top, 10)
+            if hasMiddleGrid {
+                Perforation(notchInset: notchInset).padding(.vertical, perfPadding)
 
-            Perforation().padding(.vertical, 14)
+                Grid(alignment: .leading, horizontalSpacing: compact ? 10 : 14, verticalSpacing: compact ? 4 : 10) {
+                    if showsHardwareDetails {
+                        GridRow {
+                            engraved("MANUFACTURER", hw.manufacturer)
+                            engraved("PRODUCT ID", hw.productID)
+                        }
+                        GridRow {
+                            engraved("MODEL", hw.modelName)
+                            engraved("HARDWARE", hw.hardwareVersion ?? "Not reported")
+                        }
+                        GridRow {
+                            if showsFirstWear {
+                                engraved("FIRMWARE", hw.firmwareVersion ?? "Not reported")
+                                engraved("MINTED", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                            } else {
+                                engraved("FIRMWARE", hw.firmwareVersion ?? "Not reported")
+                                    .gridCellColumns(2)
+                            }
+                        }
+                    } else if showsFirstWear {
+                        GridRow {
+                            engraved("MINTED", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                                .gridCellColumns(2)
+                        }
+                    }
+                    if showsSourceMetadata {
+                        GridRow {
+                            engraved("RECORDED BY", hw.sourceName)
+                            engraved("SAMPLES READ", DossierFormat.grouped(dossier.sampleCount))
+                        }
+                        GridRow {
+                            engraved("COLLECTION NUMBER", String(format: "#%04d", card.serial))
+                                .gridCellColumns(2)
+                        }
+                        GridRow {
+                            engraved("SOURCE BUNDLE", hw.sourceBundleID)
+                                .gridCellColumns(2)
+                        }
+                    }
+                }
 
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Eyebrow("History read")
-                    Text("\(dossier.days.first.map { DossierFormat.dot($0.date) } ?? "—") – \(DossierFormat.dot(dossier.now))")
-                        .font(.system(.subheadline, design: .monospaced, weight: .semibold))
-                    Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
-                        .font(.caption)
+                if showsSourceMetadata && !compact {
+                    Text("Collection numbers follow the order of first listening dates in Apple Health.")
+                        .font(.caption2)
                         .foregroundStyle(DossierPalette.dim)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.9)
+                        .padding(.top, 10)
+                }
+            }
+
+            Perforation(notchInset: notchInset).padding(.vertical, perfPadding)
+
+            HStack(alignment: .center, spacing: compact ? 10 : 12) {
+                VStack(alignment: .leading, spacing: compact ? 2 : 5) {
+                    if showsSourceMetadata {
+                        Eyebrow("History read")
+                        Text("\(dossier.days.first.map { DossierFormat.dot($0.date) } ?? "—") – \(DossierFormat.dot(dossier.now))")
+                            .font(.system(compact ? .caption2 : .subheadline, design: .monospaced, weight: .semibold))
+                        Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
+                            .font(compact ? .caption2 : .caption)
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(compact ? 1 : 2)
+                            .minimumScaleFactor(0.85)
+                    }
                     DossierBarcode(seed: card.serial * 13 + 1, color: DossierPalette.primaryText.opacity(0.6))
-                        .frame(height: 18)
-                        .padding(.top, 4)
+                        .frame(height: compact ? 10 : 18)
+                        .padding(.top, showsSourceMetadata ? (compact ? 2 : 4) : 0)
                 }
-                HoloSeal(tilt: tilt, size: 64, isAnimated: animateSeal)
+                if !showsSourceMetadata {
+                    Spacer(minLength: 12)
+                }
+                HoloSeal(tilt: tilt, size: compact ? 40 : 64, isAnimated: animateSeal)
             }
         }
         .foregroundStyle(DossierPalette.primaryText)
-        .padding(18)
+        .padding(cardPadding)
         .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous)
                 .fill(
                     isLight
                         ? LinearGradient(colors: [.white, Color(red: 0.965, green: 0.968, blue: 0.982)], startPoint: .top, endPoint: .bottom)
@@ -289,26 +338,26 @@ struct CertificateLabel: View {
                 .overlay {
                     GuillochePattern(lineColor: isLight ? Color.black.opacity(0.03) : Color.white.opacity(0.025))
                         .equatable()
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous))
                 }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous)
                 .strokeBorder(LinearGradient(colors: rarity.baseColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
         }
     }
 
     private func engraved(_ title: LocalizedStringKey, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: compact ? 1 : 3) {
             Text(title)
-                .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                .tracking(1.3)
+                .font(.system(size: compact ? 7 : 8.5, weight: .heavy, design: .rounded))
+                .tracking(compact ? 1.0 : 1.3)
                 .foregroundStyle(DossierPalette.faint)
             Text(value)
-                .font(.system(.footnote, design: .monospaced, weight: .semibold))
+                .font(.system(size: compact ? 9.5 : 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
+                .lineLimit(compact ? 1 : 2)
+                .minimumScaleFactor(compact ? 0.7 : 0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -336,11 +385,13 @@ private struct GuillochePattern: View, Equatable {
 
 /// Dashed tear line with punched notches on both sides.
 struct Perforation: View {
+    var notchInset: CGFloat = 24
+
     var body: some View {
         HStack(spacing: 0) {
-            Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: -24)
+            Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: -notchInset)
             Line().stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 4])).foregroundStyle(DossierPalette.hairline).frame(height: 1)
-            Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: 24)
+            Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: notchInset)
         }
         .accessibilityHidden(true)
     }

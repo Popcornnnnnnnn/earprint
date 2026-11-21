@@ -111,6 +111,16 @@
         }
       }
     },
+    "%lld pages": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 页"
+          }
+        }
+      }
+    },
     "%lld pairs": {
       "localizations": {
         "zh-Hans": {
@@ -361,6 +371,16 @@
         }
       }
     },
+    "24-hour clock": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 小时时钟"
+          }
+        }
+      }
+    },
     "28-DAY EARPRINT": {
       "localizations": {
         "zh-Hans": {
@@ -377,6 +397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "近 28 天聆听图谱"
+          }
+        }
+      }
+    },
+    "30-day trend chart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 天趋势图"
           }
         }
       }
@@ -427,6 +457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "近 4 周"
+          }
+        }
+      }
+    },
+    "4-week Earprint ring": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 周 Earprint 圆环"
           }
         }
       }
@@ -711,6 +751,16 @@
         }
       }
     },
+    "At least one page must stay enabled.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少需保留 1 页。"
+          }
+        }
+      }
+    },
     "Auto": {
       "localizations": {
         "zh-Hans": {
@@ -921,6 +971,16 @@
         }
       }
     },
+    "CERTIFICATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "认证证书"
+          }
+        }
+      }
+    },
     "CHAMPAGNE": {
       "localizations": {
         "zh-Hans": {
@@ -947,6 +1007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏图鉴册"
+          }
+        }
+      }
+    },
+    "COVER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封面"
           }
         }
       }
@@ -1271,6 +1341,36 @@
         }
       }
     },
+    "Customize details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义详情"
+          }
+        }
+      }
+    },
+    "Customize share image": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义分享图片"
+          }
+        }
+      }
+    },
+    "Customized details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已自定义详情"
+          }
+        }
+      }
+    },
     "DAILY AVG": {
       "localizations": {
         "zh-Hans": {
@@ -1417,6 +1517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认图标"
+          }
+        }
+      }
+    },
+    "Details across pages": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各页共用详情"
           }
         }
       }
@@ -1591,6 +1701,16 @@
         }
       }
     },
+    "Ear Grade": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "听感评级"
+          }
+        }
+      }
+    },
     "Early Bird": {
       "localizations": {
         "zh-Hans": {
@@ -1751,6 +1871,16 @@
         }
       }
     },
+    "Footer": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "底部卡片"
+          }
+        }
+      }
+    },
     "Frosted Mineral": {
       "localizations": {
         "zh-Hans": {
@@ -1851,12 +1981,42 @@
         }
       }
     },
+    "Grade breakdown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评级细则"
+          }
+        }
+      }
+    },
+    "Grading certificate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评级证书"
+          }
+        }
+      }
+    },
     "Green": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "绿色"
+          }
+        }
+      }
+    },
+    "HABITS & HEARING": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "习惯与听力"
           }
         }
       }
@@ -1921,6 +2081,26 @@
         }
       }
     },
+    "Hardware ID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "硬件标识"
+          }
+        }
+      }
+    },
+    "Header & visual": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顶部与视觉"
+          }
+        }
+      }
+    },
     "Headphones": {
       "localizations": {
         "zh-Hans": {
@@ -1947,6 +2127,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "声音暴露限额"
+          }
+        }
+      }
+    },
+    "Hearing health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "听力健康"
           }
         }
       }
@@ -2401,6 +2591,16 @@
         }
       }
     },
+    "Metrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "核心指标"
+          }
+        }
+      }
+    },
     "Midnight": {
       "localizations": {
         "zh-Hans": {
@@ -2661,6 +2861,16 @@
         }
       }
     },
+    "No milestones yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无里程碑"
+          }
+        }
+      }
+    },
     "No supported headphones yet": {
       "localizations": {
         "zh-Hans": {
@@ -2771,12 +2981,32 @@
         }
       }
     },
+    "Pages": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面"
+          }
+        }
+      }
+    },
     "Peak %@": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "峰值 %@"
+          }
+        }
+      }
+    },
+    "Period summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周期摘要"
           }
         }
       }
@@ -2871,6 +3101,16 @@
         }
       }
     },
+    "Quick stats": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷统计"
+          }
+        }
+      }
+    },
     "Quiet": {
       "localizations": {
         "zh-Hans": {
@@ -2897,6 +3137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "记录来源"
+          }
+        }
+      }
+    },
+    "RHYTHM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节律"
           }
         }
       }
@@ -3011,12 +3261,32 @@
         }
       }
     },
+    "Reset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置"
+          }
+        }
+      }
+    },
     "Reset cache & resync": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "重置缓存并重新同步"
+          }
+        }
+      }
+    },
+    "Reset to defaults": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复默认"
           }
         }
       }
@@ -3391,6 +3661,16 @@
         }
       }
     },
+    "Source & sync metadata": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来源与同步信息"
+          }
+        }
+      }
+    },
     "Source on Sketchfab": {
       "localizations": {
         "zh-Hans": {
@@ -3691,6 +3971,16 @@
         }
       }
     },
+    "Tier & hearing summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等级与听力摘要"
+          }
+        }
+      }
+    },
     "Today": {
       "localizations": {
         "zh-Hans": {
@@ -3897,6 +4187,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "渐入佳境，成为常用主力耳机"
+          }
+        }
+      }
+    },
+    "Wear habits": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "佩戴习惯"
           }
         }
       }
