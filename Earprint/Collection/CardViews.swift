@@ -144,6 +144,7 @@ struct FoilSurface: View {
             // 3. Per-material natural light shape & specular behavior (no shared template!).
             lightingOverlay(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
         }
+        .compositingGroup()
     }
 
     @ViewBuilder

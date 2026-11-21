@@ -356,4 +356,112 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertNil(rig.displayedModelID)
         XCTAssertFalse(rig.spinPivot.isEnabled)
     }
+
+    @MainActor
+    func testPersistentModelRigConfirmsHiddenAfterTwoClearedFrames() async throws {
+        await HeadphoneModelLoader.prewarm(assetName: "AirPodsPro")
+        let rig = ModelRig()
+        var readyIDs: [String] = []
+        var confirmedTokens: [Int] = []
+
+        func sync(isVisible: Bool, hideToken: Int) {
+            rig.syncModel(
+                modelID: "pro",
+                kind: .earbuds,
+                finish: .glossWhite,
+                finishID: "default",
+                modelKey: .airpodsPro,
+                assetName: "AirPodsPro",
+                modelSize: 0.18,
+                tint: [],
+                tintKey: "BRONZE",
+                tilt: .zero,
+                isVisible: isVisible,
+                reduceMotion: false,
+                hideToken: hideToken,
+                onModelReady: { readyIDs.append($0) },
+                onHiddenConfirmed: { confirmedTokens.append($0) }
+            )
+        }
+
+        sync(isVisible: true, hideToken: 0)
+        for _ in 0..<200 where rig.displayedModelID != "pro" {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(rig.displayedModelID, "pro")
+
+        // Step 2 GPU warmup frames and 1 visible frame.
+        rig.stepFrameForTesting(1 / 60)
+        rig.stepFrameForTesting(1 / 60)
+        XCTAssertEqual(readyIDs, ["pro"])
+        rig.stepFrameForTesting(1 / 60)
+        XCTAssertTrue(rig.spinPivot.isEnabled)
+
+        // Requesting a swap hide must disable rendering immediately and confirm after 2 cleared frames.
+        sync(isVisible: false, hideToken: 1)
+        XCTAssertFalse(rig.spinPivot.isEnabled)
+        XCTAssertTrue(confirmedTokens.isEmpty)
+
+        rig.stepFrameForTesting(1 / 60)
+        XCTAssertFalse(rig.spinPivot.isEnabled)
+        XCTAssertTrue(confirmedTokens.isEmpty)
+
+        rig.stepFrameForTesting(1 / 60)
+        XCTAssertFalse(rig.spinPivot.isEnabled)
+        XCTAssertEqual(confirmedTokens, [1])
+    }
+
+    func testCardDeckNavigationTargetIndexHandlesHalfStopPullbackAndMidFlightCatch() {
+        // Half-stop past threshold commits to the next card.
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 0,
+                count: 5,
+                originPosition: 0,
+                currentPosition: 0.36,
+                dragDeltaX: -80,
+                predictedDeltaX: -80
+            ),
+            1
+        )
+
+        // Dragging past 56pt then pulling back reverses the predicted position and cancels cleanly.
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 0,
+                count: 5,
+                originPosition: 0,
+                currentPosition: 0.32,
+                dragDeltaX: -70,
+                predictedDeltaX: 10
+            ),
+            0
+        )
+
+        // Catching mid-flight (card 1 settling while position is at 0.55) and pulling back returns to 0.
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 1,
+                count: 5,
+                originPosition: 0.55,
+                currentPosition: 0.25,
+                dragDeltaX: 66,
+                predictedDeltaX: 66
+            ),
+            0
+        )
+
+        // Catching mid-flight and continuing forward settles on card 1.
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 1,
+                count: 5,
+                originPosition: 0.55,
+                currentPosition: 0.85,
+                dragDeltaX: -66,
+                predictedDeltaX: -66
+            ),
+            1
+        )
+    }
 }

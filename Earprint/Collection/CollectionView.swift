@@ -623,6 +623,38 @@ enum CardDeckNavigation {
         guard target >= 0, target < cards.count else { return nil }
         return cards[target]
     }
+
+    /// Resolves the target card index on swipe end, handling deliberate half-drag stops,
+    /// pull-back cancellations, and mid-flight catches cleanly.
+    static func targetIndex(
+        activeIndex: Int,
+        count: Int,
+        originPosition: CGFloat,
+        currentPosition: CGFloat,
+        dragDeltaX: CGFloat,
+        predictedDeltaX: CGFloat
+    ) -> Int {
+        guard count > 1 else { return activeIndex }
+        let caughtMidFlight = abs(originPosition - CGFloat(activeIndex)) >= 0.05
+        if caughtMidFlight {
+            let momentumShift = (predictedDeltaX - dragDeltaX) / 260
+            let projected = currentPosition - momentumShift
+            let lower = max(0, activeIndex - 1)
+            let upper = min(count - 1, activeIndex + 1)
+            return max(lower, min(upper, Int(projected.rounded())))
+        }
+        let flickedLeft = dragDeltaX < -24 && predictedDeltaX < -135
+        let flickedRight = dragDeltaX > 24 && predictedDeltaX > 135
+        let draggedLeft = dragDeltaX < -56 && predictedDeltaX <= dragDeltaX + 30
+        let draggedRight = dragDeltaX > 56 && predictedDeltaX >= dragDeltaX - 30
+        if flickedLeft || draggedLeft {
+            return min(count - 1, activeIndex + 1)
+        }
+        if flickedRight || draggedRight {
+            return max(0, activeIndex - 1)
+        }
+        return activeIndex
+    }
 }
 
 /// Pure geometric pose for one card in the physical Card Stack Deal (`Option B`) given its signed offset
@@ -667,6 +699,12 @@ struct CardStackPose: Equatable {
     }
 }
 
+/// Tracks the live interpolated `deckPosition` on 120Hz spring frames without triggering SwiftUI state invalidations.
+@MainActor
+private final class DeckPresentationTracker {
+    var livePosition: CGFloat = 0
+}
+
 /// Evaluates `CardStackPose` on every 120Hz frame of a spring animation instead of linearly interpolating start/end values.
 private struct CardStackEffect: ViewModifier, Animatable {
     let cardIndex: CGFloat
@@ -675,6 +713,8 @@ private struct CardStackEffect: ViewModifier, Animatable {
     let appeared: Bool
     var appliesDim: Bool = true
     var appliesOpacity: Bool = true
+    var presentationTracker: DeckPresentationTracker? = nil
+    var tracksPresentation: Bool = false
 
     var animatableData: CGFloat {
         get { deckPosition }
@@ -682,6 +722,7 @@ private struct CardStackEffect: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
+        let _ = recordPresentationIfNeeded()
         let delta = cardIndex - deckPosition
         let pose = CardStackPose.pose(forDelta: delta)
         let effectiveOpacity: Double = if appliesOpacity {
@@ -691,7 +732,7 @@ private struct CardStackEffect: ViewModifier, Animatable {
         }
         content
             .overlay {
-                if appliesDim && pose.dimAmount > 0.005 {
+                if appliesDim {
                     RoundedRectangle(cornerRadius: CardMetrics.corner * cardScale, style: .continuous)
                         .fill(Color.black.opacity(pose.dimAmount))
                         .allowsHitTesting(false)
@@ -701,6 +742,12 @@ private struct CardStackEffect: ViewModifier, Animatable {
             .rotationEffect(.degrees(pose.rotationDegrees))
             .offset(x: pose.offsetX * cardScale, y: pose.offsetY * cardScale)
             .opacity(effectiveOpacity)
+    }
+
+    private func recordPresentationIfNeeded() {
+        if tracksPresentation {
+            presentationTracker?.livePosition = deckPosition
+        }
     }
 }
 
@@ -747,7 +794,11 @@ struct CardDetail: View {
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
     /// Keeps the persistent 3D RealityView clean across card switches without tearing down CAMetalLayer.
-    @State private var isSwitchingCard = false
+    @State private var presentationTracker = DeckPresentationTracker()
+    @State private var overlayCardIndex: Int = 0
+    @State private var overlayCardID: String = ""
+    @State private var isHiding3DForSwap = false
+    @State private var swapHideToken = 0
     @State private var loaded3DCardID: String? = nil
     @State private var settled3DCardID: String? = nil
     @State private var settle3DTask: Task<Void, Never>? = nil
@@ -782,6 +833,17 @@ struct CardDetail: View {
 
     private var deckHasAny3DModel: Bool {
         deckCards.contains { resolvedAssetName(for: $0) != nil }
+    }
+
+    private var overlayCard: HeadphoneCard {
+        if deckCards.indices.contains(overlayCardIndex), deckCards[overlayCardIndex].id == overlayCardID {
+            return deckCards[overlayCardIndex]
+        }
+        return deckCards.first(where: { $0.id == overlayCardID }) ?? card
+    }
+
+    private var resolvedOverlayIndex: Int {
+        CardDeckNavigation.index(of: overlayCard, in: deckCards) ?? activeIndex
     }
 
     private var selectedColor: DeviceColorOption? {
@@ -874,32 +936,17 @@ struct CardDetail: View {
             dragTilt = .zero
             modelInteractionTilt = nil
             showColorBar = false
-            isSwitchingCard = true
-            settled3DCardID = nil
-            if loaded3DCardID != card.id {
-                loaded3DCardID = nil
-            }
-            settle3DTask?.cancel()
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
                 deckPosition = CGFloat(activeIndex)
             }
-            // Wait until the outgoing card has cleared offscreen before revealing the next live 3D model.
-            let targetID = card.id
-            settle3DTask = Task {
-                try? await Task.sleep(for: .milliseconds(240))
-                guard !Task.isCancelled else { return }
-                isSwitchingCard = false
-                if loaded3DCardID == targetID {
-                    withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
-                        settled3DCardID = targetID
-                    }
-                }
-                await prewarmNeighbors(around: activeIndex)
-            }
+            schedule3DSettleIfNeeded()
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
-            isSwitchingCard = false
+            presentationTracker.livePosition = CGFloat(activeIndex)
+            overlayCardIndex = activeIndex
+            overlayCardID = card.id
+            isHiding3DForSwap = false
             settled3DCardID = nil
             loaded3DCardID = nil
             if !reduceMotion && !holdsMotionHub {
@@ -973,7 +1020,9 @@ struct CardDetail: View {
                 guard dragStartPosition != nil || abs(dx) > abs(dy) * 1.05 else { return }
 
                 if dragStartPosition == nil {
-                    dragStartPosition = CGFloat(activeIndex)
+                    settle3DTask?.cancel()
+                    settle3DTask = nil
+                    dragStartPosition = presentationTracker.livePosition
                     MotionHub.shared.setScrolling(true, source: "cardDeck")
                 }
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
@@ -992,6 +1041,7 @@ struct CardDetail: View {
                 withTransaction(instant) {
                     deckPosition = clamped
                 }
+                presentationTracker.livePosition = clamped
             }
             .onEnded { value in
                 guard let origin = dragStartPosition else { return }
@@ -999,22 +1049,30 @@ struct CardDetail: View {
                 MotionHub.shared.setScrolling(false, source: "cardDeck")
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
-                let dy = value.translation.height
-                let isHorizontal = abs(dx) > abs(dy) * 1.05 || abs(deckPosition - origin) > 0.10
+                let target = CardDeckNavigation.targetIndex(
+                    activeIndex: activeIndex,
+                    count: deckCards.count,
+                    originPosition: origin,
+                    currentPosition: deckPosition,
+                    dragDeltaX: dx,
+                    predictedDeltaX: predicted
+                )
 
-                let step: Int? = if isHorizontal && (dx < -48 || predicted < -135) {
-                    1
-                } else if isHorizontal && (dx > 48 || predicted > 135) {
-                    -1
-                } else {
-                    nil
+                if target != activeIndex {
+                    selectCard(at: target)
+                    return
                 }
-
-                if let step, selectNeighbor(step: step) { return }
-                withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
                     deckPosition = CGFloat(activeIndex)
                 }
+                schedule3DSettleIfNeeded()
             }
+    }
+
+    private func selectCard(at index: Int) {
+        guard deckCards.indices.contains(index) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onSelectCard(deckCards[index])
     }
 
     @discardableResult
@@ -1023,6 +1081,72 @@ struct CardDetail: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         onSelectCard(neighbor)
         return true
+    }
+
+    private func schedule3DSettleIfNeeded() {
+        settle3DTask?.cancel()
+        settle3DTask = nil
+        guard dragStartPosition == nil else { return }
+
+        if overlayCardID == card.id && resolvedOverlayIndex == activeIndex {
+            isHiding3DForSwap = false
+            if loaded3DCardID == card.id && !flipped && settled3DCardID != card.id {
+                withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
+                    settled3DCardID = card.id
+                }
+            }
+            return
+        }
+
+        let targetID = card.id
+        let targetIndex = activeIndex
+        let currentOverlayIdx = resolvedOverlayIndex
+        let overlayHasModel = resolvedAssetName(for: overlayCard) != nil
+
+        settle3DTask = Task { @MainActor in
+            for _ in 0..<30 {
+                if Task.isCancelled || dragStartPosition != nil { return }
+                let livePos = presentationTracker.livePosition
+                let cleared: Bool
+                if !overlayHasModel && loaded3DCardID == nil {
+                    cleared = abs(livePos - CGFloat(targetIndex)) <= 0.14
+                } else if currentOverlayIdx < targetIndex {
+                    cleared = (livePos - CGFloat(currentOverlayIdx)) >= 0.88
+                } else {
+                    cleared = (livePos - CGFloat(targetIndex)) <= 0.10
+                }
+                if cleared { break }
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+
+            guard !Task.isCancelled, dragStartPosition == nil, card.id == targetID else { return }
+            guard deckHasAny3DModel else {
+                completeOverlaySwapToActiveCard()
+                return
+            }
+            isHiding3DForSwap = true
+            swapHideToken += 1
+            let token = swapHideToken
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled, isHiding3DForSwap, swapHideToken == token, dragStartPosition == nil else { return }
+            completeOverlaySwapToActiveCard()
+        }
+    }
+
+    private func completeOverlaySwapToActiveCard() {
+        isHiding3DForSwap = false
+        overlayCardIndex = activeIndex
+        overlayCardID = card.id
+        settled3DCardID = nil
+        if loaded3DCardID != card.id {
+            loaded3DCardID = nil
+        }
+        if loaded3DCardID == card.id && !flipped && dragStartPosition == nil {
+            withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
+                settled3DCardID = card.id
+            }
+        }
+        Task { await prewarmNeighbors(around: activeIndex) }
     }
 
     @ViewBuilder private var layout: some View {
@@ -1089,19 +1213,29 @@ struct CardDetail: View {
     /// mid-flight) driven by `CardStackEffect` (`Animatable`), plus one persistent 3D RealityView overlay.
     private func cardStack(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
-        // Window mounted cards to the visible stack neighborhood (at most 6 cards) so large collections stay fast.
-        let indices = max(0, activeIndex - 2)..<min(deckCards.count, activeIndex + 4)
+        // Window mounted cards to the visible stack neighborhood (while keeping any outgoing overlay card mounted).
+        let overlayIdx = resolvedOverlayIndex
+        let lower = max(0, min(activeIndex - 2, overlayIdx))
+        let upper = min(deckCards.count, max(activeIndex + 4, overlayIdx + 1))
+        let indices = lower..<upper
         return ZStack {
             ForEach(Array(deckCards[indices].enumerated()), id: \.element.id) { offset, item in
                 let idx = indices.lowerBound + offset
                 deckCard(item, index: idx, scale: scale)
-                    .modifier(CardStackEffect(cardIndex: CGFloat(idx), deckPosition: deckPosition, cardScale: scale, appeared: appeared))
+                    .modifier(CardStackEffect(
+                        cardIndex: CGFloat(idx),
+                        deckPosition: deckPosition,
+                        cardScale: scale,
+                        appeared: appeared,
+                        presentationTracker: presentationTracker,
+                        tracksPresentation: idx == activeIndex
+                    ))
                     .zIndex(Double(deckCards.count - idx))
             }
 
             if deckHasAny3DModel {
                 persistent3DOverlay(scale: scale)
-                    .zIndex(Double(deckCards.count + 10))
+                    .zIndex(Double(deckCards.count - overlayIdx) + 0.5)
             }
         }
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
@@ -1109,12 +1243,15 @@ struct CardDetail: View {
 
     @ViewBuilder
     private func persistent3DOverlay(scale: CGFloat) -> some View {
-        let surfaceRarity = isModelPreview ? (catalogSurfaces[card.id] ?? .silver) : card.rarity
-        let itemColor = colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
-        let itemFinish = itemColor?.modelFinish ?? card.finish
+        let targetCard = overlayCard
+        let targetIdx = resolvedOverlayIndex
+        let surfaceRarity = isModelPreview ? (catalogSurfaces[targetCard.id] ?? .silver) : targetCard.rarity
+        let itemColor = colorStore?.selectedColor(for: targetCard) ?? DeviceColorOption.defaultOption(for: targetCard.modelKey)
+        let itemFinish = itemColor?.modelFinish ?? targetCard.finish
         let itemFinishID = itemColor?.id ?? "default"
-        let activeAsset = resolvedAssetName(for: card)
-        let canShow3DNow = activeAsset != nil && !isSwitchingCard && !flipped && card.id == settled3DCardID
+        let activeAsset = resolvedAssetName(for: targetCard)
+        let canShow3DNow = activeAsset != nil && !isHiding3DForSwap && !flipped && targetCard.id == settled3DCardID
+        let canInteractWith3D = canShow3DNow && targetCard.id == card.id && dragStartPosition == nil
         let overrideTilt: CGSize? = modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt)
 
         LiveTiltView(isActive: !flipped, overrideTilt: overrideTilt) { activeTilt in
@@ -1128,44 +1265,50 @@ struct CardDetail: View {
                     .allowsHitTesting(false)
 
                 HeadphoneModelView(
-                    modelID: card.id,
-                    kind: card.kind,
+                    modelID: targetCard.id,
+                    kind: targetCard.kind,
                     finish: itemFinish,
                     finishID: itemFinishID,
-                    modelKey: card.modelKey,
+                    modelKey: targetCard.modelKey,
                     assetName: activeAsset,
                     modelSize: 0.18,
                     tint: surfaceRarity.studioTint,
                     tintKey: surfaceRarity.rawValue,
                     tilt: activeTilt,
                     isVisible: canShow3DNow,
+                    hideToken: swapHideToken,
                     onTap: canFlip ? { flip() } : nil,
                     onManipulationChanged: { manipulating in
                         modelInteractionTilt = manipulating ? activeTilt : nil
                     },
                     onModelReady: { readyID in
                         loaded3DCardID = readyID
-                        if readyID == card.id && !isSwitchingCard {
+                        if readyID == card.id && readyID == overlayCardID && !isHiding3DForSwap && dragStartPosition == nil && !flipped {
                             withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
                                 settled3DCardID = readyID
                             }
+                        }
+                    },
+                    onHiddenConfirmed: { confirmedToken in
+                        if confirmedToken == swapHideToken && isHiding3DForSwap {
+                            completeOverlaySwapToActiveCard()
                         }
                     }
                 )
                 .frame(width: 300, height: 230)
                 .offset(y: -47)
-                .allowsHitTesting(canShow3DNow)
-                .accessibilityHidden(!canShow3DNow)
+                .allowsHitTesting(canInteractWith3D)
+                .accessibilityHidden(!canInteractWith3D)
             }
             .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
             .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
             .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-            .allowsHitTesting(canShow3DNow)
+            .allowsHitTesting(canInteractWith3D)
         }
         .modifier(CardStackEffect(
-            cardIndex: CGFloat(activeIndex),
+            cardIndex: CGFloat(targetIdx),
             deckPosition: deckPosition,
             cardScale: scale,
             appeared: appeared,
@@ -1176,13 +1319,14 @@ struct CardDetail: View {
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
         let isTop = index == activeIndex
+        let usesLiveTilt = isTop || item.id == overlayCardID
         let activeAngle = isTop ? angle : 0
         let surfaceRarity = isModelPreview ? (catalogSurfaces[item.id] ?? .silver) : item.rarity
-        let overrideTilt: CGSize? = isTop
+        let overrideTilt: CGSize? = usesLiveTilt
             ? (modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt))
             : .zero
 
-        return LiveTiltView(isActive: isTop && !flipped, overrideTilt: overrideTilt) { activeTilt in
+        return LiveTiltView(isActive: usesLiveTilt && !flipped, overrideTilt: overrideTilt) { activeTilt in
             ZStack {
                 deckFrontFace(item, isTop: isTop, activeTilt: activeTilt, surfaceRarity: surfaceRarity)
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
@@ -1222,6 +1366,7 @@ struct CardDetail: View {
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
             .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
             .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .animation(.easeOut(duration: 0.25), value: usesLiveTilt)
             .allowsHitTesting(isTop)
             .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
         }
@@ -1238,7 +1383,8 @@ struct CardDetail: View {
         let assetName = resolvedAssetName(for: item)
         let isItemShowing3D = assetName != nil
             && item.id == settled3DCardID
-            && !isSwitchingCard
+            && item.id == overlayCardID
+            && !isHiding3DForSwap
             && !flipped
         let catalogBadge: LocalizedStringKey? = isModelPreview
             ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")

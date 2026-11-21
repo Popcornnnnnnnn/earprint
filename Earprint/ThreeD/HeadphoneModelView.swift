@@ -94,6 +94,10 @@ final class ModelRig {
     private var warmupFramesRemaining = 0
     private var pendingReadyModelID: String?
     private var pendingReadyCallback: ((String) -> Void)?
+    private var lastProcessedHideToken = 0
+    private var hiddenConfirmFramesRemaining = 0
+    private var pendingHiddenToken: Int?
+    private var pendingHiddenCallback: ((Int) -> Void)?
 
     init() {
         root.addChild(tiltPivot)
@@ -127,7 +131,9 @@ final class ModelRig {
         tilt: CGSize,
         isVisible: Bool,
         reduceMotion: Bool,
-        onModelReady: @escaping (String) -> Void
+        hideToken: Int = 0,
+        onModelReady: @escaping (String) -> Void,
+        onHiddenConfirmed: @escaping (Int) -> Void = { _ in }
     ) {
         self.reduceMotion = reduceMotion
         self.idleSpin = reduceMotion ? 0 : 0.45
@@ -135,6 +141,27 @@ final class ModelRig {
         self.latestFinishID = finishID
         self.isVisible = isVisible
         applyTilt(tilt)
+
+        if hideToken != lastProcessedHideToken {
+            lastProcessedHideToken = hideToken
+            let wasRendered = spinPivot.isEnabled || visualOpacity > 0 || warmupFramesRemaining > 0
+            loadTask?.cancel()
+            loadTask = nil
+            warmupFramesRemaining = 0
+            pendingReadyModelID = nil
+            pendingReadyCallback = nil
+            hideImmediately()
+            pendingHiddenToken = hideToken
+            pendingHiddenCallback = onHiddenConfirmed
+            hiddenConfirmFramesRemaining = wasRendered ? 2 : 1
+            return
+        }
+
+        if hiddenConfirmFramesRemaining > 0 {
+            pendingHiddenCallback = onHiddenConfirmed
+            if spinPivot.isEnabled { hideImmediately() }
+            return
+        }
 
         let modelChanged = targetModelID != modelID
             || appliedAssetName != assetName
@@ -289,6 +316,21 @@ final class ModelRig {
     private func tick(_ dt: Float) {
         step(dt)
 
+        if hiddenConfirmFramesRemaining > 0 {
+            if spinPivot.isEnabled { hideImmediately() }
+            hiddenConfirmFramesRemaining -= 1
+            if hiddenConfirmFramesRemaining == 0 {
+                let token = pendingHiddenToken
+                let callback = pendingHiddenCallback
+                pendingHiddenToken = nil
+                pendingHiddenCallback = nil
+                if let token, let callback {
+                    callback(token)
+                }
+            }
+            return
+        }
+
         if warmupFramesRemaining > 0 {
             warmupFramesRemaining -= 1
             if warmupFramesRemaining == 0 {
@@ -372,6 +414,10 @@ final class ModelRig {
     func twirl() {
         velocity.x += 14
     }
+
+    func stepFrameForTesting(_ dt: Float) {
+        tick(dt)
+    }
 }
 
 /// Interactive persistent 3D headphone stage: drag to spin with momentum, pinch to zoom, tilt the phone for parallax.
@@ -388,9 +434,11 @@ struct HeadphoneModelView: View {
     var tintKey: String = ""
     var tilt: CGSize = .zero
     var isVisible: Bool = true
+    var hideToken: Int = 0
     var onTap: (() -> Void)? = nil
     var onManipulationChanged: (Bool) -> Void = { _ in }
     var onModelReady: (String) -> Void = { _ in }
+    var onHiddenConfirmed: (Int) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rig = ModelRig()
@@ -437,7 +485,9 @@ struct HeadphoneModelView: View {
                 tilt: tilt,
                 isVisible: isVisible,
                 reduceMotion: reduceMotion,
-                onModelReady: onModelReady
+                hideToken: hideToken,
+                onModelReady: onModelReady,
+                onHiddenConfirmed: onHiddenConfirmed
             )
         } update: { _ in
             rig.syncModel(
@@ -453,7 +503,9 @@ struct HeadphoneModelView: View {
                 tilt: tilt,
                 isVisible: isVisible,
                 reduceMotion: reduceMotion,
-                onModelReady: onModelReady
+                hideToken: hideToken,
+                onModelReady: onModelReady,
+                onHiddenConfirmed: onHiddenConfirmed
             )
         }
         // Keep outer margins free for swiping the card to switch between pairs.
