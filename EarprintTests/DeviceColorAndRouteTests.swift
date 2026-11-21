@@ -463,6 +463,65 @@ final class DeviceColorAndRouteTests: XCTestCase {
             ),
             1
         )
+
+        // Fast short flick after drag-origin baseline subtraction still commits.
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 0,
+                count: 5,
+                originPosition: 0,
+                currentPosition: 0.08,
+                dragDeltaX: -15,
+                predictedDeltaX: -185
+            ),
+            1
+        )
+        XCTAssertEqual(
+            CardDeckNavigation.targetIndex(
+                activeIndex: 1,
+                count: 5,
+                originPosition: 1,
+                currentPosition: 0.92,
+                dragDeltaX: 15,
+                predictedDeltaX: 185
+            ),
+            0
+        )
+    }
+
+    func testCardDeckNavigationShouldTriggerOverlayReloadRecoversInterruptedHide() {
+        XCTAssertTrue(
+            CardDeckNavigation.shouldTriggerOverlayReload(
+                activeCardID: "pro2",
+                overlayCardID: "pro2",
+                loadedCardID: nil,
+                hasAsset: true
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldTriggerOverlayReload(
+                activeCardID: "pro2",
+                overlayCardID: "pro2",
+                loadedCardID: "pro2",
+                hasAsset: true
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldTriggerOverlayReload(
+                activeCardID: "max",
+                overlayCardID: "pro2",
+                loadedCardID: nil,
+                hasAsset: true
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldTriggerOverlayReload(
+                activeCardID: "beats",
+                overlayCardID: "beats",
+                loadedCardID: nil,
+                hasAsset: false
+            )
+        )
     }
 
     func testCardDeckNavigationDragPositionTracksMonotonicallyAndRubberBandsBoundaries() {
@@ -557,44 +616,51 @@ final class DeviceColorAndRouteTests: XCTestCase {
         )
     }
 
-    func testCardDeckFlipStatePreservesOutgoingBackFaceAndRecoversMidFlightCatch() {
+    func testCardDeckFlipStateKeysByCardIDAndPreventsIncomingFlipLeakage() {
         var state = CardDeckFlipState()
-        state.toggle(.left)
-        XCTAssertTrue(state.isFlipped)
-        XCTAssertEqual(state.angle, -180)
-        XCTAssertTrue(state.isShowingBack("card-0", isTop: true))
+        state.toggle(cardID: "card-0", direction: .left)
+        XCTAssertTrue(state.isShowingBack(for: "card-0"))
+        XCTAssertEqual(state.frontFaceAngle(for: "card-0"), -180)
+        XCTAssertEqual(state.backFaceAngle(for: "card-0"), -180)
 
-        // Switching to card-1 keeps card-0 showing its back face while card-1 arrives face-up.
-        state.transition(from: "card-0", to: "card-1")
-        XCTAssertFalse(state.isFlipped)
-        XCTAssertEqual(state.angle, 0)
-        XCTAssertEqual(state.outgoingCardID, "card-0")
-        XCTAssertEqual(state.outgoingAngle, -180)
-        XCTAssertTrue(state.isOutgoingFlipped("card-0", isTop: false))
-        XCTAssertTrue(state.isShowingBack("card-0", isTop: false))
-        XCTAssertEqual(state.faceAngle(for: "card-0", isTop: false), -180)
-        XCTAssertFalse(state.isShowingBack("card-1", isTop: true))
-        XCTAssertEqual(state.faceAngle(for: "card-1", isTop: true), 0)
+        // Immediately upon switching to card-1 — even BEFORE `.onChange(of: card.id)` calls promoteToActive —
+        // card-1 must NEVER inherit card-0's -180° flip angle, and card-0 must retain its back face.
+        XCTAssertFalse(state.isShowingBack(for: "card-1"))
+        XCTAssertEqual(state.frontFaceAngle(for: "card-1"), 0)
+        XCTAssertEqual(state.backFaceAngle(for: "card-1"), 0)
+        XCTAssertTrue(state.isShowingBack(for: "card-0"))
+        XCTAssertEqual(state.outgoingCardIDs(excluding: "card-1"), ["card-0"])
 
-        // Catching card-0 mid-flight and pulling it back restores its back face seamlessly.
-        state.transition(from: "card-1", to: "card-0")
-        XCTAssertTrue(state.isFlipped)
-        XCTAssertEqual(state.angle, -180)
-        XCTAssertNil(state.outgoingCardID)
+        // Rapid flip-switch-flip-back: flipping card-1 while card-0 is still outgoing preserves BOTH cards independently.
+        state.promoteToActive(cardID: "card-1")
+        state.toggle(cardID: "card-1", direction: .left)
+        XCTAssertTrue(state.isShowingBack(for: "card-0"))
+        XCTAssertTrue(state.isShowingBack(for: "card-1"))
+        XCTAssertEqual(state.outgoingCardIDs(excluding: "card-0"), ["card-1"])
 
-        // If the tucked outgoing card has already begun unflipping to a front-facing angle,
-        // returning to it must land cleanly face-up instead of inverting isFlipped vs angle.
-        state.transition(from: "card-0", to: "card-1")
-        state.outgoingAngle = CardDeckFlipState.nearestFrontAngle(from: state.outgoingAngle)
-        XCTAssertEqual(state.outgoingAngle, -360)
-        XCTAssertFalse(state.isShowingBack("card-0", isTop: false))
-        state.transition(from: "card-1", to: "card-0")
-        XCTAssertFalse(state.isFlipped)
-        XCTAssertEqual(state.angle, 0)
-        XCTAssertNil(state.outgoingCardID)
+        // Catching card-0 mid-flight restores its back face seamlessly without losing card-1's outgoing back face.
+        state.promoteToActive(cardID: "card-0")
+        XCTAssertTrue(state.isShowingBack(for: "card-0"))
+        XCTAssertEqual(state.frontFaceAngle(for: "card-0"), -180)
+        XCTAssertTrue(state.isShowingBack(for: "card-1"))
 
-        XCTAssertEqual(CardDeckFlipState.nearestFrontAngle(from: 180), 360)
-        XCTAssertEqual(CardDeckFlipState.nearestFrontAngle(from: -540), -720)
+        // Tucked back card dissolves cleanly in two steps: flat front underneath opaque flat back, then fade back to 0.
+        state.prepareDissolveBack(cardID: "card-1")
+        XCTAssertTrue(state.isDissolvingBack(for: "card-1"))
+        XCTAssertTrue(state.isShowingBack(for: "card-1"))
+        XCTAssertEqual(state.frontFaceAngle(for: "card-1"), 0)
+        XCTAssertEqual(state.backFaceAngle(for: "card-1"), -180)
+        XCTAssertEqual(state.backFaceOpacity(for: "card-1"), 1)
+
+        state.fadeOutDissolvingBack(cardID: "card-1")
+        XCTAssertEqual(state.backFaceOpacity(for: "card-1"), 0)
+        XCTAssertFalse(state.isShowingBack(for: "card-1"))
+
+        // Returning to a card that has already started dissolving lands cleanly face-up.
+        state.promoteToActive(cardID: "card-1")
+        XCTAssertFalse(state.hasTrackedFlip(for: "card-1"))
+        XCTAssertFalse(state.isShowingBack(for: "card-1"))
+        XCTAssertEqual(state.frontFaceAngle(for: "card-1"), 0)
     }
 
     @MainActor

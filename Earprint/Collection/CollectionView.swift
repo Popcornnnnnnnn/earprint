@@ -643,8 +643,11 @@ enum CardDeckNavigation {
             let upper = min(count - 1, activeIndex + 1)
             return max(lower, min(upper, Int(projected.rounded())))
         }
-        let flickedLeft = dragDeltaX < -24 && predictedDeltaX < -135
-        let flickedRight = dragDeltaX > 24 && predictedDeltaX > 135
+        let momentum = predictedDeltaX - dragDeltaX
+        let flickedLeft = (dragDeltaX < -24 && predictedDeltaX < -135)
+            || (dragDeltaX <= -12 && predictedDeltaX < -135 && momentum < -110)
+        let flickedRight = (dragDeltaX > 24 && predictedDeltaX > 135)
+            || (dragDeltaX >= 12 && predictedDeltaX > 135 && momentum > 110)
         let draggedLeft = dragDeltaX < -56 && predictedDeltaX <= dragDeltaX + 30
         let draggedRight = dragDeltaX > 56 && predictedDeltaX >= dragDeltaX - 30
         if flickedLeft || draggedLeft {
@@ -687,73 +690,118 @@ enum CardDeckNavigation {
     ) -> Bool {
         confirmedToken == currentHideToken && isHidingForSwap && !isDragging
     }
+
+    /// Returns true when the active card still owns the persistent 3D overlay after a cancelled swap hide,
+    /// has a 3D asset, and has not yet reported a loaded model — requiring an explicit reload trigger.
+    static func shouldTriggerOverlayReload(
+        activeCardID: String,
+        overlayCardID: String,
+        loadedCardID: String?,
+        hasAsset: Bool
+    ) -> Bool {
+        activeCardID == overlayCardID && loadedCardID != activeCardID && hasAsset
+    }
 }
 
-/// Preserves an outgoing flipped card's back face while it glides off-screen or tucks behind the stack,
-/// preventing an instant mid-flight snap from `CardBack` to `CardFront` when switching cards.
+/// Per-card flip state strictly keyed by `HeadphoneCard.id`.
+/// Keying by card ID guarantees an incoming card never inherits the previous card's flip angle on the
+/// render pass before `.onChange(of: card.id)` fires, while preserving outgoing flipped cards as they
+/// glide off-screen or dissolve cleanly behind the active card.
 struct CardDeckFlipState: Equatable {
-    var isFlipped = false
-    var angle: Double = 0
-    var outgoingCardID: String? = nil
-    var outgoingAngle: Double = 0
-
-    mutating func toggle(_ direction: CardFlipDirection = .left) {
-        isFlipped.toggle()
-        angle += direction.rawValue
+    enum Phase: Equatable {
+        case rotated(Double)
+        case dissolvingBack(opacity: Double)
     }
 
-    mutating func transition(from oldID: String, to newID: String) {
-        guard oldID != newID else { return }
-        if newID == outgoingCardID {
-            if cos(outgoingAngle * .pi / 180) < 0 {
-                isFlipped = true
-                angle = outgoingAngle
-            } else {
-                isFlipped = false
-                angle = 0
-            }
-            outgoingCardID = nil
-            outgoingAngle = 0
-            return
-        }
-        if isFlipped {
-            outgoingCardID = oldID
-            outgoingAngle = angle
-        }
-        isFlipped = false
-        angle = 0
+    private(set) var phasesByCardID: [String: Phase] = [:]
+
+    var trackedCardIDs: [String] {
+        phasesByCardID.keys.sorted()
     }
 
-    mutating func clearOutgoing() {
-        outgoingCardID = nil
-        outgoingAngle = 0
+    mutating func toggle(cardID: String, direction: CardFlipDirection = .left) {
+        let current: Double
+        if case .rotated(let angle) = phasesByCardID[cardID] {
+            current = angle
+        } else {
+            current = 0
+        }
+        phasesByCardID[cardID] = .rotated(current + direction.rawValue)
+    }
+
+    /// Promotes `cardID` to active: keeps an active back-face rotation if caught mid-flight,
+    /// or clears an already-dissolving tucked back face so the card lands cleanly face-up.
+    mutating func promoteToActive(cardID: String) {
+        if case .dissolvingBack = phasesByCardID[cardID] {
+            phasesByCardID.removeValue(forKey: cardID)
+        }
+    }
+
+    mutating func prepareDissolveBack(cardID: String) {
+        guard isShowingBack(for: cardID) else { return }
+        phasesByCardID[cardID] = .dissolvingBack(opacity: 1)
+    }
+
+    mutating func fadeOutDissolvingBack(cardID: String) {
+        guard case .dissolvingBack = phasesByCardID[cardID] else { return }
+        phasesByCardID[cardID] = .dissolvingBack(opacity: 0)
+    }
+
+    mutating func clear(cardID: String) {
+        phasesByCardID.removeValue(forKey: cardID)
     }
 
     mutating func resetAll() {
-        isFlipped = false
-        angle = 0
-        outgoingCardID = nil
-        outgoingAngle = 0
+        phasesByCardID.removeAll()
     }
 
-    func isOutgoingFlipped(_ cardID: String, isTop: Bool) -> Bool {
-        !isTop && outgoingCardID == cardID
+    func hasTrackedFlip(for cardID: String) -> Bool {
+        phasesByCardID[cardID] != nil
     }
 
-    func isShowingBack(_ cardID: String, isTop: Bool) -> Bool {
-        if isTop { return isFlipped }
-        return outgoingCardID == cardID && cos(outgoingAngle * .pi / 180) < 0
+    func isDissolvingBack(for cardID: String) -> Bool {
+        if case .dissolvingBack = phasesByCardID[cardID] { return true }
+        return false
     }
 
-    func faceAngle(for cardID: String, isTop: Bool) -> Double {
-        if isTop { return angle }
-        if outgoingCardID == cardID { return outgoingAngle }
+    func isShowingBack(for cardID: String) -> Bool {
+        switch phasesByCardID[cardID] {
+        case .rotated(let angle):
+            return cos(angle * .pi / 180) < 0
+        case .dissolvingBack(let opacity):
+            return opacity > 0
+        case nil:
+            return false
+        }
+    }
+
+    func frontFaceAngle(for cardID: String) -> Double {
+        if case .rotated(let angle) = phasesByCardID[cardID] {
+            return angle
+        }
         return 0
     }
 
-    /// Nearest front-facing multiple of 360° so a tucked back card unflips by a single 180° half-turn.
-    static func nearestFrontAngle(from angle: Double) -> Double {
-        (angle / 360).rounded() * 360
+    func backFaceAngle(for cardID: String) -> Double {
+        switch phasesByCardID[cardID] {
+        case .rotated(let angle):
+            return angle
+        case .dissolvingBack:
+            return -180
+        case nil:
+            return 0
+        }
+    }
+
+    func backFaceOpacity(for cardID: String) -> Double {
+        if case .dissolvingBack(let opacity) = phasesByCardID[cardID] {
+            return opacity
+        }
+        return 1
+    }
+
+    func outgoingCardIDs(excluding activeCardID: String) -> [String] {
+        phasesByCardID.keys.filter { $0 != activeCardID }.sorted()
     }
 }
 
@@ -892,6 +940,7 @@ struct CardDetail: View {
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
+    @State private var dragOriginTranslationX: CGFloat = 0
     @State private var lastDeckDragEndTime: Date = .distantPast
     @GestureState private var isBackdropDragActive = false
     @GestureState private var isCardStackDragActive = false
@@ -902,17 +951,19 @@ struct CardDetail: View {
     @State private var overlayCardID: String = ""
     @State private var isHiding3DForSwap = false
     @State private var swapHideToken = 0
+    @State private var modelReloadNonce = 0
     @State private var loaded3DCardID: String? = nil
     @State private var settled3DCardID: String? = nil
     @State private var settle3DTask: Task<Void, Never>? = nil
     @State private var clearOutgoingFlipTask: Task<Void, Never>? = nil
+    @State private var flipHapticCount = 0
     @State private var appeared = false
     @State private var isDismissing = false
     @State private var holdsMotionHub = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
     @State private var space = LayoutSpace()
 
-    private var flipped: Bool { flipState.isFlipped }
+    private var flipped: Bool { flipState.isShowingBack(for: card.id) }
 
     private var isDeckDragGestureActive: Bool {
         isBackdropDragActive || isCardStackDragActive || isFlippedCardDragActive
@@ -1051,10 +1102,10 @@ struct CardDetail: View {
                 flipState.resetAll()
             }
         }
-        .onChange(of: card.id) { oldID, newID in
+        .onChange(of: card.id) { _, newID in
             clearOutgoingFlipTask?.cancel()
             clearOutgoingFlipTask = nil
-            flipState.transition(from: oldID, to: newID)
+            flipState.promoteToActive(cardID: newID)
             dragTilt = .zero
             modelInteractionTilt = nil
             showColorBar = false
@@ -1105,6 +1156,7 @@ struct CardDetail: View {
             settle3DTask?.cancel()
             clearOutgoingFlipTask?.cancel()
             dragStartPosition = nil
+            dragOriginTranslationX = 0
             MotionHub.shared.setScrolling(false, source: "cardDeck")
             if holdsMotionHub {
                 holdsMotionHub = false
@@ -1181,14 +1233,16 @@ struct CardDetail: View {
                     clearOutgoingFlipTask = nil
                     isHiding3DForSwap = false
                     dragStartPosition = presentationTracker.livePosition
+                    dragOriginTranslationX = dx
                     MotionHub.shared.setScrolling(true, source: "cardDeck")
                 }
                 let origin = dragStartPosition ?? CGFloat(activeIndex)
+                let effectiveDX = dx - dragOriginTranslationX
                 let clamped = CardDeckNavigation.dragPosition(
                     origin: origin,
                     activeIndex: activeIndex,
                     count: deckCards.count,
-                    dragDeltaX: dx
+                    dragDeltaX: effectiveDX
                 )
                 var instant = Transaction()
                 instant.disablesAnimations = true
@@ -1199,11 +1253,13 @@ struct CardDetail: View {
             }
             .onEnded { value in
                 guard let origin = dragStartPosition else { return }
+                let originX = dragOriginTranslationX
                 dragStartPosition = nil
+                dragOriginTranslationX = 0
                 lastDeckDragEndTime = .now
                 MotionHub.shared.setScrolling(false, source: "cardDeck")
-                let dx = value.translation.width
-                let predicted = value.predictedEndTranslation.width
+                let dx = value.translation.width - originX
+                let predicted = value.predictedEndTranslation.width - originX
                 let target = CardDeckNavigation.targetIndex(
                     activeIndex: activeIndex,
                     count: deckCards.count,
@@ -1228,6 +1284,7 @@ struct CardDetail: View {
     private func cancelDeckDrag() {
         guard dragStartPosition != nil else { return }
         dragStartPosition = nil
+        dragOriginTranslationX = 0
         lastDeckDragEndTime = .now
         MotionHub.shared.setScrolling(false, source: "cardDeck")
         withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
@@ -1262,6 +1319,13 @@ struct CardDetail: View {
                 withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
                     settled3DCardID = card.id
                 }
+            } else if CardDeckNavigation.shouldTriggerOverlayReload(
+                activeCardID: card.id,
+                overlayCardID: overlayCardID,
+                loadedCardID: loaded3DCardID,
+                hasAsset: resolvedAssetName(for: card) != nil
+            ) {
+                modelReloadNonce += 1
             }
             return
         }
@@ -1311,34 +1375,80 @@ struct CardDetail: View {
     private func scheduleOutgoingFlipCleanupIfNeeded() {
         clearOutgoingFlipTask?.cancel()
         clearOutgoingFlipTask = nil
-        guard dragStartPosition == nil, let outgoingID = flipState.outgoingCardID else { return }
+        let outgoingIDs = flipState.outgoingCardIDs(excluding: card.id)
+        guard dragStartPosition == nil, !outgoingIDs.isEmpty else { return }
 
         let targetIndex = activeIndex
-        let outgoingIdx = deckCards.firstIndex(where: { $0.id == outgoingID })
+        let outgoingIndices: [String: Int] = Dictionary(uniqueKeysWithValues: outgoingIDs.compactMap { id in
+            deckCards.firstIndex(where: { $0.id == id }).map { (id, $0) }
+        })
 
         clearOutgoingFlipTask = Task { @MainActor in
             for _ in 0..<35 {
                 if Task.isCancelled || dragStartPosition != nil { return }
                 let livePos = presentationTracker.livePosition
-                let done: Bool
-                if let outgoingIdx, outgoingIdx < targetIndex {
-                    done = (livePos - CGFloat(outgoingIdx)) >= 0.995
-                } else {
-                    done = abs(livePos - CGFloat(targetIndex)) <= 0.03
+                let allDone = outgoingIDs.allSatisfy { id in
+                    guard let idx = outgoingIndices[id] else { return true }
+                    if idx < targetIndex {
+                        return (livePos - CGFloat(idx)) >= 0.995
+                    } else {
+                        return abs(livePos - CGFloat(targetIndex)) <= 0.03
+                    }
                 }
-                if done { break }
+                if allDone { break }
                 try? await Task.sleep(for: .milliseconds(16))
             }
 
-            guard !Task.isCancelled, dragStartPosition == nil, flipState.outgoingCardID == outgoingID else { return }
-            if let outgoingIdx, outgoingIdx > targetIndex, !reduceMotion {
-                withAnimation(.easeInOut(duration: 0.28)) {
-                    flipState.outgoingAngle = CardDeckFlipState.nearestFrontAngle(from: flipState.outgoingAngle)
+            guard !Task.isCancelled, dragStartPosition == nil else { return }
+
+            var tuckedToDissolve: [String] = []
+            for id in flipState.outgoingCardIDs(excluding: card.id) {
+                let idx = deckCards.firstIndex(where: { $0.id == id })
+                if let idx, idx > activeIndex, flipState.isShowingBack(for: id), !reduceMotion {
+                    tuckedToDissolve.append(id)
+                } else {
+                    var instant = Transaction()
+                    instant.disablesAnimations = true
+                    withTransaction(instant) {
+                        flipState.clear(cardID: id)
+                    }
                 }
-                try? await Task.sleep(for: .milliseconds(300))
-                guard !Task.isCancelled, dragStartPosition == nil, flipState.outgoingCardID == outgoingID else { return }
             }
-            flipState.clearOutgoing()
+
+            guard !tuckedToDissolve.isEmpty else { return }
+
+            // Commit face-up `CardFront` behind opaque `CardBack` in a non-animated frame first,
+            // then dissolve `CardBack` cleanly with zero 3D perspective flare protruding past the top card.
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                for id in tuckedToDissolve {
+                    flipState.prepareDissolveBack(cardID: id)
+                }
+            }
+
+            try? await Task.sleep(for: .milliseconds(16))
+            guard !Task.isCancelled, dragStartPosition == nil else { return }
+
+            let activeDissolving = tuckedToDissolve.filter { $0 != card.id && flipState.isDissolvingBack(for: $0) }
+            guard !activeDissolving.isEmpty else { return }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                for id in activeDissolving {
+                    flipState.fadeOutDissolvingBack(cardID: id)
+                }
+            }
+
+            try? await Task.sleep(for: .milliseconds(240))
+            guard !Task.isCancelled, dragStartPosition == nil else { return }
+
+            var cleanup = Transaction()
+            cleanup.disablesAnimations = true
+            withTransaction(cleanup) {
+                for id in activeDissolving where id != card.id && flipState.isDissolvingBack(for: id) {
+                    flipState.clear(cardID: id)
+                }
+            }
         }
     }
 
@@ -1424,11 +1534,13 @@ struct CardDetail: View {
         let scale = max(scale, 0.3)
         // Window mounted cards to the visible stack neighborhood (while keeping outgoing overlay/flipped cards mounted).
         let overlayIdx = resolvedOverlayIndex
-        let outgoingFlipIdx = flipState.outgoingCardID.flatMap { id in
+        let trackedFlipIndices = flipState.trackedCardIDs.compactMap { id in
             deckCards.firstIndex(where: { $0.id == id })
         }
-        let lower = max(0, min(activeIndex - 2, overlayIdx, outgoingFlipIdx ?? activeIndex))
-        let upper = min(deckCards.count, max(activeIndex + 4, overlayIdx + 1, (outgoingFlipIdx ?? activeIndex) + 1))
+        let minTrackedFlip = trackedFlipIndices.min() ?? activeIndex
+        let maxTrackedFlip = trackedFlipIndices.max() ?? activeIndex
+        let lower = max(0, min(activeIndex - 2, overlayIdx, minTrackedFlip))
+        let upper = min(deckCards.count, max(activeIndex + 4, overlayIdx + 1, maxTrackedFlip + 1))
         let indices = lower..<upper
         return ZStack {
             ForEach(Array(deckCards[indices].enumerated()), id: \.element.id) { offset, item in
@@ -1451,8 +1563,17 @@ struct CardDetail: View {
             }
         }
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
-        .gesture(cardNavigationSwipe(updating: $isCardStackDragActive), isEnabled: !flipped)
+        .gesture(
+            cardNavigationSwipe(updating: $isCardStackDragActive)
+                .exclusively(before: TapGesture().onEnded {
+                    if canFlip && !flipped {
+                        flip()
+                    }
+                }),
+            isEnabled: !flipped
+        )
         .simultaneousGesture(cardNavigationSwipe(updating: $isFlippedCardDragActive), isEnabled: flipped)
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipHapticCount)
     }
 
     @ViewBuilder
@@ -1464,7 +1585,7 @@ struct CardDetail: View {
         let itemFinish = itemColor?.modelFinish ?? targetCard.finish
         let itemFinishID = itemColor?.id ?? "default"
         let activeAsset = resolvedAssetName(for: targetCard)
-        let overlayShowsBack = canFlip && flipState.isShowingBack(targetCard.id, isTop: targetCard.id == card.id)
+        let overlayShowsBack = canFlip && flipState.isShowingBack(for: targetCard.id)
         let canShow3DNow = activeAsset != nil && !isHiding3DForSwap && !overlayShowsBack && targetCard.id == settled3DCardID
         let canInteractWith3D = canShow3DNow && targetCard.id == card.id && dragStartPosition == nil
         let overrideTilt: CGSize? = modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt)
@@ -1492,6 +1613,7 @@ struct CardDetail: View {
                     tilt: activeTilt,
                     isVisible: canShow3DNow,
                     hideToken: swapHideToken,
+                    reloadNonce: modelReloadNonce,
                     onTap: canFlip ? { flip() } : nil,
                     onManipulationChanged: { manipulating in
                         modelInteractionTilt = manipulating ? activeTilt : nil
@@ -1512,6 +1634,13 @@ struct CardDetail: View {
                             isDragging: dragStartPosition != nil
                         ) {
                             completeOverlaySwapToActiveCard()
+                        } else if CardDeckNavigation.shouldTriggerOverlayReload(
+                            activeCardID: card.id,
+                            overlayCardID: overlayCardID,
+                            loadedCardID: loaded3DCardID,
+                            hasAsset: resolvedAssetName(for: card) != nil
+                        ) {
+                            modelReloadNonce += 1
                         }
                     }
                 )
@@ -1539,10 +1668,12 @@ struct CardDetail: View {
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
         let isTop = index == activeIndex
-        let isOutgoingFlipped = flipState.isOutgoingFlipped(item.id, isTop: isTop) && canFlip
-        let showsBackFace = canFlip && flipState.isShowingBack(item.id, isTop: isTop)
+        let hasTrackedFlip = flipState.hasTrackedFlip(for: item.id) && canFlip
+        let showsBackFace = canFlip && flipState.isShowingBack(for: item.id)
         let usesLiveTilt = isTop || item.id == overlayCardID
-        let activeAngle = canFlip ? flipState.faceAngle(for: item.id, isTop: isTop) : 0
+        let frontAngle = canFlip ? flipState.frontFaceAngle(for: item.id) : 0
+        let backAngle = canFlip ? flipState.backFaceAngle(for: item.id) : 0
+        let backOpacity = canFlip ? flipState.backFaceOpacity(for: item.id) : 1
         let surfaceRarity = isModelPreview ? (catalogSurfaces[item.id] ?? .silver) : item.rarity
         let overrideTilt: CGSize? = usesLiveTilt
             ? (modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt))
@@ -1552,14 +1683,13 @@ struct CardDetail: View {
             ZStack {
                 deckFrontFace(item, isTop: isTop, activeTilt: activeTilt, surfaceRarity: surfaceRarity)
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-                    .onTapGesture { if canFlip { flip() } }
                     .accessibilityElement(children: .contain)
                     .accessibilityAction(named: Text("Flip card")) { if canFlip { flip() } }
                     .allowsHitTesting(isTop && !flipped)
                     .accessibilityHidden(!isTop || flipped)
-                    .modifier(CardFaceRotation(angle: activeAngle))
+                    .modifier(CardFaceRotation(angle: frontAngle))
 
-                if (isTop || isOutgoingFlipped) && canFlip {
+                if (isTop || hasTrackedFlip) && canFlip {
                     CardBack(
                         card: item,
                         openDossier: !isModelPreview ? {
@@ -1577,7 +1707,9 @@ struct CardDetail: View {
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                     .allowsHitTesting(isTop && flipped)
                     .accessibilityHidden(!(isTop && flipped))
-                    .modifier(CardFaceRotation(angle: activeAngle, isBack: true))
+                    .modifier(CardFaceRotation(angle: backAngle, isBack: true))
+                    .opacity(backOpacity)
+                    .transition(.identity)
                 }
             }
             .background {
@@ -1589,7 +1721,7 @@ struct CardDetail: View {
                         y: isTop ? 16 : 12
                     )
                     .animation(.easeOut(duration: 0.25), value: isTop)
-                    .rotation3DEffect(.degrees(activeAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                    .rotation3DEffect(.degrees(frontAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             }
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
@@ -1597,7 +1729,6 @@ struct CardDetail: View {
             .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
             .animation(.easeOut(duration: 0.25), value: usesLiveTilt)
             .allowsHitTesting(isTop)
-            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipped)
         }
     }
 
@@ -1610,7 +1741,7 @@ struct CardDetail: View {
         let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
         let assetName = resolvedAssetName(for: item)
-        let itemShowsBack = canFlip && flipState.isShowingBack(item.id, isTop: isTop)
+        let itemShowsBack = canFlip && flipState.isShowingBack(for: item.id)
         let isItemShowing3D = assetName != nil
             && item.id == settled3DCardID
             && item.id == overlayCardID
@@ -1797,8 +1928,9 @@ struct CardDetail: View {
     private func flip(_ direction: CardFlipDirection = .left) {
         // Side by side already shows both faces, and Model Gallery catalog cards have no stats back.
         guard canFlip, !hasActiveOrRecentDeckDrag, !isDeckSettlingMidFlight else { return }
+        flipHapticCount += 1
         withAnimation(.snappy(duration: 0.38, extraBounce: 0)) {
-            flipState.toggle(direction)
+            flipState.toggle(cardID: card.id, direction: direction)
             dragTilt = .zero
         }
     }

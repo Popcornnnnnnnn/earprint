@@ -450,6 +450,8 @@ struct HeadphoneModelView: View {
     var tilt: CGSize = .zero
     var isVisible: Bool = true
     var hideToken: Int = 0
+    /// Incrementing this forces `RealityView.update` to re-run `syncModel` (e.g. after a hide-cancelled load returns to the same card).
+    var reloadNonce: Int = 0
     var onTap: (() -> Void)? = nil
     var onManipulationChanged: (Bool) -> Void = { _ in }
     var onModelReady: (String) -> Void = { _ in }
@@ -505,6 +507,7 @@ struct HeadphoneModelView: View {
                 onHiddenConfirmed: onHiddenConfirmed
             )
         } update: { _ in
+            _ = reloadNonce
             rig.syncModel(
                 modelID: modelID,
                 kind: kind,
