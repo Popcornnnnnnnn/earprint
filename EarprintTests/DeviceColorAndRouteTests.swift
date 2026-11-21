@@ -315,4 +315,45 @@ final class DeviceColorAndRouteTests: XCTestCase {
         ]
         XCTAssertEqual(ModelGalleryCatalog.unlockedCount(for: owned), 1)
     }
+
+    @MainActor
+    func testPersistentModelRigSwapsModelsAndClearsWithoutTearingDownScene() async throws {
+        let rig = ModelRig()
+        let initialRoot = rig.root
+        let initialIBL = rig.iblLightEntity
+        var readyIDs: [String] = []
+
+        let pro = await HeadphoneModelLoader.load(.earbuds, finish: .glossWhite, modelKey: .airpodsPro)
+        rig.installModel(
+            pro,
+            modelID: "pro",
+            finishID: "default",
+            studioLighting: nil,
+            tintKey: "HOLO",
+            onModelReady: { readyIDs.append($0) }
+        )
+        XCTAssertEqual(rig.spinPivot.children.count, 1)
+        XCTAssertEqual(rig.displayedModelID, "pro")
+        XCTAssertTrue(rig.spinPivot.isEnabled)
+
+        let orange = try XCTUnwrap(DeviceColorOption.airPodsMaxFinishes.first { $0.id == "apm.orange" })
+        let max = await HeadphoneModelLoader.load(.overEar, finish: orange.modelFinish, modelKey: .airpodsMax)
+        rig.installModel(
+            max,
+            modelID: "max",
+            finishID: orange.id,
+            studioLighting: nil,
+            tintKey: "GOLD",
+            onModelReady: { readyIDs.append($0) }
+        )
+        XCTAssertEqual(rig.spinPivot.children.count, 1)
+        XCTAssertEqual(rig.displayedModelID, "max")
+        XCTAssertIdentical(rig.root, initialRoot)
+        XCTAssertIdentical(rig.iblLightEntity, initialIBL)
+
+        rig.clearLoadedModel()
+        XCTAssertTrue(rig.spinPivot.children.isEmpty)
+        XCTAssertNil(rig.displayedModelID)
+        XCTAssertFalse(rig.spinPivot.isEnabled)
+    }
 }

@@ -673,6 +673,8 @@ private struct CardStackEffect: ViewModifier, Animatable {
     var deckPosition: CGFloat
     let cardScale: CGFloat
     let appeared: Bool
+    var appliesDim: Bool = true
+    var appliesOpacity: Bool = true
 
     var animatableData: CGFloat {
         get { deckPosition }
@@ -682,10 +684,14 @@ private struct CardStackEffect: ViewModifier, Animatable {
     func body(content: Content) -> some View {
         let delta = cardIndex - deckPosition
         let pose = CardStackPose.pose(forDelta: delta)
-        let effectiveOpacity = abs(delta) < 0.01 ? pose.opacity : (appeared ? pose.opacity : 0)
+        let effectiveOpacity: Double = if appliesOpacity {
+            abs(delta) < 0.01 ? pose.opacity : (appeared ? pose.opacity : 0)
+        } else {
+            1
+        }
         content
             .overlay {
-                if pose.dimAmount > 0.005 {
+                if appliesDim && pose.dimAmount > 0.005 {
                     RoundedRectangle(cornerRadius: CardMetrics.corner * cardScale, style: .continuous)
                         .fill(Color.black.opacity(pose.dimAmount))
                         .allowsHitTesting(false)
@@ -695,7 +701,6 @@ private struct CardStackEffect: ViewModifier, Animatable {
             .rotationEffect(.degrees(pose.rotationDegrees))
             .offset(x: pose.offsetX * cardScale, y: pose.offsetY * cardScale)
             .opacity(effectiveOpacity)
-            .zIndex(pose.zIndex)
     }
 }
 
@@ -741,9 +746,10 @@ struct CardDetail: View {
     /// Continuous visual index across `deckCards` (`0.0` = card 0, `1.0` = card 1, etc.).
     @State private var deckPosition: CGFloat = 0
     @State private var dragStartPosition: CGFloat? = nil
-    /// Keeps the active card's 3D RealityView settled and immune to half-swipe cancellation glitches.
-    @State private var active3DCardID: String? = nil
-    @State private var ready3DCardIDs: Set<String> = []
+    /// Keeps the persistent 3D RealityView clean across card switches without tearing down CAMetalLayer.
+    @State private var isSwitchingCard = false
+    @State private var loaded3DCardID: String? = nil
+    @State private var settled3DCardID: String? = nil
     @State private var settle3DTask: Task<Void, Never>? = nil
     @State private var appeared = false
     @State private var isDismissing = false
@@ -768,6 +774,14 @@ struct CardDetail: View {
             let options = colorStore?.availableColors(for: item) ?? DeviceColorOption.options(for: item.modelKey)
             return options.count > 1
         }
+    }
+
+    private func resolvedAssetName(for item: HeadphoneCard) -> String? {
+        item.modelAssetName ?? (isModelPreview ? "" : nil)
+    }
+
+    private var deckHasAny3DModel: Bool {
+        deckCards.contains { resolvedAssetName(for: $0) != nil }
     }
 
     private var selectedColor: DeviceColorOption? {
@@ -860,22 +874,34 @@ struct CardDetail: View {
             dragTilt = .zero
             modelInteractionTilt = nil
             showColorBar = false
+            isSwitchingCard = true
+            settled3DCardID = nil
+            if loaded3DCardID != card.id {
+                loaded3DCardID = nil
+            }
             settle3DTask?.cancel()
             withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) {
                 deckPosition = CGFloat(activeIndex)
             }
-            // Wait until the outgoing card has cleared offscreen before detaching/attaching RealityKit.
+            // Wait until the outgoing card has cleared offscreen before revealing the next live 3D model.
             let targetID = card.id
             settle3DTask = Task {
-                try? await Task.sleep(for: .milliseconds(300))
+                try? await Task.sleep(for: .milliseconds(240))
                 guard !Task.isCancelled else { return }
-                active3DCardID = targetID
+                isSwitchingCard = false
+                if loaded3DCardID == targetID {
+                    withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
+                        settled3DCardID = targetID
+                    }
+                }
                 await prewarmNeighbors(around: activeIndex)
             }
         }
         .onAppear {
             deckPosition = CGFloat(activeIndex)
-            active3DCardID = card.id
+            isSwitchingCard = false
+            settled3DCardID = nil
+            loaded3DCardID = nil
             if !reduceMotion && !holdsMotionHub {
                 holdsMotionHub = true
                 MotionHub.shared.acquire()
@@ -1060,7 +1086,7 @@ struct CardDetail: View {
     }
 
     /// Physical trading-card stack: every card keeps a single stable view identity (no structural if/else swap
-    /// mid-flight) driven by `CardStackEffect` (`Animatable`) for locked 120Hz spring curves.
+    /// mid-flight) driven by `CardStackEffect` (`Animatable`), plus one persistent 3D RealityView overlay.
     private func cardStack(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
         // Window mounted cards to the visible stack neighborhood (at most 6 cards) so large collections stay fast.
@@ -1070,9 +1096,82 @@ struct CardDetail: View {
                 let idx = indices.lowerBound + offset
                 deckCard(item, index: idx, scale: scale)
                     .modifier(CardStackEffect(cardIndex: CGFloat(idx), deckPosition: deckPosition, cardScale: scale, appeared: appeared))
+                    .zIndex(Double(deckCards.count - idx))
+            }
+
+            if deckHasAny3DModel {
+                persistent3DOverlay(scale: scale)
+                    .zIndex(Double(deckCards.count + 10))
             }
         }
         .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+    }
+
+    @ViewBuilder
+    private func persistent3DOverlay(scale: CGFloat) -> some View {
+        let surfaceRarity = isModelPreview ? (catalogSurfaces[card.id] ?? .silver) : card.rarity
+        let itemColor = colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
+        let itemFinish = itemColor?.modelFinish ?? card.finish
+        let itemFinishID = itemColor?.id ?? "default"
+        let activeAsset = resolvedAssetName(for: card)
+        let canShow3DNow = activeAsset != nil && !isSwitchingCard && !flipped && card.id == settled3DCardID
+        let overrideTilt: CGSize? = modelInteractionTilt ?? (dragTilt == .zero ? nil : dragTilt)
+
+        LiveTiltView(isActive: !flipped, overrideTilt: overrideTilt) { activeTilt in
+            ZStack {
+                Ellipse()
+                    .fill(.black.opacity(0.30))
+                    .frame(width: 146, height: 16)
+                    .blur(radius: 10)
+                    .offset(x: -activeTilt.width * 8, y: 37)
+                    .opacity(canShow3DNow ? 1 : 0)
+                    .allowsHitTesting(false)
+
+                HeadphoneModelView(
+                    modelID: card.id,
+                    kind: card.kind,
+                    finish: itemFinish,
+                    finishID: itemFinishID,
+                    modelKey: card.modelKey,
+                    assetName: activeAsset,
+                    modelSize: 0.18,
+                    tint: surfaceRarity.studioTint,
+                    tintKey: surfaceRarity.rawValue,
+                    tilt: activeTilt,
+                    isVisible: canShow3DNow,
+                    onTap: canFlip ? { flip() } : nil,
+                    onManipulationChanged: { manipulating in
+                        modelInteractionTilt = manipulating ? activeTilt : nil
+                    },
+                    onModelReady: { readyID in
+                        loaded3DCardID = readyID
+                        if readyID == card.id && !isSwitchingCard {
+                            withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
+                                settled3DCardID = readyID
+                            }
+                        }
+                    }
+                )
+                .frame(width: 300, height: 230)
+                .offset(y: -47)
+                .allowsHitTesting(canShow3DNow)
+                .accessibilityHidden(!canShow3DNow)
+            }
+            .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
+            .scaleEffect(scale)
+            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+            .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .allowsHitTesting(canShow3DNow)
+        }
+        .modifier(CardStackEffect(
+            cardIndex: CGFloat(activeIndex),
+            deckPosition: deckPosition,
+            cardScale: scale,
+            appeared: appeared,
+            appliesDim: false,
+            appliesOpacity: false
+        ))
     }
 
     private func deckCard(_ item: HeadphoneCard, index: Int, scale: CGFloat) -> some View {
@@ -1135,68 +1234,30 @@ struct CardDetail: View {
         surfaceRarity: Rarity
     ) -> some View {
         let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
-        let itemFinish = itemColor?.modelFinish ?? item.finish
-        let itemFinishID = itemColor?.id ?? "default"
         let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
-        let assetName = item.modelAssetName ?? (isModelPreview ? "" : nil)
-        // Keep the active 3D RealityView settled cleanly and undisturbed by half-swipes.
-        let show3D = item.id == active3DCardID && assetName != nil
-        let is3DReady = show3D && ready3DCardIDs.contains(item.id)
-        let surfaceTint = surfaceRarity.studioTint
+        let assetName = resolvedAssetName(for: item)
+        let isItemShowing3D = assetName != nil
+            && item.id == settled3DCardID
+            && !isSwitchingCard
+            && !flipped
         let catalogBadge: LocalizedStringKey? = isModelPreview
             ? (unlockedPreviewIDs.contains(item.id) ? "UNLOCKED" : "CATALOG")
             : nil
 
-        return ZStack {
-            CardFront(
-                card: item,
-                tilt: activeTilt,
-                showSymbol: !is3DReady,
-                colorOption: itemColor,
-                isCurrentlyWorn: itemWorn,
-                usesProductArtwork: !isModelPreview || item.modelAssetName != nil,
-                showsListeningStats: !isModelPreview,
-                surfaceRarityOverride: isModelPreview ? surfaceRarity : nil,
-                badgeOverride: catalogBadge,
-                catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
-            )
-            .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
-            .gesture(isTop ? cardNavigationSwipe : nil)
-
-            if show3D, let assetName {
-                Ellipse()
-                    .fill(.black.opacity(0.30))
-                    .frame(width: 146, height: 16)
-                    .blur(radius: 10)
-                    .offset(x: -activeTilt.width * 8, y: 37)
-                    .opacity(is3DReady ? 1 : 0)
-                    .allowsHitTesting(false)
-                HeadphoneModelView(
-                    kind: item.kind,
-                    finish: itemFinish,
-                    finishID: itemFinishID,
-                    modelKey: item.modelKey,
-                    assetName: assetName,
-                    modelSize: 0.18,
-                    tint: surfaceTint,
-                    tilt: activeTilt,
-                    onManipulationChanged: { manipulating in
-                        modelInteractionTilt = manipulating ? activeTilt : nil
-                    },
-                    onModelReady: {
-                        withAnimation(.easeOut(duration: reduceMotion ? 0.10 : 0.18)) {
-                            _ = ready3DCardIDs.insert(item.id)
-                        }
-                    }
-                )
-                .frame(width: 300, height: 230)
-                .offset(y: -47)
-                .opacity(is3DReady ? 1 : 0)
-                .allowsHitTesting(is3DReady)
-                .accessibilityHidden(!is3DReady)
-                .onDisappear { ready3DCardIDs.remove(item.id) }
-            }
-        }
+        return CardFront(
+            card: item,
+            tilt: activeTilt,
+            showSymbol: !isItemShowing3D,
+            colorOption: itemColor,
+            isCurrentlyWorn: itemWorn,
+            usesProductArtwork: !isModelPreview || item.modelAssetName != nil,
+            showsListeningStats: !isModelPreview,
+            surfaceRarityOverride: isModelPreview ? surfaceRarity : nil,
+            badgeOverride: catalogBadge,
+            catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
+        )
+        .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
+        .gesture(isTop ? cardNavigationSwipe : nil)
     }
 
     private func backCard(scale: CGFloat) -> some View {
