@@ -6,7 +6,6 @@ enum DossierShareFormat: String, CaseIterable, Identifiable {
 
     var id: Self { self }
     var title: LocalizedStringKey { self == .simple ? "Simple" : "Long" }
-    var subtitle: LocalizedStringKey { self == .simple ? "1 page" : "4 pages" }
 }
 
 /// Crisp PNG page exported by `DossierShareSheet` via `ShareLink(items:)`.
@@ -132,6 +131,8 @@ struct DossierShareSheet: View {
     @State private var options = DossierShareOptions.default
     @State private var simplePages: [DossierShareImage] = []
     @State private var longPages: [DossierShareImage] = []
+    @State private var renderedSimpleKey: RenderKey? = nil
+    @State private var renderedLongKey: RenderKey? = nil
     @State private var isRendering = false
     @State private var activePageIndex = 0
     @State private var showCustomize = false
@@ -142,6 +143,11 @@ struct DossierShareSheet: View {
 
     private var activePages: [DossierShareImage] {
         format == .simple ? simplePages : longPages
+    }
+
+    private var isActiveFormatReady: Bool {
+        let readyKey = format == .simple ? renderedSimpleKey : renderedLongKey
+        return readyKey == renderKey && !activePages.isEmpty
     }
 
     private var isCurrentFormatCustomized: Bool {
@@ -202,11 +208,7 @@ struct DossierShareSheet: View {
                 .presentationDetents([.medium, .large])
                 .environment(\.locale, locale)
         }
-        .onChange(of: options.simple) { _, _ in
-            simplePages = []
-        }
         .onChange(of: options.long) { _, updated in
-            longPages = []
             let maxIndex = max(0, updated.effectivePages.count - 1)
             if activePageIndex > maxIndex {
                 activePageIndex = maxIndex
@@ -277,8 +279,6 @@ struct DossierShareSheet: View {
     private var posterThemeToggle: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            simplePages = []
-            longPages = []
             withAnimation(.snappy(duration: 0.22)) {
                 posterScheme = activePosterScheme == .dark ? .light : .dark
             }
@@ -420,7 +420,7 @@ struct DossierShareSheet: View {
     }
 
     @ViewBuilder private var shareActionButton: some View {
-        if !activePages.isEmpty {
+        if isActiveFormatReady {
             let label: LocalizedStringKey = activePages.count > 1
                 ? "Share \(activePages.count) images"
                 : "Share image"
@@ -445,13 +445,21 @@ struct DossierShareSheet: View {
     // MARK: - Rendering
 
     @MainActor private func renderCurrentFormatIfNeeded() async {
-        let target = format
-        if target == .simple, !simplePages.isEmpty { return }
-        if target == .long, !longPages.isEmpty { return }
+        let key = renderKey
+        if key.format == .simple, renderedSimpleKey == key, !simplePages.isEmpty {
+            isRendering = false
+            return
+        }
+        if key.format == .long, renderedLongKey == key, !longPages.isEmpty {
+            isRendering = false
+            return
+        }
 
         isRendering = true
+        defer { isRendering = false }
         // Yield one tick so the format switcher animation & loading indicator paint immediately on tap.
         await Task.yield()
+        guard !Task.isCancelled else { return }
 
         let rendered = DossierShareRenderer.renderPages(
             card: card,
@@ -459,21 +467,23 @@ struct DossierShareSheet: View {
             period: period,
             color: color,
             isSampleData: isSampleData,
-            format: target,
+            format: key.format,
             options: options,
-            scheme: activePosterScheme,
+            scheme: key.scheme,
             locale: locale,
             scale: 3
         )
+        guard !Task.isCancelled else { return }
 
-        switch target {
+        switch key.format {
         case .simple:
             simplePages = rendered
+            renderedSimpleKey = key
         case .long:
             longPages = rendered
+            renderedLongKey = key
             activePageIndex = min(activePageIndex, max(0, rendered.count - 1))
         }
-        isRendering = false
     }
 }
 
@@ -567,7 +577,7 @@ private struct DossierShareCustomizeSheet: View {
             Section("Rhythm") {
                 Toggle("Period summary", isOn: rhythmBinding(.periodSummary))
                     .disabled(!options.long.canToggleRhythmSection(.periodSummary))
-                Toggle("30-day trend chart", isOn: rhythmBinding(.trendChart))
+                Toggle("Trend chart", isOn: rhythmBinding(.trendChart))
                     .disabled(!options.long.canToggleRhythmSection(.trendChart))
                 Toggle("24-hour clock", isOn: rhythmBinding(.dayClock))
                     .disabled(!options.long.canToggleRhythmSection(.dayClock))
@@ -1076,9 +1086,10 @@ private struct DossierSharePosterCanvas {
                     DossierTrendChart(
                         stats: stats,
                         rarity: card.rarity,
-                        firstWear: l.showFirstWear ? dossier.firstWear : nil,
+                        firstWear: dossier.firstWear,
                         selection: .constant(nil),
-                        showsInteractionHint: false
+                        showsInteractionHint: false,
+                        showsMintedMarker: l.showFirstWear
                     )
                     .scaleEffect(0.92, anchor: .top)
                     .frame(height: 215, alignment: .top)

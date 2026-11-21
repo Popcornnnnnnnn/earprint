@@ -91,6 +91,7 @@ final class DossierShareOptionsTests: XCTestCase {
         XCTAssertEqual(defaultPages.count, 1)
         let defaultText = try recognizeNormalizedText(fromPNG: defaultPages[0].pngData)
         XCTAssertTrue(defaultText.contains("grade"), "Expected grade in default Simple OCR: \(defaultText)")
+        XCTAssertTrue(defaultText.contains(dossier.grade.label.lowercased()))
         XCTAssertTrue(defaultText.contains(dossier.hardware.productID.lowercased()))
         XCTAssertTrue(defaultText.contains("sessions"))
         XCTAssertTrue(defaultText.contains("longest"))
@@ -115,20 +116,43 @@ final class DossierShareOptionsTests: XCTestCase {
             options: options,
             scheme: .dark,
             locale: locale,
-            scale: 2
+            scale: 3
         )
         XCTAssertEqual(customPages.count, 1)
         XCTAssertNotEqual(customPages[0].pngData, defaultPages[0].pngData)
 
         let customText = try recognizeNormalizedText(fromPNG: customPages[0].pngData)
         XCTAssertFalse(customText.contains("grade"), "Hidden grade appeared in OCR: \(customText)")
+        XCTAssertFalse(customText.contains(dossier.grade.label.lowercased()), "Hidden grade label appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains(dossier.hardware.productID.lowercased()), "Hidden productID appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("sessions"), "Hidden sessions appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("first wear"), "Hidden first wear appeared in OCR: \(customText)")
+        XCTAssertFalse(customText.contains(card.firstMet.lowercased()), "Hidden firstMet date appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("record days"), "Hidden tier summary appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("4 weeks"), "Hidden ring appeared in OCR: \(customText)")
         XCTAssertTrue(customText.contains("longest"))
         XCTAssertTrue(customText.contains("avg level"))
+
+        var onlySessionsAndRing = DossierShareOptions.default
+        onlySessionsAndRing.simple.showLongestWear = false
+        onlySessionsAndRing.simple.showAverageLevel = false
+        let hiddenMetricsPages = DossierShareRenderer.renderPages(
+            card: card,
+            dossier: dossier,
+            period: .month,
+            color: color,
+            isSampleData: false,
+            format: .simple,
+            options: onlySessionsAndRing,
+            scheme: .dark,
+            locale: locale,
+            scale: 3
+        )
+        let hiddenMetricsText = try recognizeNormalizedText(fromPNG: hiddenMetricsPages[0].pngData)
+        XCTAssertFalse(hiddenMetricsText.contains("longest"))
+        XCTAssertFalse(hiddenMetricsText.contains("avg level"))
+        XCTAssertTrue(hiddenMetricsText.contains("sessions"))
+        XCTAssertTrue(hiddenMetricsText.contains("first wear"))
 
         options.simple.reset()
         let resetPages = DossierShareRenderer.renderPages(
@@ -209,9 +233,76 @@ final class DossierShareOptionsTests: XCTestCase {
         XCTAssertFalse(customJoined.contains("ear grade"), "Hidden grade appeared in Long OCR: \(customJoined)")
         XCTAssertFalse(customJoined.contains(dossier.hardware.productID.lowercased()), "Hidden productID appeared in Long OCR: \(customJoined)")
         XCTAssertFalse(customJoined.contains("first wear"), "Hidden first wear appeared in Long OCR: \(customJoined)")
+        XCTAssertFalse(customJoined.contains(card.firstMet.lowercased()), "Hidden firstMet date appeared in Long OCR: \(customJoined)")
+        XCTAssertFalse(customJoined.contains("since"), "Hidden 'since' first-wear date appeared in Long OCR: \(customJoined)")
+        XCTAssertFalse(customJoined.contains("minted"), "Hidden 'minted' marker/footer appeared in Long OCR: \(customJoined)")
         XCTAssertFalse(customJoined.contains("24-hour clock"), "Hidden clock appeared in Long OCR: \(customJoined)")
         XCTAssertFalse(customJoined.contains("how it's graded"), "Hidden grade breakdown appeared in Long OCR: \(customJoined)")
         XCTAssertFalse(customJoined.contains("source bundle"), "Hidden certificate page appeared in Long OCR: \(customJoined)")
+
+        // Verify Page 4 (Certificate) customization directly when kept enabled.
+        var page4Custom = DossierShareOptions.default
+        page4Custom.long.includeCoverPage = false
+        page4Custom.long.includeRhythmPage = false
+        page4Custom.long.includeHabitsPage = false
+        page4Custom.long.showGrade = false
+        page4Custom.long.showHardwareID = false
+        page4Custom.long.showFirstWear = false
+        page4Custom.long.showSourceMetadata = false
+        let certOnlyCustom = DossierShareRenderer.renderPages(
+            card: card,
+            dossier: dossier,
+            period: .month,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: page4Custom,
+            scheme: .dark,
+            locale: locale,
+            scale: 3
+        )
+        XCTAssertEqual(certOnlyCustom.count, 1)
+        let certCustomText = try recognizeNormalizedText(fromPNG: certOnlyCustom[0].pngData)
+        XCTAssertFalse(certCustomText.contains("ear grade"))
+        XCTAssertFalse(certCustomText.contains(dossier.hardware.productID.lowercased()))
+        XCTAssertFalse(certCustomText.contains("source bundle"))
+        XCTAssertFalse(certCustomText.contains("minted"))
+        XCTAssertTrue(certCustomText.contains("milestones"))
+
+        page4Custom.long.showMilestones = false
+        let certWithoutMilestones = DossierShareRenderer.renderPages(
+            card: card,
+            dossier: dossier,
+            period: .month,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: page4Custom,
+            scheme: .dark,
+            locale: locale,
+            scale: 3
+        )
+        let certWithoutMilestonesText = try recognizeNormalizedText(fromPNG: certWithoutMilestones[0].pngData)
+        XCTAssertFalse(certWithoutMilestonesText.contains("milestones"))
+        XCTAssertTrue(certWithoutMilestonesText.contains("earprint grading authority"))
+
+        page4Custom.long.showCertificate = false
+        page4Custom.long.showMilestones = true
+        let milestonesOnly = DossierShareRenderer.renderPages(
+            card: card,
+            dossier: dossier,
+            period: .month,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: page4Custom,
+            scheme: .dark,
+            locale: locale,
+            scale: 3
+        )
+        let milestonesOnlyText = try recognizeNormalizedText(fromPNG: milestonesOnly[0].pngData)
+        XCTAssertFalse(milestonesOnlyText.contains("earprint grading authority"))
+        XCTAssertTrue(milestonesOnlyText.contains("milestones"))
 
         options.long.reset()
         let resetPages = DossierShareRenderer.renderPages(

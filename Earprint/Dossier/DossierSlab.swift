@@ -105,7 +105,7 @@ struct GradingSlab: View {
 
     private var cardWell: some View {
         ZStack {
-            CardFront(card: card, tilt: tilt)
+            CardFront(card: card, tilt: tilt, showsFirstMet: showsFirstWear)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
             CardBack(card: card)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0, isBack: true))
@@ -197,7 +197,7 @@ struct CertificateLabel: View {
         let grade = dossier.grade
         let rarity = card.rarity
         let isLight = colorScheme == .light
-        let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata
+        let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata || showsFirstWear
         let cardPadding: CGFloat = compact ? 11 : 18
         let perfPadding: CGFloat = compact ? 5 : 14
         let notchInset: CGFloat = compact ? 17 : 24
@@ -307,7 +307,8 @@ struct CertificateLabel: View {
                 VStack(alignment: .leading, spacing: compact ? 2 : 5) {
                     if showsSourceMetadata {
                         Eyebrow("History read")
-                        Text("\(dossier.days.first.map { DossierFormat.dot($0.date) } ?? "—") – \(DossierFormat.dot(dossier.now))")
+                        let startText = showsFirstWear ? (dossier.days.first.map { DossierFormat.dot($0.date) } ?? "—") : "—"
+                        Text("\(startText) – \(DossierFormat.dot(dossier.now))")
                             .font(.system(compact ? .caption2 : .subheadline, design: .monospaced, weight: .semibold))
                         Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
                             .font(compact ? .caption2 : .caption)

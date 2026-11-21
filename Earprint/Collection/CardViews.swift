@@ -458,6 +458,7 @@ struct CardFront: View {
     var usesProductArtwork = true
     /// Catalog / Model Gallery cards hide listening hours, session counts, and dates.
     var showsListeningStats = true
+    var showsFirstMet = true
     var surfaceRarityOverride: Rarity? = nil
     var badgeOverride: LocalizedStringKey? = nil
     var catalogDetail: String? = nil
@@ -505,7 +506,9 @@ struct CardFront: View {
                 HStack {
                     Label("\(card.sessions)", systemImage: "ear")
                     Spacer()
-                    Text("since \(card.firstMet)")
+                    if showsFirstMet {
+                        Text("since \(card.firstMet)")
+                    }
                 }
                 .font(.system(size: 12, weight: .semibold))
                 .opacity(0.7)

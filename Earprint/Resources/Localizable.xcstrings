@@ -401,16 +401,6 @@
         }
       }
     },
-    "30-day trend chart": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "30 天趋势图"
-          }
-        }
-      }
-    },
     "3D Models & Artwork (CC-BY 4.0)": {
       "localizations": {
         "zh-Hans": {
@@ -1706,7 +1696,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "听感评级"
+            "value": "聆听评分"
           }
         }
       }
@@ -3987,6 +3977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "今天"
+          }
+        }
+      }
+    },
+    "Trend chart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "趋势图"
           }
         }
       }
