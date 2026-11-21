@@ -18,7 +18,7 @@ struct PeriodSwitcher: View {
                     } label: {
                         Text(LocalizedStringKey(p.title))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(period == p ? rarity.ink : .white.opacity(0.7))
+                            .foregroundStyle(period == p ? rarity.ink : DossierPalette.primaryText.opacity(0.72))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background {
@@ -26,7 +26,7 @@ struct PeriodSwitcher: View {
                                     Capsule()
                                         .fill(rarity.foil)
                                         .overlay(Capsule().fill(LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)))
-                                        .shadow(color: rarity.glow.opacity(0.6), radius: 10, y: 2)
+                                        .shadow(color: rarity.glow.opacity(0.45), radius: 10, y: 2)
                                         .matchedGeometryEffect(id: "thumb", in: thumb)
                                 }
                             }
@@ -38,8 +38,8 @@ struct PeriodSwitcher: View {
             }
             .padding(4)
             .background {
-                Capsule().fill(.black.opacity(0.45))
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.1), lineWidth: 1))
+                Capsule().fill(DossierPalette.surfaceFill)
+                    .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
             }
             .gesture(
                 DragGesture(minimumDistance: 20).onEnded { value in
@@ -85,7 +85,7 @@ struct AirtimeHero: View {
                         .monospacedDigit()
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                        .foregroundStyle(LinearGradient(colors: [.white, rarity.accent], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(LinearGradient(colors: [DossierPalette.primaryText, rarity.accent], startPoint: .top, endPoint: .bottom))
                         .contentTransition(.numericText(value: stats.totalMinutes))
                     HStack(spacing: 4) {
                         Text("\(Int((stats.share * 100).rounded()))%")
@@ -110,7 +110,7 @@ struct AirtimeHero: View {
                 fact("\(stats.activeDays)/\(stats.spanDays)", "days worn", value: Double(stats.activeDays))
             }
             .padding(.vertical, 12)
-            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
         }
     }
@@ -139,7 +139,7 @@ struct AirtimeHero: View {
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .contentTransition(.numericText(value: change))
                 }
-                .foregroundStyle(up ? Theme.quiet.color : Theme.moderate.color)
+                .foregroundStyle(up ? Theme.quietColor : Theme.moderateColor)
                 Text(LocalizedStringKey(stats.period.previousLabel)).font(.caption).foregroundStyle(DossierPalette.dim)
             }
             .frame(maxWidth: .infinity)
@@ -149,38 +149,52 @@ struct AirtimeHero: View {
         }
     }
 
-    /// Watch-style tick bezel.
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Watch-style tick bezel (batched into 2 paths instead of 120 draw calls).
     private var bezel: some View {
-        Canvas { context, size in
+        let minorColor = colorScheme == .light ? Color.black.opacity(0.14) : Color.white.opacity(0.13)
+        let majorColor = colorScheme == .light ? Color.black.opacity(0.36) : Color.white.opacity(0.35)
+        return Canvas { context, size in
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             let r = min(size.width, size.height) / 2
+            var major = Path()
+            var minor = Path()
             for i in 0..<120 {
                 let a = Double(i) / 120 * 2 * .pi - .pi / 2
                 let long = i % 10 == 0
                 let r0 = r - (long ? 9 : 5)
-                var p = Path()
-                p.move(to: CGPoint(x: c.x + r0 * cos(a), y: c.y + r0 * sin(a)))
-                p.addLine(to: CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a)))
-                context.stroke(p, with: .color(.white.opacity(long ? 0.35 : 0.13)), lineWidth: long ? 1.5 : 1)
+                let start = CGPoint(x: c.x + r0 * cos(a), y: c.y + r0 * sin(a))
+                let end = CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a))
+                if long {
+                    major.move(to: start)
+                    major.addLine(to: end)
+                } else {
+                    minor.move(to: start)
+                    minor.addLine(to: end)
+                }
             }
+            context.stroke(minor, with: .color(minorColor), lineWidth: 1)
+            context.stroke(major, with: .color(majorColor), lineWidth: 1.5)
         }
     }
 
     private var ring: some View {
-        ZStack {
+        let isLight = colorScheme == .light
+        return ZStack {
             Circle()
-                .stroke(.white.opacity(0.07), style: StrokeStyle(lineWidth: 16))
+                .stroke(DossierPalette.surfaceFill, style: StrokeStyle(lineWidth: 16))
             // Other headphones: the remainder, dotted.
             Circle()
                 .trim(from: stats.share, to: 1)
-                .stroke(.white.opacity(0.22), style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [1, 6]))
+                .stroke(DossierPalette.faint, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [1, 6]))
                 .rotationEffect(.degrees(-90))
             Circle()
                 .trim(from: 0, to: max(0.002, stats.share))
                 .stroke(AngularGradient(colors: rarity.baseColors + [rarity.baseColors[0]], center: .center, angle: .degrees(-90)),
                         style: StrokeStyle(lineWidth: 16, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: rarity.glow.opacity(0.7), radius: 12)
+                .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.7), radius: isLight ? 6 : 12)
         }
         .padding(22)
         .animation(.spring(response: 0.8, dampingFraction: 0.8), value: stats.share)
@@ -193,6 +207,8 @@ struct HabitsBento: View {
     let stats: PeriodStats
     let dossier: DeviceDossier
     let rarity: Rarity
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Grid(horizontalSpacing: 12, verticalSpacing: 12) {
@@ -240,8 +256,8 @@ struct HabitsBento: View {
             Spacer(minLength: 0)
             HStack(spacing: 8) {
                 ZStack {
-                    Circle().stroke(.white.opacity(0.1), lineWidth: 5)
-                    Circle().trim(from: 0, to: ratio).stroke(Theme.quiet.color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    Circle().stroke(DossierPalette.hairline, lineWidth: 5)
+                    Circle().trim(from: 0, to: ratio).stroke(Theme.quietColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
                 .frame(width: 28, height: 28)
@@ -253,7 +269,7 @@ struct HabitsBento: View {
             }
         }
         .frame(minHeight: 128)
-        .dossierTile(tint: Theme.quiet.color)
+        .dossierTile(tint: Theme.quietColor)
         .accessibilityElement(children: .combine)
     }
 
@@ -267,8 +283,8 @@ struct HabitsBento: View {
                             Text("EST.")
                                 .font(.system(size: 9, weight: .heavy, design: .rounded))
                                 .padding(.horizontal, 5).padding(.vertical, 2)
-                                .background(Theme.moderate.color.opacity(0.2), in: Capsule())
-                                .foregroundStyle(Theme.moderate.color)
+                                .background(Theme.moderateColor.opacity(0.2), in: Capsule())
+                                .foregroundStyle(Theme.moderateColor)
                                 .accessibilityLabel("estimated")
                         }
                     }
@@ -296,7 +312,7 @@ struct HabitsBento: View {
 
     private var volumeTile: some View {
         let db = stats.averageDecibels
-        let color = Theme.levelColor(db: db)
+        let color = Theme.levelColor(db: db, colorScheme: colorScheme)
         let verdict = db < 60 ? "Comfortable" : (db < 72 ? "Moderate" : (db < 80 ? "Loud" : "Very loud"))
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -326,7 +342,7 @@ struct HabitsBento: View {
                 Spacer()
                 Text("\(max(1, Int((stats.weeklyDose * 100).rounded())))% of WHO limit")
                     .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(stats.weeklyDose < 0.5 ? Theme.quiet.color : (stats.weeklyDose < 1 ? Theme.moderate.color : Theme.loud.color))
+                    .foregroundStyle(stats.weeklyDose < 0.5 ? Theme.quietColor : (stats.weeklyDose < 1 ? Theme.moderateColor : Theme.loudColor))
                     .contentTransition(.numericText(value: stats.weeklyDose))
             }
         }
@@ -354,7 +370,7 @@ struct HabitsBento: View {
             Eyebrow("Wears a day")
             value(String(format: "%.1f", stats.sessionsPerDay), stats.sessionsPerDay)
             Spacer(minLength: 0)
-            Sparkline(values: stats.buckets.map { Double($0.sessions) }, color: Theme.quiet.color)
+            Sparkline(values: stats.buckets.map { Double($0.sessions) }, color: Theme.quietColor)
                 .frame(height: 30)
         }
         .frame(minHeight: 128)
@@ -363,7 +379,7 @@ struct HabitsBento: View {
     }
 }
 
-/// Groups of five tally strokes, capped so it never overflows.
+/// Groups of five tally strokes, capped so it never overflows (batched into 2 paths).
 struct TallyMarks: View {
     let count: Int
     let color: Color
@@ -374,23 +390,24 @@ struct TallyMarks: View {
             let groups = min(Int(size.width / groupWidth), max(1, Int(ceil(Double(count) / 5))))
             let perGroupValue = max(1, Double(count) / Double(groups * 5))
             var drawn = 0
+            var verticals = Path()
+            var slashes = Path()
             for g in 0..<groups {
                 let x0 = CGFloat(g) * groupWidth
                 for i in 0..<4 where Double(drawn) * perGroupValue < Double(count) {
-                    var p = Path()
-                    p.move(to: CGPoint(x: x0 + CGFloat(i) * 4 + 2, y: 4))
-                    p.addLine(to: CGPoint(x: x0 + CGFloat(i) * 4 + 1, y: size.height - 4))
-                    context.stroke(p, with: .color(color.opacity(0.8)), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    verticals.move(to: CGPoint(x: x0 + CGFloat(i) * 4 + 2, y: 4))
+                    verticals.addLine(to: CGPoint(x: x0 + CGFloat(i) * 4 + 1, y: size.height - 4))
                     drawn += 1
                 }
                 if Double(drawn) * perGroupValue < Double(count) {
-                    var slash = Path()
-                    slash.move(to: CGPoint(x: x0 - 1, y: size.height - 7))
-                    slash.addLine(to: CGPoint(x: x0 + 17, y: 7))
-                    context.stroke(slash, with: .color(color), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    slashes.move(to: CGPoint(x: x0 - 1, y: size.height - 7))
+                    slashes.addLine(to: CGPoint(x: x0 + 17, y: 7))
                     drawn += 1
                 }
             }
+            let style = StrokeStyle(lineWidth: 1.6, lineCap: .round)
+            context.stroke(verticals, with: .color(color.opacity(0.8)), style: style)
+            context.stroke(slashes, with: .color(color), style: style)
         }
         .accessibilityHidden(true)
     }
@@ -401,19 +418,21 @@ struct SessionTrack: View {
     let session: WearSession
     let rarity: Rarity
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         GeometryReader { geo in
             let cal = Calendar.current
             let startMin = Double(cal.component(.hour, from: session.start) * 60 + cal.component(.minute, from: session.start))
             let w = geo.size.width
             ZStack(alignment: .topLeading) {
-                Capsule().fill(.white.opacity(0.06)).frame(height: 8)
+                Capsule().fill(DossierPalette.surfaceFill).frame(height: 8)
                 ForEach(segments(start: startMin, length: session.minutes), id: \.0) { seg in
                     Capsule()
-                        .fill(LinearGradient(colors: [rarity.accent, Theme.levelColor(db: session.averageDecibels)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [rarity.accent, Theme.levelColor(db: session.averageDecibels, colorScheme: colorScheme)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(4, w * seg.1 / 1440), height: 8)
                         .offset(x: w * seg.0 / 1440)
-                        .shadow(color: rarity.glow.opacity(0.6), radius: 5)
+                        .shadow(color: rarity.glow.opacity(colorScheme == .light ? 0.28 : 0.6), radius: 5)
                 }
                 ForEach([0, 6, 12, 18, 24], id: \.self) { h in
                     Text(String(format: "%02d", h % 24))
@@ -437,18 +456,22 @@ struct SessionTrack: View {
 struct LoudnessMeter: View {
     let db: Double
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let levelColor = Theme.levelColor(db: db, colorScheme: colorScheme)
         GeometryReader { geo in
             let t = CGFloat(min(max((db - 40) / 60, 0), 1))
             ZStack(alignment: .topLeading) {
                 Capsule()
-                    .fill(LinearGradient(colors: [Theme.quiet.color, Theme.quiet.color, Theme.moderate.color, Theme.loud.color], startPoint: .leading, endPoint: .trailing))
+                    .fill(LinearGradient(colors: [Theme.quietColor, Theme.quietColor, Theme.moderateColor, Theme.loudColor], startPoint: .leading, endPoint: .trailing))
                     .frame(height: 6)
                     .opacity(0.85)
                 Circle()
                     .fill(.white)
                     .frame(width: 14, height: 14)
-                    .shadow(color: Theme.levelColor(db: db), radius: 6)
+                    .overlay(Circle().strokeBorder(levelColor.opacity(0.55), lineWidth: 1.5))
+                    .shadow(color: levelColor.opacity(0.55), radius: 5)
                     .offset(x: geo.size.width * t - 7, y: -4)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7), value: db)
                 ForEach([40, 60, 80, 100], id: \.self) { mark in
@@ -467,16 +490,43 @@ struct DayDots: View {
     let days: [DayStat]
     let color: Color
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let columns = days.count <= 7 ? 7 : (days.count <= 14 ? 7 : 10)
+        let rows = max(1, Int(ceil(Double(days.count) / Double(columns))))
         let maxM = max(days.map(\.minutes).max() ?? 1, 1)
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: columns), spacing: 3) {
-            ForEach(days) { d in
-                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
-                    .fill(d.minutes > 0 ? color.opacity(0.25 + 0.75 * d.minutes / maxM) : .white.opacity(0.07))
-                    .aspectRatio(1, contentMode: .fit)
+        let spacing: CGFloat = 3
+        let emptyDotColor = colorScheme == .light ? Color.black.opacity(0.07) : Color.white.opacity(0.07)
+
+        Canvas { context, size in
+            let cell = min(
+                (size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns),
+                (size.height - spacing * CGFloat(rows - 1)) / CGFloat(rows)
+            )
+            guard cell > 0 else { return }
+            var emptyPath = Path()
+            for (index, day) in days.enumerated() {
+                let col = index % columns
+                let row = index / columns
+                let rect = CGRect(
+                    x: CGFloat(col) * (cell + spacing),
+                    y: CGFloat(row) * (cell + spacing),
+                    width: cell,
+                    height: cell
+                )
+                let rounded = Path(roundedRect: rect, cornerRadius: 2.5, style: .continuous)
+                if day.minutes > 0 {
+                    context.fill(rounded, with: .color(color.opacity(0.25 + 0.75 * day.minutes / maxM)))
+                } else {
+                    emptyPath.addPath(rounded)
+                }
+            }
+            if !emptyPath.isEmpty {
+                context.fill(emptyPath, with: .color(emptyDotColor))
             }
         }
+        .frame(height: CGFloat(rows) * 11 + CGFloat(max(0, rows - 1)) * spacing)
         .accessibilityHidden(true)
     }
 }

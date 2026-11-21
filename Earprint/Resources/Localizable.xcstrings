@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@, graded %@, %@. %@, product ID %@.": {
       "localizations": {
         "zh-Hans": {
@@ -21,12 +31,32 @@
         }
       }
     },
+    "%lld / %lld · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld · %3$@"
+          }
+        }
+      }
+    },
     "%lld cards · %@ together": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld 张卡片 · 共 %@"
+          }
+        }
+      }
+    },
+    "%lld dB": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dB"
           }
         }
       }
@@ -67,6 +97,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 天有记录，共 %lld 天 · 同步于 %@"
+          }
+        }
+      }
+    },
+    "%lld of %lld unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁 %lld / %lld 款"
+          }
+        }
+      }
+    },
+    "%lld pairs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 副耳机"
           }
         }
       }
@@ -131,6 +181,16 @@
         }
       }
     },
+    "%lld wears in %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ 共聆听 %1$lld 次"
+          }
+        }
+      }
+    },
     "%lld years ago": {
       "localizations": {
         "zh-Hans": {
@@ -181,12 +241,42 @@
         }
       }
     },
+    "%lld+ listening hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计聆听满 %lld 小时"
+          }
+        }
+      }
+    },
     "%lldh": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld 小时"
+          }
+        }
+      }
+    },
+    "%lldh to %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距 %2$@ 还差 %1$lld 小时"
+          }
+        }
+      }
+    },
+    "%lldh to go": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还差 %lld 小时"
           }
         }
       }
@@ -201,12 +291,112 @@
         }
       }
     },
+    "01 / 04 · COVER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "01 / 04 · 封面"
+          }
+        }
+      }
+    },
+    "02 / 04 · RHYTHM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "02 / 04 · 节律"
+          }
+        }
+      }
+    },
+    "03 / 04 · HABITS & HEARING": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "03 / 04 · 习惯与听力"
+          }
+        }
+      }
+    },
+    "04 / 04 · CERTIFICATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "04 / 04 · 认证证书"
+          }
+        }
+      }
+    },
+    "1 page": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单页"
+          }
+        }
+      }
+    },
+    "10 tiers from Bronze on your first listen all the way to Holo Legendary at 2,000 hours.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 10 个等级，从首次聆听的青铜卡一路进阶至 2,000 小时全息传说卡。"
+          }
+        }
+      }
+    },
+    "100+ hours of shared playlists and calls": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百小时音乐与通话的默契伙伴"
+          }
+        }
+      }
+    },
+    "28-DAY EARPRINT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天声纹"
+          }
+        }
+      }
+    },
     "28-day pattern": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "近 28 天聆听图谱"
+          }
+        }
+      }
+    },
+    "3D Models & Artwork (CC-BY 4.0)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D 模型与视觉素材 (CC-BY 4.0)"
+          }
+        }
+      }
+    },
+    "3D model": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D 模型"
           }
         }
       }
@@ -221,12 +411,42 @@
         }
       }
     },
+    "4 pages": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 页"
+          }
+        }
+      }
+    },
     "4 weeks": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "近 4 周"
+          }
+        }
+      }
+    },
+    "6 metallic card tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 阶金属质感卡牌"
+          }
+        }
+      }
+    },
+    "7-day exposure across all pairs · WHO reference: 40 hours at 80 dB(A)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近 7 天全部耳机累计暴露 · WHO 参考标准：每周 80 dB(A) 40 小时"
           }
         }
       }
@@ -241,12 +461,72 @@
         }
       }
     },
+    "7d": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天"
+          }
+        }
+      }
+    },
+    "A regular companion in your rotation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常伴左右的日常主力耳机"
+          }
+        }
+      }
+    },
+    "ALL-TIME ARCHIVE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计档案"
+          }
+        }
+      }
+    },
+    "AMETHYST · MYSTIC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紫水晶 · 秘境"
+          }
+        }
+      }
+    },
     "AVG": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "平均"
+          }
+        }
+      }
+    },
+    "Acoustic dial emblem · Default": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声学刻度盘徽标 · 默认"
+          }
+        }
+      }
+    },
+    "Active days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃天数"
           }
         }
       }
@@ -281,6 +561,36 @@
         }
       }
     },
+    "All Headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部耳机"
+          }
+        }
+      }
+    },
+    "All Pairs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部耳机"
+          }
+        }
+      }
+    },
+    "All aggregation happens locally. There is no account, no cloud upload, no ads, and no analytics tracking.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有统计均在本地完成，无账号、无云端上传、无广告，也无行为追踪。"
+          }
+        }
+      }
+    },
     "All-Day Listener": {
       "localizations": {
         "zh-Hans": {
@@ -311,6 +621,26 @@
         }
       }
     },
+    "Anodized Indigo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阳极靛岩蓝"
+          }
+        }
+      }
+    },
+    "Anodized Matte": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哑光阳极铜"
+          }
+        }
+      }
+    },
     "App Icon": {
       "localizations": {
         "zh-Hans": {
@@ -321,12 +651,62 @@
         }
       }
     },
+    "Appearance": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外观"
+          }
+        }
+      }
+    },
+    "Apple Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康"
+          }
+        }
+      }
+    },
+    "Apple Health Privacy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康隐私"
+          }
+        }
+      }
+    },
+    "Apple Health is not available on this device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前设备不支持 Apple 健康。"
+          }
+        }
+      }
+    },
     "Apple Health is not available on this device. Showing sample data.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "此设备无法使用 Apple 健康，目前显示示例数据。"
+          }
+        }
+      }
+    },
+    "Architectural frosted plum finish at 550+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "550 小时解锁的建筑感深紫磨砂卡面"
           }
         }
       }
@@ -371,6 +751,26 @@
         }
       }
     },
+    "Avg loudness": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均单次"
+          }
+        }
+      }
+    },
     "Avg. level": {
       "localizations": {
         "zh-Hans": {
@@ -396,7 +796,27 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "铜卡"
+            "value": "青铜"
+          }
+        }
+      }
+    },
+    "BRONZE SLATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青铜岩"
+          }
+        }
+      }
+    },
+    "BRONZE tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青铜岩等级"
           }
         }
       }
@@ -407,6 +827,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "背景"
+          }
+        }
+      }
+    },
+    "Beaded Alloy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "微珠喷砂铝"
           }
         }
       }
@@ -451,6 +881,116 @@
         }
       }
     },
+    "Brushed Slate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝石青绿"
+          }
+        }
+      }
+    },
+    "Brushed ice-titanium master finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝冰钛金属大师卡面"
+          }
+        }
+      }
+    },
+    "CARBON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "碳纤"
+          }
+        }
+      }
+    },
+    "CATALOG": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "型号目录"
+          }
+        }
+      }
+    },
+    "CHAMPAGNE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香槟"
+          }
+        }
+      }
+    },
+    "COLLECTION NUMBER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号"
+          }
+        }
+      }
+    },
+    "COLLECTOR BINDER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏图鉴册"
+          }
+        }
+      }
+    },
+    "CURRENT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前等级"
+          }
+        }
+      }
+    },
+    "Carbon tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "碳纤等级"
+          }
+        }
+      }
+    },
+    "Card %lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld / %2$lld 张卡片"
+          }
+        }
+      }
+    },
+    "Card Tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片等级"
+          }
+        }
+      }
+    },
     "Card number %lld": {
       "localizations": {
         "zh-Hans": {
@@ -461,12 +1001,22 @@
         }
       }
     },
-    "Card %lld of %lld": {
+    "Cards upgrade automatically from Bronze Slate (0h+) to Liquid Holo (2,000h+).": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "第 %lld 张，共 %lld 张"
+            "value": "卡片会随累计时长自动升级，从青铜岩（0h+）一路进阶至流光全息（2,000h+）。"
+          }
+        }
+      }
+    },
+    "Cards upgrade automatically with lifetime listening hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片会随累计聆听时长自动升级"
           }
         }
       }
@@ -477,6 +1027,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "设备证书"
+          }
+        }
+      }
+    },
+    "Champagne tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香槟等级"
           }
         }
       }
@@ -497,6 +1057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "经典配色"
+          }
+        }
+      }
+    },
+    "Classic bead-blasted silver aluminum unibody": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经典微珠喷砂银灰一体成型质感"
           }
         }
       }
@@ -551,6 +1121,16 @@
         }
       }
     },
+    "Collection numbers follow the order of first listening dates in Apple Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
+          }
+        }
+      }
+    },
     "Commute Soundtracker": {
       "localizations": {
         "zh-Hans": {
@@ -571,12 +1151,52 @@
         }
       }
     },
+    "Connect Apple Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康"
+          }
+        }
+      }
+    },
+    "Connect Apple Health to see your 28-day listening rings. iOS records audio levels while playing audio.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康后即可查看 28 天声纹环。iOS 会在播放音频时自动记录音量。"
+          }
+        }
+      }
+    },
+    "Connect Apple Health to see your headphones. iOS records audio levels while playing audio (not silent ANC).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康后即可查看你的耳机。iOS 会在播放音频时记录音量（纯降噪未播放时不计入）。"
+          }
+        }
+      }
+    },
     "Connect Health": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "连接健康"
+          }
+        }
+      }
+    },
+    "Cool brushed coastal slate-teal at 160+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "160 小时解锁的冷冽拉丝峡湾岩青"
           }
         }
       }
@@ -611,22 +1231,32 @@
         }
       }
     },
-    "COLLECTION NUMBER": {
+    "Cover": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "收藏编号"
+            "value": "封面"
           }
         }
       }
     },
-    "Collection numbers follow the order of first listening dates in Apple Health.": {
+    "Credits & Attributions": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
+            "value": "鸣谢与版权声明"
+          }
+        }
+      }
+    },
+    "Crystalline prism cut near the thousand-hour mark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近千小时的晶莹钻石棱镜切面"
           }
         }
       }
@@ -637,6 +1267,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前已连接"
+          }
+        }
+      }
+    },
+    "DAILY AVG": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均时长"
+          }
+        }
+      }
+    },
+    "DEEP PURPLE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深紫"
+          }
+        }
+      }
+    },
+    "DIAMOND · PRISM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "钻石 · 棱镜"
+          }
+        }
+      }
+    },
+    "DLC Coating": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类钻碳涂层"
           }
         }
       }
@@ -671,6 +1341,16 @@
         }
       }
     },
+    "Dark poster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色海报"
+          }
+        }
+      }
+    },
     "Data Probe": {
       "localizations": {
         "zh-Hans": {
@@ -701,12 +1381,42 @@
         }
       }
     },
-    "Dossier details are illustrative.": {
+    "Deep Purple tier": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "档案详情仅供示例。"
+            "value": "深紫等级"
+          }
+        }
+      }
+    },
+    "Deep cobalt luster for long-haul commutes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "陪伴长途通勤的深海钴蓝光泽"
+          }
+        }
+      }
+    },
+    "Deep daily driver with brushed ice-titanium sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝冰钛金属光泽的深度日常伴侣"
+          }
+        }
+      }
+    },
+    "Default Icon": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认图标"
           }
         }
       }
@@ -717,6 +1427,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "开发者工具"
+          }
+        }
+      }
+    },
+    "Device Dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备档案"
+          }
+        }
+      }
+    },
+    "Diamond-like forged carbon midnight prestige finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1,400 小时锻造碳纤维类钻黑臻享卡面"
           }
         }
       }
@@ -737,6 +1467,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "档案"
+          }
+        }
+      }
+    },
+    "Dossier details are illustrative.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案详情仅供示例。"
+          }
+        }
+      }
+    },
+    "Dossier image preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "档案图片预览"
           }
         }
       }
@@ -801,6 +1551,26 @@
         }
       }
     },
+    "EARPRINT · DEVICE DOSSIER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT · 设备档案"
+          }
+        }
+      }
+    },
+    "EMERALD · VIVID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "祖母绿 · 灵动"
+          }
+        }
+      }
+    },
     "EST.": {
       "localizations": {
         "zh-Hans": {
@@ -831,12 +1601,72 @@
         }
       }
     },
+    "Earprint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint"
+          }
+        }
+      }
+    },
+    "Earprint Rings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 声纹环"
+          }
+        }
+      }
+    },
     "Earprint hologram seal": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 防伪印记"
+          }
+        }
+      }
+    },
+    "Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, AirPods Pro, AirPods Max, and Beats are trademarks of Apple Inc.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 为独立开发者作品，与 Apple Inc. 无任何关联、赞助或官方背书关系。Apple、Apple Health、AirPods、AirPods Pro、AirPods Max 与 Beats 均为 Apple Inc. 的注册商标。"
+          }
+        }
+      }
+    },
+    "Earprint reads your Headphone Audio Exposure samples solely to build your cards, tiers, and listening rings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 仅读取“耳机音频音量”数据，用于生成耳机卡片、等级与听力环。"
+          }
+        }
+      }
+    },
+    "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每副耳机都会随累计时长从“青铜岩板 (0h)”晋级至“液态全息 (2,000h)”。"
+          }
+        }
+      }
+    },
+    "Every pair starts at Bronze on its first listen and climbs all the way to Holo Legendary at 2,000 hours.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每副耳机首次聆听即铸造为青铜卡，累计满 2,000 小时升级为全息传说卡。"
           }
         }
       }
@@ -861,12 +1691,82 @@
         }
       }
     },
+    "FJORD": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青"
+          }
+        }
+      }
+    },
+    "FJORD TEAL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青"
+          }
+        }
+      }
+    },
+    "First listen (0h+)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听（0 小时起）"
+          }
+        }
+      }
+    },
+    "First wear": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次佩戴"
+          }
+        }
+      }
+    },
+    "Fjord tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峡湾青等级"
+          }
+        }
+      }
+    },
     "Flip card": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "翻转卡片"
+          }
+        }
+      }
+    },
+    "Frosted Mineral": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "磨砂矿石绿"
+          }
+        }
+      }
+    },
+    "Frosted Plum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哑光深紫釉"
           }
         }
       }
@@ -891,12 +1791,62 @@
         }
       }
     },
+    "GOLD · RARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黄金 · 稀有"
+          }
+        }
+      }
+    },
     "GRADE": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "评分"
+          }
+        }
+      }
+    },
+    "GRADE %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评级 %@"
+          }
+        }
+      }
+    },
+    "Generic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用型号"
+          }
+        }
+      }
+    },
+    "Generic 3D preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用 3D 预览"
+          }
+        }
+      }
+    },
+    "Generic headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用头戴式耳机"
           }
         }
       }
@@ -921,12 +1871,22 @@
         }
       }
     },
+    "HEARING BUDGET": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音暴露限额"
+          }
+        }
+      }
+    },
     "HOLO": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "幻彩"
+            "value": "全息"
           }
         }
       }
@@ -937,6 +1897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "幻彩 · 传奇"
+          }
+        }
+      }
+    },
+    "Habits": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "习惯"
           }
         }
       }
@@ -961,6 +1931,16 @@
         }
       }
     },
+    "Health unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "健康数据不可用"
+          }
+        }
+      }
+    },
     "Hearing budget": {
       "localizations": {
         "zh-Hans": {
@@ -981,12 +1961,82 @@
         }
       }
     },
+    "Holo tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全息等级"
+          }
+        }
+      }
+    },
     "Hours": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "小时"
+          }
+        }
+      }
+    },
+    "INDIGO": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青"
+          }
+        }
+      }
+    },
+    "Image format": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片格式"
+          }
+        }
+      }
+    },
+    "Image unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片不可用"
+          }
+        }
+      }
+    },
+    "Independent App Notice": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "独立应用声明"
+          }
+        }
+      }
+    },
+    "Indigo tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青等级"
+          }
+        }
+      }
+    },
+    "LAST 7 DAYS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "过去 7 天"
           }
         }
       }
@@ -1007,6 +2057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "累计时长"
+          }
+        }
+      }
+    },
+    "LIQUID HOLO · LEGENDARY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流光全息 · 传说"
           }
         }
       }
@@ -1071,6 +2131,26 @@
         }
       }
     },
+    "Light poster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浅色海报"
+          }
+        }
+      }
+    },
+    "Listen with any supported pair to add it to your Collection.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用任一支持的耳机聆听，即可将其加入你的收藏。"
+          }
+        }
+      }
+    },
     "Listen with supported headphones\nto unlock a card": {
       "localizations": {
         "zh-Hans": {
@@ -1087,6 +2167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用支持的耳机聆听，即可解锁卡片"
+          }
+        }
+      }
+    },
+    "Listen with supported headphones to unlock tiers.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戴上受支持的耳机聆听即可解锁卡片等级。"
           }
         }
       }
@@ -1111,12 +2201,32 @@
         }
       }
     },
+    "Listening rings, WHO weekly budgets, and Ear Grade scores are for personal informational purposes only and are not a medical device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听环、WHO 每周安全预算与聆听评分仅供个人兴趣参考，不构成医疗器械或临床诊断建议。"
+          }
+        }
+      }
+    },
     "Listening time": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "Long": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "长图"
           }
         }
       }
@@ -1171,6 +2281,16 @@
         }
       }
     },
+    "Low-key frosted mineral sage at 80+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "80 小时解锁的低调磨砂鼠尾草矿石色"
+          }
+        }
+      }
+    },
     "Lower volume, a lighter weekly dose and fewer loud or late sessions keep the grade high. Based on the WHO safe-listening guide (80 dB(A) for 40 h a week).": {
       "localizations": {
         "zh-Hans": {
@@ -1201,6 +2321,16 @@
         }
       }
     },
+    "MIDNIGHT CARBON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "午夜碳纤"
+          }
+        }
+      }
+    },
     "MINTED": {
       "localizations": {
         "zh-Hans": {
@@ -1217,6 +2347,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "生成于 %@"
+          }
+        }
+      }
+    },
+    "MIST CHAMPAGNE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾金香槟"
           }
         }
       }
@@ -1291,6 +2431,26 @@
         }
       }
     },
+    "Minted on your very first listen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听即铸造的起始卡面"
+          }
+        }
+      }
+    },
+    "Model Gallery": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耳机型号预览"
+          }
+        }
+      }
+    },
     "Moderate": {
       "localizations": {
         "zh-Hans": {
@@ -1301,12 +2461,72 @@
         }
       }
     },
+    "Modified: cropped front render; simplified geometry to ~45k tris, normalized, converted to USDZ, compressed textures (source FBX provenance via Andrea Balbo).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：裁剪正面渲染图；简化几何体至约 45k 三角面、归一化坐标、转换为 USDZ 并压缩贴图（源 FBX 归档由 Andrea Balbo 提供）。"
+          }
+        }
+      }
+    },
+    "Modified: removed internal occlusion shell, simplified to ~48k tris, joined meshes, normalized, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：移除内部遮挡壳、简化至约 48k 三角面、合并网格、归一化坐标、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
+    "Modified: simplified to ~42k tris, joined meshes, normalized, baked PBR factors, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：简化至约 42k 三角面、合并网格、归一化坐标、烘焙 PBR 材质参数、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
+    "Modified: simplified to ~52k tris, joined meshes, normalized, baked roughness map, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：简化至约 52k 三角面、合并网格、归一化坐标、烘焙粗糙度贴图、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
     "Month": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "月"
+          }
+        }
+      }
+    },
+    "Muted anodized indigo with subtle bevel highlights": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "含蓄沉稳的阳极氧化靛岩蓝斜切高光"
+          }
+        }
+      }
+    },
+    "Muted champagne titanium with warm satin sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低饱和缎面香槟钛金属温润微光"
           }
         }
       }
@@ -1341,6 +2561,26 @@
         }
       }
     },
+    "NOW": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "Natural bronze slate starter cast on your first listen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次聆听即铸造的自然青铜岩起始卡面"
+          }
+        }
+      }
+    },
     "Next card": {
       "localizations": {
         "zh-Hans": {
@@ -1371,12 +2611,42 @@
         }
       }
     },
+    "No Health records": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无健康记录"
+          }
+        }
+      }
+    },
     "No headphone samples found in Apple Health. If you denied access, enable it in Settings › Health › Data Access › Earprint.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Apple 健康中暂无耳机记录。如果曾拒绝访问，可在「设置 › 健康 › 数据访问 › Earprint」中授权。"
+          }
+        }
+      }
+    },
+    "No headphone samples found in Apple Health. Play audio through headphones or enable access in Settings › Health › Data Access › Earprint.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Apple 健康中未找到耳机音量记录。请戴耳机播放音频，或在“设置 › 健康 › 数据访问与设备 › Earprint”中开启读取权限。"
+          }
+        }
+      }
+    },
+    "No listening data yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无聆听数据"
           }
         }
       }
@@ -1401,12 +2671,42 @@
         }
       }
     },
+    "Not Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂不"
+          }
+        }
+      }
+    },
+    "Not affiliated with Apple Inc.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与 Apple Inc. 无关"
+          }
+        }
+      }
+    },
     "Not reported": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "未提供"
+          }
+        }
+      }
+    },
+    "OBSIDIAN · PRESTIGE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑曜 · 臻享"
           }
         }
       }
@@ -1421,12 +2721,42 @@
         }
       }
     },
+    "Only exported poster images leave the app when you tap Share. Manage Health permission anytime in iOS Settings › Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有你点击“分享”时生成的海报图片才会离开应用。你可随时在 iOS 设置 › 健康 中管理权限。"
+          }
+        }
+      }
+    },
+    "Open 3D Card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 3D 卡片"
+          }
+        }
+      }
+    },
     "Orange": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "橙色"
+          }
+        }
+      }
+    },
+    "PLATINUM · MASTER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "铂金 · 大师"
           }
         }
       }
@@ -1441,12 +2771,42 @@
         }
       }
     },
+    "Peak %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值 %@"
+          }
+        }
+      }
+    },
     "Pink": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "粉色"
+          }
+        }
+      }
+    },
+    "Preview First Launch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览首次启动"
+          }
+        }
+      }
+    },
+    "Preview cards use sample listening stats.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览卡片使用示例聆听数据。"
           }
         }
       }
@@ -1467,6 +2827,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一张卡片"
+          }
+        }
+      }
+    },
+    "Prism Oxide": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "液态全息镀膜"
+          }
+        }
+      }
+    },
+    "Private by design": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地隐私保护"
+          }
+        }
+      }
+    },
+    "Processed on your iPhone with no account, cloud servers, or tracking.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全程在本机处理，无需注册账号，绝不上传服务器或追踪数据。"
           }
         }
       }
@@ -1541,6 +2931,26 @@
         }
       }
     },
+    "Read-only Apple Health access": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只读访问 Apple 健康"
+          }
+        }
+      }
+    },
+    "Read-only Health data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只读健康数据"
+          }
+        }
+      }
+    },
     "Reading Apple Health…": {
       "localizations": {
         "zh-Hans": {
@@ -1591,6 +3001,16 @@
         }
       }
     },
+    "Rendering preview…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在生成预览…"
+          }
+        }
+      }
+    },
     "Reset cache & resync": {
       "localizations": {
         "zh-Hans": {
@@ -1621,6 +3041,26 @@
         }
       }
     },
+    "SAGE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鼠尾草"
+          }
+        }
+      }
+    },
+    "SAGE MIST": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾霭鼠尾草"
+          }
+        }
+      }
+    },
     "SAMPLES READ": {
       "localizations": {
         "zh-Hans": {
@@ -1631,12 +3071,32 @@
         }
       }
     },
+    "SAPPHIRE · COBALT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蓝宝石 · 深海"
+          }
+        }
+      }
+    },
     "SILVER": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "银卡"
+            "value": "银铝"
+          }
+        }
+      }
+    },
+    "SILVER ALUMINUM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银灰铝"
           }
         }
       }
@@ -1647,6 +3107,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "银卡 · 稀有"
+          }
+        }
+      }
+    },
+    "SILVER · UNCOMMON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "白银 · 进阶"
+          }
+        }
+      }
+    },
+    "SLATE INDIGO": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "靛青岩"
           }
         }
       }
@@ -1671,12 +3151,12 @@
         }
       }
     },
-    "Sample breakdown": {
+    "Sage tier": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "示例分析"
+            "value": "鼠尾草等级"
           }
         }
       }
@@ -1717,6 +3197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "示例数据 · 模拟器"
+          }
+        }
+      }
+    },
+    "Satin Titanium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缎面香槟钛"
           }
         }
       }
@@ -1771,6 +3261,26 @@
         }
       }
     },
+    "Share %lld images": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享 %lld 张图片"
+          }
+        }
+      }
+    },
+    "Share dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享档案"
+          }
+        }
+      }
+    },
     "Share image": {
       "localizations": {
         "zh-Hans": {
@@ -1791,12 +3301,42 @@
         }
       }
     },
+    "Shared 3D artwork": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共用 3D 模型"
+          }
+        }
+      }
+    },
     "Silver": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "银色"
+          }
+        }
+      }
+    },
+    "Silver tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银铝等级"
+          }
+        }
+      }
+    },
+    "Simple": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简图"
           }
         }
       }
@@ -1831,6 +3371,36 @@
         }
       }
     },
+    "Smoked Dusk": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏暮夜紫"
+          }
+        }
+      }
+    },
+    "Smoked twilight dusk slate near the thousand-hour mark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "临近千小时门槛的烟熏暮夜蓝紫卡面"
+          }
+        }
+      }
+    },
+    "Source on Sketchfab": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sketchfab 原作品"
+          }
+        }
+      }
+    },
     "Space Gray": {
       "localizations": {
         "zh-Hans": {
@@ -1861,12 +3431,32 @@
         }
       }
     },
-    "Swipe here to switch cards": {
+    "Stays on your iPhone": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在此滑动切换卡片"
+            "value": "数据仅保存在本地 iPhone"
+          }
+        }
+      }
+    },
+    "Stealth carbon-aurora prestige finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深邃碳黑极光臻享卡面"
+          }
+        }
+      }
+    },
+    "Summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "摘要"
           }
         }
       }
@@ -1881,12 +3471,52 @@
         }
       }
     },
+    "Swipe here to switch cards": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此滑动切换卡片"
+          }
+        }
+      }
+    },
+    "Swipe to browse models": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右滑动浏览型号"
+          }
+        }
+      }
+    },
+    "Switch between all headphones or a single pair": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换查看全部耳机或单副耳机数据"
+          }
+        }
+      }
+    },
     "Sync Apple Health": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "同步 Apple 健康"
+          }
+        }
+      }
+    },
+    "Sync needed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要同步"
           }
         }
       }
@@ -1921,22 +3551,12 @@
         }
       }
     },
-    "Tap or swipe the card to flip": {
+    "System": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻点或滑动卡片即可翻面"
-          }
-        }
-      }
-    },
-    "Tap to flip": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "轻点翻面"
+            "value": "跟随系统"
           }
         }
       }
@@ -1951,12 +3571,52 @@
         }
       }
     },
+    "TWILIGHT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色"
+          }
+        }
+      }
+    },
+    "TWILIGHT SLATE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色岩蓝"
+          }
+        }
+      }
+    },
+    "Tap card to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点卡片翻面"
+          }
+        }
+      }
+    },
     "Tap or press-drag any hour · bar color shows loudness": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "轻点或按住拖动查看各时段 · 颜色表示音量"
+          }
+        }
+      }
+    },
+    "Tap or swipe the card to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点或滑动卡片即可翻面"
           }
         }
       }
@@ -1981,12 +3641,52 @@
         }
       }
     },
+    "Tap to flip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面"
+          }
+        }
+      }
+    },
     "Tap to flip · drag to tilt": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "轻点翻面 · 拖动倾斜"
+          }
+        }
+      }
+    },
+    "Tap to flip · swipe to switch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点翻面 · 左右滑动切换卡片"
+          }
+        }
+      }
+    },
+    "The 2,000-hour full-spectrum holographic crown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2,000 小时满级全光谱全息皇冠"
+          }
+        }
+      }
+    },
+    "The 2,000-hour full-spectrum liquid holographic crown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2,000 小时满级全光谱流光全息皇冠"
           }
         }
       }
@@ -2001,6 +3701,46 @@
         }
       }
     },
+    "Trusted daily pick with warm 24k sheen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "温润 24K 金光泽的可靠日常伙伴"
+          }
+        }
+      }
+    },
+    "Turn your listening history into collector cards and 28-day Earprint rings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将每天的聆听记录变成专属耳机收藏卡与 28 天声纹环。"
+          }
+        }
+      }
+    },
+    "Twilight tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暮色等级"
+          }
+        }
+      }
+    },
+    "UNLOCKED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁"
+          }
+        }
+      }
+    },
     "Unknown headphones": {
       "localizations": {
         "zh-Hans": {
@@ -2011,12 +3751,102 @@
         }
       }
     },
+    "Unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁"
+          }
+        }
+      }
+    },
+    "Uses Apple Health headphone audio exposure minutes and dB levels.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取 Apple 健康中的耳机聆听时长与分贝记录。"
+          }
+        }
+      }
+    },
+    "Velvet ultraviolet glow at 300+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "满 300 小时的丝绒紫晶微光"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本"
+          }
+        }
+      }
+    },
+    "View all card tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看全部卡片等级"
+          }
+        }
+      }
+    },
+    "View card in Collection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在藏品中查看卡片"
+          }
+        }
+      }
+    },
+    "Vivid jewel finish for steady listeners": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "献给稳定聆听者的祖母绿宝石质感"
+          }
+        }
+      }
+    },
+    "WEAR SHARE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听占比"
+          }
+        }
+      }
+    },
     "WEARS": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "次数"
+          }
+        }
+      }
+    },
+    "WHO weekly dose": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WHO 周剂量"
           }
         }
       }
@@ -2057,6 +3887,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "聆听 · 过去 7 天"
+          }
+        }
+      }
+    },
+    "Warmed up and entering your rotation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "渐入佳境，成为常用主力耳机"
           }
         }
       }
@@ -2137,6 +3977,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "昨天"
+          }
+        }
+      }
+    },
+    "You control sharing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享完全由你决定"
+          }
+        }
+      }
+    },
+    "Your Headphone Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的耳机声音档案"
           }
         }
       }

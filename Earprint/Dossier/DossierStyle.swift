@@ -24,9 +24,7 @@ extension Date {
 
 enum DossierFormat {
     static func dot(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy.MM.dd"
-        return f.string(from: date)
+        DateText.dotted(date, calendar: .current)
     }
 
     static func range(_ start: Date, _ end: Date) -> String {
@@ -56,23 +54,51 @@ extension Rarity {
     var foil: LinearGradient {
         LinearGradient(colors: Array(baseColors.prefix(4)), startPoint: .topLeading, endPoint: .bottomTrailing)
     }
-    /// Light accent that reads on the dark dossier background.
+    /// Adaptive tier accent tuned for crisp contrast in both Light and Dark mode.
     var accent: Color {
         switch self {
-        case .holo: Color(red: 0.55, green: 0.95, blue: 0.88)
-        case .gold: Color(red: 0.99, green: 0.82, blue: 0.45)
-        case .silver: Color(red: 0.82, green: 0.86, blue: 0.94)
-        case .bronze: Color(red: 0.92, green: 0.64, blue: 0.45)
+        case .holo:
+            Color.adaptive(
+                light: UIColor(red: 0.04, green: 0.56, blue: 0.54, alpha: 1),
+                dark: UIColor(red: 0.533, green: 0.961, blue: 0.925, alpha: 1)
+            )
+        case .obsidian:
+            Color.adaptive(
+                light: UIColor(red: 0.18, green: 0.34, blue: 0.58, alpha: 1),
+                dark: UIColor(red: 0.494, green: 0.651, blue: 0.878, alpha: 1)
+            )
+        case .platinum:
+            Color.adaptive(
+                light: UIColor(red: 0.40, green: 0.25, blue: 0.62, alpha: 1),
+                dark: UIColor(red: 0.639, green: 0.510, blue: 0.839, alpha: 1)
+            )
+        case .sapphire:
+            Color.adaptive(
+                light: UIColor(red: 0.14, green: 0.43, blue: 0.49, alpha: 1),
+                dark: UIColor(red: 0.494, green: 0.690, blue: 0.741, alpha: 1)
+            )
+        case .silver:
+            Color.adaptive(
+                light: UIColor(red: 0.35, green: 0.39, blue: 0.46, alpha: 1),
+                dark: UIColor(red: 0.867, green: 0.890, blue: 0.929, alpha: 1)
+            )
+        case .bronze:
+            Color.adaptive(
+                light: UIColor(red: 0.56, green: 0.34, blue: 0.21, alpha: 1),
+                dark: UIColor(red: 0.800, green: 0.588, blue: 0.459, alpha: 1)
+            )
         }
     }
 }
 
 enum DossierPalette {
-    static let ink = Color(red: 0.035, green: 0.035, blue: 0.055)
-    static let panel = Color(red: 0.075, green: 0.075, blue: 0.105)
-    static let hairline = Color.white.opacity(0.09)
-    static let dim = Color.white.opacity(0.5)
-    static let faint = Color.white.opacity(0.32)
+    static let ink = Theme.canvas
+    static let panel = Theme.card
+    static let surfaceFill = Theme.surfaceFill
+    static let hairline = Theme.hairline
+    static let primaryText = Theme.primaryText
+    static let dim = Theme.secondaryText
+    static let faint = Theme.tertiaryText
 }
 
 /// "01  AIRTIME ———" numbered section header, like the tabs of a case file.
@@ -91,7 +117,7 @@ struct DossierSectionHeader: View {
             Text(AppLanguage.current.text(title).uppercased())
                 .font(.system(.caption, design: .rounded, weight: .heavy))
                 .tracking(2.0)
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                 .lineLimit(1)
                 .fixedSize()
             Rectangle().fill(DossierPalette.hairline).frame(height: 1).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 4 }
@@ -108,26 +134,58 @@ struct DossierSectionHeader: View {
     }
 }
 
-/// Small rounded "object" surface used by tiles. Darker and crisper than the generic frosted card.
+/// Small rounded "object" surface used by tiles; crisp white ceramic card in Light mode, obsidian glass in Dark mode.
 struct DossierTile: ViewModifier {
-    var tint: Color = .white
+    var tint: Color = Theme.primaryText
+    @Environment(\.colorScheme) private var colorScheme
+
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         content
             .padding(14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(LinearGradient(colors: [tint.opacity(0.10), Color.white.opacity(0.025)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                if colorScheme == .light {
+                    shape.fill(Theme.card)
+                        .overlay {
+                            shape.fill(
+                                LinearGradient(
+                                    colors: [tint.opacity(0.06), Color.clear],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        }
+                        .shadow(color: Theme.cardShadow, radius: 10, y: 4)
+                } else {
+                    shape.fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.10), Color.white.opacity(0.025)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [.white.opacity(0.16), .white.opacity(0.03)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                if colorScheme == .light {
+                    shape.strokeBorder(Theme.cardStroke, lineWidth: 1)
+                } else {
+                    shape.strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.16), .white.opacity(0.03)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+                }
             }
     }
 }
 
 extension View {
-    func dossierTile(tint: Color = .white) -> some View { modifier(DossierTile(tint: tint)) }
+    func dossierTile(tint: Color = Theme.primaryText) -> some View { modifier(DossierTile(tint: tint)) }
 
     /// Fade, lift and sharpen as the view scrolls into place.
     func dossierAppear() -> some View {
@@ -155,60 +213,102 @@ struct Eyebrow: View {
 }
 
 /// Deterministic barcode, like the strip on a grading label.
-struct DossierBarcode: View {
+struct DossierBarcode: View, Equatable {
     let seed: Int
-    var color: Color = .white
+    var color: Color = DossierPalette.primaryText
 
     var body: some View {
         Canvas { context, size in
             var rng = SplitMix64(seed: UInt64(seed) &* 2_654_435_761 &+ 97)
             var x: CGFloat = 0
+            var bars = Path()
             while x < size.width {
                 let w = CGFloat([1, 1, 2, 3][Int(rng.unit() * 4)])
                 if rng.unit() > 0.42 {
-                    context.fill(Path(CGRect(x: x, y: 0, width: w, height: size.height)), with: .color(color))
+                    bars.addRect(CGRect(x: x, y: 0, width: w, height: size.height))
                 }
                 x += w + 1
             }
+            context.fill(bars, with: .color(color))
         }
         .accessibilityHidden(true)
     }
 }
 
-/// Spinning rainbow hologram seal that reacts to tilt.
+/// Hologram seal that reacts to tilt; static ring & circular lettering stay isolated outside the animated sheen.
 struct HoloSeal: View {
     var tilt: CGSize = .zero
     var size: CGFloat = 44
     var text = "EARPRINT · AUTHENTIC · GRADED · "
+    var isAnimated = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let angle = Angle.degrees(t * 40 + tilt.width * 140 + tilt.height * 60)
-            ZStack {
-                Circle()
-                    .fill(AngularGradient(colors: [.pink, .yellow, .mint, .cyan, .purple, .pink], center: .center, angle: angle))
-                Circle()
-                    .fill(RadialGradient(colors: [.white.opacity(0.75), .clear], center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.35 + tilt.height * 0.3), startRadius: 0, endRadius: size * 0.6))
-                    .blendMode(.overlay)
-                ForEach(0..<12, id: \.self) { i in
-                    Capsule().fill(.white.opacity(0.35)).frame(width: 0.8, height: size * 0.5)
-                        .rotationEffect(.degrees(Double(i) * 15) + angle * 0.5)
+        ZStack {
+            if reduceMotion || !isAnimated {
+                shimmerLayer(angle: Angle.degrees(tilt.width * 140 + tilt.height * 60))
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 15)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    shimmerLayer(angle: Angle.degrees(t * 36 + tilt.width * 140 + tilt.height * 60))
                 }
-                .mask(Circle())
-                Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
-                Circle().inset(by: size * 0.17).strokeBorder(.white.opacity(0.55), lineWidth: 0.7)
-                CircularText(text: text, radius: size * 0.41, fontSize: max(4, size * 0.095))
-                Image(systemName: "ear.fill")
-                    .font(.system(size: size * 0.26, weight: .bold))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 1)
             }
-            .frame(width: size, height: size)
-            .compositingGroup()
-            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+
+            // Static foreground seal details (rings, lettering, ear mark) never rebuild per frame.
+            HoloSealStaticOverlay(size: size, text: text)
+                .equatable()
         }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
         .accessibilityLabel("Earprint hologram seal")
+    }
+
+    private func shimmerLayer(angle: Angle) -> some View {
+        ZStack {
+            Circle()
+                .fill(AngularGradient(colors: [.pink, .yellow, .mint, .cyan, .purple, .pink], center: .center, angle: angle))
+            Circle()
+                .fill(RadialGradient(
+                    colors: [.white.opacity(0.75), .clear],
+                    center: UnitPoint(x: 0.5 + tilt.width * 0.3, y: 0.35 + tilt.height * 0.3),
+                    startRadius: 0,
+                    endRadius: size * 0.6
+                ))
+                .blendMode(.overlay)
+            Canvas { context, canvasSize in
+                let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+                let halfLen = size * 0.25
+                var rays = Path()
+                let baseRad = angle.radians * 0.5
+                for i in 0..<12 {
+                    let a = Double(i) * (.pi / 12) + baseRad
+                    let dx = cos(a) * halfLen
+                    let dy = sin(a) * halfLen
+                    rays.move(to: CGPoint(x: center.x - dx, y: center.y - dy))
+                    rays.addLine(to: CGPoint(x: center.x + dx, y: center.y + dy))
+                }
+                context.stroke(rays, with: .color(.white.opacity(0.35)), lineWidth: 0.8)
+            }
+        }
+    }
+}
+
+private struct HoloSealStaticOverlay: View, Equatable {
+    let size: CGFloat
+    let text: String
+
+    var body: some View {
+        ZStack {
+            Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
+            Circle().inset(by: size * 0.17).strokeBorder(.white.opacity(0.55), lineWidth: 0.7)
+            CircularText(text: text, radius: size * 0.41, fontSize: max(4, size * 0.095))
+            Image(systemName: "ear.fill")
+                .font(.system(size: size * 0.26, weight: .bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.35), radius: 1)
+        }
     }
 }
 

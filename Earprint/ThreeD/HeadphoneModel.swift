@@ -209,21 +209,93 @@ enum ProceduralHeadphones {
 enum HeadphoneModelLoader {
     /// In-memory cache of parsed USDZ templates so switching cards clones in <1ms instead of re-reading MBs from disk.
     @MainActor private static var templateCache: [String: Entity] = [:]
+    /// Deduplicates concurrent `prewarm` and `load` calls for the same USDZ asset.
+    @MainActor private static var inFlightTemplates: [String: Task<Entity?, Never>] = [:]
+    /// Neutral-luminance `TextureResource` cache so canopy & knit cushion recolors stay bright and keep their stitch detail.
+    @MainActor private static var neutralTextureCache: [String: TextureResource] = [:]
 
-    /// AirPodsMax.usdz material name buckets discovered via `usdcat`.
-    /// Neutral chrome stems, gold pins, and pure-black acoustic vents are intentionally excluded.
-    private static let airPodsMaxShellMaterials: Set<String> = [
-        "oCppDZKIKMUCOIr", "IONYLTjXhCrWCDx"
+    /// AirPodsMax.usdz entity/material buckets discovered via `usdcat`.
+    /// RealityKit drops read-only `pbr.name` after mutating textured materials, so we match by immutable
+    /// `ModelEntity.name` first (with `pbr.name` as fallback) so repeated switches always work.
+    private enum AirPodsMaxZone {
+        case shell
+        case outerCushion
+        case accent
+        case canopyOuter
+        case canopyInner
+        case cushion
+    }
+
+    private static let airPodsMaxZonesByEntity: [String: AirPodsMaxZone] = [
+        "BNOZVCaFckcMAnz": .shell,
+        "sYTnpMcquiOFLQg": .shell,
+        "LSwgFSweioaiCgt": .outerCushion,
+        "YmaGKZDKmTWUQJE": .accent,
+        "alKkbNxYSoLInGi": .accent,
+        "AExPvRSHRbARooZ": .canopyOuter,
+        "AANWpKMFljrFwQj": .canopyInner,
+        "QVkyuxLuHiwiZGe": .cushion,
+        "PNdaALJHbSHKuWS": .cushion,
+        "XiPhiAhstHJZhhW": .cushion,
+        "JuHOxdrOCIBfkqg": .cushion,
+        "WWtYjswGShSaNES": .cushion,
     ]
-    private static let airPodsMaxAccentMaterials: Set<String> = [
-        "CufifJQVFGKEXjK", "DiaLtZsVVXWBwMe", "XnHBntWOhvrYYYt"
+
+    private static let airPodsMaxZonesByMaterial: [String: AirPodsMaxZone] = [
+        "oCppDZKIKMUCOIr": .shell,
+        "IONYLTjXhCrWCDx": .shell,
+        "DiaLtZsVVXWBwMe": .outerCushion,
+        "CufifJQVFGKEXjK": .accent,
+        "XnHBntWOhvrYYYt": .accent,
+        "DeFxnmzQHJkzqmx": .canopyOuter,
+        "DpauuenuPBdCvhC": .canopyInner,
+        "OeMmmEEWkMBwwgR": .cushion,
+        "fZEVSQIaNKfmlij": .cushion,
+        "KUwCKTokDcQQstJ": .cushion,
+        "ZezcrAosYheapOP": .cushion,
+        "FwxSMPpHOYcEPUc": .cushion,
     ]
-    // These canopy textures also carry the alpha mask that cuts holes into the knit.
-    private static let airPodsMaxCanopyMaterials: Set<String> = ["DeFxnmzQHJkzqmx", "DpauuenuPBdCvhC"]
-    private static let airPodsMaxCushionMaterials: Set<String> = [
-        "OeMmmEEWkMBwwgR", "fZEVSQIaNKfmlij",
-        "KUwCKTokDcQQstJ", "ZezcrAosYheapOP", "FwxSMPpHOYcEPUc"
-    ]
+
+    @MainActor
+    private static func neutralTexture(named assetName: String) -> TextureResource? {
+        if let cached = neutralTextureCache[assetName] {
+            return cached
+        }
+        guard let cgImage = UIImage(named: assetName)?.cgImage,
+              let resource = try? TextureResource(image: cgImage, options: .init(semantic: .color)) else {
+            return nil
+        }
+        neutralTextureCache[assetName] = resource
+        return resource
+    }
+
+    @MainActor
+    private static func loadTemplate(named assetName: String) async -> Entity? {
+        guard !assetName.isEmpty,
+              Bundle.main.url(forResource: assetName, withExtension: "usdz") != nil else { return nil }
+        if let cached = templateCache[assetName] {
+            return cached
+        }
+        if let existing = inFlightTemplates[assetName] {
+            return await existing.value
+        }
+        let task = Task<Entity?, Never> { @MainActor in
+            let entity = try? await Entity(named: assetName, in: .main)
+            if let entity {
+                templateCache[assetName] = entity
+            }
+            inFlightTemplates[assetName] = nil
+            return entity
+        }
+        inFlightTemplates[assetName] = task
+        return await task.value
+    }
+
+    /// Pre-loads a USDZ template into `templateCache` ahead of card switches so settling is hitch-free.
+    @MainActor
+    static func prewarm(assetName: String) async {
+        _ = await loadTemplate(named: assetName)
+    }
 
     /// Loads the bundled USDZ if present (cached & cloned for instant card switching), otherwise the procedural model.
     @MainActor
@@ -231,19 +303,9 @@ enum HeadphoneModelLoader {
         let model: Entity
         let resolvedName = assetName ?? kind.assetName
         let loadedFromUSDZ: Bool
-        if !resolvedName.isEmpty,
-           Bundle.main.url(forResource: resolvedName, withExtension: "usdz") != nil {
-            if let cached = templateCache[resolvedName] {
-                model = cached.clone(recursive: true)
-                loadedFromUSDZ = true
-            } else if let asset = try? await Entity(named: resolvedName, in: .main) {
-                templateCache[resolvedName] = asset
-                model = asset.clone(recursive: true)
-                loadedFromUSDZ = true
-            } else {
-                model = ProceduralHeadphones.make(kind, finish: finish)
-                loadedFromUSDZ = false
-            }
+        if let template = await loadTemplate(named: resolvedName) {
+            model = template.clone(recursive: true)
+            loadedFromUSDZ = true
         } else {
             model = ProceduralHeadphones.make(kind, finish: finish)
             loadedFromUSDZ = false
@@ -271,34 +333,47 @@ enum HeadphoneModelLoader {
     @MainActor
     private static func recolorAirPodsMax(_ entity: Entity, finish: HeadphoneFinish) {
         if let modelEntity = entity as? ModelEntity, var modelComp = modelEntity.model {
+            let zoneByEntity = airPodsMaxZonesByEntity[modelEntity.name]
             var changed = false
             modelComp.materials = modelComp.materials.map { material in
-                guard var pbr = material as? PhysicallyBasedMaterial, let name = pbr.name else {
+                guard var pbr = material as? PhysicallyBasedMaterial else {
                     return material
                 }
-                if airPodsMaxShellMaterials.contains(name) {
+                guard let zone = zoneByEntity ?? pbr.name.flatMap({ airPodsMaxZonesByMaterial[$0] }) else {
+                    return material
+                }
+
+                switch zone {
+                case .shell:
                     pbr.baseColor = .init(tint: finish.shell)
                     pbr.metallic = .init(floatLiteral: finish.metallic)
                     pbr.roughness = .init(floatLiteral: finish.roughness)
-                    changed = true
-                    return pbr
-                }
-                if airPodsMaxAccentMaterials.contains(name) {
+                case .outerCushion:
+                    if let tex = neutralTexture(named: "AirPodsMaxCushionKnit") {
+                        pbr.baseColor = .init(tint: finish.accent, texture: .init(tex))
+                    } else {
+                        pbr.baseColor = .init(tint: finish.accent)
+                    }
+                case .accent:
                     pbr.baseColor = .init(tint: finish.accent)
-                    changed = true
-                    return pbr
-                }
-                if airPodsMaxCanopyMaterials.contains(name) {
-                    pbr.baseColor.tint = finish.cushion
-                    changed = true
-                    return pbr
-                }
-                if airPodsMaxCushionMaterials.contains(name) {
+                case .canopyOuter:
+                    if let tex = neutralTexture(named: "AirPodsMaxCanopyOuter") {
+                        pbr.baseColor = .init(tint: finish.accent, texture: .init(tex))
+                    } else {
+                        pbr.baseColor.tint = finish.accent
+                    }
+                case .canopyInner:
+                    if let tex = neutralTexture(named: "AirPodsMaxCanopyInner") {
+                        pbr.baseColor = .init(tint: finish.accent, texture: .init(tex))
+                    } else {
+                        pbr.baseColor.tint = finish.accent
+                    }
+                case .cushion:
                     pbr.baseColor = .init(tint: finish.cushion)
-                    changed = true
-                    return pbr
                 }
-                return material
+
+                changed = true
+                return pbr
             }
             if changed {
                 modelEntity.model = modelComp

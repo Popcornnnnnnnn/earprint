@@ -16,20 +16,24 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
     case earbudsGeneric     // unknown in-ear headphones
     case overEarGeneric     // unknown over-ear headphones, also the final fallback
 
-    /// Artwork used for collectible cards. Unknown and third-party models stay in Health totals.
+    /// Artwork used for collectible detail cards (includes open charging case for AirPods 4 / Pro).
     var collectibleArtwork: String? {
         switch self {
         case .airpods, .airpods3: "CardRenderAirPodsOpen"
         case .airpods4: "CardRenderAirPods4"
-        case .airpodsPro: "CardRenderAirPodsPro"
+        case .airpodsPro: "CardRenderAirPodsProCase"
         case .airpodsMax: "CardRenderAirPodsMax"
         default: nil
         }
     }
 
-    /// Collection thumbnails show the device by itself. Card detail can include its charging case.
+    /// Collection thumbnails show the device by itself without its charging case.
     var collectionArtwork: String? {
-        self == .airpods4 ? "CardRenderAirPodsOpen" : collectibleArtwork
+        switch self {
+        case .airpods4: "CardRenderAirPodsOpen"
+        case .airpodsPro: "CardRenderAirPodsPro"
+        default: collectibleArtwork
+        }
     }
 
     var collectibleModel: String? {

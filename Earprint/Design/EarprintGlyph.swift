@@ -1,99 +1,295 @@
 import SwiftUI
 
 /// Listening minutes and loudness per day and hour. Day 0 is the oldest day.
-struct ListeningGrid {
+struct ListeningGrid: Equatable {
     var minutes: [[Double]]
     var decibels: [[Double]]
 
     var days: Int { minutes.count }
-    var maxMinutes: Double { minutes.flatMap { $0 }.max() ?? 0 }
+
+    var maxMinutes: Double {
+        var best = 0.0
+        for day in minutes {
+            for value in day where value > best {
+                best = value
+            }
+        }
+        return best
+    }
 
     func totalMinutes(lastDays: Int) -> Double {
-        minutes.suffix(lastDays).flatMap { $0 }.reduce(0, +)
+        var total = 0.0
+        for day in minutes.suffix(lastDays) {
+            for value in day {
+                total += value
+            }
+        }
+        return total
     }
 
     /// Share of listening inside the given hours (wraps past midnight).
     func share(hours: [Int], lastDays: Int) -> Double {
-        let total = totalMinutes(lastDays: lastDays)
-        guard total > 0 else { return 0 }
-        let part = minutes.suffix(lastDays).reduce(0) { sum, day in sum + hours.reduce(0) { $0 + day[$1] } }
-        return part / total
+        var total = 0.0
+        var part = 0.0
+        for day in minutes.suffix(lastDays) {
+            for value in day { total += value }
+            for hour in hours where hour >= 0 && hour < day.count {
+                part += day[hour]
+            }
+        }
+        return total > 0 ? part / total : 0
     }
 
     /// Time-weighted energy average level over the last days.
     func averageDecibels(lastDays: Int) -> Double {
         var energy = 0.0, weight = 0.0
         for (m, db) in zip(minutes.suffix(lastDays), decibels.suffix(lastDays)) {
-            for h in 0..<24 where m[h] > 0 {
+            let count = min(m.count, db.count)
+            for h in 0..<count where m[h] > 0 {
                 energy += pow(10, db[h] / 10) * m[h]
                 weight += m[h]
             }
         }
         return weight > 0 ? 10 * log10(energy / weight) : 0
     }
+
+    /// Time-weighted energy average level for a single day index.
+    func dayAverageDecibels(dayIndex: Int) -> Double? {
+        guard minutes.indices.contains(dayIndex), decibels.indices.contains(dayIndex) else { return nil }
+        let dayMinutes = minutes[dayIndex]
+        let dayDB = decibels[dayIndex]
+        let count = min(dayMinutes.count, dayDB.count)
+        var energy = 0.0
+        var weight = 0.0
+        for h in 0..<count where dayMinutes[h] > 0 {
+            energy += pow(10, dayDB[h] / 10) * dayMinutes[h]
+            weight += dayMinutes[h]
+        }
+        return weight > 0 ? 10 * log10(energy / weight) : nil
+    }
 }
 
 /// The signature visual: each ring is a day (oldest inside), each segment an hour of the day.
 /// Brighter and thicker means more listening; color shows loudness.
-struct EarprintGlyph: View {
+/// Batches empty tracks into 1 path, blurred glow arcs into ≤6 loudness buckets, and crisp arcs into
+/// quantized `(loudness × intensity)` buckets so both live rendering and `ImageRenderer` export stay fast.
+struct EarprintGlyph: View, Equatable {
     let grid: ListeningGrid
     var showHourLabels = true
+    var forcedColorScheme: ColorScheme? = nil
+
+    @Environment(\.colorScheme) private var envColorScheme
+
+    private struct HourGeometry {
+        let startAngle: Angle
+        let endAngle: Angle
+        let cosStart: CGFloat
+        let sinStart: CGFloat
+    }
+
+    private static let arcGap: Double = 1.2
+    private static let hourGeometries: [HourGeometry] = (0..<24).map { hour in
+        let start = Angle.degrees(Double(hour) * 15 - 90 + arcGap)
+        let end = Angle.degrees(Double(hour + 1) * 15 - 90 - arcGap)
+        let rad = start.radians
+        return HourGeometry(startAngle: start, endAngle: end, cosStart: CGFloat(cos(rad)), sinStart: CGFloat(sin(rad)))
+    }
+
+    private static let crispPaletteDark: [Color] = makeCrispPalette(colorScheme: .dark)
+    private static let crispPaletteLight: [Color] = makeCrispPalette(colorScheme: .light)
+    private static let glowPaletteDark: [Color] = makeGlowPalette(colorScheme: .dark)
+    private static let glowPaletteLight: [Color] = makeGlowPalette(colorScheme: .light)
+
+    private static func makeCrispPalette(colorScheme: ColorScheme) -> [Color] {
+        [56, 61, 63, 65, 67, 69, 71, 73.25, 75.75, 78.25, 80.75, 84].map {
+            Theme.levelColor(db: $0, colorScheme: colorScheme)
+        }
+    }
+
+    private static func makeGlowPalette(colorScheme: ColorScheme) -> [Color] {
+        [56, 63, 68, 73, 78, 84].map {
+            Theme.levelColor(db: $0, colorScheme: colorScheme)
+        }
+    }
+
+    private static let intensityLevels: [Double] = [0.16, 0.44, 0.72, 0.96]
+
+    private static func crispColorIndex(for db: Double) -> Int {
+        if db < 60 { return 0 }
+        if db < 72 { return 1 + min(5, Int((db - 60) / 2)) }
+        if db < 82 { return 7 + min(3, Int((db - 72) / 2.5)) }
+        return 11
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.showHourLabels == rhs.showHourLabels
+            && lhs.forcedColorScheme == rhs.forcedColorScheme
+            && lhs.grid == rhs.grid
+    }
 
     var body: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = min(size.width, size.height) / 2 * (showHourLabels ? 0.86 : 0.98)
-            let inner = outer * 0.42
-            let step = (outer - inner) / CGFloat(max(grid.days, 1))
-            let maxMinutes = max(grid.maxMinutes, 1)
+        let scheme = forcedColorScheme ?? envColorScheme
+        let isLight = scheme == .light
+        let crispPalette = isLight ? Self.crispPaletteLight : Self.crispPaletteDark
+        let glowPalette = isLight ? Self.glowPaletteLight : Self.glowPaletteDark
+        let trackColor = isLight ? Color.black.opacity(0.07) : Color.white.opacity(0.055)
+        let innerRingColor = isLight ? Color.black.opacity(0.12) : Color.white.opacity(0.11)
+        let outerRingColor = isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.10)
+        let tickColor = isLight ? Color.black.opacity(0.22) : Color.white.opacity(0.18)
+        let dotZeroColor = isLight ? Color.black.opacity(0.75) : Color.white.opacity(0.90)
+        let dotMinorColor = isLight ? Color.black.opacity(0.38) : Color.white.opacity(0.55)
+        let labelZeroColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.84) : Color.white.opacity(0.82)
+        let labelMinorColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.54) : Color.white.opacity(0.55)
+        let glowAlpha: Double = isLight ? 0.28 : 0.76
+        let minArcAlpha: Double = isLight ? 0.45 : 0.32
 
-            func arc(day: Int, hour: Int) -> Path {
+        Canvas { context, size in
+            let side = min(size.width, size.height)
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let outer = side / 2 * (showHourLabels ? 0.80 : 0.94)
+            let inner = outer * 0.46
+            let dayCount = grid.days
+            let step = (outer - inner) / CGFloat(max(dayCount, 1))
+            let maxMinutes = max(grid.maxMinutes, 1)
+            let bezelGap = max(1.6, step * 0.55)
+            let innerRingRadius = max(2, inner - bezelGap * 0.55)
+            let outerRingRadius = outer + bezelGap * 0.65
+            let hairlineWidth = max(0.75, min(1.0, side * 0.0045))
+            let geoms = Self.hourGeometries
+
+            // 1. Batch all empty clock tracks into a single Path (1 draw call instead of 672).
+            var trackPath = Path()
+            for day in 0..<dayCount {
                 let r = inner + step * (CGFloat(day) + 0.5)
-                let gap = 1.2
-                var path = Path()
-                path.addArc(
-                    center: center,
-                    radius: r,
-                    startAngle: .degrees(Double(hour) * 15 - 90 + gap),
-                    endAngle: .degrees(Double(hour + 1) * 15 - 90 - gap),
-                    clockwise: false
-                )
-                return path
+                for hour in 0..<24 {
+                    let g = geoms[hour]
+                    trackPath.move(to: CGPoint(x: center.x + r * g.cosStart, y: center.y + r * g.sinStart))
+                    trackPath.addArc(center: center, radius: r, startAngle: g.startAngle, endAngle: g.endAngle, clockwise: false)
+                }
+            }
+            context.stroke(trackPath, with: .color(trackColor),
+                           style: StrokeStyle(lineWidth: step * 0.55, lineCap: .round))
+
+            // 2. Concentric inner & outer precision chronometer hairline rings.
+            let innerRingRect = CGRect(
+                x: center.x - innerRingRadius,
+                y: center.y - innerRingRadius,
+                width: innerRingRadius * 2,
+                height: innerRingRadius * 2
+            )
+            let outerRingRect = CGRect(
+                x: center.x - outerRingRadius,
+                y: center.y - outerRingRadius,
+                width: outerRingRadius * 2,
+                height: outerRingRadius * 2
+            )
+            context.stroke(Path(ellipseIn: innerRingRect), with: .color(innerRingColor), lineWidth: hairlineWidth)
+            context.stroke(Path(ellipseIn: outerRingRect), with: .color(outerRingColor), lineWidth: hairlineWidth)
+
+            // 3. Precision 24-hour chronometer bezel micro-ticks (batched into 1 Path).
+            if showHourLabels {
+                var minorTicks = Path()
+                let tickLen = max(2.2, side * 0.014)
+                for hour in 0..<24 where hour % 6 != 0 {
+                    let angle = (Double(hour) * 15 - 90) * .pi / 180
+                    let c = CGFloat(cos(angle)), s = CGFloat(sin(angle))
+                    let r0 = outerRingRadius - tickLen * 0.35
+                    let r1 = outerRingRadius + tickLen * 0.65
+                    minorTicks.move(to: CGPoint(x: center.x + r0 * c, y: center.y + r0 * s))
+                    minorTicks.addLine(to: CGPoint(x: center.x + r1 * c, y: center.y + r1 * s))
+                }
+                context.stroke(minorTicks, with: .color(tickColor), lineWidth: max(0.65, hairlineWidth * 0.85))
             }
 
-            // Faint tracks so empty hours still read as a clock.
-            for day in 0..<grid.days {
-                for hour in 0..<24 {
-                    context.stroke(arc(day: day, hour: hour), with: .color(.white.opacity(0.045)),
-                                   style: StrokeStyle(lineWidth: step * 0.55, lineCap: .round))
+            // 4. Bucket active arcs into batched paths (≤6 glow paths, ≤48 crisp paths vs up to 1,344 strokes).
+            var glowBuckets = Array(repeating: Path(), count: glowPalette.count)
+            var glowHasArcs = Array(repeating: false, count: glowPalette.count)
+            let crispCount = crispPalette.count * Self.intensityLevels.count
+            var crispBuckets = Array(repeating: Path(), count: crispCount)
+            var crispHasArcs = Array(repeating: false, count: crispCount)
+
+            for day in 0..<dayCount {
+                let r = inner + step * (CGFloat(day) + 0.5)
+                let dayMinutes = grid.minutes[day]
+                let dayDB = grid.decibels.indices.contains(day) ? grid.decibels[day] : []
+                let hours = min(24, min(dayMinutes.count, dayDB.count))
+                for hour in 0..<hours {
+                    let minutes = dayMinutes[hour]
+                    guard minutes > 0 else { continue }
+                    let g = geoms[hour]
+                    let startPoint = CGPoint(x: center.x + r * g.cosStart, y: center.y + r * g.sinStart)
+
+                    let cIdx = Self.crispColorIndex(for: dayDB[hour])
+                    let gIdx = cIdx / 2
+                    glowBuckets[gIdx].move(to: startPoint)
+                    glowBuckets[gIdx].addArc(center: center, radius: r, startAngle: g.startAngle, endAngle: g.endAngle, clockwise: false)
+                    glowHasArcs[gIdx] = true
+
+                    let t = min(1, minutes / maxMinutes)
+                    let iIdx = min(Self.intensityLevels.count - 1, Int(t * Double(Self.intensityLevels.count)))
+                    let bucket = cIdx * Self.intensityLevels.count + iIdx
+                    crispBuckets[bucket].move(to: startPoint)
+                    crispBuckets[bucket].addArc(center: center, radius: r, startAngle: g.startAngle, endAngle: g.endAngle, clockwise: false)
+                    crispHasArcs[bucket] = true
                 }
             }
 
-            func drawActive(_ ctx: inout GraphicsContext) {
-                for day in 0..<grid.days {
-                    for hour in 0..<24 {
-                        let minutes = grid.minutes[day][hour]
-                        guard minutes > 0 else { continue }
-                        let t = min(1, minutes / maxMinutes)
-                        let color = Theme.levelColor(db: grid.decibels[day][hour])
-                        ctx.stroke(arc(day: day, hour: hour), with: .color(color.opacity(0.3 + 0.7 * t)),
-                                   style: StrokeStyle(lineWidth: step * (0.3 + 0.55 * t), lineCap: .round))
+            if glowHasArcs.contains(true) {
+                let glowStyle = StrokeStyle(lineWidth: step * 0.72, lineCap: .round)
+                context.drawLayer { glow in
+                    glow.addFilter(.blur(radius: step * 1.15))
+                    for gIdx in 0..<glowPalette.count where glowHasArcs[gIdx] {
+                        glow.stroke(glowBuckets[gIdx], with: .color(glowPalette[gIdx].opacity(glowAlpha)), style: glowStyle)
+                    }
+                }
+
+                for cIdx in 0..<crispPalette.count {
+                    let color = crispPalette[cIdx]
+                    for iIdx in 0..<Self.intensityLevels.count {
+                        let bucket = cIdx * Self.intensityLevels.count + iIdx
+                        guard crispHasArcs[bucket] else { continue }
+                        let level = Self.intensityLevels[iIdx]
+                        context.stroke(
+                            crispBuckets[bucket],
+                            with: .color(color.opacity(minArcAlpha + (1 - minArcAlpha) * level)),
+                            style: StrokeStyle(lineWidth: step * (0.32 + 0.55 * level), lineCap: .round)
+                        )
                     }
                 }
             }
 
-            context.drawLayer { glow in
-                glow.addFilter(.blur(radius: step * 1.2))
-                drawActive(&glow)
-            }
-            drawActive(&context)
+            // 5. Crisp cardinal tick dots at 0 / 6 / 12 / 18h on the outer bezel ring.
+            let dotDiameter = max(2.4, min(3.8, side * 0.016))
+            let cardinalHours: [(Int, String)] = [(0, "0"), (6, "6"), (12, "12"), (18, "18")]
+            for (hour, label) in cardinalHours {
+                let angle = (Double(hour) * 15 - 90) * .pi / 180
+                let tickPoint = CGPoint(
+                    x: center.x + outerRingRadius * CGFloat(cos(angle)),
+                    y: center.y + outerRingRadius * CGFloat(sin(angle))
+                )
+                let dotRect = CGRect(
+                    x: tickPoint.x - dotDiameter / 2,
+                    y: tickPoint.y - dotDiameter / 2,
+                    width: dotDiameter,
+                    height: dotDiameter
+                )
+                context.fill(
+                    Path(ellipseIn: dotRect),
+                    with: .color(hour == 0 ? dotZeroColor : dotMinorColor)
+                )
 
-            if showHourLabels {
-                for (hour, label) in [(0, "0"), (6, "6"), (12, "12"), (18, "18")] {
-                    let angle = Double(hour) * 15 - 90
-                    let r = outer + 14
-                    let point = CGPoint(x: center.x + r * cos(angle * .pi / 180), y: center.y + r * sin(angle * .pi / 180))
-                    context.draw(Text(label).font(.caption2.weight(.medium)).foregroundStyle(Theme.secondaryText), at: point)
+                if showHourLabels {
+                    let labelRadius = outerRingRadius + max(11, side * 0.056)
+                    let labelPoint = CGPoint(
+                        x: center.x + labelRadius * CGFloat(cos(angle)),
+                        y: center.y + labelRadius * CGFloat(sin(angle))
+                    )
+                    context.draw(
+                        Text(label)
+                            .font(.system(size: 10, weight: hour == 0 ? .bold : .semibold, design: .monospaced))
+                            .foregroundStyle(hour == 0 ? labelZeroColor : labelMinorColor),
+                        at: labelPoint
+                    )
                 }
             }
         }

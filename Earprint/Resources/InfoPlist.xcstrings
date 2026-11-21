@@ -1,0 +1,23 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earprint 仅以只读方式读取 Apple“健康”中的耳机音量数据，用于展示你的聆听时长与音量分布。所有数据均保留在你的 iPhone 本地。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

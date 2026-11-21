@@ -15,7 +15,10 @@ enum StudioEnvironment {
             return "\(Int(r * 255))-\(Int(g * 255))-\(Int(b * 255))"
         }.joined(separator: "_")
         if let cached = cache[key] { return cached }
-        let image = render(tint: tint)
+        // Render the 1024×512 equirectangular IBL off the main actor to avoid launch/open hitches.
+        let image = await Task.detached(priority: .userInitiated) {
+            render(tint: tint)
+        }.value
         let resource = try await EnvironmentResource(equirectangular: image, withName: "studio-\(key)")
         cache[key] = resource
         return resource
@@ -53,13 +56,16 @@ enum StudioEnvironment {
     }
 }
 
-/// Owns the RealityKit scene graph and the spin physics, outside SwiftUI state.
+/// Owns a single persistent RealityKit scene graph and spin physics outside SwiftUI state.
+/// Swapping models and IBL environments in-place keeps one `RealityView` / `CAMetalLayer` alive across
+/// card switches, eliminating iOS hardware EDR/compositor screen flashes.
 @MainActor
 final class ModelRig {
     let root = Entity()
     let tiltPivot = Entity()
     let spinPivot = Entity()
     let zoomPivot = Entity()
+    let iblLightEntity = Entity()
 
     var yaw: Float = -0.5
     var pitch: Float = 0.12
@@ -70,36 +76,352 @@ final class ModelRig {
     var loadedModel: Entity?
     var appliedFinishID: String?
     var iblReceiver: ImageBasedLightReceiverComponent?
+
+    private(set) var targetModelID: String?
+    private(set) var displayedModelID: String?
+    private var appliedAssetName: String?
+    private var appliedModelKey: HeadphoneModelKey?
+    private var appliedTintKey: String?
+    private var latestFinish: HeadphoneFinish?
+    private var latestFinishID: String?
+    private var loadTask: Task<Void, Never>?
     private var subscription: EventSubscription?
     private var lastTranslation: CGSize = .zero
-    private var appear: Float = 0
+
+    private var isVisible = false
+    private var reduceMotion = false
+    private var visualOpacity: Float = 0
+    private var warmupFramesRemaining = 0
+    private var pendingReadyModelID: String?
+    private var pendingReadyCallback: ((String) -> Void)?
+    private var lastProcessedHideToken = 0
+    private var hiddenConfirmFramesRemaining = 0
+    private var pendingHiddenToken: Int?
+    private var pendingHiddenCallback: ((Int) -> Void)?
+    private var keyLight: DirectionalLight?
+    private var fillLight: DirectionalLight?
+    private var rimLight: DirectionalLight?
+    private var appliedDepthDim: Float = -1
 
     init() {
         root.addChild(tiltPivot)
         tiltPivot.addChild(zoomPivot)
         zoomPivot.addChild(spinPivot)
-        zoomPivot.scale = .zero
+        spinPivot.isEnabled = false
     }
 
-    func attach(to content: RealityViewCameraContent) {
+    func attach(
+        to content: RealityViewCameraContent,
+        keyLight: DirectionalLight? = nil,
+        fillLight: DirectionalLight? = nil,
+        rimLight: DirectionalLight? = nil
+    ) {
+        configureLights(key: keyLight, fill: fillLight, rim: rimLight)
+        content.add(root)
+        content.add(iblLightEntity)
+        iblReceiver = ImageBasedLightReceiverComponent(imageBasedLight: iblLightEntity)
+        step(0)
         subscription = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
-            MainActor.assumeIsolated { self?.step(Float(event.deltaTime)) }
+            MainActor.assumeIsolated {
+                self?.tick(Float(event.deltaTime))
+            }
         }
+    }
+
+    func configureLights(key: DirectionalLight?, fill: DirectionalLight?, rim: DirectionalLight?) {
+        self.keyLight = key
+        self.fillLight = fill
+        self.rimLight = rim
+        if appliedDepthDim >= 0 {
+            let dim = appliedDepthDim
+            appliedDepthDim = -1
+            applyDepthDim(dim)
+        }
+    }
+
+    func applyDepthDim(_ dim: Float) {
+        let clamped = min(max(dim, 0), 0.65)
+        if abs(clamped - appliedDepthDim) < 0.01 { return }
+        appliedDepthDim = clamped
+        let scale = max(0.32, 1 - clamped * 0.72)
+        keyLight?.light.intensity = 3600 * scale
+        fillLight?.light.intensity = 1400 * scale
+        rimLight?.light.intensity = 900 * scale
+        if var ibl = iblLightEntity.components[ImageBasedLightComponent.self] {
+            ibl.intensityExponent = 1.3 - clamped * 1.4
+            iblLightEntity.components.set(ibl)
+        }
+    }
+
+    func syncModel(
+        modelID: String,
+        kind: HeadphoneKind,
+        finish: HeadphoneFinish,
+        finishID: String,
+        modelKey: HeadphoneModelKey,
+        assetName: String?,
+        modelSize: Float,
+        tint: [UIColor],
+        tintKey: String,
+        tilt: CGSize,
+        isVisible: Bool,
+        reduceMotion: Bool,
+        hideToken: Int = 0,
+        depthDim: Float = 0,
+        onModelReady: @escaping (String) -> Void,
+        onHiddenConfirmed: @escaping (Int) -> Void = { _ in }
+    ) {
+        self.reduceMotion = reduceMotion
+        self.idleSpin = reduceMotion ? 0 : 0.45
+        self.latestFinish = finish
+        self.latestFinishID = finishID
+        self.isVisible = isVisible
+        applyTilt(tilt)
+        applyDepthDim(depthDim)
+
+        if hideToken != lastProcessedHideToken {
+            lastProcessedHideToken = hideToken
+            let wasRendered = spinPivot.isEnabled || visualOpacity > 0 || warmupFramesRemaining > 0
+            if loadTask != nil || displayedModelID != targetModelID || loadedModel == nil {
+                targetModelID = nil
+                appliedAssetName = nil
+                appliedModelKey = nil
+            }
+            loadTask?.cancel()
+            loadTask = nil
+            warmupFramesRemaining = 0
+            pendingReadyModelID = nil
+            pendingReadyCallback = nil
+            hideImmediately()
+            pendingHiddenToken = hideToken
+            pendingHiddenCallback = onHiddenConfirmed
+            hiddenConfirmFramesRemaining = wasRendered ? 2 : 1
+            return
+        }
+
+        if hiddenConfirmFramesRemaining > 0 {
+            pendingHiddenCallback = onHiddenConfirmed
+            if spinPivot.isEnabled { hideImmediately() }
+            return
+        }
+
+        let modelChanged = targetModelID != modelID
+            || appliedAssetName != assetName
+            || appliedModelKey != modelKey
+
+        if modelChanged {
+            loadTask?.cancel()
+            loadTask = nil
+            targetModelID = modelID
+            appliedAssetName = assetName
+            appliedModelKey = modelKey
+            pendingReadyModelID = nil
+            pendingReadyCallback = nil
+            warmupFramesRemaining = 0
+            hideImmediately()
+
+            guard let assetName else {
+                clearLoadedModel()
+                return
+            }
+
+            let requestedTintKey = tintKey
+            loadTask = Task { @MainActor [weak self] in
+                guard let self else { return }
+                let resolvedFinish = self.latestFinish ?? finish
+                let resolvedFinishID = self.latestFinishID ?? finishID
+
+                async let environment = try? StudioEnvironment.make(tint: tint)
+                let nextModel = await HeadphoneModelLoader.load(
+                    kind,
+                    finish: resolvedFinish,
+                    assetName: assetName,
+                    modelKey: modelKey,
+                    size: modelSize
+                )
+                let studioLighting = await environment
+                guard !Task.isCancelled, self.targetModelID == modelID else { return }
+
+                // Apply the latest color in case the user tapped a swatch while the model was loading.
+                let finalFinish = self.latestFinish ?? resolvedFinish
+                let finalFinishID = self.latestFinishID ?? resolvedFinishID
+                let finalModel: Entity
+                if finalFinishID != resolvedFinishID {
+                    if assetName.isEmpty {
+                        finalModel = HeadphoneModelLoader.normalized(
+                            ProceduralHeadphones.make(kind, finish: finalFinish),
+                            size: modelSize
+                        )
+                    } else {
+                        HeadphoneModelLoader.applyFinish(finalFinish, to: nextModel, modelKey: modelKey)
+                        finalModel = nextModel
+                    }
+                } else {
+                    finalModel = nextModel
+                }
+
+                self.installModel(
+                    finalModel,
+                    modelID: modelID,
+                    finishID: finalFinishID,
+                    studioLighting: studioLighting,
+                    tintKey: requestedTintKey,
+                    onModelReady: onModelReady
+                )
+            }
+            return
+        }
+
+        // Same model: apply live finish updates in place without resetting spin orientation.
+        if displayedModelID == modelID, let currentModel = loadedModel, appliedFinishID != finishID {
+            appliedFinishID = finishID
+            if (assetName ?? kind.assetName).isEmpty {
+                let replacement = HeadphoneModelLoader.normalized(
+                    ProceduralHeadphones.make(kind, finish: finish),
+                    size: modelSize
+                )
+                if let receiver = iblReceiver {
+                    applyReceiver(receiver, to: replacement)
+                }
+                currentModel.removeFromParent()
+                spinPivot.addChild(replacement)
+                loadedModel = replacement
+            } else {
+                HeadphoneModelLoader.applyFinish(finish, to: currentModel, modelKey: modelKey)
+            }
+        }
+
+        // Hide synchronously on the exact frame a swipe or flip begins so the old model never ghosts.
+        if !isVisible && warmupFramesRemaining == 0 {
+            hideImmediately()
+        }
+    }
+
+    func installModel(
+        _ model: Entity,
+        modelID: String,
+        finishID: String,
+        studioLighting: EnvironmentResource?,
+        tintKey: String,
+        onModelReady: @escaping (String) -> Void
+    ) {
+        loadedModel?.removeFromParent()
+        yaw = -0.5
+        pitch = 0.12
+        velocity = .zero
+        zoom = 1
+        dragging = false
+        zoomPivot.scale = SIMD3(repeating: 1)
+        step(0)
+
+        if let studioLighting, appliedTintKey != tintKey {
+            let dim = max(0, appliedDepthDim)
+            iblLightEntity.components.set(
+                ImageBasedLightComponent(source: .single(studioLighting), intensityExponent: 1.3 - dim * 1.4)
+            )
+            appliedTintKey = tintKey
+        }
+        if let receiver = iblReceiver {
+            applyReceiver(receiver, to: model)
+        }
+
+        spinPivot.addChild(model)
+        loadedModel = model
+        displayedModelID = modelID
+        appliedFinishID = finishID
+
+        // Render 2 invisible GPU warmup ticks so shaders & textures upload before revealing.
+        visualOpacity = 0
+        warmupFramesRemaining = 2
+        pendingReadyModelID = modelID
+        pendingReadyCallback = onModelReady
+        spinPivot.isEnabled = true
+        spinPivot.components.set(OpacityComponent(opacity: 0.001))
+    }
+
+    func clearLoadedModel() {
+        loadedModel?.removeFromParent()
+        loadedModel = nil
+        displayedModelID = nil
+        appliedFinishID = nil
+        hideImmediately()
+    }
+
+    func cancelLoad() {
+        loadTask?.cancel()
+        loadTask = nil
+    }
+
+    private func hideImmediately() {
+        visualOpacity = 0
+        spinPivot.isEnabled = false
+        spinPivot.components.remove(OpacityComponent.self)
+    }
+
+    private func tick(_ dt: Float) {
+        step(dt)
+
+        if hiddenConfirmFramesRemaining > 0 {
+            if spinPivot.isEnabled { hideImmediately() }
+            hiddenConfirmFramesRemaining -= 1
+            if hiddenConfirmFramesRemaining == 0 {
+                let token = pendingHiddenToken
+                let callback = pendingHiddenCallback
+                pendingHiddenToken = nil
+                pendingHiddenCallback = nil
+                if let token, let callback {
+                    callback(token)
+                }
+            }
+            return
+        }
+
+        if warmupFramesRemaining > 0 {
+            warmupFramesRemaining -= 1
+            if warmupFramesRemaining == 0 {
+                let readyID = pendingReadyModelID
+                let callback = pendingReadyCallback
+                pendingReadyModelID = nil
+                pendingReadyCallback = nil
+                if !isVisible {
+                    hideImmediately()
+                }
+                if let readyID, let callback {
+                    callback(readyID)
+                }
+            }
+            return
+        }
+
+        if isVisible && loadedModel != nil {
+            if !spinPivot.isEnabled {
+                spinPivot.isEnabled = true
+            }
+            if visualOpacity < 1 {
+                let clampedDt = min(dt, 1 / 20)
+                visualOpacity = reduceMotion ? 1 : min(1, visualOpacity + clampedDt * 6.5)
+                if visualOpacity >= 0.999 {
+                    visualOpacity = 1
+                    // Remove OpacityComponent once opaque so RealityKit uses standard depth-buffered PBR rendering.
+                    spinPivot.components.remove(OpacityComponent.self)
+                } else {
+                    spinPivot.components.set(OpacityComponent(opacity: max(0.001, visualOpacity)))
+                }
+            }
+        } else if spinPivot.isEnabled || visualOpacity > 0 {
+            hideImmediately()
+        }
+    }
+
+    private func applyReceiver(_ receiver: ImageBasedLightReceiverComponent, to entity: Entity) {
+        entity.components.set(receiver)
+        for child in entity.children { applyReceiver(receiver, to: child) }
     }
 
     func step(_ dt: Float) {
         let dt = min(dt, 1 / 20)
-        // Pop-in with a little overshoot when the card opens.
-        if appear < 1 {
-            appear = min(1, appear + dt * 1.8)
-            let t = appear
-            let overshoot = 1 + sin(t * .pi) * 0.12 * (1 - t)
-            let eased = 1 - pow(1 - t, 3)
-            zoomPivot.scale = SIMD3(repeating: eased * overshoot * zoom)
-        } else {
-            let current = zoomPivot.scale.x
-            zoomPivot.scale = SIMD3(repeating: current + (zoom - current) * min(1, dt * 10))
-        }
+        let current = zoomPivot.scale.x
+        zoomPivot.scale = SIMD3(repeating: current + (zoom - current) * min(1, dt * 10))
 
         if !dragging {
             yaw += velocity.x * dt
@@ -133,14 +455,30 @@ final class ModelRig {
         velocity = simd_clamp(velocity, SIMD2(repeating: -16), SIMD2(repeating: 16))
     }
 
+    /// Resets interaction flags if iOS cancels the 3D drag/pinch gesture without delivering `onEnded`.
+    func cancelInteractionIfNeeded() {
+        if dragging {
+            dragging = false
+        }
+        if zoom != 1 {
+            zoom = 1
+        }
+    }
+
     /// A playful 360° spin, e.g. after a long press.
     func twirl() {
         velocity.x += 14
     }
+
+    func stepFrameForTesting(_ dt: Float) {
+        tick(dt)
+    }
 }
 
-/// Interactive 3D headphone: drag to spin with momentum, pinch to zoom, tilt the phone for parallax.
+/// Interactive persistent 3D headphone stage: drag to spin with momentum, pinch to zoom, tilt the phone for parallax.
+/// Keeps a single `RealityView` mounted across card switches to avoid Metal / EDR compositor flashes.
 struct HeadphoneModelView: View {
+    var modelID: String = "default"
     let kind: HeadphoneKind
     let finish: HeadphoneFinish
     var finishID: String = "default"
@@ -148,10 +486,20 @@ struct HeadphoneModelView: View {
     var assetName: String? = nil
     var modelSize: Float = 0.145
     var tint: [UIColor] = []
+    var tintKey: String = ""
     var tilt: CGSize = .zero
+    var isVisible: Bool = true
+    var hideToken: Int = 0
+    /// Incrementing this forces `RealityView.update` to re-run `syncModel` (e.g. after a hide-cancelled load returns to the same card).
+    var reloadNonce: Int = 0
+    /// Subtle RealityKit studio light dim (0...0.65) when a card tucks behind another card during a right-swipe.
+    var depthDim: Float = 0
+    var onTap: (() -> Void)? = nil
     var onManipulationChanged: (Bool) -> Void = { _ in }
-    var onModelReady: () -> Void = {}
+    var onModelReady: (String) -> Void = { _ in }
+    var onHiddenConfirmed: (Int) -> Void = { _ in }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rig = ModelRig()
     @State private var twirls = 0
     @GestureState private var isManipulating = false
@@ -182,46 +530,51 @@ struct HeadphoneModelView: View {
             rim.look(at: .zero, from: [-0.5, 0.2, -0.6], relativeTo: nil)
             content.add(rim)
 
-            content.add(rig.root)
-            rig.attach(to: content)
-
-            let model = await HeadphoneModelLoader.load(kind, finish: finish, assetName: assetName, modelKey: modelKey, size: modelSize)
-            rig.loadedModel = model
-            rig.appliedFinishID = finishID
-            rig.spinPivot.addChild(model)
-
-            if let environment = try? await StudioEnvironment.make(tint: tint) {
-                let light = Entity()
-                light.components.set(ImageBasedLightComponent(source: .single(environment), intensityExponent: 1.3))
-                content.add(light)
-                let receiver = ImageBasedLightReceiverComponent(imageBasedLight: light)
-                rig.iblReceiver = receiver
-                applyReceiver(receiver, to: model)
-            }
-            onModelReady()
+            rig.attach(to: content, keyLight: key, fillLight: fill, rimLight: rim)
+            rig.syncModel(
+                modelID: modelID,
+                kind: kind,
+                finish: finish,
+                finishID: finishID,
+                modelKey: modelKey,
+                assetName: assetName,
+                modelSize: modelSize,
+                tint: tint,
+                tintKey: tintKey,
+                tilt: tilt,
+                isVisible: isVisible,
+                reduceMotion: reduceMotion,
+                hideToken: hideToken,
+                depthDim: depthDim,
+                onModelReady: onModelReady,
+                onHiddenConfirmed: onHiddenConfirmed
+            )
         } update: { _ in
-            rig.applyTilt(tilt)
-            if let currentModel = rig.loadedModel, rig.appliedFinishID != finishID {
-                rig.appliedFinishID = finishID
-                if (assetName ?? kind.assetName).isEmpty {
-                    // Procedural model (e.g. Beats Fit Pro): swap smoothly in place keeping spin orientation.
-                    let replacement = HeadphoneModelLoader.normalized(
-                        ProceduralHeadphones.make(kind, finish: finish),
-                        size: modelSize
-                    )
-                    if let receiver = rig.iblReceiver {
-                        applyReceiver(receiver, to: replacement)
-                    }
-                    currentModel.removeFromParent()
-                    rig.spinPivot.addChild(replacement)
-                    rig.loadedModel = replacement
-                } else {
-                    HeadphoneModelLoader.applyFinish(finish, to: currentModel, modelKey: modelKey)
-                }
-            }
+            _ = reloadNonce
+            rig.syncModel(
+                modelID: modelID,
+                kind: kind,
+                finish: finish,
+                finishID: finishID,
+                modelKey: modelKey,
+                assetName: assetName,
+                modelSize: modelSize,
+                tint: tint,
+                tintKey: tintKey,
+                tilt: tilt,
+                isVisible: isVisible,
+                reduceMotion: reduceMotion,
+                hideToken: hideToken,
+                depthDim: depthDim,
+                onModelReady: onModelReady,
+                onHiddenConfirmed: onHiddenConfirmed
+            )
         }
-        // Keep the transparent margins available for swiping the card.
-        .contentShape(.interaction, Rectangle().scale(x: 0.67, y: 0.87))
+        // Keep outer margins free for swiping the card to switch between pairs.
+        .contentShape(.interaction, Rectangle().scale(x: 0.56, y: 0.72))
+        .onTapGesture {
+            onTap?()
+        }
         .gesture(
             DragGesture(minimumDistance: 2)
                 .onChanged { rig.dragChanged($0) }
@@ -232,8 +585,14 @@ struct HeadphoneModelView: View {
                         .onEnded { _ in rig.zoom = 1 })
                 .updating($isManipulating) { _, active, _ in active = true }
         )
-        .onChange(of: isManipulating) { _, active in onManipulationChanged(active) }
+        .onChange(of: isManipulating) { _, active in
+            if !active {
+                rig.cancelInteractionIfNeeded()
+            }
+            onManipulationChanged(active)
+        }
         .onDisappear {
+            rig.cancelLoad()
             if isManipulating { onManipulationChanged(false) }
         }
         .onLongPressGesture(minimumDuration: 0.35) {
@@ -241,12 +600,19 @@ struct HeadphoneModelView: View {
             twirls += 1
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: twirls)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("3D model. Drag to spin, pinch to zoom, long press to twirl.")
     }
+}
 
-    private func applyReceiver(_ receiver: ImageBasedLightReceiverComponent, to entity: Entity) {
-        entity.components.set(receiver)
-        for child in entity.children { applyReceiver(receiver, to: child) }
+extension Rarity {
+    /// Cached UIColor tint array for RealityKit IBL so view bodies never allocate per-frame arrays.
+    private static let cachedStudioTints: [Rarity: [UIColor]] = Dictionary(
+        uniqueKeysWithValues: Rarity.allCases.map { ($0, $0.baseColors.map { UIColor($0) }) }
+    )
+
+    var studioTint: [UIColor] {
+        Self.cachedStudioTints[self] ?? []
     }
 }
 
@@ -259,7 +625,7 @@ extension HeadphoneCard {
         }
     }
 
-    var foilTint: [UIColor] { rarity.baseColors.map { UIColor($0) } }
+    var foilTint: [UIColor] { rarity.studioTint }
 
     /// The bundled model for this product family, when available.
     var modelAssetName: String? { modelKey.collectibleModel }

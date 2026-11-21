@@ -6,11 +6,41 @@ struct EarprintApp: App {
     @State private var router = DeepLinkRouter()
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
-    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @Environment(\.scenePhase) private var scenePhase
+
+    private var resolvedLocale: Locale {
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        if HeadphoneLibrary.isFirstLaunchSimulation {
+            return AppLanguage.systemResolved().locale
+        }
+        #endif
+        return language.locale
+    }
+
+    private var resolvedColorScheme: ColorScheme? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "-appearance"), idx + 1 < args.count {
+            switch args[idx + 1].lowercased() {
+            case "light": return .light
+            case "dark": return .dark
+            default: break
+            }
+        }
+        #endif
+        return appearance.colorScheme
+    }
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+            let previewFirstLaunch: (() -> Void)? = { Task { await library.previewFirstLaunch() } }
+            #else
+            let previewFirstLaunch: (() -> Void)? = nil
+            #endif
+
             TabView(selection: $router.tab) {
                 CollectionView(
                     cards: library.cards,
@@ -18,17 +48,25 @@ struct EarprintApp: App {
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.statusMessage,
                     isLoading: library.isLoading,
-                    onConnectHealth: { Task { await library.connectAndSync() } }
+                    isActiveTab: router.tab == .collection,
+                    onConnectHealth: { Task { await library.connectAndSync() } },
+                    onPreviewFirstLaunch: previewFirstLaunch,
+                    dossierForCard: { library.dossier(for: $0) }
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
                 .tag(DeepLinkRouter.Tab.collection)
 
                 HomeView(
-                    summary: library.homeSummary,
+                    summary: library.summary(forCardID: nil),
+                    primaryCard: library.cards.count == 1 ? library.cards.first : nil,
+                    cards: library.cards,
+                    summaryForCardID: { library.summary(forCardID: $0) },
                     isSampleData: library.isShowingSampleData,
+                    isEmptyState: library.isShowingEmptyState,
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.state == .idle ? nil : library.statusMessage,
                     isLoading: library.isLoading,
+                    isActiveTab: router.tab == .rings,
                     onConnectHealth: { Task { await library.connectAndSync() } }
                 )
                 .tabItem { Label("Rings", systemImage: "circle.hexagongrid") }
@@ -37,11 +75,21 @@ struct EarprintApp: App {
             .environment(router)
             .environment(colorStore)
             .environment(routeMonitor)
-            .environment(\.locale, language.locale)
-            .preferredColorScheme(.dark)
+            .environment(\.locale, resolvedLocale)
+            .preferredColorScheme(resolvedColorScheme)
+            .sheet(isPresented: $library.needsHealthOnboarding) {
+                HealthOnboardingView(
+                    onConnect: { Task { await library.completeOnboarding(connect: true) } },
+                    onSkip: { Task { await library.completeOnboarding(connect: false) } }
+                )
+                .environment(\.locale, resolvedLocale)
+                .preferredColorScheme(resolvedColorScheme)
+            }
             #if DEBUG
             .sheet(item: $router.developerScreen) { screen in
                 DeveloperToolsView(library: library, openProbe: screen == .probe)
+                    .environment(\.locale, resolvedLocale)
+                    .preferredColorScheme(resolvedColorScheme)
             }
             #endif
             // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, ...
@@ -49,9 +97,13 @@ struct EarprintApp: App {
             .task {
                 applyLaunchTab()
                 routeMonitor.refresh()
-                publishWidgets()
+                let beforeStart = library.snapshot?.generatedAt
                 await library.start()
-                publishWidgets()
+                // Publish once if `onChange(of: library.snapshot?.generatedAt)` did not already trigger.
+                if library.snapshot?.generatedAt == beforeStart {
+                    publishWidgets()
+                }
+                #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-startLiveActivity"),
                    let card = library.cards.first {
                     LiveActivityController.shared.start(
@@ -61,31 +113,38 @@ struct EarprintApp: App {
                         startedAt: Date().addingTimeInterval(-18 * 60)
                     )
                 }
+                #endif
             }
-            .onChange(of: library.cards) { _, _ in
-                publishWidgets()
-            }
-            .onChange(of: library.lastSyncDate) { _, _ in
-                publishWidgets()
+            .onChange(of: language) { _, _ in
+                library.refreshDerivedCacheIfNeeded(force: true)
             }
             .onChange(of: library.snapshot?.generatedAt) { _, _ in
                 publishWidgets()
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { routeMonitor.refresh() }
+                if phase == .active {
+                    routeMonitor.refresh()
+                    library.refreshDerivedCacheIfNeeded()
+                }
                 if phase == .background { publishWidgets() }
             }
         }
     }
 
     private func publishWidgets() {
-        let snapshot = WidgetSnapshot(
-            summary: library.homeSummary,
-            cards: library.cards,
-            isSample: library.isShowingSampleData,
-            listening: library.snapshot
-        )
-        WidgetPublisher.publish(snapshot)
+        let summary = library.homeSummary
+        let cards = library.cards
+        let isSample = library.isShowingSampleData
+        let listening = library.snapshot
+        Task.detached(priority: .utility) {
+            let snapshot = WidgetSnapshot(
+                summary: summary,
+                cards: cards,
+                isSample: isSample,
+                listening: listening
+            )
+            WidgetPublisher.publish(snapshot)
+        }
     }
 
     private func applyLaunchTab() {

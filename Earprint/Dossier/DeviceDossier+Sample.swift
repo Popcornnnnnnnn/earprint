@@ -84,12 +84,17 @@ extension DeviceDossier {
             lengths[longestIndex] = longest
         }
 
-        // 4. Place sessions inside each day without overlaps.
+        // 4. Place sessions inside each day without overlaps (bucketed in O(sessions) instead of O(days × sessions)).
+        var slotIndicesByDay = Array(repeating: [Int](), count: dayCount)
+        for i in slots.indices {
+            slotIndicesByDay[slots[i].day].append(i)
+        }
         var sessions: [WearSession] = []
+        sessions.reserveCapacity(slots.count)
         let anchors: [Double] = [8 * 60 + 5, 12 * 60 + 30, 18 * 60 + 10, 21 * 60 + 20, 15 * 60]
         for d in 0..<dayCount where perDay[d] > 0 {
             let dayStart = calendar.date(byAdding: .day, value: d, to: firstDay)!
-            var dayLengths = slots.indices.filter { slots[$0].day == d }.map { (lengths[$0], $0 == longestIndex) }
+            var dayLengths = slotIndicesByDay[d].map { (lengths[$0], $0 == longestIndex) }
             // Keep the marathon session for the evening.
             dayLengths.sort { !$0.1 && $1.1 }
             let windowStart = 7 * 60 + rng.in(0...35)
@@ -161,11 +166,7 @@ extension DeviceDossier {
     }
 
     private static func parse(_ text: String, format: String, calendar: Calendar) -> Date? {
-        let f = DateFormatter()
-        f.calendar = calendar
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = format
-        return f.date(from: text)
+        DateText.parse(text, dateFormat: format, calendar: calendar)
     }
 
     /// "Today", "Yesterday" or "Sep 2" (assumed within the last year).

@@ -25,9 +25,28 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-    @Published private(set) var snapshot: LibrarySnapshot?
+    @Published private(set) var snapshot: LibrarySnapshot? {
+        didSet { rebuildDerivedCache() }
+    }
     @Published private(set) var lastSyncDate: Date?
     @Published private(set) var lastNewSamples: Int = 0
+    @Published var needsHealthOnboarding = false
+
+    static let onboardingSeenKey = "onboarding.healthIntroSeen"
+
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    nonisolated static var isFirstLaunchSimulation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-firstLaunch")
+    }
+    #endif
+
+    /// Precomputed display models so SwiftUI reads stay O(1) with zero per-frame allocations or DateFormatter work.
+    private(set) var cards: [HeadphoneCard] = []
+    private(set) var homeSummary: ListeningSummary = SampleData.summary
+    private var cachedCombinedSummary: ListeningSummary = SampleData.summary
+    private var cachedSummariesByID: [String: ListeningSummary] = [:]
+    private var cacheDayStart: Date = Calendar.current.startOfDay(for: Date())
+    private var cacheLanguage: AppLanguage = AppLanguage.current
 
     #if DEBUG
     @Published private(set) var isSeeding = false
@@ -39,20 +58,41 @@ final class HeadphoneLibrary: ObservableObject {
     private var observing = false
 
     init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
-        self.ingestor = HealthIngestor(store: store, cache: cache)
-        // Instant launch: hydrate from the on-disk aggregate cache before the first frame renders.
-        if let saved = cache.load(), !saved.aggregate.isEmpty {
+        // Instant launch: decode the on-disk aggregate cache ONCE and share it with HealthIngestor.
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        let simulateFirstLaunch = Self.isFirstLaunchSimulation
+        let saved = simulateFirstLaunch ? nil : cache.load()
+        self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved, ignoreCache: simulateFirstLaunch)
+        #else
+        let saved = cache.load()
+        self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved)
+        #endif
+        if let saved, !saved.aggregate.isEmpty {
             let cached = LibrarySnapshot(aggregate: saved.aggregate)
             self.snapshot = cached
             self.state = .ready
         } else if !HealthIngestor.isAvailable {
             self.state = .unavailable
         }
+        rebuildDerivedCache()
     }
 
-    /// True when real HealthKit data is not available and views are displaying sample data.
+    /// True when HealthKit data is not available and Debug views are previewing deterministic sample data.
     var isShowingSampleData: Bool {
-        snapshot == nil || snapshot?.isEmpty == true
+        #if DEBUG
+        return snapshot == nil || snapshot?.isEmpty == true
+        #else
+        return false
+        #endif
+    }
+
+    /// True in Release builds when Apple Health has not yet provided any headphone listening samples.
+    var isShowingEmptyState: Bool {
+        #if DEBUG
+        return false
+        #else
+        return snapshot == nil || snapshot?.isEmpty == true
+        #endif
     }
 
     var isLoading: Bool {
@@ -60,29 +100,165 @@ final class HeadphoneLibrary: ObservableObject {
         return false
     }
 
-    var cards: [HeadphoneCard] {
+    /// Rebuilds cached `cards` and `ListeningSummary` instances when language or local calendar day changes.
+    func refreshDerivedCacheIfNeeded(force: Bool = false) {
+        let today = Calendar.current.startOfDay(for: Date())
+        let lang = AppLanguage.current
+        guard force || today != cacheDayStart || lang != cacheLanguage else { return }
+        objectWillChange.send()
+        rebuildDerivedCache(now: Date())
+    }
+
+    private func rebuildDerivedCache(now: Date = Date(), calendar: Calendar = .current) {
+        cacheDayStart = calendar.startOfDay(for: now)
+        cacheLanguage = AppLanguage.current
+
         if let snapshot, !snapshot.isEmpty {
-            return snapshot.cards()
+            let builtCards = snapshot.cards(now: now, calendar: calendar)
+            let primarySummary = snapshot.homeSummary(now: now, calendar: calendar) ?? SampleData.summary
+            let combined = snapshot.combinedHomeSummary(now: now, calendar: calendar) ?? primarySummary
+            var byID: [String: ListeningSummary] = [:]
+            byID.reserveCapacity(snapshot.devices.count * 2)
+            for device in snapshot.devices {
+                if let summary = snapshot.summary(for: device.id, now: now, calendar: calendar) {
+                    byID[device.id] = summary
+                    for alias in device.aliasIDs {
+                        byID[alias] = summary
+                    }
+                }
+            }
+            self.cards = builtCards
+            self.homeSummary = primarySummary
+            self.cachedCombinedSummary = combined
+            self.cachedSummariesByID = byID
+        } else {
+            #if DEBUG
+            let sampleCards = SampleCards.all
+            self.cards = sampleCards
+            let localizedSamplePrimary = Self.localizedSamplePrimary(now: now, calendar: calendar)
+            self.homeSummary = localizedSamplePrimary
+            self.cachedCombinedSummary = sampleCards.count > 1
+                ? Self.combinedSampleSummary(from: sampleCards, now: now, calendar: calendar)
+                : localizedSamplePrimary
+            var byID: [String: ListeningSummary] = [:]
+            byID.reserveCapacity(sampleCards.count)
+            for card in sampleCards {
+                let summary = Self.sampleSummary(for: card, now: now, calendar: calendar)
+                byID[card.id] = summary
+                for alias in card.aliasIDs {
+                    byID[alias] = summary
+                }
+            }
+            self.cachedSummariesByID = byID
+            #else
+            self.cards = []
+            let empty = ListeningSummary.empty(now: now, calendar: calendar)
+            self.homeSummary = empty
+            self.cachedCombinedSummary = empty
+            self.cachedSummariesByID = [:]
+            #endif
         }
-        #if DEBUG
-        return SampleCards.all
-        #else
-        return []
-        #endif
     }
 
-    var homeSummary: ListeningSummary {
-        if let snapshot, let summary = snapshot.homeSummary() {
-            return summary
-        }
-        return SampleData.summary
+    /// Returns a real `DeviceDossier` hydrated from Apple Health sessions, or `nil` in sample mode.
+    func dossier(for card: HeadphoneCard, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
+        snapshot?.dossier(forCardID: card.id, now: now, calendar: calendar)
     }
 
-    /// Short badge label shown when falling back to sample data.
+    /// O(1) cached summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
+    func summary(forCardID cardID: String?) -> ListeningSummary {
+        if let cardID, let cached = cachedSummariesByID[cardID] {
+            return cached
+        }
+        return cachedCombinedSummary
+    }
+
+    private static func localizedSamplePrimary(now: Date, calendar: Calendar) -> ListeningSummary {
+        var summary = SampleData.summary
+        summary.periodLabel = DateText.weekRange(endingAt: now, calendar: calendar)
+        if let parsed = DateText.parse("2026.10.30", dateFormat: "yyyy.MM.dd", calendar: calendar) {
+            summary.firstUse = DateText.monthDay(parsed, calendar: calendar)
+        }
+        return summary
+    }
+
+    private static func localizedSampleFirstUse(_ dottedDate: String, calendar: Calendar) -> String {
+        guard let parsed = DateText.parse(dottedDate, dateFormat: "yyyy.MM.dd", calendar: calendar) else {
+            return dottedDate
+        }
+        return DateText.monthDay(parsed, calendar: calendar)
+    }
+
+    private static func sampleSummary(for card: HeadphoneCard, now: Date, calendar: Calendar) -> ListeningSummary {
+        ListeningSummary(
+            deviceName: card.nickname,
+            deviceModel: card.model,
+            deviceSymbol: card.symbol,
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            grid: card.grid,
+            lifetimeMinutes: card.lifetimeMinutes,
+            sessions: card.sessions,
+            averageSessionMinutes: card.sessions > 0 ? card.lifetimeMinutes / Double(card.sessions) : 0,
+            longestSessionMinutes: card.longestMinutes,
+            firstUse: localizedSampleFirstUse(card.firstMet, calendar: calendar)
+        )
+    }
+
+    private static func combinedSampleSummary(from cards: [HeadphoneCard], now: Date, calendar: Calendar) -> ListeningSummary {
+        let dayCount = cards.map(\.grid.days).max() ?? 28
+        var combinedMinutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        var combinedEnergy = combinedMinutes
+
+        for c in cards {
+            let dayOffset = max(0, dayCount - c.grid.days)
+            for day in 0..<c.grid.days {
+                let targetDay = dayOffset + day
+                for hour in 0..<24 {
+                    let mins = c.grid.minutes[day][hour]
+                    guard mins > 0 else { continue }
+                    let db = c.grid.decibels[day][hour]
+                    combinedMinutes[targetDay][hour] += mins
+                    combinedEnergy[targetDay][hour] += pow(10, db / 10) * mins
+                }
+            }
+        }
+
+        var combinedDecibels = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        for day in 0..<dayCount {
+            for hour in 0..<24 where combinedMinutes[day][hour] > 0 {
+                combinedDecibels[day][hour] = 10 * log10(combinedEnergy[day][hour] / combinedMinutes[day][hour])
+            }
+        }
+
+        let totalMinutes = cards.reduce(0) { $0 + $1.lifetimeMinutes }
+        let totalSessions = cards.reduce(0) { $0 + $1.sessions }
+        let longest = cards.map(\.longestMinutes).max() ?? 0
+        let avgSession = totalSessions > 0 ? totalMinutes / Double(totalSessions) : 0
+        let earliestFirst = cards
+            .compactMap { DateText.parse($0.firstMet, dateFormat: "yyyy.MM.dd", calendar: calendar) }
+            .min()
+            .map { DateText.monthDay($0, calendar: calendar) } ?? "—"
+
+        return ListeningSummary(
+            deviceName: AppLanguage.current.text("All Headphones"),
+            deviceModel: AppLanguage.current.text("%lld pairs", cards.count),
+            deviceSymbol: "headphones",
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            grid: ListeningGrid(minutes: combinedMinutes, decibels: combinedDecibels),
+            lifetimeMinutes: totalMinutes,
+            sessions: totalSessions,
+            averageSessionMinutes: avgSession,
+            longestSessionMinutes: longest,
+            firstUse: earliestFirst
+        )
+    }
+
+    /// Short badge label shown when HealthKit data is not yet available.
     var sampleBadgeText: LocalizedStringKey {
         #if targetEnvironment(simulator)
         if state == .empty || state == .idle { return "Sample data · Simulator" }
         #endif
+        #if DEBUG
         switch state {
         case .idle: return "Sample data"
         case .loading(let n): return n > 0 ? "Syncing \(n)…" : "Syncing Health…"
@@ -91,10 +267,21 @@ final class HeadphoneLibrary: ObservableObject {
         case .failed: return "Sample data"
         case .ready: return ""
         }
+        #else
+        switch state {
+        case .idle: return "Apple Health"
+        case .loading(let n): return n > 0 ? "Syncing \(n)…" : "Syncing Health…"
+        case .empty: return "No Health records"
+        case .unavailable: return "Health unavailable"
+        case .failed: return "Sync needed"
+        case .ready: return ""
+        }
+        #endif
     }
 
     /// Detailed hint for empty / denied / error states.
     var statusMessage: LocalizedStringKey? {
+        #if DEBUG
         switch state {
         case .idle:
             return "Previewing sample data. Connect Apple Health to see your real headphones."
@@ -110,6 +297,22 @@ final class HeadphoneLibrary: ObservableObject {
         case .ready:
             return nil
         }
+        #else
+        switch state {
+        case .idle:
+            return "Connect Apple Health to see your headphones. iOS records audio levels while playing audio (not silent ANC)."
+        case .loading(let count):
+            return count > 0 ? "Reading Apple Health… \(count) samples" : "Reading Apple Health…"
+        case .empty:
+            return "No headphone samples found in Apple Health. Play audio through headphones or enable access in Settings › Health › Data Access › Earprint."
+        case .unavailable:
+            return "Apple Health is not available on this device."
+        case .failed(let message):
+            return "Couldn't read Apple Health: \(message)"
+        case .ready:
+            return nil
+        }
+        #endif
     }
 
     /// Called once when the app launches.
@@ -134,15 +337,54 @@ final class HeadphoneLibrary: ObservableObject {
         }
         #endif
 
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-onboarding") {
+            needsHealthOnboarding = true
+            return
+        }
+        #endif
+
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        if Self.isFirstLaunchSimulation {
+            needsHealthOnboarding = true
+            return
+        }
+        #endif
+
         let authStatus = await ingestor.authorizationRequestStatus()
         if authStatus == .unnecessary || snapshot != nil {
+            UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
             await sync()
             await ensureObserving()
         } else {
             #if !targetEnvironment(simulator)
-            // On real devices, request Apple Health automatically on first launch so real headphones appear immediately.
-            await connectAndSync()
+            if !UserDefaults.standard.bool(forKey: Self.onboardingSeenKey) {
+                needsHealthOnboarding = true
+            } else {
+                await connectAndSync()
+            }
             #endif
+        }
+    }
+
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    /// Replays a cold-start first launch without deleting the user's cached Health history on disk.
+    func previewFirstLaunch(afterDelayMilliseconds delayMs: UInt64 = 350) async {
+        await ingestor.resetInMemoryState()
+        snapshot = nil
+        state = .idle
+        if delayMs > 0 {
+            try? await Task.sleep(for: .milliseconds(delayMs))
+        }
+        needsHealthOnboarding = true
+    }
+    #endif
+
+    func completeOnboarding(connect: Bool) async {
+        UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
+        needsHealthOnboarding = false
+        if connect {
+            await connectAndSync()
         }
     }
 
@@ -174,20 +416,30 @@ final class HeadphoneLibrary: ObservableObject {
         if !silent && snapshot == nil {
             state = .loading(samplesFetched: 0)
         }
+        let canReuseSnapshot = snapshot.map {
+            Calendar.current.isDate($0.generatedAt, inSameDayAs: Date())
+        } ?? false
+
         do {
-            let result = try await ingestor.sync { [weak self] fetched in
+            let result = try await ingestor.sync(skipSnapshotIfUnchanged: canReuseSnapshot) { [weak self] fetched in
                 Task { @MainActor [weak self] in
                     guard let self, self.snapshot == nil else { return }
                     self.state = .loading(samplesFetched: fetched)
                 }
             }
-            lastSyncDate = Date()
-            lastNewSamples = result.newSamples
-            if result.snapshot.isEmpty {
-                snapshot = nil
-                state = .empty
-            } else {
-                snapshot = result.snapshot
+            if !silent || result.newSamples > 0 || result.rebuilt || lastSyncDate == nil {
+                lastSyncDate = Date()
+            }
+            if lastNewSamples != result.newSamples {
+                lastNewSamples = result.newSamples
+            }
+            if result.isEmpty {
+                if snapshot != nil { snapshot = nil }
+                if state != .empty { state = .empty }
+            } else if let fresh = result.snapshot {
+                snapshot = fresh
+                if state != .ready { state = .ready }
+            } else if state != .ready {
                 state = .ready
             }
         } catch {

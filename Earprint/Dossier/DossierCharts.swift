@@ -7,6 +7,9 @@ struct DossierTrendChart: View {
     let rarity: Rarity
     let firstWear: Date?
     @Binding var selection: Date?
+    var showsInteractionHint = true
+
+    @Environment(\.colorScheme) private var colorScheme
 
     private var selected: TrendBucket? {
         guard let selection else { return nil }
@@ -60,7 +63,7 @@ struct DossierTrendChart: View {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(s.minutes > 0 ? "\(Int(s.averageDecibels.rounded())) dB(A)" : "—")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(s.minutes > 0 ? Theme.levelColor(db: s.averageDecibels) : DossierPalette.dim)
+                            .foregroundStyle(s.minutes > 0 ? Theme.levelColor(db: s.averageDecibels, colorScheme: colorScheme) : DossierPalette.dim)
                         Text("\(s.sessions) wears")
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
@@ -84,9 +87,11 @@ struct DossierTrendChart: View {
                 .frame(height: 210)
                 .padding(.top, 4)
 
-            Text(selection == nil ? "Drag across the bars to scrub · color shows loudness" : " ")
-                .font(.caption2)
-                .foregroundStyle(DossierPalette.faint)
+            if showsInteractionHint {
+                Text(selection == nil ? "Drag across the bars to scrub · color shows loudness" : " ")
+                    .font(.caption2)
+                    .foregroundStyle(DossierPalette.faint)
+            }
         }
         .sensoryFeedback(.selection, trigger: selected?.id)
     }
@@ -116,7 +121,7 @@ struct DossierTrendChart: View {
             if average > 0 {
                 RuleMark(y: .value("Average", average / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(DossierPalette.faint)
             }
 
             if let firstWear, stats.bucketUnit == .day, let firstBucket = stats.buckets.first, firstWear > firstBucket.end {
@@ -132,7 +137,7 @@ struct DossierTrendChart: View {
 
             if let s = selected {
                 RuleMark(x: .value("Selected", s.start, unit: stats.bucketUnit))
-                    .foregroundStyle(.white.opacity(0.18))
+                    .foregroundStyle(DossierPalette.surfaceFill)
                     .lineStyle(StrokeStyle(lineWidth: 18))
                     .zIndex(-1)
             }
@@ -141,7 +146,7 @@ struct DossierTrendChart: View {
         .chartYScale(domain: 0...(max((stats.buckets.map(\.minutes).max() ?? 60) / 60, 1) * 1.18))
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(.white.opacity(0.07))
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(DossierPalette.hairline)
                 AxisValueLabel {
                     if let h = value.as(Double.self) { Text("\(Int(h))h").foregroundStyle(DossierPalette.faint) }
                 }
@@ -175,11 +180,11 @@ struct DossierTrendChart: View {
     }
 
     private func barStyle(_ bucket: TrendBucket, best: Bool) -> LinearGradient {
-        let color = bucket.minutes > 0 ? Theme.levelColor(db: bucket.averageDecibels) : .white
+        let color = bucket.minutes > 0 ? Theme.levelColor(db: bucket.averageDecibels, colorScheme: colorScheme) : DossierPalette.hairline
         if best {
             return LinearGradient(colors: [rarity.accent, color], startPoint: .top, endPoint: .bottom)
         }
-        return LinearGradient(colors: [color, color.opacity(0.35)], startPoint: .top, endPoint: .bottom)
+        return LinearGradient(colors: [color, color.opacity(colorScheme == .light ? 0.55 : 0.35)], startPoint: .top, endPoint: .bottom)
     }
 
     private func bucketTitle(_ b: TrendBucket) -> String {
@@ -207,7 +212,13 @@ struct DayClock: View {
     let rarity: Rarity
     @Binding var selectedHour: Int?
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let nightAccent = Color.adaptive(
+            light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1),
+            dark: UIColor(red: 0.6, green: 0.65, blue: 1, alpha: 1)
+        )
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
@@ -222,7 +233,7 @@ struct DayClock: View {
                         Image(systemName: icon).font(.system(size: 10, weight: .semibold))
                         Text(String(format: "%02d", hour)).font(.system(size: 9, weight: .bold, design: .monospaced))
                     }
-                    .foregroundStyle(hour == 0 ? Color(red: 0.6, green: 0.65, blue: 1) : (hour == 12 ? Theme.moderate.color : DossierPalette.dim))
+                    .foregroundStyle(hour == 0 ? nightAccent : (hour == 12 ? Theme.moderateColor : DossierPalette.dim))
                     .position(x: center.x + r * cos(angle), y: center.y + r * sin(angle))
                 }
             }
@@ -281,7 +292,7 @@ struct DayClock: View {
                 if stat.minutes > 0 {
                     Text("\(Int(stat.averageDecibels.rounded())) dB(A)")
                         .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.levelColor(db: stat.averageDecibels))
+                        .foregroundStyle(Theme.levelColor(db: stat.averageDecibels, colorScheme: colorScheme))
                 }
             }
             .multilineTextAlignment(.center)
@@ -292,7 +303,11 @@ struct DayClock: View {
     }
 
     private func dial(size: CGFloat) -> some View {
-        Canvas { context, canvasSize in
+        let isLight = colorScheme == .light
+        let trackFill = isLight ? Color.black.opacity(0.05) : Color.white.opacity(0.035)
+        let selectionStroke = isLight ? Color.black.opacity(0.75) : Color.white.opacity(0.9)
+        let innerDiscFill = isLight ? Color.black.opacity(0.04) : Color.white.opacity(0.03)
+        return Canvas { context, canvasSize in
             let c = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
             let outer = size / 2 - 33
             let inner = outer * 0.49
@@ -308,37 +323,43 @@ struct DayClock: View {
                 return p
             }
 
-            // Day and night band.
+            // Day & night outer band + 24 background tracks batched into 3 paths (instead of 48 draw calls).
+            var dayBand = Path()
+            var nightBand = Path()
+            var tracks = Path()
             for hour in 0..<24 {
-                let day = (6..<18).contains(hour)
-                context.fill(sector(hour, from: outer + 4, to: outer + 7, gap: 0.6),
-                             with: .color(day ? Theme.moderate.color.opacity(0.35) : Color(red: 0.45, green: 0.5, blue: 1).opacity(0.35)))
+                let band = sector(hour, from: outer + 4, to: outer + 7, gap: 0.6)
+                if (6..<18).contains(hour) {
+                    dayBand.addPath(band)
+                } else {
+                    nightBand.addPath(band)
+                }
+                tracks.addPath(sector(hour, from: inner, to: outer))
             }
-            // Tracks.
-            for hour in 0..<24 {
-                context.fill(sector(hour, from: inner, to: outer), with: .color(.white.opacity(0.035)))
-            }
+            context.fill(dayBand, with: .color(Theme.moderateColor.opacity(0.35)))
+            context.fill(nightBand, with: .color(Color(red: 0.45, green: 0.5, blue: 1).opacity(0.35)))
+            context.fill(tracks, with: .color(trackFill))
             func bars(_ ctx: inout GraphicsContext) {
                 for stat in stats.hours where stat.minutes > 0 {
                     let t = CGFloat(stat.minutes / maxMinutes)
                     let r1 = inner + (outer - inner) * max(0.08, t)
-                    var color = Theme.levelColor(db: stat.averageDecibels)
+                    var color = Theme.levelColor(db: stat.averageDecibels, colorScheme: colorScheme)
                     if let selectedHour, selectedHour != stat.hour { color = color.opacity(0.3) }
                     ctx.fill(sector(stat.hour, from: inner, to: r1), with: .color(color.opacity(0.4 + 0.6 * Double(t))))
                 }
             }
             context.drawLayer { glow in
                 glow.addFilter(.blur(radius: 8))
-                glow.opacity = 0.7
+                glow.opacity = isLight ? 0.25 : 0.7
                 bars(&glow)
             }
             bars(&context)
             if let selectedHour {
-                context.stroke(sector(selectedHour, from: inner - 3, to: outer + 2, gap: 0.8), with: .color(.white.opacity(0.9)), lineWidth: 1.5)
+                context.stroke(sector(selectedHour, from: inner - 3, to: outer + 2, gap: 0.8), with: .color(selectionStroke), lineWidth: 1.5)
             }
             // Inner disc.
             context.fill(Path(ellipseIn: CGRect(x: c.x - inner + 6, y: c.y - inner + 6, width: (inner - 6) * 2, height: (inner - 6) * 2)),
-                         with: .color(.white.opacity(0.03)))
+                         with: .color(innerDiscFill))
         }
     }
 }

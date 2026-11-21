@@ -10,7 +10,8 @@ import HealthKit
 /// new samples since the saved anchor.
 actor HealthIngestor {
     struct SyncResult: Sendable {
-        var snapshot: LibrarySnapshot
+        var snapshot: LibrarySnapshot?
+        var isEmpty: Bool
         var newSamples: Int
         var rebuilt: Bool
     }
@@ -25,10 +26,15 @@ actor HealthIngestor {
     private var observer: HKObserverQuery?
     private var syncing = false
 
-    init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
+    init(
+        store: HKHealthStore = HKHealthStore(),
+        cache: AggregateCache = AggregateCache(),
+        initialSaved: AggregateCache.Saved? = nil,
+        ignoreCache: Bool = false
+    ) {
         self.store = store
         self.cache = cache
-        if let saved = cache.load() {
+        if !ignoreCache, let saved = initialSaved ?? cache.load() {
             aggregate = saved.aggregate
             anchor = saved.anchor
         } else {
@@ -36,6 +42,14 @@ actor HealthIngestor {
             anchor = nil
         }
     }
+
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    /// Clears in-memory aggregate and anchor without erasing the on-disk cache so test builds can replay first-launch sync cleanly.
+    func resetInMemoryState() {
+        aggregate = ListeningAggregate()
+        anchor = nil
+    }
+    #endif
 
     static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -64,7 +78,9 @@ actor HealthIngestor {
     }
 
     /// Fetches everything new since the saved anchor (or everything on first run) in pages.
-    func sync(progress: (@Sendable (Int) -> Void)? = nil) async throws -> SyncResult {
+    /// When `skipSnapshotIfUnchanged` is true and no samples changed, returns `snapshot = nil` so callers
+    /// avoid redundant `LibrarySnapshot` re-bucketing and main-actor UI invalidations.
+    func sync(skipSnapshotIfUnchanged: Bool = false, progress: (@Sendable (Int) -> Void)? = nil) async throws -> SyncResult {
         // Coalesce overlapping calls (observer firing during the initial load).
         while syncing { try await Task.sleep(for: .milliseconds(100)) }
         syncing = true
@@ -106,7 +122,13 @@ actor HealthIngestor {
         if fetched > 0 || rebuilt {
             cache.save(aggregate: aggregate, anchor: anchor)
         }
-        return SyncResult(snapshot: snapshot(), newSamples: fetched, rebuilt: rebuilt)
+        let unchanged = skipSnapshotIfUnchanged && fetched == 0 && !rebuilt && !aggregate.isEmpty
+        return SyncResult(
+            snapshot: unchanged ? nil : snapshot(),
+            isEmpty: aggregate.isEmpty,
+            newSamples: fetched,
+            rebuilt: rebuilt
+        )
     }
 
     /// Calls `onChange` whenever Health gets new headphone samples (while the app runs).

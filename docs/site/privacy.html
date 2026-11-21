@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Earprint</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7fa;
+      --card: #ffffff;
+      --border: #e4e7ee;
+      --text: #12151c;
+      --muted: #5a6375;
+      --accent: #129f8a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0d13;
+        --card: #131722;
+        --border: #252b3b;
+        --text: #f3f5fa;
+        --muted: #98a2b6;
+        --accent: #32dfc3;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    main { max-width: 780px; margin: 0 auto; padding: 40px 20px 72px; }
+    nav { margin-bottom: 24px; font-size: 0.95rem; }
+    nav a { color: var(--accent); text-decoration: none; font-weight: 600; margin-right: 16px; }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.9rem; }
+    h2 { margin: 22px 0 8px; font-size: 1.15rem; }
+    h3 { margin: 18px 0 6px; font-size: 1rem; }
+    p, li { color: var(--text); font-size: 0.96rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+    .summary {
+      border-left: 3px solid var(--accent);
+      padding-left: 14px;
+      color: var(--muted);
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <nav>
+      <a href="index.html">Earprint</a>
+      <a href="support.html">Support / 帮助</a>
+    </nav>
+
+    <section>
+      <h1>Privacy Policy · 隐私政策</h1>
+      <p class="meta">
+        Effective Date / 生效日期: 2026-11-21 &middot; App: Earprint (<code>com.popcornnn.earprint</code>) &middot;
+        Contact / 联系方式: <a href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a> (Weizhi Wang)
+      </p>
+      <p class="summary">
+        <strong>Plain-language summary:</strong> Earprint works <strong>100% on your iPhone</strong>. It reads your Apple Health Headphone Audio Levels in read-only mode to render your 3D headphone cards, Device Dossier, 28-day Earprint Rings, and Home/Lock Screen widgets. Earprint has no accounts, no servers, no analytics or advertising SDKs, and never sends your listening or Health data off your device.
+        <br><br>
+        <strong>一句话说明：</strong> Earprint <strong>100% 在你的 iPhone 本地运行</strong>。App 仅以只读方式读取 Apple“健康”中的耳机音量数据，用于生成 3D 耳机卡片、设备档案、28 天声纹环与小组件。我们不设账号、无后台服务器、不含第三方统计或广告 SDK，不会上传或离开你的设备。
+      </p>
+    </section>
+
+    <section lang="en">
+      <h2>English Privacy Policy</h2>
+
+      <h3>1. Overview &amp; Data Not Collected</h3>
+      <p>Earprint does not collect, transmit, store on external servers, sell, or share any personal or Health data. For Apple App Store Connect Privacy Nutrition Label purposes, Earprint operates under <strong>Data Not Collected</strong>.</p>
+
+      <h3>2. Apple Health (HealthKit) Access (Read-Only)</h3>
+      <p>With your explicit permission, Earprint requests read-only access to a single HealthKit data type: <strong>Headphone Audio Levels</strong> (<code>HKQuantityType(.headphoneAudioExposure)</code>), including sample start/end timestamps, A-weighted sound level (<code>dB(A)</code>), and associated <code>HKDevice</code> / <code>HKSource</code> hardware metadata.</p>
+      <ul>
+        <li>Release builds never request Apple Health write access (<code>NSHealthUpdateUsageDescription</code> is omitted).</li>
+        <li>Earprint never accesses heart rate, workouts, sleep, medical records, microphone, camera, contacts, location, or media playback names.</li>
+      </ul>
+
+      <h3>3. On-Device Processing &amp; Storage</h3>
+      <ul>
+        <li><strong>Local Cache:</strong> Compact derived totals and an incremental sync anchor are stored locally inside Application Support (<code>listening-aggregate.json</code>) under iOS file protection (<code>NSFileProtectionCompleteUntilFirstUserAuthentication</code>).</li>
+        <li><strong>App Group for Widgets:</strong> Derived summaries are written to the private local App Group container (<code>group.com.popcornnn.earprint</code>) solely to power Earprint Home Screen and Lock Screen widgets on your iPhone.</li>
+        <li><strong>User-Initiated Exports:</strong> Shared poster PNGs are rendered on-device and leave your phone only when you choose a destination via the iOS Share Sheet.</li>
+      </ul>
+
+      <h3>4. Zero Servers, Zero Tracking, HealthKit Compliance</h3>
+      <p>Earprint uses no backend servers, accounts, crash reporting SDKs, analytics, or advertising frameworks. Consistent with Apple App Review Guidelines Section 5.1.3, HealthKit data is never used for advertising or disclosed to third parties.</p>
+
+      <h3>5. Managing Permission &amp; Deleting Data</h3>
+      <p>Revoke HealthKit access anytime in iOS <strong>Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Earprint</strong>. Uninstalling Earprint removes all local caches; your original Apple Health history is never modified.</p>
+
+      <h3>6. Disclaimers &amp; Contact</h3>
+      <p>Earprint visualizations and WHO/ITU H.870 weekly dose estimates are informational only and are not a medical device. Earprint is an independent app by Weizhi Wang and is not affiliated with or endorsed by Apple Inc.</p>
+      <p>Questions: <a href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a></p>
+    </section>
+
+    <section lang="zh-Hans">
+      <h2>简体中文隐私政策</h2>
+
+      <h3>一、概述（不收集数据）</h3>
+      <p>Earprint 不会收集、上传、在外部服务器存储、出售或向任何第三方共享你的个人信息或健康数据。在 App Store「App 隐私」分类中，本应用属于<strong>不收集数据（Data Not Collected）</strong>。</p>
+
+      <h3>二、访问的 Apple「健康」（HealthKit）范围（严格只读）</h3>
+      <p>仅在获得你的明确授权后，Earprint 会以只读方式读取唯一一项数据类型：<strong>耳机音量（Headphone Audio Levels）</strong>（<code>HKQuantityType(.headphoneAudioExposure)</code>），包括起止时间、A 计权分贝值（<code>dB(A)</code>）以及关联耳机设备的系统元信息（<code>HKDevice</code> 与 <code>HKSource</code>）。</p>
+      <ul>
+        <li>正式发布版本不请求 Apple「健康」写入权限（不包含 <code>NSHealthUpdateUsageDescription</code>）。</li>
+        <li>不访问心率、体能训练、睡眠、医疗记录、麦克风、相机、通讯录、位置或具体的播放歌名内容。</li>
+      </ul>
+
+      <h3>三、本地处理与存储方式</h3>
+      <ul>
+        <li><strong>本地加密缓存：</strong> 所有采样在设备本地聚合后保存于应用沙盒 <code>Application Support</code>（<code>listening-aggregate.json</code>），受 iOS 系统文件加密保护。</li>
+        <li><strong>桌面与锁屏小组件共享容器：</strong> 仅将汇总展示数据本地写入 <code>group.com.popcornnn.earprint</code> 容器，仅供主应用与内置小组件扩展使用，绝不离开本机。</li>
+        <li><strong>主动导出图片：</strong> 生成的分享海报在本地渲染，仅在你主动通过系统分享面板发送时才分享给你选择的目标。</li>
+      </ul>
+
+      <h3>四、零服务器、零追踪与合规承诺</h3>
+      <p>无账号、无后台服务器、无任何第三方统计或广告 SDK。依据 Apple《App 审核指南》第 5.1.3 条，所有 HealthKit 数据绝不用于广告营销或向第三方披露。</p>
+
+      <h3>五、管理权限与清除数据</h3>
+      <p>可随时前往 iPhone <strong>设置 &rarr; 隐私与安全性 &rarr; 健康 &rarr; Earprint</strong> 关闭读取权限；卸载应用即永久删除本地缓存，不会修改你的 Apple「健康」原始数据。</p>
+
+      <h3>六、免责声明与联系我们</h3>
+      <p>本应用中的声纹环、WHO 每周安全听力参考与聆听评分仅供个人参考，不构成医疗器械或临床建议。Earprint 由独立开发者 Weizhi Wang 开发，与 Apple Inc. 无任何关联或官方背书。</p>
+      <p>联系邮箱：<a href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a></p>
+    </section>
+  </main>
+</body>
+</html>

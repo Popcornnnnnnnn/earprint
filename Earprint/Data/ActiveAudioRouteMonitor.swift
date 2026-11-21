@@ -7,7 +7,7 @@ import Foundation
 @Observable
 final class ActiveAudioRouteMonitor {
     private(set) var activeOutputNames: [String] = []
-    nonisolated(unsafe) private var observer: NSObjectProtocol?
+    @ObservationIgnored nonisolated(unsafe) private var observer: NSObjectProtocol?
 
     /// Debug-only override (`-activeCard <id>`) so Simulator previews can demonstrate the active indicator.
     private let debugActiveCardID: String?
@@ -47,9 +47,12 @@ final class ActiveAudioRouteMonitor {
             .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones, .usbAudio
         ]
         let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
-        activeOutputNames = outputs
+        let names = outputs
             .filter { headphonePorts.contains($0.portType) }
             .map(\.portName)
+        if activeOutputNames != names {
+            activeOutputNames = names
+        }
     }
 
     func isCurrentlyWorn(_ card: HeadphoneCard) -> Bool {

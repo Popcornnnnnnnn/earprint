@@ -1,90 +1,94 @@
 import SwiftUI
 
+/// Caches generated sample dossiers so SwiftUI parent re-evaluations never regenerate sessions synchronously.
+@MainActor
+private enum DossierSampleCache {
+    private struct Key: Hashable {
+        let id: String
+        let minutes: Int
+        let sessions: Int
+        let firstMet: String
+        let lastUsed: String
+        let isDemo: Bool
+        let dayStart: TimeInterval
+    }
+
+    private static var entries: [Key: DeviceDossier] = [:]
+
+    static func dossier(for card: HeadphoneCard, isDemo: Bool, referenceDate: Date) -> DeviceDossier {
+        let key = Key(
+            id: card.id,
+            minutes: Int(card.lifetimeMinutes.rounded()),
+            sessions: card.sessions,
+            firstMet: card.firstMet,
+            lastUsed: card.lastUsed,
+            isDemo: isDemo,
+            dayStart: Calendar.current.startOfDay(for: referenceDate).timeIntervalSince1970
+        )
+        if let cached = entries[key] { return cached }
+        if entries.count > 12 { entries.removeAll(keepingCapacity: true) }
+        let built = DeviceDossier.sample(for: card, now: referenceDate)
+        entries[key] = built
+        return built
+    }
+}
+
 /// Full-screen dossier for a single headphone: PSA-style grading slab, period airtime,
 /// interactive trend & 24-hour charts, listening habits, milestones, and hardware certificate.
 struct DeviceDossierView: View {
     let card: HeadphoneCard
     let dossier: DeviceDossier
     var onClose: (() -> Void)?
-    private let showsSampleBreakdown: Bool
+    private let includesHealthDetails: Bool
+    private let isSampleData: Bool
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var motion = TiltMotion()
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
 
     @State private var period: DossierPeriod = .month
     @State private var selectedDate: Date?
     @State private var selectedHour: Int?
     @State private var slabFlipped = false
     @State private var demoTilt: CGSize = .zero
-    @State private var scrollOffset: CGFloat = 0
+    @State private var showStickyIdentity = false
     @State private var demoStarted = false
+    @State private var showShare = false
 
-    init(card: HeadphoneCard, dossier: DeviceDossier? = nil, onClose: (() -> Void)? = nil) {
+    init(card: HeadphoneCard, dossier: DeviceDossier? = nil, isSampleData: Bool = false, onClose: (() -> Void)? = nil) {
         self.card = card
         // Keep fixed referenceNow for deterministic demo launches; use current date for live cards.
         let args = ProcessInfo.processInfo.arguments
         let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
         let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
-        self.dossier = dossier ?? DeviceDossier.sample(for: card, now: referenceDate)
-        showsSampleBreakdown = dossier == nil
+        self.dossier = dossier ?? DossierSampleCache.dossier(for: card, isDemo: isDemo, referenceDate: referenceDate)
+        includesHealthDetails = dossier != nil
+        self.isSampleData = isSampleData
         self.onClose = onClose
     }
 
     private var stats: PeriodStats { dossier.stats(period) }
     private var rarity: Rarity { card.rarity }
-    private var tilt: CGSize { demoTilt == .zero ? motion.tilt : demoTilt }
-    private var showStickyIdentity: Bool { scrollOffset > 380 }
+    private var tiltActive: Bool { !showShare }
+    private var demoOverrideTilt: CGSize? { demoTilt == .zero ? nil : demoTilt }
 
     var body: some View {
         ZStack {
             backdrop
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 22) {
-                        if showsSampleBreakdown {
-                            VStack(spacing: 5) {
-                                Label("Sample breakdown", systemImage: "info.circle")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Theme.moderate.color)
-                                Text("Dossier details are illustrative.")
-                                    .font(.footnote)
-                                    .foregroundStyle(Theme.secondaryText)
-                            }
-                        }
-                        slabStage
-                            .id("slab")
-
-                        airtimeSection
-                            .padding(.top, 10)
-                            .id("airtime")
-
-                        rhythmSection
-                            .padding(.top, 10)
-                            .id("charts")
-
-                        habitsSection
-                            .padding(.top, 10)
-                            .id("habits")
-
-                        milestonesSection
-                            .padding(.top, 10)
-                            .id("milestones")
-
-                        certificateSection
-                            .padding(.top, 10)
-                            .id("certificate")
-
-                        if !showsSampleBreakdown { footerNote }
-                    }
-                    .padding(.horizontal, 18)
+                    dossierContent(exporting: false)
                     .padding(.top, 8)
                     .padding(.bottom, 48)
                 }
                 .scrollIndicators(.hidden)
-                .onScrollGeometryChange(for: CGFloat.self) { geo in
-                    geo.contentOffset.y + geo.contentInsets.top
-                } action: { _, newValue in
-                    scrollOffset = newValue
+                .pauseMotionWhileScrolling("dossier")
+                .onScrollGeometryChange(for: Bool.self) { geo in
+                    (geo.contentOffset.y + geo.contentInsets.top) > 380
+                } action: { _, shouldShow in
+                    if showStickyIdentity != shouldShow {
+                        showStickyIdentity = shouldShow
+                    }
                 }
                 .safeAreaInset(edge: .top, spacing: 0) {
                     topBar(proxy: proxy)
@@ -94,24 +98,84 @@ struct DeviceDossierView: View {
                 }
             }
         }
-        .foregroundStyle(.white)
-        .preferredColorScheme(.dark)
-        .onAppear { motion.start() }
-        .onDisappear { motion.stop() }
+        .foregroundStyle(DossierPalette.primaryText)
+        .sheet(isPresented: $showShare) {
+            DossierShareSheet(
+                card: card,
+                dossier: dossier,
+                period: period,
+                color: colorStore?.selectedColor(for: card),
+                isSampleData: isSampleData
+            )
+        }
         .onChange(of: period) {
             selectedDate = nil
             selectedHour = nil
         }
     }
 
+    private func dossierContent(exporting: Bool) -> some View {
+        VStack(spacing: 22) {
+            if exporting {
+                HStack {
+                    Text("Device Dossier")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                    Spacer()
+                    dataSourceNote
+                }
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.8))
+                .padding(.top, 4)
+            }
+            slabStage(exporting: exporting)
+                .id("slab")
+            if exporting {
+                CardBack(card: card)
+            }
+            airtimeSection(exporting: exporting)
+                .padding(.top, 10)
+                .id("airtime")
+            rhythmSection(exporting: exporting)
+                .padding(.top, 10)
+                .id("charts")
+            habitsSection.padding(.top, 10).id("habits")
+            milestonesSection.padding(.top, 10).id("milestones")
+            certificateSection(exporting: exporting)
+                .padding(.top, 10)
+                .id("certificate")
+            if includesHealthDetails && !exporting { footerNote }
+        }
+        .padding(.horizontal, 18)
+    }
+
+    @ViewBuilder
+    private var dataSourceNote: some View {
+        #if DEBUG
+        if !ProcessInfo.processInfo.arguments.contains("-hideSampleBanner") {
+            rawDataSourceNote
+        }
+        #else
+        rawDataSourceNote
+        #endif
+    }
+
+    @ViewBuilder
+    private var rawDataSourceNote: some View {
+        if isSampleData {
+            Text("Sample data").font(.caption)
+        } else if !includesHealthDetails {
+            Text("Dossier details are illustrative.").font(.caption)
+        }
+    }
+
     // MARK: - Backdrop & Sticky Header
 
     private var backdrop: some View {
-        ZStack {
+        let isLight = colorScheme == .light
+        return ZStack {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
-                colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.06), .clear],
-                center: UnitPoint(x: 0.5 + tilt.width * 0.12, y: 0.14),
+                colors: [rarity.glow.opacity(isLight ? 0.14 : 0.24), rarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
+                center: UnitPoint(x: 0.5, y: 0.14),
                 startRadius: 20,
                 endRadius: 420
             )
@@ -152,11 +216,11 @@ struct DeviceDossierView: View {
                         Text(AppLanguage.current.text("DOSSIER · #%04d", card.serial))
                             .font(.system(.caption, design: .monospaced, weight: .bold))
                             .tracking(1.4)
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
-                    .background(.white.opacity(0.06), in: Capsule())
+                    .background(DossierPalette.surfaceFill, in: Capsule())
                     .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
                     .transition(.opacity)
                 }
@@ -177,20 +241,23 @@ struct DeviceDossierView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(.white.opacity(0.06), in: Capsule())
+                .background(DossierPalette.surfaceFill, in: Capsule())
                 .overlay(Capsule().strokeBorder(rarity.accent.opacity(0.3), lineWidth: 1))
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
 
             Button {
+                showShare = true
+            } label: {
+                topBarIcon("square.and.arrow.up")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Share dossier")
+
+            Button {
                 if let onClose { onClose() } else { dismiss() }
             } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(width: 34, height: 34)
-                    .background(.white.opacity(0.10), in: Circle())
-                    .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+                topBarIcon("xmark")
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close dossier")
@@ -211,28 +278,52 @@ struct DeviceDossierView: View {
         .animation(.snappy(duration: 0.25), value: showStickyIdentity)
     }
 
+    private func topBarIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
+            .frame(width: 34, height: 34)
+            .background(DossierPalette.surfaceFill, in: Circle())
+            .overlay(Circle().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+    }
+
     // MARK: - Hero Slab Stage
 
-    private var slabStage: some View {
+    private func slabStage(exporting: Bool) -> some View {
         VStack(spacing: 16) {
-            GradingSlab(card: card, dossier: dossier, tilt: tilt, flipped: slabFlipped)
-                .rotation3DEffect(.degrees(Double(tilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-                .rotation3DEffect(.degrees(Double(-tilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
-                        slabFlipped.toggle()
-                    }
-                }
-                .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
-                .padding(.top, 4)
-
-            HStack(spacing: 8) {
-                Image(systemName: "hand.tap")
-                    .font(.caption2.weight(.semibold))
-                Text(slabFlipped ? "Tap slab to view front" : "Tap slab to flip · tilt phone for foil")
-                    .font(.caption)
+            LiveTiltView(
+                isActive: !exporting && tiltActive && !showStickyIdentity,
+                overrideTilt: exporting ? .zero : demoOverrideTilt
+            ) { slabTilt in
+                GradingSlab(
+                    card: card,
+                    dossier: dossier,
+                    tilt: slabTilt,
+                    flipped: !exporting && slabFlipped,
+                    animateSeal: !exporting && !showShare && !showStickyIdentity
+                )
+                    .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+                    .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
             }
-            .foregroundStyle(DossierPalette.dim)
+            .onTapGesture {
+                withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
+                    slabFlipped.toggle()
+                }
+            }
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
+            .padding(.top, 4)
+
+            if !exporting {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.tap")
+                        .font(.caption2.weight(.semibold))
+                    Text(slabFlipped ? "Tap slab to view front" : "Tap slab to flip · tilt phone for foil")
+                        .font(.caption)
+                }
+                .foregroundStyle(DossierPalette.dim)
+            }
 
             lifetimeQuickStrip
         }
@@ -259,7 +350,7 @@ struct DeviceDossierView: View {
                     .foregroundStyle(rarity.accent.opacity(0.85))
                 Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
                     .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
                 if let fw = dossier.hardware.firmwareVersion {
                     Text("· FW \(fw)")
                         .font(.system(.caption2, design: .monospaced, weight: .medium))
@@ -279,7 +370,7 @@ struct DeviceDossierView: View {
         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 28)
     }
 
-    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = .white) -> some View {
+    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = DossierPalette.primaryText) -> some View {
         VStack(spacing: 3) {
             Text(label)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -298,10 +389,17 @@ struct DeviceDossierView: View {
 
     // MARK: - 01 Airtime
 
-    private var airtimeSection: some View {
+    private func airtimeSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             DossierSectionHeader(index: 1, title: "Airtime", trailing: AppLanguage.current.text(period.title).uppercased(), accent: rarity.accent)
-            PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+            if exporting {
+                Text(DossierFormat.range(stats.start, stats.end))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DossierPalette.dim)
+            } else {
+                PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+                dataSourceNote.foregroundStyle(DossierPalette.dim)
+            }
             AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))
                 .frame(maxWidth: .infinity)
         }
@@ -309,11 +407,12 @@ struct DeviceDossierView: View {
 
     // MARK: - 02 Rhythm & Charts
 
-    private var rhythmSection: some View {
+    private func rhythmSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             DossierSectionHeader(index: 2, title: "Rhythm", trailing: AppLanguage.current.text(stats.period.title).uppercased(), accent: rarity.accent)
 
-            DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear, selection: $selectedDate)
+            DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear,
+                              selection: exporting ? .constant(nil) : $selectedDate, showsInteractionHint: !exporting)
                 .dossierTile(tint: rarity.accent)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -325,23 +424,29 @@ struct DeviceDossierView: View {
                     }
                     Spacer()
                     let nightPct = Int((dossier.nightShare * 100).rounded())
+                    let moonColor = Color.adaptive(
+                        light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1),
+                        dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)
+                    )
                     Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
-                        .foregroundStyle(nightPct > 20 ? Theme.moderate.color : Color(red: 0.65, green: 0.72, blue: 1))
+                        .foregroundStyle(nightPct > 20 ? Theme.moderateColor : moonColor)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .background(.white.opacity(0.06), in: Capsule())
+                        .background(DossierPalette.surfaceFill, in: Capsule())
                 }
 
-                DayClock(stats: stats, rarity: rarity, selectedHour: $selectedHour)
+                DayClock(stats: stats, rarity: rarity, selectedHour: exporting ? .constant(nil) : $selectedHour)
                     .frame(maxWidth: 300)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
 
-                Text("Tap or press-drag any hour · bar color shows loudness")
-                    .font(.caption2)
-                    .foregroundStyle(DossierPalette.faint)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                if !exporting {
+                    Text("Tap or press-drag any hour · bar color shows loudness")
+                        .font(.caption2)
+                        .foregroundStyle(DossierPalette.faint)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
             .dossierTile(tint: rarity.glow)
             .padding(.top, 6)
@@ -375,10 +480,20 @@ struct DeviceDossierView: View {
 
     // MARK: - 05 Certificate & Grade
 
-    private var certificateSection: some View {
+    private func certificateSection(exporting: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             DossierSectionHeader(index: 5, title: "Certificate", trailing: dossier.hardware.productID, accent: rarity.accent)
-            CertificateLabel(card: card, dossier: dossier, tilt: tilt)
+            LiveTiltView(
+                isActive: !exporting && tiltActive && showStickyIdentity,
+                overrideTilt: exporting ? .zero : demoOverrideTilt
+            ) { liveTilt in
+                CertificateLabel(
+                    card: card,
+                    dossier: dossier,
+                    tilt: liveTilt,
+                    animateSeal: !exporting && !showShare && showStickyIdentity
+                )
+            }
             GradeBreakdown(grade: dossier.grade, accent: rarity.accent)
                 .dossierTile(tint: rarity.accent)
                 .id("grade")
@@ -475,6 +590,8 @@ private struct LifetimeLedgerCard: View {
     let dossier: DeviceDossier
     let rarity: Rarity
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
@@ -527,7 +644,7 @@ private struct LifetimeLedgerCard: View {
                         HStack {
                             Text(row.label)
                                 .font(.system(.caption, design: .monospaced, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.88))
+                                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                                 .frame(width: 64, alignment: .leading)
                             Text(row.minutes.minutesText)
                                 .font(.system(.caption, design: .rounded, weight: .bold))
@@ -543,7 +660,7 @@ private struct LifetimeLedgerCard: View {
                                 .frame(width: 58, alignment: .trailing)
                             Text("\(Int(row.averageDecibels.rounded())) dB")
                                 .font(.system(.caption, design: .monospaced, weight: .semibold))
-                                .foregroundStyle(Theme.levelColor(db: row.averageDecibels))
+                                .foregroundStyle(Theme.levelColor(db: row.averageDecibels, colorScheme: colorScheme))
                                 .frame(width: 48, alignment: .trailing)
                         }
                     }
@@ -569,7 +686,7 @@ private struct LifetimeLedgerCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
@@ -577,7 +694,7 @@ private struct LifetimeLedgerCard: View {
 
 // MARK: - Milestone Timeline
 
-private struct MilestoneTimelineCard: View {
+struct MilestoneTimelineCard: View {
     let milestones: [DossierMilestone]
     let rarity: Rarity
 
@@ -608,7 +725,7 @@ private struct MilestoneTimelineCard: View {
                         if !isLast {
                             let nextIsFuture = milestones[index + 1].isFuture
                             Rectangle()
-                                .fill(nextIsFuture ? Color.white.opacity(0.10) : nodeColor.opacity(0.28))
+                                .fill(nextIsFuture ? DossierPalette.hairline : nodeColor.opacity(0.28))
                                 .frame(width: 1.5)
                                 .frame(minHeight: 28)
                                 .padding(.vertical, 3)
@@ -619,7 +736,7 @@ private struct MilestoneTimelineCard: View {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(LocalizedStringKey(item.title))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(item.isFuture ? .white.opacity(0.78) : .white)
+                                .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.75) : DossierPalette.primaryText)
                             if let tier = item.tier, item.kind == .tier || item.kind == .minted {
                                 Text(LocalizedStringKey(tier.rawValue))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -669,9 +786,9 @@ private struct MilestoneTimelineCard: View {
     private func color(for item: DossierMilestone) -> Color {
         if let tier = item.tier { return tier.accent }
         switch item.kind {
-        case .longest: return Theme.moderate.color
+        case .longest: return Theme.moderateColor
         case .bestDay: return rarity.accent
-        case .hours: return Theme.quiet.color
+        case .hours: return Theme.quietColor
         case .upcoming: return rarity.accent
         case .minted, .tier: return rarity.accent
         }
@@ -679,5 +796,5 @@ private struct MilestoneTimelineCard: View {
 }
 
 #Preview {
-    DeviceDossierView(card: SampleCards.all[0])
+    DeviceDossierView(card: SampleCards.all[0], isSampleData: true)
 }
