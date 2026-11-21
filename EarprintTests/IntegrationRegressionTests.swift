@@ -444,4 +444,65 @@ final class IntegrationRegressionTests: XCTestCase {
         XCTAssertEqual(image.size.height, size.height, accuracy: 1)
         XCTAssertGreaterThan(image.pngData()?.count ?? 0, 5_000)
     }
+
+    @MainActor
+    func testCreditsAndEmptyHomeViewsRenderCleanlyInLightAndDark() throws {
+        let size = CGSize(width: 393, height: 852)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+
+        let creditsLight = NavigationStack { CreditsView() }.preferredColorScheme(.light)
+        let creditsHost = UIHostingController(rootView: creditsLight)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.rootViewController = creditsHost
+        window.makeKeyAndVisible()
+        creditsHost.view.frame = CGRect(origin: .zero, size: size)
+        creditsHost.view.setNeedsLayout()
+        creditsHost.view.layoutIfNeeded()
+
+        let creditsImage = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            creditsHost.view.drawHierarchy(in: creditsHost.view.bounds, afterScreenUpdates: true)
+        }
+        window.isHidden = true
+        XCTAssertGreaterThan(creditsImage.pngData()?.count ?? 0, 5_000)
+
+        if let outPath = ProcessInfo.processInfo.environment["EARPRINT_CREDITS_SNAPSHOT_PATH"],
+           let png = creditsImage.pngData() {
+            try png.write(to: URL(fileURLWithPath: outPath))
+        }
+
+        let empty = ListeningSummary.empty()
+        for (idx, scheme) in [ColorScheme.light, ColorScheme.dark].enumerated() {
+            let emptyView = HomeView(
+                summary: empty,
+                cards: [],
+                isSampleData: false,
+                isEmptyState: true,
+                statusMessage: "No headphone samples found in Apple Health. Play audio through headphones or enable access in Settings › Health › Data Access › Earprint.",
+                isLoading: false,
+                isActiveTab: false
+            )
+            .preferredColorScheme(scheme)
+
+            let host = UIHostingController(rootView: emptyView)
+            let emptyWindow = UIWindow(frame: CGRect(origin: .zero, size: size))
+            emptyWindow.rootViewController = host
+            emptyWindow.makeKeyAndVisible()
+            host.view.frame = CGRect(origin: .zero, size: size)
+            host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
+
+            let emptyImage = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+            }
+            emptyWindow.isHidden = true
+            XCTAssertGreaterThan(emptyImage.pngData()?.count ?? 0, 5_000)
+
+            if idx == 0,
+               let outPath = ProcessInfo.processInfo.environment["EARPRINT_EMPTY_HOME_SNAPSHOT_PATH"],
+               let png = emptyImage.pngData() {
+                try png.write(to: URL(fileURLWithPath: outPath))
+            }
+        }
+    }
 }

@@ -8,6 +8,5 @@ struct EarprintWidgetsBundle: WidgetBundle {
         CardShelfWidget()
         EarprintRingWidget()
         BudgetWidget()
-        ListeningLiveActivity()
     }
 }

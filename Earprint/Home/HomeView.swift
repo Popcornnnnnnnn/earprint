@@ -6,6 +6,7 @@ struct HomeView: View {
     var cards: [HeadphoneCard] = []
     var summaryForCardID: ((String?) -> ListeningSummary)? = nil
     var isSampleData: Bool = false
+    var isEmptyState: Bool = false
     var sampleBadgeText: LocalizedStringKey = "Sample data"
     var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
@@ -56,7 +57,25 @@ struct HomeView: View {
 
             ScrollView {
                 Group {
-                    if space.isWide || (space.isLandscape && space.size.width >= 520) {
+                    if isEmptyState {
+                        VStack(alignment: .leading, spacing: 18) {
+                            HStack(alignment: .center, spacing: 12) {
+                                Text("Rings")
+                                    .font(.system(size: 32, weight: .heavy))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Theme.primaryText, Theme.primaryText.opacity(0.84)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .accessibilityAddTraits(.isHeader)
+                                Spacer()
+                            }
+                            emptyRingsState(summary: currentSummary)
+                        }
+                        .padding(.horizontal, space.isWide ? 24 : 18)
+                    } else if space.isWide || (space.isLandscape && space.size.width >= 520) {
                         let split = ColumnSplit(space: space, padding: 24, gap: 24)
                         HStack(alignment: .top, spacing: split.gap) {
                             VStack(alignment: .leading, spacing: 16) {
@@ -480,6 +499,53 @@ struct HomeView: View {
             SampleDataBanner(badgeText: sampleBadgeText, detail: statusMessage,
                              isLoading: isLoading, onConnect: onConnectHealth)
         }
+    }
+
+    private func emptyRingsState(summary: ListeningSummary) -> some View {
+        VStack(spacing: 16) {
+            ZStack {
+                EarprintGlyph(grid: summary.grid, showHourLabels: false)
+                    .equatable()
+                    .frame(width: 170, height: 170)
+                    .opacity(0.45)
+                if isLoading {
+                    ProgressView()
+                        .tint(Theme.primaryText)
+                } else {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(Theme.quietColor)
+                }
+            }
+            .padding(.top, 4)
+
+            Text(isLoading ? "Reading Apple Health…" : "No listening data yet")
+                .font(.headline)
+                .foregroundStyle(Theme.primaryText)
+
+            Text(statusMessage ?? "Connect Apple Health to see your 28-day listening rings. iOS records audio levels while playing audio.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.secondaryText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+
+            if let onConnectHealth, !isLoading {
+                Button(action: onConnectHealth) {
+                    Label("Sync Apple Health", systemImage: "heart.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.invertedText)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
+                        .background(Theme.invertedFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .padding(.horizontal, 20)
+        .ringsPanel(cornerRadius: 28, tint: Theme.quietColor, tintCenter: .center)
     }
 }
 

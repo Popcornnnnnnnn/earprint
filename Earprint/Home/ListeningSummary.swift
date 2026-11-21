@@ -68,6 +68,25 @@ struct ListeningSummary: Equatable {
         weeklyBudgetOverride ?? computedWeeklyBudget
     }
 
+    /// Authentic zero-data summary used in Release builds before Apple Health data is connected or available.
+    static func empty(now: Date = Date(), calendar: Calendar = .current) -> ListeningSummary {
+        ListeningSummary(
+            deviceName: AppLanguage.current.text("No headphones yet"),
+            deviceModel: AppLanguage.current.text("Apple Health"),
+            deviceSymbol: "headphones",
+            periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            grid: ListeningGrid(
+                minutes: Array(repeating: Array(repeating: 0.0, count: 24), count: 28),
+                decibels: Array(repeating: Array(repeating: 0.0, count: 24), count: 28)
+            ),
+            lifetimeMinutes: 0,
+            sessions: 0,
+            averageSessionMinutes: 0,
+            longestSessionMinutes: 0,
+            firstUse: "—"
+        )
+    }
+
     private mutating func recomputeGridMetrics() {
         let totalDays = grid.days
         let start28 = max(0, totalDays - 28)

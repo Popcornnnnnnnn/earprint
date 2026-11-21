@@ -50,7 +50,8 @@ struct EarprintApp: App {
                     isLoading: library.isLoading,
                     isActiveTab: router.tab == .collection,
                     onConnectHealth: { Task { await library.connectAndSync() } },
-                    onPreviewFirstLaunch: previewFirstLaunch
+                    onPreviewFirstLaunch: previewFirstLaunch,
+                    dossierForCard: { library.dossier(for: $0) }
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
                 .tag(DeepLinkRouter.Tab.collection)
@@ -61,6 +62,7 @@ struct EarprintApp: App {
                     cards: library.cards,
                     summaryForCardID: { library.summary(forCardID: $0) },
                     isSampleData: library.isShowingSampleData,
+                    isEmptyState: library.isShowingEmptyState,
                     sampleBadgeText: library.sampleBadgeText,
                     statusMessage: library.state == .idle ? nil : library.statusMessage,
                     isLoading: library.isLoading,
@@ -101,6 +103,7 @@ struct EarprintApp: App {
                 if library.snapshot?.generatedAt == beforeStart {
                     publishWidgets()
                 }
+                #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-startLiveActivity"),
                    let card = library.cards.first {
                     LiveActivityController.shared.start(
@@ -110,6 +113,7 @@ struct EarprintApp: App {
                         startedAt: Date().addingTimeInterval(-18 * 60)
                     )
                 }
+                #endif
             }
             .onChange(of: language) { _, _ in
                 library.refreshDerivedCacheIfNeeded(force: true)

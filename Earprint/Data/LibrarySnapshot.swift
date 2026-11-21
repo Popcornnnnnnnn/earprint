@@ -29,6 +29,8 @@ struct DeviceSummary: Identifiable, Sendable {
     /// Share of the WHO weekly budget used in the last 7 local days (today + 6), 1.0 = 100 %.
     var weeklyBudget: Double
     var tierAchievedDates: [Rarity: Date] = [:]
+    var wearSessions: [WearSession] = []
+    var dailySeconds: [Int: Double] = [:]
 }
 
 struct LibrarySnapshot: Sendable {
@@ -98,6 +100,20 @@ struct LibrarySnapshot: Sendable {
         let window = gridWindow(slots: acc.slots, now: now, calendar: calendar, days: gridDays)
         let sessions = acc.sessions
         let tierDates = achievedTierDates(for: acc, now: now, calendar: calendar)
+        let fallbackDB = acc.averageDecibels ?? 62
+        let wearSessions: [WearSession] = sessions.spans.compactMap { span in
+            let activeSeconds = span.effectiveSeconds
+            guard activeSeconds > 0 else { return nil }
+            let avgDB = span.averageDecibels ?? fallbackDB
+            let peakDB = span.peakDecibels > 0 ? max(span.peakDecibels, avgDB) : avgDB
+            return WearSession(
+                start: Date(timeIntervalSince1970: span.start),
+                minutes: activeSeconds / 60,
+                averageDecibels: avgDB,
+                peakDecibels: peakDB,
+                isEstimated: false
+            )
+        }
         return DeviceSummary(
             id: acc.key,
             aliasIDs: aliasIDs,
@@ -120,7 +136,9 @@ struct LibrarySnapshot: Sendable {
             weekSeconds: window.weekSeconds,
             weekDecibels: HearingBudget.averageDecibels(energy: window.weekEnergy, seconds: window.weekSeconds),
             weeklyBudget: HearingBudget.dose(energy: window.weekEnergy),
-            tierAchievedDates: tierDates
+            tierAchievedDates: tierDates,
+            wearSessions: wearSessions,
+            dailySeconds: acc.daily
         )
     }
 
@@ -260,7 +278,14 @@ private extension DeviceAccumulator {
         let spans = devices.flatMap { $0.sessions.spans }.sorted { $0.start < $1.start }
         combined.sessions = SessionSet()
         for span in spans {
-            combined.sessions.insert(start: span.start, end: span.end, gap: ListeningAggregate.sessionGap)
+            combined.sessions.insert(
+                start: span.start,
+                end: span.end,
+                gap: ListeningAggregate.sessionGap,
+                listeningSeconds: span.effectiveSeconds,
+                energy: span.energy,
+                peakDecibels: span.peakDecibels
+            )
         }
         return combined
     }
@@ -373,6 +398,59 @@ extension LibrarySnapshot {
             weeklyBudgetOverride: d.weeklyBudget
         )
     }
+
+    func dossier(forCardID id: String, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
+        guard let d = devices.first(where: { $0.id == id || $0.aliasIDs.contains(id) }) else { return nil }
+        var others: [Date: Double] = [:]
+        for other in devices where other.id != d.id {
+            for (dayKey, secs) in other.dailySeconds where secs > 0 {
+                let year = dayKey / 10_000
+                let month = (dayKey / 100) % 100
+                let day = dayKey % 100
+                if let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) {
+                    others[date, default: 0] += secs / 60
+                }
+            }
+        }
+        let desc = d.descriptor
+        let productID = d.model.productID.map { String(format: "0x%04X", $0) }
+            ?? desc?.model?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? "—"
+        let hardware = DossierHardware(
+            deviceName: d.nickname,
+            manufacturer: desc?.manufacturer?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Apple Inc.",
+            productID: productID,
+            modelName: d.model.marketingName,
+            hardwareVersion: desc?.hardwareVersion?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty,
+            firmwareVersion: desc?.firmwareVersion?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty,
+            sourceName: Self.friendlySourceName(bundleIDs: d.sources),
+            sourceBundleID: d.sources.first ?? "com.apple.Health"
+        )
+        return DeviceDossier(
+            id: d.id,
+            nickname: d.nickname,
+            symbol: d.model.resolvedSymbol,
+            serial: sourceSerials[d.id] ?? 0,
+            hardware: hardware,
+            sessions: d.wearSessions,
+            otherDevicesDailyMinutes: others,
+            sampleCount: d.sampleCount,
+            lastSynced: generatedAt,
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    private static func friendlySourceName(bundleIDs: [String]) -> String {
+        if bundleIDs.contains(where: { $0.hasPrefix("com.apple.health") }) {
+            return "Apple Health"
+        }
+        return bundleIDs.first?.nonEmpty ?? "Apple Health"
+    }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }
 
 enum DateText {

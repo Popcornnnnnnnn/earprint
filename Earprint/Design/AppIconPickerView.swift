@@ -98,24 +98,39 @@ enum IconFinish: String, CaseIterable, Identifiable, Equatable {
     static let lightningFinishes: [IconFinish] = [.spaceGray, .silver, .skyBlue, .green, .pink]
 }
 
-/// Complete Home Screen icon choice combining an independent finish and background.
-struct AppIconChoice: Equatable, Hashable {
-    var finish: IconFinish
-    var background: IconBackground
+/// Complete Home Screen icon choice: either the default trademark-safe Earprint Rings emblem
+/// or one of the 40 alternate headphone finish/background icons.
+enum AppIconChoice: Equatable, Hashable {
+    case ringsEmblem
+    case headphone(finish: IconFinish, background: IconBackground)
 
-    static let `default` = AppIconChoice(finish: .midnight, background: .auto)
+    static let `default`: Self = .ringsEmblem
+
+    var finish: IconFinish {
+        if case .headphone(let finish, _) = self { return finish }
+        return .midnight
+    }
+
+    var background: IconBackground {
+        if case .headphone(_, let background) = self { return background }
+        return .auto
+    }
 
     /// `.appiconset` name passed to `UIApplication.setAlternateIconName(_:)`.
-    /// `nil` selects the primary `AppIcon` (Midnight + Auto Light/Dark).
+    /// `nil` selects the primary `AppIcon` (Earprint Rings emblem).
     var alternateIconName: String? {
-        if self == .default { return nil }
-        return "AppIcon\(finish.assetSuffix)\(background.assetSuffix)"
+        switch self {
+        case .ringsEmblem:
+            return nil
+        case .headphone(let finish, let background):
+            return "AppIcon\(finish.assetSuffix)\(background.assetSuffix)"
+        }
     }
 
     static var allChoices: [AppIconChoice] {
-        IconFinish.allCases.flatMap { finish in
+        [.ringsEmblem] + IconFinish.allCases.flatMap { finish in
             IconBackground.allCases.map { bg in
-                AppIconChoice(finish: finish, background: bg)
+                .headphone(finish: finish, background: bg)
             }
         }
     }
@@ -332,6 +347,7 @@ struct SettingsView: View {
         case modelGallery
         case cardTiers
         case privacy
+        case credits
     }
 
     let ownedCards: [HeadphoneCard]
@@ -416,6 +432,9 @@ struct SettingsView: View {
                     NavigationLink(value: Destination.privacy) {
                         Label("Apple Health Privacy", systemImage: "hand.raised.fill")
                     }
+                    NavigationLink(value: Destination.credits) {
+                        Label("Credits & Attributions", systemImage: "doc.text")
+                    }
                     if let onConnectHealth {
                         Button {
                             dismiss()
@@ -458,6 +477,8 @@ struct SettingsView: View {
                     CardTiersView(ownedCards: ownedCards)
                 case .privacy:
                     PrivacyPolicyView()
+                case .credits:
+                    CreditsView()
                 }
             }
         }
@@ -513,6 +534,118 @@ struct PrivacyPolicyView: View {
             }
         }
         .card()
+    }
+}
+
+struct CreditsView: View {
+    private struct ModelCredit: Identifiable {
+        let id: String
+        let title: String
+        let author: String
+        let authorURL: URL
+        let modelURL: URL
+        let note: LocalizedStringKey
+    }
+
+    private static let licenseURL = URL(string: "https://creativecommons.org/licenses/by/4.0/")!
+
+    private static let models: [ModelCredit] = [
+        ModelCredit(
+            id: "airpods4",
+            title: "AirPods 4",
+            author: "Falah3D (3dFalah)",
+            authorURL: URL(string: "https://sketchfab.com/3dFalah")!,
+            modelURL: URL(string: "https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e")!,
+            note: "Modified: cropped front render; simplified geometry to ~45k tris, normalized, converted to USDZ, compressed textures (source FBX provenance via Andrea Balbo)."
+        ),
+        ModelCredit(
+            id: "airpodsMax",
+            title: "Airpods max sky blue",
+            author: "polyman Studio (Polyman_3D)",
+            authorURL: URL(string: "https://sketchfab.com/Polyman_3D")!,
+            modelURL: URL(string: "https://sketchfab.com/3d-models/airpods-max-sky-blue-3d0643db08fc4ef89bda55a74077ece4")!,
+            note: "Modified: simplified to ~42k tris, joined meshes, normalized, baked PBR factors, compressed textures, converted to USDZ."
+        ),
+        ModelCredit(
+            id: "airpodsPro",
+            title: "Airpods Pro With Magsafe Charging Case Ios15",
+            author: "polyman Studio (Polyman_3D)",
+            authorURL: URL(string: "https://sketchfab.com/Polyman_3D")!,
+            modelURL: URL(string: "https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689")!,
+            note: "Modified: removed internal occlusion shell, simplified to ~48k tris, joined meshes, normalized, compressed textures, converted to USDZ."
+        ),
+        ModelCredit(
+            id: "studioHeadphones",
+            title: "Studio Headphones",
+            author: "crow (crow.bite)",
+            authorURL: URL(string: "https://sketchfab.com/crow.bite")!,
+            modelURL: URL(string: "https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8")!,
+            note: "Modified: simplified to ~52k tris, joined meshes, normalized, baked roughness map, compressed textures, converted to USDZ."
+        )
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                sectionHeader("Independent App Notice")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Not affiliated with Apple Inc.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.primaryText)
+                    Text("Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, AirPods Pro, AirPods Max, and Beats are trademarks of Apple Inc.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Listening rings, WHO weekly budgets, and Ear Grade scores are for personal informational purposes only and are not a medical device.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .card()
+
+                sectionHeader("3D Models & Artwork (CC-BY 4.0)")
+                    .padding(.top, 4)
+
+                ForEach(Self.models) { model in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(model.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.primaryText)
+                            Spacer(minLength: 8)
+                            Link("CC-BY 4.0", destination: Self.licenseURL)
+                                .font(.caption2.weight(.semibold))
+                        }
+
+                        HStack(spacing: 12) {
+                            Link(model.author, destination: model.authorURL)
+                            Link("Source on Sketchfab", destination: model.modelURL)
+                        }
+                        .font(.caption.weight(.medium))
+
+                        Text(model.note)
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .card()
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.canvas.ignoresSafeArea())
+        .navigationTitle("Credits & Attributions")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.footnote.weight(.bold))
+            .foregroundStyle(Theme.secondaryText)
+            .textCase(.uppercase)
+            .tracking(0.8)
     }
 }
 
@@ -611,11 +744,17 @@ struct HealthOnboardingView: View {
 struct AppIconPickerView: View {
     @Bindable var manager: AppIconManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var draft: AppIconChoice
+    @State private var selectedFinish: IconFinish
+    @State private var selectedBackground: IconBackground
 
     init(manager: AppIconManager) {
         self.manager = manager
-        _draft = State(initialValue: manager.current)
+        let initial = manager.current
+        _draft = State(initialValue: initial)
+        _selectedFinish = State(initialValue: initial.finish)
+        _selectedBackground = State(initialValue: initial.background)
     }
 
     private let fiveColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
@@ -623,6 +762,7 @@ struct AppIconPickerView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                defaultSection
                 backgroundSection
                 finishSection
                 if let error = manager.errorMessage {
@@ -652,6 +792,57 @@ struct AppIconPickerView: View {
             manager.refresh()
             manager.errorMessage = nil
             draft = manager.current
+            selectedFinish = manager.current.finish
+            selectedBackground = manager.current.background
+        }
+    }
+
+    private var defaultSection: some View {
+        let isSelected = draft == .ringsEmblem
+        return VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Default Icon")
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                draft = .ringsEmblem
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12.5, style: .continuous)
+                            .fill(colorScheme == .light ? Color(red: 0.95, green: 0.96, blue: 0.98) : Color(red: 0.08, green: 0.09, blue: 0.13))
+                        EarprintGlyph(grid: SampleData.summary.grid, showHourLabels: false)
+                            .equatable()
+                            .padding(5)
+                    }
+                    .frame(width: 52, height: 52)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12.5, style: .continuous)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    )
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Earprint Rings")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.primaryText)
+                        Text("Acoustic dial emblem · Default")
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? Theme.quietColor : Theme.tertiaryText)
+                }
+                .padding(12)
+                .background(isSelected ? Theme.surfaceFillStrong : Theme.surfaceFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(isSelected ? Theme.primaryText.opacity(0.56) : Theme.hairline, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
     }
 
@@ -660,12 +851,14 @@ struct AppIconPickerView: View {
             sectionTitle("Background")
             HStack(spacing: 8) {
                 ForEach(IconBackground.allCases) { background in
-                    let isSelected = draft.background == background
+                    let isSelected = draft == .headphone(finish: selectedFinish, background: background)
                     Button {
-                        draft.background = background
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        selectedBackground = background
+                        draft = .headphone(finish: selectedFinish, background: background)
                     } label: {
                         VStack(spacing: 8) {
-                            AppIconThumbnail(finish: draft.finish, background: background, size: 42)
+                            AppIconThumbnail(finish: selectedFinish, background: background, size: 42)
                             Text(LocalizedStringKey(background.title))
                                 .font(.caption.weight(.semibold))
                         }
@@ -704,10 +897,14 @@ struct AppIconPickerView: View {
     }
 
     private func finishSwatch(_ finish: IconFinish) -> some View {
-        let isSelected = draft.finish == finish
+        let isSelected: Bool = {
+            if case .headphone(let f, _) = draft { return f == finish }
+            return false
+        }()
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            draft.finish = finish
+            selectedFinish = finish
+            draft = .headphone(finish: finish, background: selectedBackground)
         } label: {
             VStack(spacing: 7) {
                 ZStack {

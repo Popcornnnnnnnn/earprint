@@ -381,6 +381,16 @@
         }
       }
     },
+    "3D Models & Artwork (CC-BY 4.0)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D 模型与视觉素材 (CC-BY 4.0)"
+          }
+        }
+      }
+    },
     "3D model": {
       "localizations": {
         "zh-Hans": {
@@ -497,6 +507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "平均"
+          }
+        }
+      }
+    },
+    "Acoustic dial emblem · Default": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声学刻度盘徽标 · 默认"
           }
         }
       }
@@ -641,12 +661,32 @@
         }
       }
     },
+    "Apple Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康"
+          }
+        }
+      }
+    },
     "Apple Health Privacy": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Apple 健康隐私"
+          }
+        }
+      }
+    },
+    "Apple Health is not available on this device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前设备不支持 Apple 健康。"
           }
         }
       }
@@ -1121,6 +1161,26 @@
         }
       }
     },
+    "Connect Apple Health to see your 28-day listening rings. iOS records audio levels while playing audio.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康后即可查看 28 天声纹环。iOS 会在播放音频时自动记录音量。"
+          }
+        }
+      }
+    },
+    "Connect Apple Health to see your headphones. iOS records audio levels while playing audio (not silent ANC).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康后即可查看你的耳机。iOS 会在播放音频时记录音量（纯降噪未播放时不计入）。"
+          }
+        }
+      }
+    },
     "Connect Health": {
       "localizations": {
         "zh-Hans": {
@@ -1177,6 +1237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "封面"
+          }
+        }
+      }
+    },
+    "Credits & Attributions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鸣谢与版权声明"
           }
         }
       }
@@ -1337,6 +1407,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "拉丝冰钛金属光泽的深度日常伴侣"
+          }
+        }
+      }
+    },
+    "Default Icon": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认图标"
           }
         }
       }
@@ -1531,12 +1611,32 @@
         }
       }
     },
+    "Earprint Rings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 声纹环"
+          }
+        }
+      }
+    },
     "Earprint hologram seal": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 防伪印记"
+          }
+        }
+      }
+    },
+    "Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, AirPods Pro, AirPods Max, and Beats are trademarks of Apple Inc.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 为独立开发者作品，与 Apple Inc. 无任何关联、赞助或官方背书关系。Apple、Apple Health、AirPods、AirPods Pro、AirPods Max 与 Beats 均为 Apple Inc. 的注册商标。"
           }
         }
       }
@@ -1831,6 +1931,16 @@
         }
       }
     },
+    "Health unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "健康数据不可用"
+          }
+        }
+      }
+    },
     "Hearing budget": {
       "localizations": {
         "zh-Hans": {
@@ -1897,6 +2007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "图片不可用"
+          }
+        }
+      }
+    },
+    "Independent App Notice": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "独立应用声明"
           }
         }
       }
@@ -2077,6 +2197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "分时段聆听"
+          }
+        }
+      }
+    },
+    "Listening rings, WHO weekly budgets, and Ear Grade scores are for personal informational purposes only and are not a medical device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听环、WHO 每周安全预算与聆听评分仅供个人兴趣参考，不构成医疗器械或临床诊断建议。"
           }
         }
       }
@@ -2331,6 +2461,46 @@
         }
       }
     },
+    "Modified: cropped front render; simplified geometry to ~45k tris, normalized, converted to USDZ, compressed textures (source FBX provenance via Andrea Balbo).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：裁剪正面渲染图；简化几何体至约 45k 三角面、归一化坐标、转换为 USDZ 并压缩贴图（源 FBX 归档由 Andrea Balbo 提供）。"
+          }
+        }
+      }
+    },
+    "Modified: removed internal occlusion shell, simplified to ~48k tris, joined meshes, normalized, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：移除内部遮挡壳、简化至约 48k 三角面、合并网格、归一化坐标、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
+    "Modified: simplified to ~42k tris, joined meshes, normalized, baked PBR factors, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：简化至约 42k 三角面、合并网格、归一化坐标、烘焙 PBR 材质参数、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
+    "Modified: simplified to ~52k tris, joined meshes, normalized, baked roughness map, compressed textures, converted to USDZ.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改说明：简化至约 52k 三角面、合并网格、归一化坐标、烘焙粗糙度贴图、压缩贴图并转换为 USDZ。"
+          }
+        }
+      }
+    },
     "Month": {
       "localizations": {
         "zh-Hans": {
@@ -2441,12 +2611,42 @@
         }
       }
     },
+    "No Health records": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无健康记录"
+          }
+        }
+      }
+    },
     "No headphone samples found in Apple Health. If you denied access, enable it in Settings › Health › Data Access › Earprint.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Apple 健康中暂无耳机记录。如果曾拒绝访问，可在「设置 › 健康 › 数据访问 › Earprint」中授权。"
+          }
+        }
+      }
+    },
+    "No headphone samples found in Apple Health. Play audio through headphones or enable access in Settings › Health › Data Access › Earprint.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Apple 健康中未找到耳机音量记录。请戴耳机播放音频，或在“设置 › 健康 › 数据访问与设备 › Earprint”中开启读取权限。"
+          }
+        }
+      }
+    },
+    "No listening data yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无聆听数据"
           }
         }
       }
@@ -2477,6 +2677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂不"
+          }
+        }
+      }
+    },
+    "Not affiliated with Apple Inc.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与 Apple Inc. 无关"
           }
         }
       }
@@ -3181,6 +3391,16 @@
         }
       }
     },
+    "Source on Sketchfab": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sketchfab 原作品"
+          }
+        }
+      }
+    },
     "Space Gray": {
       "localizations": {
         "zh-Hans": {
@@ -3287,6 +3507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "同步 Apple 健康"
+          }
+        }
+      }
+    },
+    "Sync needed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要同步"
           }
         }
       }

@@ -77,9 +77,22 @@ final class HeadphoneLibrary: ObservableObject {
         rebuildDerivedCache()
     }
 
-    /// True when real HealthKit data is not available and views are displaying sample data.
+    /// True when HealthKit data is not available and Debug views are previewing deterministic sample data.
     var isShowingSampleData: Bool {
-        snapshot == nil || snapshot?.isEmpty == true
+        #if DEBUG
+        return snapshot == nil || snapshot?.isEmpty == true
+        #else
+        return false
+        #endif
+    }
+
+    /// True in Release builds when Apple Health has not yet provided any headphone listening samples.
+    var isShowingEmptyState: Bool {
+        #if DEBUG
+        return false
+        #else
+        return snapshot == nil || snapshot?.isEmpty == true
+        #endif
     }
 
     var isLoading: Bool {
@@ -121,9 +134,6 @@ final class HeadphoneLibrary: ObservableObject {
         } else {
             #if DEBUG
             let sampleCards = SampleCards.all
-            #else
-            let sampleCards: [HeadphoneCard] = []
-            #endif
             self.cards = sampleCards
             let localizedSamplePrimary = Self.localizedSamplePrimary(now: now, calendar: calendar)
             self.homeSummary = localizedSamplePrimary
@@ -140,7 +150,19 @@ final class HeadphoneLibrary: ObservableObject {
                 }
             }
             self.cachedSummariesByID = byID
+            #else
+            self.cards = []
+            let empty = ListeningSummary.empty(now: now, calendar: calendar)
+            self.homeSummary = empty
+            self.cachedCombinedSummary = empty
+            self.cachedSummariesByID = [:]
+            #endif
         }
+    }
+
+    /// Returns a real `DeviceDossier` hydrated from Apple Health sessions, or `nil` in sample mode.
+    func dossier(for card: HeadphoneCard, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
+        snapshot?.dossier(forCardID: card.id, now: now, calendar: calendar)
     }
 
     /// O(1) cached summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
@@ -231,11 +253,12 @@ final class HeadphoneLibrary: ObservableObject {
         )
     }
 
-    /// Short badge label shown when falling back to sample data.
+    /// Short badge label shown when HealthKit data is not yet available.
     var sampleBadgeText: LocalizedStringKey {
         #if targetEnvironment(simulator)
         if state == .empty || state == .idle { return "Sample data · Simulator" }
         #endif
+        #if DEBUG
         switch state {
         case .idle: return "Sample data"
         case .loading(let n): return n > 0 ? "Syncing \(n)…" : "Syncing Health…"
@@ -244,10 +267,21 @@ final class HeadphoneLibrary: ObservableObject {
         case .failed: return "Sample data"
         case .ready: return ""
         }
+        #else
+        switch state {
+        case .idle: return "Apple Health"
+        case .loading(let n): return n > 0 ? "Syncing \(n)…" : "Syncing Health…"
+        case .empty: return "No Health records"
+        case .unavailable: return "Health unavailable"
+        case .failed: return "Sync needed"
+        case .ready: return ""
+        }
+        #endif
     }
 
     /// Detailed hint for empty / denied / error states.
     var statusMessage: LocalizedStringKey? {
+        #if DEBUG
         switch state {
         case .idle:
             return "Previewing sample data. Connect Apple Health to see your real headphones."
@@ -263,6 +297,22 @@ final class HeadphoneLibrary: ObservableObject {
         case .ready:
             return nil
         }
+        #else
+        switch state {
+        case .idle:
+            return "Connect Apple Health to see your headphones. iOS records audio levels while playing audio (not silent ANC)."
+        case .loading(let count):
+            return count > 0 ? "Reading Apple Health… \(count) samples" : "Reading Apple Health…"
+        case .empty:
+            return "No headphone samples found in Apple Health. Play audio through headphones or enable access in Settings › Health › Data Access › Earprint."
+        case .unavailable:
+            return "Apple Health is not available on this device."
+        case .failed(let message):
+            return "Couldn't read Apple Health: \(message)"
+        case .ready:
+            return nil
+        }
+        #endif
     }
 
     /// Called once when the app launches.

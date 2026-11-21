@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Earprint — 3D Headphone Archive &amp; Acoustic Rings</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7fa;
+      --card: #ffffff;
+      --border: #e4e7ee;
+      --text: #12151c;
+      --muted: #5a6375;
+      --accent: #129f8a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0d13;
+        --card: #131722;
+        --border: #252b3b;
+        --text: #f3f5fa;
+        --muted: #98a2b6;
+        --accent: #32dfc3;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 20px 72px; }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 12px; }
+    p.lead { font-size: 1.05rem; color: var(--muted); margin: 0 0 28px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 24px 0; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1.15rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    footer { margin-top: 40px; font-size: 0.9rem; color: var(--muted); }
+    a.link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">Earprint for iOS · v1.0.0</span>
+    <h1>Turn headphone listening history into 3D collector cards.</h1>
+    <p class="lead">
+      Read-only Apple Health Headphone Audio Levels visualized as 6-tier 3D foil cards, a collector-grade Device Dossier,
+      28-day Earprint Rings, and Home/Lock Screen widgets — 100% on your iPhone.
+      <br>
+      将 Apple“健康”中的耳机音量记录变为 6 阶 3D 金属收藏卡、设备档案与 28 天声纹环，全程 100% 在本机运行。
+    </p>
+
+    <div class="grid">
+      <a class="card" href="support.html">
+        <h2>Support &amp; FAQ · 使用帮助</h2>
+        <p>Setup guide, Apple Health permissions, troubleshooting, and developer contact.</p>
+      </a>
+      <a class="card" href="privacy.html">
+        <h2>Privacy Policy · 隐私政策</h2>
+        <p>Zero servers, zero tracking, read-only Apple Health details (EN &amp; 简体中文).</p>
+      </a>
+    </div>
+
+    <footer>
+      Developer: Weizhi Wang · Contact: <a class="link" href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a>
+      <br>
+      Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc.
+    </footer>
+  </main>
+</body>
+</html>

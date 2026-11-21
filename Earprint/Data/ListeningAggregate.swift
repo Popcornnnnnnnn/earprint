@@ -45,7 +45,13 @@ struct SessionSet: Codable, Equatable, Sendable {
     struct Span: Codable, Equatable, Sendable {
         var start: TimeInterval
         var end: TimeInterval
+        var listeningSeconds: Double = 0
+        var energy: Double = 0
+        var peakDecibels: Double = 0
+
         var duration: TimeInterval { end - start }
+        var effectiveSeconds: Double { listeningSeconds > 0 ? listeningSeconds : duration }
+        var averageDecibels: Double? { HearingBudget.averageDecibels(energy: energy, seconds: effectiveSeconds) }
     }
 
     private(set) var spans: [Span] = []
@@ -54,14 +60,26 @@ struct SessionSet: Codable, Equatable, Sendable {
     var longest: TimeInterval { spans.map(\.duration).max() ?? 0 }
     var totalSpan: TimeInterval { spans.reduce(0) { $0 + $1.duration } }
 
-    mutating func insert(start: TimeInterval, end: TimeInterval, gap: TimeInterval) {
+    mutating func insert(
+        start: TimeInterval,
+        end: TimeInterval,
+        gap: TimeInterval,
+        listeningSeconds: Double? = nil,
+        energy: Double = 0,
+        peakDecibels: Double = 0
+    ) {
         let end = max(start, end)
+        let addedListening = listeningSeconds ?? max(0, end - start)
         // Fast path: samples usually come in time order.
         if let last = spans.last, start >= last.start {
             if start - last.end <= gap {
-                spans[spans.count - 1].end = max(last.end, end)
+                let idx = spans.count - 1
+                spans[idx].end = max(last.end, end)
+                spans[idx].listeningSeconds = last.effectiveSeconds + addedListening
+                spans[idx].energy += energy
+                spans[idx].peakDecibels = max(last.peakDecibels, peakDecibels)
             } else {
-                spans.append(Span(start: start, end: end))
+                spans.append(Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels))
             }
             return
         }
@@ -73,11 +91,14 @@ struct SessionSet: Codable, Equatable, Sendable {
         }
         var first = lo
         if first > 0, start - spans[first - 1].end <= gap { first -= 1 }
-        var merged = Span(start: start, end: end)
+        var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels)
         var last = first
         while last < spans.count, spans[last].start - merged.end <= gap {
             merged.start = min(merged.start, spans[last].start)
             merged.end = max(merged.end, spans[last].end)
+            merged.listeningSeconds += spans[last].effectiveSeconds
+            merged.energy += spans[last].energy
+            merged.peakDecibels = max(merged.peakDecibels, spans[last].peakDecibels)
             last += 1
         }
         spans.replaceSubrange(first..<last, with: [merged])
@@ -117,7 +138,7 @@ struct DeviceAccumulator: Codable, Sendable {
 
 /// The whole listening history, folded into small per-device totals.
 struct ListeningAggregate: Codable, Sendable {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
     /// Gap that still counts as the same session (wearing) — 5 minutes.
     static let sessionGap: TimeInterval = 5 * 60
     /// iOS writes short clips (seconds to ~30 min). Anything longer is clipped so one bad sample cannot
@@ -178,8 +199,14 @@ struct ListeningAggregate: Codable, Sendable {
             if let name = DeviceDescriptor.clean(sample.device?.name), !acc.names.contains(name) {
                 acc.names.append(name)
             }
-            acc.sessions.insert(start: sample.start.timeIntervalSince1970, end: end.timeIntervalSince1970,
-                                gap: Self.sessionGap)
+            acc.sessions.insert(
+                start: sample.start.timeIntervalSince1970,
+                end: end.timeIntervalSince1970,
+                gap: Self.sessionGap,
+                listeningSeconds: seconds,
+                energy: energy,
+                peakDecibels: sample.decibels
+            )
 
             // Split across local days.
             var cursor = sample.start

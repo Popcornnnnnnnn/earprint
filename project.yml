@@ -9,7 +9,7 @@ settings:
     DEVELOPMENT_TEAM: R26X7B8XDT
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   Earprint:
@@ -40,7 +40,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSHealthShareUsageDescription: Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone.
-        NSSupportsLiveActivities: true
+        ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: com.popcornnn.earprint
             CFBundleURLSchemes:
@@ -59,7 +59,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconMidnightLight AppIconMidnightDark AppIconMidnightHolo AppIconStarlightAuto AppIconStarlightLight AppIconStarlightDark AppIconStarlightHolo AppIconBlueAuto AppIconBlueLight AppIconBlueDark AppIconBlueHolo AppIconPurpleAuto AppIconPurpleLight AppIconPurpleDark AppIconPurpleHolo AppIconOrangeAuto AppIconOrangeLight AppIconOrangeDark AppIconOrangeHolo AppIconSpaceGrayAuto AppIconSpaceGrayLight AppIconSpaceGrayDark AppIconSpaceGrayHolo AppIconSilverAuto AppIconSilverLight AppIconSilverDark AppIconSilverHolo AppIconSkyBlueAuto AppIconSkyBlueLight AppIconSkyBlueDark AppIconSkyBlueHolo AppIconGreenAuto AppIconGreenLight AppIconGreenDark AppIconGreenHolo AppIconPinkAuto AppIconPinkLight AppIconPinkDark AppIconPinkHolo"
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconMidnightAuto AppIconMidnightLight AppIconMidnightDark AppIconMidnightHolo AppIconStarlightAuto AppIconStarlightLight AppIconStarlightDark AppIconStarlightHolo AppIconBlueAuto AppIconBlueLight AppIconBlueDark AppIconBlueHolo AppIconPurpleAuto AppIconPurpleLight AppIconPurpleDark AppIconPurpleHolo AppIconOrangeAuto AppIconOrangeLight AppIconOrangeDark AppIconOrangeHolo AppIconSpaceGrayAuto AppIconSpaceGrayLight AppIconSpaceGrayDark AppIconSpaceGrayHolo AppIconSilverAuto AppIconSilverLight AppIconSilverDark AppIconSilverHolo AppIconSkyBlueAuto AppIconSkyBlueLight AppIconSkyBlueDark AppIconSkyBlueHolo AppIconGreenAuto AppIconGreenLight AppIconGreenDark AppIconGreenHolo AppIconPinkAuto AppIconPinkLight AppIconPinkDark AppIconPinkHolo"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
       configs:
         Debug:

@@ -872,4 +872,62 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(AppLanguage.systemResolved(preferredLanguages: ["fr-FR"]), .english)
         XCTAssertEqual(AppLanguage.system.locale, AppLanguage.systemResolved().locale)
     }
+
+    func testLibrarySnapshotBuildsRealDeviceDossierFromHealthSessions() throws {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = utc.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 18))!
+        let s1 = utc.date(from: DateComponents(year: 2026, month: 11, day: 18, hour: 10))!
+        let s2 = utc.date(from: DateComponents(year: 2026, month: 11, day: 18, hour: 14))!
+
+        let pro = DeviceDescriptor(
+            name: "Studio Pro",
+            manufacturer: "Apple Inc.",
+            model: "0x2024",
+            hardwareVersion: "1.0",
+            firmwareVersion: "7E93",
+            localIdentifier: "pro-dossier-id"
+        )
+        let max = DeviceDescriptor(
+            name: "Desk Max",
+            manufacturer: "Apple Inc.",
+            model: "0x201F",
+            localIdentifier: "max-dossier-id"
+        )
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            // Session 1: two nearby clips (merged within 5 min gap) at 60 dB and 70 dB
+            RawListeningSample(start: s1, end: s1.addingTimeInterval(600), decibels: 60, device: pro, source: "com.apple.health.123"),
+            RawListeningSample(start: s1.addingTimeInterval(720), end: s1.addingTimeInterval(1320), decibels: 70, device: pro, source: "com.apple.health.123"),
+            // Session 2: 4 hours later at 76 dB
+            RawListeningSample(start: s2, end: s2.addingTimeInterval(1800), decibels: 76, device: pro, source: "com.apple.health.123"),
+            // Competing device on same day so share < 1
+            RawListeningSample(start: s2, end: s2.addingTimeInterval(3000), decibels: 64, device: max, source: "com.apple.health.123"),
+        ], now: now, calendar: utc)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: utc)
+        let dossier = try XCTUnwrap(snapshot.dossier(forCardID: pro.identityKey, now: now, calendar: utc))
+        XCTAssertEqual(dossier.sessions.count, 2)
+        XCTAssertEqual(dossier.lifetimeMinutes, 50, accuracy: 0.01) // 10m + 10m + 30m
+        XCTAssertEqual(dossier.hardware.productID, "0x2024")
+        XCTAssertEqual(dossier.hardware.firmwareVersion, "7E93")
+        XCTAssertEqual(dossier.hardware.sourceName, "Apple Health")
+        XCTAssertFalse(dossier.sessions[0].isEstimated)
+        XCTAssertEqual(dossier.sessions[0].peakDecibels, 70, accuracy: 0.01)
+        XCTAssertEqual(dossier.sessions[1].averageDecibels, 76, accuracy: 0.01)
+
+        let monthStats = dossier.stats(.month)
+        XCTAssertLessThan(monthStats.share, 1.0)
+        XCTAssertGreaterThan(monthStats.share, 0.4)
+    }
+
+    @MainActor
+    func testEmptyReleaseSummaryHasZeroMetricsAndRendersEmptyHomeView() {
+        let empty = ListeningSummary.empty()
+        XCTAssertEqual(empty.lifetimeMinutes, 0)
+        XCTAssertEqual(empty.weekMinutes, 0)
+        XCTAssertEqual(empty.sessions, 0)
+        XCTAssertFalse(empty.has28DayData)
+    }
 }

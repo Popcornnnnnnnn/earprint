@@ -9,6 +9,7 @@ struct CollectionView: View {
     var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
     var onPreviewFirstLaunch: (() -> Void)? = nil
+    var dossierForCard: ((HeadphoneCard) -> DeviceDossier?)? = nil
 
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
@@ -107,7 +108,13 @@ struct CollectionView: View {
         .toolbar(selected == nil ? .visible : .hidden, for: .tabBar)
         .animation(.easeInOut(duration: 0.22), value: selected != nil)
         .fullScreenCover(item: $dossierCard) { card in
-            DeviceDossierView(card: card, isSampleData: isSampleData) { dossierCard = nil }
+            DeviceDossierView(
+                card: card,
+                dossier: dossierForCard?(card),
+                isSampleData: isSampleData
+            ) {
+                dossierCard = nil
+            }
         }
         .sheet(isPresented: $showCardTiers) {
             NavigationStack {
@@ -199,12 +206,18 @@ struct CollectionView: View {
 
     private var emptyCollectionState: some View {
         VStack(spacing: 14) {
-            Image(systemName: "headphones")
-                .font(.system(size: 36, weight: .light))
-                .foregroundStyle(Theme.tertiaryText)
+            if isLoading {
+                ProgressView()
+                    .tint(Theme.primaryText)
+                    .padding(.bottom, 2)
+            } else {
+                Image(systemName: "headphones")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(Theme.tertiaryText)
+            }
             Text(isLoading ? "Reading Apple Health…" : "No supported headphones yet")
                 .font(.headline)
-            Text("Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.")
+            Text(statusMessage ?? "Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)

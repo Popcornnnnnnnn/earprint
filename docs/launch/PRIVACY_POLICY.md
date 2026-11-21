@@ -1,12 +1,12 @@
 # Privacy Policy — Earprint / 隐私政策
 
-**Effective Date / 生效日期:** `[YYYY-MM-DD — set before publishing]`  
+**Effective Date / 生效日期:** `2026-11-21`  
 **App:** Earprint (`com.popcornnn.earprint`)  
-**Developer / Contact / 开发者联系方式:** `[Developer or Entity Name]` · `[support@example.com]`
+**Developer / Contact / 开发者联系方式:** `Weizhi Wang` · `wmax43906@gmail.com`
 
-> **Plain-language summary:** Earprint works **100% on your iPhone**. It reads your Apple Health Headphone Audio Levels in read-only mode to render your 3D headphone cards, Device Dossier, 28-day Earprint Rings, and widgets. Earprint has no user accounts, no backend servers, no analytics or advertising SDKs, and never sends your listening or Health data off your device.
+> **Plain-language summary:** Earprint works **100% on your iPhone**. It reads your Apple Health Headphone Audio Levels in read-only mode to render your 3D headphone cards, Device Dossier, 28-day Earprint Rings, and Home/Lock Screen widgets. Earprint has no user accounts, no backend servers, no analytics or advertising SDKs, and never sends your listening or Health data off your device.
 >
-> **一句话说明：** Earprint **100% 在你的 iPhone 本地运行**。App 仅以只读方式读取 Apple“健康”中的耳机音量曝光数据，用于生成 3D 耳机卡片、设备档案、28 天声学聆听环和桌面小组件。我们不设账号系统、没有后台服务器、不含任何第三方统计或广告 SDK，也不会将你的任何健康或听歌数据上传或离开你的设备。
+> **一句话说明：** Earprint **100% 在你的 iPhone 本地运行**。App 仅以只读方式读取 Apple“健康”中的耳机音量曝光数据，用于生成 3D 耳机卡片、设备档案、28 天声学聆听环与桌面/锁屏小组件。我们不设账号系统、没有后台服务器、不含任何第三方统计或广告 SDK，也不会将你的任何健康或听歌数据上传或离开你的设备。
 
 ---
 
@@ -38,7 +38,7 @@ Earprint does **not**:
 All processing happens locally on your iPhone:
 
 1. **On-Device Aggregation Cache:** Earprint processes HealthKit samples off the main thread and stores compact derived totals and an Apple Health sync anchor locally inside the app's sandboxed Application Support directory (`listening-aggregate.json`), encrypted at rest using iOS file protection (`NSFileProtectionCompleteUntilFirstUserAuthentication`).
-2. **App Group Snapshot for Widgets & Live Activities:** To display your listening summary on iOS Home Screen widgets, Lock Screen widgets, and Live Activities (`EarprintWidgets`), the app writes a compact derived summary file (`widget-snapshot.json`) and widget display preference (such as the currently featured card index) into the app's private App Group container (`group.com.popcornnn.earprint`). This container stays strictly on your iPhone and is shared only between the Earprint app and its embedded `EarprintWidgets` extension.
+2. **App Group Snapshot for Widgets:** To display your listening summary on iOS Home Screen and Lock Screen widgets (`EarprintWidgets`), the app writes a compact derived summary file (`widget-snapshot.json`) and widget display preference (such as the currently featured card index) into the app's private App Group container (`group.com.popcornnn.earprint`). This container stays strictly on your iPhone and is shared only between the Earprint app and its embedded `EarprintWidgets` extension.
 3. **Optional User-Initiated Image Exports:** When you export a 1-page or 4-page Dossier poster or a Rings share card, the PNG image is rendered locally on your iPhone and is only shared if and where you choose using the standard iOS Share Sheet.
 
 ### 4. Zero Servers, Zero Analytics, Zero Third-Party Tracking
@@ -68,8 +68,8 @@ Earprint does not collect personal information from anyone, including children u
 
 If this Privacy Policy is updated for a future version (for example, if optional iCloud sync or new features are ever introduced), the updated policy will be published at this URL with a revised Effective Date before those changes take effect.
 
-Questions or privacy inquiries: **[support@example.com]**  
-Support page: **[https://your-domain-or-github-pages-url]**
+Questions or privacy inquiries: **wmax43906@gmail.com**  
+Support page: See `docs/site/support.html` (hosted via GitHub Pages alongside this policy)
 
 ---
 
@@ -101,7 +101,7 @@ Earprint **不会**：
 所有计算与存储全部在你的 iPhone 本地完成：
 
 1. **本地加密聚合缓存：** Earprint 在后台队列将健康采样聚合为统计结果，并将统计缓存与增量同步锚点保存在应用沙盒的 `Application Support` 目录（`listening-aggregate.json`）中，启用 iOS 系统文件级加密保护（`NSFileProtectionCompleteUntilFirstUserAuthentication`）。
-2. **桌面小组件与灵动岛本地共享容器：** 为了在主屏幕小组件、锁屏小组件与实时活动/灵动岛（`EarprintWidgets`）中显示统计结果，主应用仅将精简后的衍生汇总数据（`widget-snapshot.json`）及小组件展示偏好（如当前展示卡片索引）写入本地 iOS App Group 容器（`group.com.popcornnn.earprint`）。该容器仅在 Earprint 主应用及其内置小组件扩展之间本地访问，不会离开你的设备。
+2. **桌面与锁屏小组件本地共享容器：** 为了在主屏幕小组件与锁屏小组件（`EarprintWidgets`）中显示统计结果，主应用仅将精简后的衍生汇总数据（`widget-snapshot.json`）及小组件展示偏好（如当前展示卡片索引）写入本地 iOS App Group 容器（`group.com.popcornnn.earprint`）。该容器仅在 Earprint 主应用及其内置小组件扩展之间本地访问，不会离开你的设备。
 3. **主动导出的分享图片：** 当你使用“分享档案”或分享“声学聆听环”海报时，PNG 图片在设备本地渲染生成，仅在你主动点击系统分享面板（Share Sheet）选择发送目标时才由你自行分享。
 
 ### 四、无服务器、无埋点统计、无第三方追踪
@@ -131,5 +131,5 @@ Earprint 不向任何用户（包括未满 13 周岁或所在司法辖区适用�
 
 如未来版本因新增功能（例如用户主动开启的 iCloud 同步等）而需调整本隐私政策，我们将在更新生效前于本页面公布修订内容并更新生效日期。
 
-隐私相关咨询或问题反馈：**[support@example.com]**  
-技术支持页面：**[https://your-domain-or-github-pages-url]**
+隐私相关咨询或问题反馈：**wmax43906@gmail.com**  
+技术支持页面：见 `docs/site/support.html`（将随本政策一并托管于 GitHub Pages）

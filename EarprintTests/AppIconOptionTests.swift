@@ -2,12 +2,13 @@ import XCTest
 @testable import Earprint
 
 final class AppIconOptionTests: XCTestCase {
-    func testAlternateIconChoiceRoundTripsAllFortyCombinations() {
+    func testAlternateIconChoiceRoundTripsAllChoices() {
         XCTAssertEqual(AppIconChoice.from(alternateIconName: nil), .default)
+        XCTAssertEqual(AppIconChoice.default, .ringsEmblem)
         XCTAssertEqual(AppIconChoice.from(alternateIconName: "UnknownIcon"), .default)
 
         let all = AppIconChoice.allChoices
-        XCTAssertEqual(all.count, 40)
+        XCTAssertEqual(all.count, 41)
 
         for choice in all {
             XCTAssertEqual(AppIconChoice.from(alternateIconName: choice.alternateIconName), choice)
@@ -20,7 +21,8 @@ final class AppIconOptionTests: XCTestCase {
         XCTAssertEqual(IconBackground.allCases.count, 4)
 
         let nonNilNames = AppIconChoice.allChoices.compactMap(\.alternateIconName)
-        XCTAssertEqual(nonNilNames.count, 39)
-        XCTAssertEqual(Set(nonNilNames).count, 39)
+        XCTAssertEqual(nonNilNames.count, 40)
+        XCTAssertEqual(Set(nonNilNames).count, 40)
+        XCTAssertTrue(nonNilNames.contains("AppIconMidnightAuto"))
     }
 }
