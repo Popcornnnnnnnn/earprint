@@ -38,24 +38,38 @@ struct DossierShareSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var envColorScheme
     @Namespace private var switcherNamespace
     @State private var format: DossierShareFormat = .simple
+    @State private var posterScheme: ColorScheme? = nil
     @State private var simplePages: [DossierShareImage] = []
     @State private var longPages: [DossierShareImage] = []
     @State private var isRendering = false
     @State private var activePageIndex = 0
 
-    private static let pageSize = CGSize(width: 400, height: 560)
+    /// Exact 3:4 portrait aspect ratio for RedNote and Douyin posts.
+    private static let pageSize = CGSize(width: 420, height: 560)
+
+    private var activePosterScheme: ColorScheme {
+        posterScheme ?? envColorScheme
+    }
 
     private var activePages: [DossierShareImage] {
         format == .simple ? simplePages : longPages
     }
 
+    private var renderTrigger: String {
+        "\(format.rawValue)-\(activePosterScheme == .light ? "L" : "D")"
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 14) {
-                formatSwitcher
-                    .padding(.top, 6)
+                HStack(spacing: 10) {
+                    formatSwitcher
+                    posterThemeToggle
+                }
+                .padding(.top, 6)
 
                 previewStage
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -73,10 +87,29 @@ struct DossierShareSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
-        .task(id: format) {
+        .task(id: renderTrigger) {
             await renderCurrentFormatIfNeeded()
         }
+    }
+
+    private var posterThemeToggle: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            simplePages = []
+            longPages = []
+            withAnimation(.snappy(duration: 0.22)) {
+                posterScheme = activePosterScheme == .dark ? .light : .dark
+            }
+        } label: {
+            Image(systemName: activePosterScheme == .light ? "sun.max.fill" : "moon.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 46, height: 46)
+                .background(Theme.surfaceFill, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(activePosterScheme == .light ? "Light poster" : "Dark poster")
     }
 
     // MARK: - Format Switcher
@@ -98,14 +131,14 @@ struct DossierShareSheet: View {
                             .font(.subheadline.weight(.semibold))
                         Text(option.subtitle)
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(selected ? .black.opacity(0.65) : .white.opacity(0.48))
+                            .foregroundStyle(selected ? Theme.invertedText.opacity(0.68) : Theme.secondaryText)
                     }
                     .frame(maxWidth: .infinity, minHeight: 38)
-                    .foregroundStyle(selected ? .black : .white.opacity(0.85))
+                    .foregroundStyle(selected ? Theme.invertedText : Theme.primaryText.opacity(0.85))
                     .background {
                         if selected {
                             Capsule()
-                                .fill(.white)
+                                .fill(Theme.invertedFill)
                                 .matchedGeometryEffect(id: "shareFormatPill", in: switcherNamespace)
                         }
                     }
@@ -116,8 +149,8 @@ struct DossierShareSheet: View {
             }
         }
         .padding(4)
-        .background(.white.opacity(0.08), in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
+        .background(Theme.surfaceFill, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
     }
 
     // MARK: - Preview Stage
@@ -126,10 +159,10 @@ struct DossierShareSheet: View {
         if isRendering && activePages.isEmpty {
             VStack(spacing: 12) {
                 ProgressView()
-                    .tint(.white)
+                    .tint(Theme.primaryText)
                 Text("Rendering preview…")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Theme.secondaryText)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if activePages.count == 1, let first = activePages.first {
@@ -140,7 +173,7 @@ struct DossierShareSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
                     )
                     .shadow(color: card.rarity.glow.opacity(0.28), radius: 22, y: 10)
                     .frame(maxWidth: 420)
@@ -157,7 +190,7 @@ struct DossierShareSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                                    .strokeBorder(Theme.hairline, lineWidth: 1)
                             )
                             .shadow(color: card.rarity.glow.opacity(0.24), radius: 18, y: 8)
                             .padding(.horizontal, 6)
@@ -172,7 +205,7 @@ struct DossierShareSheet: View {
                     HStack(spacing: 6) {
                         ForEach(activePages) { page in
                             Capsule()
-                                .fill(page.id == activePageIndex ? card.rarity.accent : .white.opacity(0.25))
+                                .fill(page.id == activePageIndex ? card.rarity.accent : Theme.primaryText.opacity(0.25))
                                 .frame(width: page.id == activePageIndex ? 18 : 6, height: 6)
                                 .animation(.snappy(duration: 0.22), value: activePageIndex)
                         }
@@ -181,7 +214,7 @@ struct DossierShareSheet: View {
                     if activePages.indices.contains(activePageIndex) {
                         Text("\(activePageIndex + 1) / \(activePages.count) · \(Text(activePages[activePageIndex].pageLabel))")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.68))
+                            .foregroundStyle(Theme.secondaryText)
                             .monospacedDigit()
                     }
                 }
@@ -204,15 +237,15 @@ struct DossierShareSheet: View {
                 Label(label, systemImage: "square.and.arrow.up")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(.black)
-                    .background(.white, in: Capsule())
+                    .foregroundStyle(Theme.invertedText)
+                    .background(Theme.invertedFill, in: Capsule())
             }
         } else {
             Label("Share image", systemImage: "square.and.arrow.up")
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .foregroundStyle(.black.opacity(0.4))
-                .background(.white.opacity(0.4), in: Capsule())
+                .foregroundStyle(Theme.tertiaryText)
+                .background(Theme.surfaceFill, in: Capsule())
         }
     }
 
@@ -270,11 +303,12 @@ struct DossierShareSheet: View {
         fileStem: String,
         content: Content
     ) -> DossierShareImage? {
+        let scheme = activePosterScheme
         let renderer = ImageRenderer(content:
             content
                 .frame(width: Self.pageSize.width, height: Self.pageSize.height)
                 .environment(\.locale, locale)
-                .environment(\.colorScheme, .dark)
+                .environment(\.colorScheme, scheme)
                 .dynamicTypeSize(.medium)
         )
         renderer.scale = 3
@@ -289,7 +323,11 @@ struct DossierShareSheet: View {
         pageTag: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let isLight = activePosterScheme == .light
+        let fg: Color = isLight ? Color(red: 0.075, green: 0.080, blue: 0.110) : .white
+        let canvasBg = isLight ? Color(red: 0.960, green: 0.964, blue: 0.976) : Color(red: 0.035, green: 0.035, blue: 0.055)
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Text(pageTag)
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
@@ -318,33 +356,33 @@ struct DossierShareSheet: View {
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                     Text("· \(card.model)")
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(DossierPalette.dim)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 if isSampleData {
                     Text("Sample data")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(DossierPalette.dim)
                 } else {
                     Text(dossier.hardware.productID)
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(DossierPalette.faint)
                 }
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(fg)
         .padding(18)
         .background {
-            DossierPalette.ink
+            canvasBg
             RadialGradient(
-                colors: [card.rarity.glow.opacity(0.24), card.rarity.accent.opacity(0.06), .clear],
+                colors: [card.rarity.glow.opacity(isLight ? 0.16 : 0.24), card.rarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
                 center: .topTrailing,
                 startRadius: 10,
                 endRadius: 340
             )
             RadialGradient(
-                colors: [card.rarity.accent.opacity(0.12), .clear],
+                colors: [card.rarity.accent.opacity(isLight ? 0.08 : 0.12), .clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 280
@@ -431,7 +469,7 @@ struct DossierShareSheet: View {
                             posterMetricTile("Longest", card.longestMinutes.minutesText)
                         }
                         HStack(spacing: 8) {
-                            posterMetricTile("Avg level", "\(Int(card.averageDecibels.rounded())) dB", valueColor: Theme.levelColor(db: card.averageDecibels))
+                            posterMetricTile("Avg level", "\(Int(card.averageDecibels.rounded())) dB", valueColor: Theme.levelColor(db: card.averageDecibels, colorScheme: activePosterScheme))
                             posterMetricTile("First wear", dossier.firstWear.map(DossierFormat.dot) ?? card.firstMet)
                         }
                     }
@@ -445,7 +483,7 @@ struct DossierShareSheet: View {
                             let remaining = max(1, Int(ceil(next.minimumHours - hours)))
                             Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.white.opacity(0.88))
+                                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                         } else {
                             Text("Max tier reached ✦")
                                 .font(.caption.weight(.bold))
@@ -464,7 +502,7 @@ struct DossierShareSheet: View {
                         Label(dossier.grade.label, systemImage: "checkmark.seal.fill")
                     }
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(DossierPalette.dim)
                 }
                 .padding(14)
                 .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -473,7 +511,7 @@ struct DossierShareSheet: View {
         }
     }
 
-    private func posterMetricTile(_ label: LocalizedStringKey, _ value: String, valueColor: Color = .white) -> some View {
+    private func posterMetricTile(_ label: LocalizedStringKey, _ value: String, valueColor: Color = DossierPalette.primaryText) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
@@ -518,7 +556,7 @@ struct DossierShareSheet: View {
                         .foregroundStyle(card.rarity.accent)
                     Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .foregroundStyle(DossierPalette.primaryText.opacity(0.78))
                     if let fw = dossier.hardware.firmwareVersion {
                         Text("· FW \(fw)")
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -532,7 +570,7 @@ struct DossierShareSheet: View {
         }
     }
 
-    private func quickStatTile(_ label: LocalizedStringKey, _ value: String, accent: Color = .white) -> some View {
+    private func quickStatTile(_ label: LocalizedStringKey, _ value: String, accent: Color = DossierPalette.primaryText) -> some View {
         VStack(spacing: 3) {
             Text(label)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -594,7 +632,7 @@ struct DossierShareSheet: View {
                         }
                         Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(nightPct > 20 ? Theme.moderate.color : Color(red: 0.65, green: 0.72, blue: 1))
+                            .foregroundStyle(nightPct > 20 ? Theme.moderateColor : Color.adaptive(light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1), dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)))
                         Text("\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))")
                             .font(.caption2)
                             .foregroundStyle(DossierPalette.dim)
@@ -623,13 +661,13 @@ struct DossierShareSheet: View {
                 .frame(height: 82)
 
                 HStack(spacing: 10) {
-                    posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels))
-                    posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loud.color : Theme.quiet.color)
+                    posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels, colorScheme: activePosterScheme))
+                    posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loudColor : Theme.quietColor)
                 }
                 .frame(height: 82)
 
                 HStack(spacing: 10) {
-                    posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderate.color : .white)
+                    posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
                     posterMetricTile("Active days", "\(stats.activeDays) / \(max(1, stats.spanDays))")
                 }
                 .frame(height: 82)

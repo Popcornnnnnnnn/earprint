@@ -271,6 +271,16 @@
         }
       }
     },
+    "%lldh to go": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还差 %lld 小时"
+          }
+        }
+      }
+    },
     "%lldh to next tier": {
       "localizations": {
         "zh-Hans": {
@@ -411,6 +421,16 @@
         }
       }
     },
+    "6 metallic card tiers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 阶金属质感卡牌"
+          }
+        }
+      }
+    },
     "7-day exposure across all pairs · WHO reference: 40 hours at 80 dB(A)": {
       "localizations": {
         "zh-Hans": {
@@ -531,6 +551,26 @@
         }
       }
     },
+    "All Pairs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部耳机"
+          }
+        }
+      }
+    },
+    "All aggregation happens locally. There is no account, no cloud upload, no ads, and no analytics tracking.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有统计均在本地完成，无账号、无云端上传、无广告，也无行为追踪。"
+          }
+        }
+      }
+    },
     "All-Day Listener": {
       "localizations": {
         "zh-Hans": {
@@ -587,6 +627,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "App 图标"
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外观"
+          }
+        }
+      }
+    },
+    "Apple Health Privacy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康隐私"
           }
         }
       }
@@ -1051,6 +1111,16 @@
         }
       }
     },
+    "Connect Apple Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康"
+          }
+        }
+      }
+    },
     "Connect Health": {
       "localizations": {
         "zh-Hans": {
@@ -1197,6 +1267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "深色"
+          }
+        }
+      }
+    },
+    "Dark poster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色海报"
           }
         }
       }
@@ -1457,6 +1537,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 防伪印记"
+          }
+        }
+      }
+    },
+    "Earprint reads your Headphone Audio Exposure samples solely to build your cards, tiers, and listening rings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 仅读取“耳机音频音量”数据，用于生成耳机卡片、等级与听力环。"
+          }
+        }
+      }
+    },
+    "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每副耳机都会随累计时长从“青铜岩板 (0h)”晋级至“液态全息 (2,000h)”。"
           }
         }
       }
@@ -1911,6 +2011,16 @@
         }
       }
     },
+    "Light poster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浅色海报"
+          }
+        }
+      }
+    },
     "Listen with any supported pair to add it to your Collection.": {
       "localizations": {
         "zh-Hans": {
@@ -1937,6 +2047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用支持的耳机聆听，即可解锁卡片"
+          }
+        }
+      }
+    },
+    "Listen with supported headphones to unlock tiers.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戴上受支持的耳机聆听即可解锁卡片等级。"
           }
         }
       }
@@ -2351,6 +2471,16 @@
         }
       }
     },
+    "Not Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂不"
+          }
+        }
+      }
+    },
     "Not reported": {
       "localizations": {
         "zh-Hans": {
@@ -2377,6 +2507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "一圈代表一天，最近一天在最外圈，顶部为午夜。"
+          }
+        }
+      }
+    },
+    "Only exported poster images leave the app when you tap Share. Manage Health permission anytime in iOS Settings › Health.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有你点击“分享”时生成的海报图片才会离开应用。你可随时在 iOS 设置 › 健康 中管理权限。"
           }
         }
       }
@@ -2481,6 +2621,26 @@
         }
       }
     },
+    "Private by design": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地隐私保护"
+          }
+        }
+      }
+    },
+    "Processed on your iPhone with no account, cloud servers, or tracking.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全程在本机处理，无需注册账号，绝不上传服务器或追踪数据。"
+          }
+        }
+      }
+    },
     "Purple": {
       "localizations": {
         "zh-Hans": {
@@ -2547,6 +2707,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "读取健康数据"
+          }
+        }
+      }
+    },
+    "Read-only Apple Health access": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只读访问 Apple 健康"
+          }
+        }
+      }
+    },
+    "Read-only Health data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只读健康数据"
           }
         }
       }
@@ -3021,6 +3201,16 @@
         }
       }
     },
+    "Stays on your iPhone": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据仅保存在本地 iPhone"
+          }
+        }
+      }
+    },
     "Stealth carbon-aurora prestige finish": {
       "localizations": {
         "zh-Hans": {
@@ -3117,6 +3307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统"
           }
         }
       }
@@ -3271,6 +3471,16 @@
         }
       }
     },
+    "Turn your listening history into collector cards and 28-day Earprint rings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将每天的聆听记录变成专属耳机收藏卡与 28 天声纹环。"
+          }
+        }
+      }
+    },
     "Twilight tier": {
       "localizations": {
         "zh-Hans": {
@@ -3311,12 +3521,32 @@
         }
       }
     },
+    "Uses Apple Health headphone audio exposure minutes and dB levels.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取 Apple 健康中的耳机聆听时长与分贝记录。"
+          }
+        }
+      }
+    },
     "Velvet ultraviolet glow at 300+ hours": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "满 300 小时的丝绒紫晶微光"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本"
           }
         }
       }
@@ -3507,6 +3737,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "昨天"
+          }
+        }
+      }
+    },
+    "You control sharing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享完全由你决定"
+          }
+        }
+      }
+    },
+    "Your Headphone Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的耳机声音档案"
           }
         }
       }

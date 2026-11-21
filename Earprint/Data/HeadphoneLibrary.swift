@@ -30,6 +30,9 @@ final class HeadphoneLibrary: ObservableObject {
     }
     @Published private(set) var lastSyncDate: Date?
     @Published private(set) var lastNewSamples: Int = 0
+    @Published var needsHealthOnboarding = false
+
+    static let onboardingSeenKey = "onboarding.healthIntroSeen"
 
     /// Precomputed display models so SwiftUI reads stay O(1) with zero per-frame allocations or DateFormatter work.
     private(set) var cards: [HeadphoneCard] = []
@@ -272,15 +275,34 @@ final class HeadphoneLibrary: ObservableObject {
         }
         #endif
 
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-onboarding") {
+            needsHealthOnboarding = true
+            return
+        }
+        #endif
+
         let authStatus = await ingestor.authorizationRequestStatus()
         if authStatus == .unnecessary || snapshot != nil {
+            UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
             await sync()
             await ensureObserving()
         } else {
             #if !targetEnvironment(simulator)
-            // On real devices, request Apple Health automatically on first launch so real headphones appear immediately.
-            await connectAndSync()
+            if !UserDefaults.standard.bool(forKey: Self.onboardingSeenKey) {
+                needsHealthOnboarding = true
+            } else {
+                await connectAndSync()
+            }
             #endif
+        }
+    }
+
+    func completeOnboarding(connect: Bool) async {
+        UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
+        needsHealthOnboarding = false
+        if connect {
+            await connectAndSync()
         }
     }
 

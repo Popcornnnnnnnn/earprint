@@ -73,28 +73,6 @@ private struct FoilTexturePattern: View, Equatable {
                 }
                 context.stroke(path, with: .color(.white.opacity(0.028)), lineWidth: 0.6)
 
-            case .frosted:
-                // Soft staggered frosted mineral dust.
-                var mineral = Path()
-                var row = 0
-                stride(from: CGFloat(2), to: size.height, by: 7).forEach { y in
-                    let offset: CGFloat = CGFloat((row * 3) % 7)
-                    stride(from: offset, to: size.width, by: 7).forEach { x in
-                        mineral.addEllipse(in: CGRect(x: x, y: y, width: 1.4, height: 1.4))
-                    }
-                    row += 1
-                }
-                context.fill(mineral, with: .color(.white.opacity(0.036)))
-
-            case .faceted:
-                // Crisp architectural micro-fluting at a steep structural angle.
-                var flutes = Path()
-                stride(from: -size.height * 0.6, to: size.width + size.height * 0.6, by: 6).forEach { x in
-                    flutes.move(to: CGPoint(x: x, y: size.height))
-                    flutes.addLine(to: CGPoint(x: x + size.height * 0.45, y: 0))
-                }
-                context.stroke(flutes, with: .color(.white.opacity(0.045)), lineWidth: 0.8)
-
             case .carbon:
                 // Authentic 2×2 carbon-fiber twill weave.
                 var weave = Path()
@@ -172,43 +150,12 @@ struct FoilSurface: View {
                 )
             }
         case .satin:
-            if rarity == .gold {
-                // Champagne Titanium: soft top-leading luminous sweep into warm midtone
-                LinearGradient(
-                    colors: [hi, mid, sh],
-                    startPoint: UnitPoint(x: 0.0, y: 0.08 + ty * 0.06),
-                    endPoint: UnitPoint(x: 0.95, y: 0.95 + ty * 0.06)
-                )
-            } else {
-                // Deep Purple: rich velvet plum base with upper-right lift
-                LinearGradient(
-                    colors: [deep, sh, mid, deep],
-                    startPoint: UnitPoint(x: 0.05, y: 0.95),
-                    endPoint: UnitPoint(x: 0.95, y: 0.05)
-                )
-            }
-        case .frosted:
-            // Sage Mist: diffused mineral backlight from upper-right
+            // Deep Purple: rich velvet plum base with upper-right lift
             LinearGradient(
-                colors: [hi, mid, sh, deep],
-                startPoint: UnitPoint(x: 0.90 + tx * 0.06, y: 0.05),
-                endPoint: UnitPoint(x: 0.10 + tx * 0.06, y: 0.95)
+                colors: [deep, sh, mid, deep],
+                startPoint: UnitPoint(x: 0.05, y: 0.95),
+                endPoint: UnitPoint(x: 0.95, y: 0.05)
             )
-        case .faceted:
-            if rarity == .amethyst {
-                LinearGradient(
-                    colors: [mid, sh, deep],
-                    startPoint: UnitPoint(x: 0.0, y: 0.0),
-                    endPoint: UnitPoint(x: 1.0, y: 1.0)
-                )
-            } else {
-                // Twilight Slate: smoked dusk top-to-bottom depth
-                LinearGradient(
-                    colors: [sh, deep, Color(red: 0.055, green: 0.047, blue: 0.102)],
-                    startPoint: UnitPoint(x: 0.25, y: 0.0),
-                    endPoint: UnitPoint(x: 0.78, y: 1.0)
-                )
-            }
         case .carbon:
             // Midnight Carbon stays authentically dark forged composite across its body.
             LinearGradient(
@@ -280,87 +227,19 @@ struct FoilSurface: View {
             }
 
         case .satin:
-            if rarity == .gold {
-                // Mist Champagne: opposing soft warm ivory silk blooms
-                RadialGradient(
-                    colors: [Color.white.opacity(0.44), hi.opacity(0.22), .clear],
-                    center: UnitPoint(x: 0.18 + tx * 0.26, y: 0.15 + ty * 0.22),
-                    startRadius: 10,
-                    endRadius: 260
-                )
-                RadialGradient(
-                    colors: [hi.opacity(0.28), .clear],
-                    center: UnitPoint(x: 0.84 - tx * 0.22, y: 0.86 - ty * 0.18),
-                    startRadius: 4,
-                    endRadius: 210
-                )
-            } else {
-                // Deep Purple: dramatic curved off-axis silk rim + warm violet bounce
-                RadialGradient(
-                    colors: [hi.opacity(0.48), mid.opacity(0.20), .clear],
-                    center: UnitPoint(x: 0.82 + tx * 0.28, y: 0.18 + ty * 0.22),
-                    startRadius: 8,
-                    endRadius: 270
-                )
-                LinearGradient(
-                    colors: [.clear, hi.opacity(0.26), .white.opacity(0.14), .clear],
-                    startPoint: UnitPoint(x: 0.05 + tx * 0.35, y: 0.0),
-                    endPoint: UnitPoint(x: 0.85 + tx * 0.35, y: 0.95)
-                )
-                .blendMode(.softLight)
-            }
-
-        case .frosted:
-            // Calm ceramic glass cloud from upper-right + gentle cool bottom bounce
+            // Deep Purple: dramatic curved off-axis silk rim + warm violet bounce
             RadialGradient(
-                colors: [.white.opacity(0.32), hi.opacity(0.24), .clear],
-                center: UnitPoint(x: 0.78 + tx * 0.24, y: 0.18 + ty * 0.20),
-                startRadius: 12,
-                endRadius: 290
-            )
-            RadialGradient(
-                colors: [hi.opacity(0.22), .clear],
-                center: UnitPoint(x: 0.22 - tx * 0.20, y: 0.85 - ty * 0.15),
+                colors: [hi.opacity(0.48), mid.opacity(0.20), .clear],
+                center: UnitPoint(x: 0.82 + tx * 0.28, y: 0.18 + ty * 0.22),
                 startRadius: 8,
-                endRadius: 220
+                endRadius: 270
             )
             LinearGradient(
-                colors: [.white.opacity(0.18), .clear],
-                startPoint: .top,
-                endPoint: UnitPoint(x: 0.5, y: 0.45)
+                colors: [.clear, hi.opacity(0.26), .white.opacity(0.14), .clear],
+                startPoint: UnitPoint(x: 0.05 + tx * 0.35, y: 0.0),
+                endPoint: UnitPoint(x: 0.85 + tx * 0.35, y: 0.95)
             )
             .blendMode(.softLight)
-
-        case .faceted:
-            if rarity == .amethyst {
-                // Slate Indigo: crisp architectural two-plane bevel light
-                LinearGradient(
-                    colors: [hi.opacity(0.34), .white.opacity(0.14), .clear, .clear],
-                    startPoint: UnitPoint(x: 0.0 + tx * 0.30, y: 0.0 + ty * 0.20),
-                    endPoint: UnitPoint(x: 0.75 + tx * 0.30, y: 0.78 + ty * 0.20)
-                )
-                .blendMode(.screen)
-                LinearGradient(
-                    colors: [.clear, .white.opacity(0.16), hi.opacity(0.24), .clear],
-                    startPoint: UnitPoint(x: 0.35 - tx * 0.40, y: 0.0),
-                    endPoint: UnitPoint(x: 1.05 - tx * 0.40, y: 0.85)
-                )
-                .blendMode(.overlay)
-            } else {
-                // Twilight Slate: sculpted smoked dusk slash + upper-right violet edge catchlight
-                LinearGradient(
-                    colors: [.clear, hi.opacity(0.34), .white.opacity(0.16), .clear],
-                    startPoint: UnitPoint(x: 0.10 + tx * 0.45, y: -0.05),
-                    endPoint: UnitPoint(x: 0.95 + tx * 0.45, y: 0.70)
-                )
-                .blendMode(.screen)
-                RadialGradient(
-                    colors: [hi.opacity(0.30), .clear],
-                    center: UnitPoint(x: 0.18 - tx * 0.25, y: 0.86),
-                    startRadius: 8,
-                    endRadius: 210
-                )
-            }
 
         case .carbon:
             // Midnight Carbon: directional DLC edge catchlight from upper-right + tight cyan-steel shimmer
@@ -554,10 +433,10 @@ struct CardHorizontalFront: View {
                 .strokeBorder(
                     LinearGradient(
                         colors: [
-                            .white.opacity(0.68),
-                            .white.opacity(0.18),
+                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.68)),
+                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.05), dark: UIColor.white.withAlphaComponent(0.18)),
                             card.rarity.glow.opacity(0.45),
-                            .white.opacity(0.50)
+                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.50))
                         ],
                         startPoint: UnitPoint(x: 0.2 + tilt.width * 0.5, y: 0.0 + tilt.height * 0.4),
                         endPoint: UnitPoint(x: 0.8 + tilt.width * 0.5, y: 1.0 + tilt.height * 0.4)
@@ -652,7 +531,7 @@ struct CardFront: View {
         .background(FoilSurface(rarity: surfaceRarity, tilt: tilt))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-            .strokeBorder(.white.opacity(0.45), lineWidth: 1.5))
+            .strokeBorder(Color.adaptive(light: UIColor.black.withAlphaComponent(0.13), dark: UIColor.white.withAlphaComponent(0.45)), lineWidth: 1.5))
     }
 }
 
@@ -662,7 +541,10 @@ struct CardBack: View {
     var openTiers: (() -> Void)? = nil
     var flip: (() -> Void)? = nil
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let isLight = colorScheme == .light
         VStack(alignment: .leading, spacing: 8) {
             if let flip {
                 stats
@@ -682,20 +564,20 @@ struct CardBack: View {
                             .font(.system(size: 12, weight: .semibold))
                             .padding(.horizontal, 12)
                             .frame(minHeight: 44)
-                            .background(.white.opacity(0.1), in: Capsule())
+                            .background(Theme.surfaceFillStrong, in: Capsule())
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.primaryText)
         .padding(20)
         .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
         .background(
             ZStack {
-                Color(red: 0.07, green: 0.07, blue: 0.10)
-                RadialGradient(colors: [card.rarity.glow.opacity(0.35), .clear], center: .top, startRadius: 0, endRadius: 320)
+                Theme.card
+                RadialGradient(colors: [card.rarity.glow.opacity(isLight ? 0.16 : 0.35), .clear], center: .top, startRadius: 0, endRadius: 320)
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
@@ -715,8 +597,8 @@ struct CardBack: View {
                 EarprintGlyph(grid: card.grid, showHourLabels: false)
                     .equatable()
                 VStack(spacing: 0) {
-                    Text("4 weeks").font(.system(size: 10, weight: .semibold)).opacity(0.6)
-                    Text("listening").font(.system(size: 10)).opacity(0.5)
+                    Text("4 weeks").font(.system(size: 10, weight: .semibold)).opacity(0.65)
+                    Text("listening").font(.system(size: 10)).opacity(0.55)
                 }
             }
             .frame(height: 150)
@@ -741,7 +623,7 @@ struct CardBack: View {
 
     private func stat(_ title: LocalizedStringKey, _ value: Double, unit: Unit) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 11)).opacity(0.55)
+            Text(title).font(.system(size: 11)).opacity(0.58)
             Group {
                 switch unit {
                 case .minutes: Text(value.minutesText)
@@ -754,7 +636,7 @@ struct CardBack: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Theme.surfaceFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder private var tierProgress: some View {
@@ -776,7 +658,7 @@ struct CardBack: View {
             let remaining = max(1, Int(ceil(next - hours)))
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 4) {
-                    Text("\(remaining)h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.72)
+                    Text("\(remaining)h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.75)
                     if openTiers != nil {
                         Image(systemName: "info.circle")
                             .font(.system(size: 10))
@@ -784,15 +666,15 @@ struct CardBack: View {
                     }
                 }
                 ProgressView(value: card.rarity.progressToNextTier(minutes: card.lifetimeMinutes))
-                    .tint(card.rarity.glow)
+                    .tint(card.rarity.accent)
             }
         } else {
             HStack(spacing: 5) {
-                Text("Max tier reached ✦").font(.system(size: 12, weight: .semibold)).foregroundStyle(card.rarity.glow)
+                Text("Max tier reached ✦").font(.system(size: 12, weight: .semibold)).foregroundStyle(card.rarity.accent)
                 if openTiers != nil {
                     Image(systemName: "info.circle")
                         .font(.system(size: 10))
-                        .foregroundStyle(card.rarity.glow.opacity(0.7))
+                        .foregroundStyle(card.rarity.accent.opacity(0.7))
                 }
             }
         }

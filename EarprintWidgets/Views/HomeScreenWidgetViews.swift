@@ -132,7 +132,7 @@ struct EarprintRingView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
-                    EarprintGlyph(grid: snapshot.heatmap.grid, showHourLabels: false)
+                    EarprintGlyph(grid: snapshot.heatmap.grid, showHourLabels: false, forcedColorScheme: .dark)
                     VStack(spacing: 0) {
                         Text(WidgetFormat.hours(snapshot.week.minutes))
                             .font(.system(size: 20, weight: .heavy, design: .rounded))

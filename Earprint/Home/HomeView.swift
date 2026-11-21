@@ -16,6 +16,7 @@ struct HomeView: View {
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .headline) private var pillTitleSize: CGFloat = 15.5
 
     @State private var selectedCardID: String? = nil
@@ -92,7 +93,7 @@ struct HomeView: View {
             .pauseMotionWhileScrolling("rings")
             .readLayoutSpace($space)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.primaryText)
         .sheet(isPresented: $showShare) {
             ShareSheet(summary: currentSummary, primaryCard: currentCard, colorOption: currentColor)
         }
@@ -101,17 +102,18 @@ struct HomeView: View {
     // MARK: - Atmospheric Backdrop
 
     private func backdrop(rarity: Rarity) -> some View {
-        ZStack {
+        let isLight = colorScheme == .light
+        return ZStack {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
-                colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.07), .clear],
+                colors: [rarity.glow.opacity(isLight ? 0.14 : 0.24), rarity.accent.opacity(isLight ? 0.04 : 0.07), .clear],
                 center: .topTrailing,
                 startRadius: 16,
                 endRadius: 430
             )
             .ignoresSafeArea()
             RadialGradient(
-                colors: [rarity.accent.opacity(0.10), .clear],
+                colors: [rarity.accent.opacity(isLight ? 0.06 : 0.10), .clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 340
@@ -142,6 +144,7 @@ struct HomeView: View {
         } else {
             nil
         }
+        let isLight = colorScheme == .light
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
@@ -149,7 +152,7 @@ struct HomeView: View {
                     .font(.system(size: 32, weight: .heavy))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.white, .white.opacity(0.84)],
+                            colors: [Theme.primaryText, Theme.primaryText.opacity(0.84)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -161,20 +164,26 @@ struct HomeView: View {
                 Button { showShare = true } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(Theme.primaryText.opacity(0.92))
                         .frame(width: 44, height: 44)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.11), Color.white.opacity(0.03)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            in: Circle()
-                        )
+                        .background {
+                            if isLight {
+                                Circle().fill(Theme.card)
+                                    .shadow(color: Theme.cardShadow, radius: 6, y: 2)
+                            } else {
+                                Circle().fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.11), Color.white.opacity(0.03)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            }
+                        }
                         .overlay(
                             Circle().strokeBorder(
                                 LinearGradient(
-                                    colors: [.white.opacity(0.28), rarity.accent.opacity(0.24), .white.opacity(0.06)],
+                                    colors: [isLight ? Theme.cardStroke : .white.opacity(0.28), rarity.accent.opacity(0.24), Theme.hairline],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -286,8 +295,9 @@ struct HomeView: View {
         trailingSymbol: String?
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        let isPrestigeTier = rarity == .holo || rarity == .obsidian || rarity == .diamond
+        let isPrestigeTier = rarity == .holo || rarity == .obsidian
         let clampedTitleSize = min(max(pillTitleSize, 14.5), 19.5)
+        let isLight = colorScheme == .light
 
         return HStack(spacing: 11) {
             // Collector emblem medallion with concentric metallic/foil rim
@@ -295,7 +305,11 @@ struct HomeView: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [rarity.glow.opacity(0.36), rarity.accent.opacity(0.10), Color.black.opacity(0.42)],
+                            colors: [
+                                rarity.glow.opacity(isLight ? 0.24 : 0.36),
+                                rarity.accent.opacity(isLight ? 0.08 : 0.10),
+                                isLight ? Color.black.opacity(0.06) : Color.black.opacity(0.42)
+                            ],
                             center: .center,
                             startRadius: 2,
                             endRadius: 24
@@ -303,7 +317,7 @@ struct HomeView: View {
                     )
                 Circle()
                     .inset(by: 3)
-                    .strokeBorder(.white.opacity(0.10), lineWidth: 0.7)
+                    .strokeBorder(Theme.hairline, lineWidth: 0.7)
                 if isPrestigeTier {
                     Circle()
                         .strokeBorder(rarity.foil, lineWidth: 1.35)
@@ -311,7 +325,7 @@ struct HomeView: View {
                     Circle()
                         .strokeBorder(
                             LinearGradient(
-                                colors: [.white.opacity(0.36), rarity.accent.opacity(0.58), .white.opacity(0.08)],
+                                colors: [isLight ? Theme.cardStroke : .white.opacity(0.36), rarity.accent.opacity(0.58), Theme.hairline],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
@@ -326,7 +340,7 @@ struct HomeView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.white, rarity.accent],
+                                colors: [Theme.primaryText, rarity.accent],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -406,7 +420,7 @@ struct HomeView: View {
                 if let trailingSymbol {
                     Image(systemName: trailingSymbol)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(Theme.tertiaryText)
                         .accessibilityHidden(true)
                 }
             }
@@ -414,17 +428,24 @@ struct HomeView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background {
-            shape.fill(
-                LinearGradient(
-                    colors: [Color(red: 0.105, green: 0.105, blue: 0.15), Color(red: 0.065, green: 0.065, blue: 0.095)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .shadow(color: rarity.glow.opacity(0.14), radius: 14, y: 6)
+            Group {
+                if isLight {
+                    shape.fill(Theme.card)
+                        .shadow(color: Theme.cardShadow, radius: 12, y: 4)
+                } else {
+                    shape.fill(
+                        LinearGradient(
+                            colors: [Color(red: 0.105, green: 0.105, blue: 0.15), Color(red: 0.065, green: 0.065, blue: 0.095)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: rarity.glow.opacity(0.14), radius: 14, y: 6)
+                }
+            }
             .overlay {
                 RadialGradient(
-                    colors: [rarity.glow.opacity(0.20), .clear],
+                    colors: [rarity.glow.opacity(isLight ? 0.11 : 0.20), .clear],
                     center: .leading,
                     startRadius: 4,
                     endRadius: 160
@@ -433,7 +454,7 @@ struct HomeView: View {
             }
             .overlay(alignment: .top) {
                 LinearGradient(
-                    colors: [.clear, .white.opacity(0.22), rarity.accent.opacity(0.24), .clear],
+                    colors: [.clear, isLight ? Theme.cardStroke : .white.opacity(0.22), rarity.accent.opacity(0.24), .clear],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
@@ -444,7 +465,7 @@ struct HomeView: View {
         .overlay {
             shape.strokeBorder(
                 LinearGradient(
-                    colors: [.white.opacity(0.28), rarity.accent.opacity(0.25), .white.opacity(0.06)],
+                    colors: [isLight ? Theme.cardStroke : .white.opacity(0.28), rarity.accent.opacity(0.25), Theme.hairline],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
@@ -466,24 +487,34 @@ struct HomeView: View {
 
 private struct RingsGlassPanel: ViewModifier {
     var cornerRadius: CGFloat = 24
-    var tint: Color = .white
+    var tint: Color = Theme.primaryText
     var tintCenter: UnitPoint = .topLeading
+
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let isLight = colorScheme == .light
         content
             .background {
-                shape.fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.098, green: 0.098, blue: 0.142), Color(red: 0.060, green: 0.060, blue: 0.090)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .shadow(color: .black.opacity(0.32), radius: 14, y: 8)
+                Group {
+                    if isLight {
+                        shape.fill(Theme.card)
+                            .shadow(color: Theme.cardShadow, radius: 12, y: 5)
+                    } else {
+                        shape.fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.098, green: 0.098, blue: 0.142), Color(red: 0.060, green: 0.060, blue: 0.090)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: .black.opacity(0.32), radius: 14, y: 8)
+                    }
+                }
                 .overlay {
                     RadialGradient(
-                        colors: [tint.opacity(0.13), .clear],
+                        colors: [tint.opacity(isLight ? 0.08 : 0.13), .clear],
                         center: tintCenter,
                         startRadius: 8,
                         endRadius: 230
@@ -491,19 +522,21 @@ private struct RingsGlassPanel: ViewModifier {
                     .clipShape(shape)
                 }
                 .overlay(alignment: .top) {
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.18), .clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(height: 1)
-                    .padding(.horizontal, 24)
+                    if !isLight {
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.18), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(height: 1)
+                        .padding(.horizontal, 24)
+                    }
                 }
             }
             .overlay {
                 shape.strokeBorder(
                     LinearGradient(
-                        colors: [.white.opacity(0.24), tint.opacity(0.18), .white.opacity(0.05)],
+                        colors: [isLight ? Theme.cardStroke : .white.opacity(0.24), tint.opacity(0.18), Theme.hairline],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -514,7 +547,7 @@ private struct RingsGlassPanel: ViewModifier {
 }
 
 private extension View {
-    func ringsPanel(cornerRadius: CGFloat = 24, tint: Color = .white, tintCenter: UnitPoint = .topLeading) -> some View {
+    func ringsPanel(cornerRadius: CGFloat = 24, tint: Color = Theme.primaryText, tintCenter: UnitPoint = .topLeading) -> some View {
         modifier(RingsGlassPanel(cornerRadius: cornerRadius, tint: tint, tintCenter: tintCenter))
     }
 }
@@ -526,13 +559,16 @@ private struct RingsHeroCard: View {
     let rarity: Rarity
     let tiltActive: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         let has28DayData = summary.has28DayData
         let weekMinutes = summary.weekMinutes
         let weekDB = summary.weekDecibels
         let persona = summary.persona
-        let dbColor = weekMinutes > 0 ? Theme.levelColor(db: weekDB) : DossierPalette.dim
+        let isLight = colorScheme == .light
+        let dbColor = weekMinutes > 0 ? Theme.levelColor(db: weekDB, colorScheme: colorScheme) : DossierPalette.dim
 
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 8) {
@@ -540,8 +576,8 @@ private struct RingsHeroCard: View {
                     Circle()
                         .fill(rarity.accent)
                         .frame(width: 6, height: 6)
-                        .shadow(color: rarity.glow.opacity(0.85), radius: 4)
-                    Eyebrow("28-DAY EARPRINT", color: .white.opacity(0.70))
+                        .shadow(color: rarity.glow.opacity(isLight ? 0.35 : 0.85), radius: 4)
+                    Eyebrow("28-DAY EARPRINT", color: Theme.primaryText.opacity(0.70))
                 }
                 Spacer(minLength: 8)
                 if has28DayData {
@@ -550,23 +586,16 @@ private struct RingsHeroCard: View {
                             .font(.caption2)
                         Text(LocalizedStringKey(persona.title))
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.94))
+                            .foregroundStyle(Theme.primaryText.opacity(0.92))
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 11)
                     .padding(.vertical, 5.5)
-                    .background(
-                        LinearGradient(
-                            colors: [.white.opacity(0.12), .white.opacity(0.04)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        in: Capsule()
-                    )
+                    .background(Theme.surfaceFill, in: Capsule())
                     .overlay(
                         Capsule().strokeBorder(
                             LinearGradient(
-                                colors: [.white.opacity(0.24), rarity.accent.opacity(0.32)],
+                                colors: [Theme.hairline, rarity.accent.opacity(0.32)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
@@ -603,7 +632,11 @@ private struct RingsHeroCard: View {
                         Circle()
                             .fill(
                                 RadialGradient(
-                                    colors: [
+                                    colors: isLight ? [
+                                        dbColor.opacity(weekMinutes > 0 ? 0.10 : 0.03),
+                                        Color(red: 0.96, green: 0.965, blue: 0.98),
+                                        Color(red: 0.92, green: 0.93, blue: 0.95)
+                                    ] : [
                                         dbColor.opacity(weekMinutes > 0 ? 0.14 : 0.04),
                                         Color(red: 0.075, green: 0.075, blue: 0.115).opacity(0.95),
                                         Color(red: 0.042, green: 0.042, blue: 0.070).opacity(0.92)
@@ -615,11 +648,11 @@ private struct RingsHeroCard: View {
                             )
                         Circle()
                             .inset(by: 3)
-                            .strokeBorder(.white.opacity(0.07), lineWidth: 0.65)
+                            .strokeBorder(Theme.hairline, lineWidth: 0.65)
                         Circle()
                             .strokeBorder(
                                 LinearGradient(
-                                    colors: [.white.opacity(0.22), rarity.accent.opacity(0.24), .white.opacity(0.05)],
+                                    colors: [isLight ? Theme.cardStroke : .white.opacity(0.22), rarity.accent.opacity(0.24), Theme.hairline],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 ),
@@ -633,7 +666,7 @@ private struct RingsHeroCard: View {
                                 .minimumScaleFactor(0.6)
                                 .lineLimit(1)
                                 .foregroundStyle(
-                                    LinearGradient(colors: [.white, rarity.accent.opacity(0.94)], startPoint: .top, endPoint: .bottom)
+                                    LinearGradient(colors: [Theme.primaryText, rarity.accent.opacity(0.94)], startPoint: .top, endPoint: .bottom)
                                 )
                             if weekMinutes > 0 {
                                 Text("\(Int(weekDB.rounded())) dB")
@@ -665,7 +698,7 @@ private struct RingsHeroCard: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [.clear, .white.opacity(0.11), .clear],
+                        colors: [.clear, Theme.hairline, .clear],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -673,30 +706,39 @@ private struct RingsHeroCard: View {
                 .frame(height: 1)
 
             HStack(spacing: 10) {
-                legendChip(Theme.quiet.color, "Quiet")
-                legendChip(Theme.moderate.color, "Moderate")
-                legendChip(Theme.loud.color, "Loud")
+                legendChip(Theme.quietColor, "Quiet")
+                legendChip(Theme.moderateColor, "Moderate")
+                legendChip(Theme.loudColor, "Loud")
             }
             .frame(maxWidth: .infinity)
         }
         .padding(18)
         .background {
-            shape.fill(
-                LinearGradient(
-                    colors: [Color(red: 0.098, green: 0.098, blue: 0.145), Color(red: 0.054, green: 0.054, blue: 0.086)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .shadow(color: rarity.glow.opacity(0.16), radius: 18, y: 10)
+            Group {
+                if isLight {
+                    shape.fill(Theme.card)
+                        .shadow(color: Theme.cardShadow, radius: 14, y: 6)
+                } else {
+                    shape.fill(
+                        LinearGradient(
+                            colors: [Color(red: 0.098, green: 0.098, blue: 0.145), Color(red: 0.054, green: 0.054, blue: 0.086)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: rarity.glow.opacity(0.16), radius: 18, y: 10)
+                }
+            }
             .overlay(alignment: .top) {
-                LinearGradient(
-                    colors: [.clear, .white.opacity(0.24), rarity.accent.opacity(0.26), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 1)
-                .padding(.horizontal, 28)
+                if !isLight {
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.24), rarity.accent.opacity(0.26), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, 28)
+                }
             }
             // Isolated tilt spotlight: only this lightweight gradient redraws on tilt; EarprintGlyph stays untouched.
             RingsHeroTiltGlow(rarity: rarity, shape: shape, isActive: tiltActive)
@@ -711,15 +753,15 @@ private struct RingsHeroCard: View {
             Circle()
                 .fill(color)
                 .frame(width: 6.5, height: 6.5)
-                .shadow(color: color.opacity(0.65), radius: 3)
+                .shadow(color: color.opacity(0.45), radius: 3)
             Text(label)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.76))
+                .foregroundStyle(Theme.primaryText.opacity(0.76))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(.white.opacity(0.048), in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 0.75))
+        .background(Theme.surfaceFill, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
     }
 }
 
@@ -728,10 +770,13 @@ private struct RingsHeroTiltGlow: View {
     let shape: RoundedRectangle
     let isActive: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let isLight = colorScheme == .light
         LiveTiltView(isActive: isActive) { tilt in
             RadialGradient(
-                colors: [rarity.glow.opacity(0.20), rarity.accent.opacity(0.07), .clear],
+                colors: [rarity.glow.opacity(isLight ? 0.10 : 0.20), rarity.accent.opacity(isLight ? 0.04 : 0.07), .clear],
                 center: UnitPoint(x: 0.5 + tilt.width * 0.16, y: 0.32 + tilt.height * 0.12),
                 startRadius: 10,
                 endRadius: 245
@@ -747,11 +792,19 @@ private struct RingsHeroTiltBorder: View {
     let shape: RoundedRectangle
     let isActive: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let isLight = colorScheme == .light
         LiveTiltView(isActive: isActive) { tilt in
             shape.strokeBorder(
                 LinearGradient(
-                    colors: [
+                    colors: isLight ? [
+                        Color.black.opacity(0.10),
+                        Color.black.opacity(0.05),
+                        rarity.glow.opacity(0.32),
+                        rarity.accent.opacity(0.18)
+                    ] : [
                         .white.opacity(0.46),
                         .white.opacity(0.09),
                         rarity.glow.opacity(0.48),
@@ -820,6 +873,7 @@ private struct WeeklyRhythmCard: View {
     let rarity: Rarity
 
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .largeTitle) private var listeningTimeSize: CGFloat = 38
     @State private var selectedOffset: Int? = nil
 
@@ -870,16 +924,16 @@ private struct WeeklyRhythmCard: View {
                         .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(rarity.accent)
                         .accessibilityHidden(true)
-                    Eyebrow("LAST 7 DAYS", color: .white.opacity(0.68))
+                    Eyebrow("LAST 7 DAYS", color: Theme.primaryText.opacity(0.68))
                 }
                 Spacer(minLength: 8)
                 Text(summary.periodLabel)
                     .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(Theme.primaryText.opacity(0.66))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
-                    .background(.white.opacity(0.055), in: Capsule())
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.09), lineWidth: 0.75))
+                    .background(Theme.surfaceFill, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
             }
 
             ViewThatFits(in: .horizontal) {
@@ -905,15 +959,15 @@ private struct WeeklyRhythmCard: View {
                             path.move(to: CGPoint(x: 0, y: 1))
                             path.addLine(to: CGPoint(x: 12, y: 1))
                         }
-                        .stroke(.white.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [2.5, 2.5]))
+                        .stroke(Theme.primaryText.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [2.5, 2.5]))
                         .frame(width: 12, height: 2)
                         Text("AVG")
                             .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                             .tracking(0.6)
-                            .foregroundStyle(.white.opacity(0.45))
+                            .foregroundStyle(Theme.tertiaryText)
                         Text(averageMinutes.minutesText)
                             .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(Theme.secondaryText)
                     }
                     .accessibilityHidden(true)
                 }
@@ -926,14 +980,14 @@ private struct WeeklyRhythmCard: View {
                                 path.move(to: CGPoint(x: 0, y: lineY))
                                 path.addLine(to: CGPoint(x: geo.size.width, y: lineY))
                             }
-                            .stroke(.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                            .stroke(Theme.primaryText.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
                         }
                         .allowsHitTesting(false)
                     }
 
                     HStack(alignment: .bottom, spacing: 7) {
                         ForEach(points) { point in
-                            let barColor = point.decibels.map { Theme.levelColor(db: $0) } ?? Theme.quiet.color
+                            let barColor = point.decibels.map { Theme.levelColor(db: $0, colorScheme: colorScheme) } ?? Theme.quietColor
                             let isSelected = selected?.id == point.id
                             let isHighlighted = selected == nil ? point.isToday : isSelected
                             let isDimmed = selected != nil && !isSelected
@@ -949,15 +1003,15 @@ private struct WeeklyRhythmCard: View {
                                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                                         .fill(
                                             isSelected
-                                                ? rarity.accent.opacity(0.12)
-                                                : (point.isToday ? Color.white.opacity(0.075) : Color.white.opacity(0.04))
+                                                ? rarity.accent.opacity(0.14)
+                                                : (point.isToday ? Theme.surfaceFillStrong : Theme.surfaceFill)
                                         )
                                         .overlay {
                                             RoundedRectangle(cornerRadius: 7, style: .continuous)
                                                 .strokeBorder(
                                                     isSelected
-                                                        ? rarity.accent.opacity(0.38)
-                                                        : .white.opacity(point.isToday ? 0.15 : 0.055),
+                                                        ? rarity.accent.opacity(0.45)
+                                                        : Theme.hairline,
                                                     lineWidth: isSelected ? 1 : 0.75
                                                 )
                                         }
@@ -967,8 +1021,8 @@ private struct WeeklyRhythmCard: View {
                                             .fill(
                                                 LinearGradient(
                                                     colors: isHighlighted
-                                                        ? [barColor, barColor.opacity(0.68)]
-                                                        : [barColor.opacity(0.72), barColor.opacity(0.28)],
+                                                        ? [barColor, barColor.opacity(0.75)]
+                                                        : [barColor.opacity(0.78), barColor.opacity(0.42)],
                                                     startPoint: .top,
                                                     endPoint: .bottom
                                                 )
@@ -976,7 +1030,7 @@ private struct WeeklyRhythmCard: View {
                                             .frame(height: barHeight)
                                             .overlay(alignment: .top) {
                                                 Capsule()
-                                                    .fill(.white.opacity(isHighlighted ? 0.84 : 0.32))
+                                                    .fill(.white.opacity(isHighlighted ? 0.78 : 0.30))
                                                     .frame(height: 2)
                                                     .padding(.horizontal, 5)
                                                     .padding(.top, 2)
@@ -984,10 +1038,10 @@ private struct WeeklyRhythmCard: View {
                                             .overlay {
                                                 if isHighlighted {
                                                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                                        .strokeBorder(.white.opacity(0.58), lineWidth: 1)
+                                                        .strokeBorder(colorScheme == .light ? Color.black.opacity(0.18) : .white.opacity(0.58), lineWidth: 1)
                                                 }
                                             }
-                                            .shadow(color: isHighlighted ? barColor.opacity(0.45) : .clear, radius: 6, y: 2)
+                                            .shadow(color: isHighlighted ? barColor.opacity(colorScheme == .light ? 0.25 : 0.45) : .clear, radius: 6, y: 2)
                                     }
                                 }
                                 .frame(height: 62)
@@ -1012,7 +1066,7 @@ private struct WeeklyRhythmCard: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
                                 .foregroundStyle(
-                                    isSelected ? rarity.accent : (point.isToday ? .white.opacity(0.92) : DossierPalette.faint)
+                                    isSelected ? rarity.accent : (point.isToday ? Theme.primaryText.opacity(0.92) : DossierPalette.faint)
                                 )
                             Circle()
                                 .fill(isSelected ? rarity.accent : (point.isToday ? rarity.accent.opacity(0.85) : .clear))
@@ -1038,7 +1092,7 @@ private struct WeeklyRhythmCard: View {
                 .font(.system(size: listeningTimeSize, weight: .heavy, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(
-                    LinearGradient(colors: [.white, .white.opacity(0.84)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(colors: [Theme.primaryText, Theme.primaryText.opacity(0.84)], startPoint: .top, endPoint: .bottom)
                 )
                 .contentTransition(.numericText(value: minutes))
             if let selected {
@@ -1066,7 +1120,7 @@ private struct WeeklyRhythmCard: View {
     }
 
     private func metricLevel(db: Double?) -> some View {
-        let color = db.map { Theme.levelColor(db: $0) } ?? Theme.secondaryText
+        let color = db.map { Theme.levelColor(db: $0, colorScheme: colorScheme) } ?? Theme.secondaryText
         return VStack(alignment: .trailing, spacing: 3) {
             HStack(spacing: 5) {
                 if db != nil {
@@ -1099,12 +1153,15 @@ private struct HearingBudgetCard: View {
     let summary: ListeningSummary
     let showingAllPairs: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let used = max(0, summary.weeklyBudgetUsed)
         let displayPercent = Int((used * 100).rounded())
-        let tint = used >= 1 ? Theme.loud.color : (used >= 0.75 ? Theme.moderate.color : Theme.quiet.color)
+        let tint = used >= 1 ? Theme.loudColor : (used >= 0.75 ? Theme.moderateColor : Theme.quietColor)
         let clamped = min(used, 1)
         let hasVisibleFill = displayPercent > 0
+        let isLight = colorScheme == .light
 
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
@@ -1121,7 +1178,7 @@ private struct HearingBudgetCard: View {
                     .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
 
-                    Eyebrow("HEARING BUDGET", color: .white.opacity(0.68))
+                    Eyebrow("HEARING BUDGET", color: Theme.primaryText.opacity(0.68))
                 }
                 Spacer()
                 Text("\(displayPercent)% used")
@@ -1148,13 +1205,13 @@ private struct HearingBudgetCard: View {
 
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(Color.black.opacity(0.38))
-                            .overlay(Capsule().strokeBorder(.white.opacity(0.11), lineWidth: 0.8))
+                            .fill(isLight ? Theme.surfaceFillStrong : Color.black.opacity(0.38))
+                            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.8))
 
                         // Quarter calibration ticks (25% / 50% / 75%)
                         ForEach([0.25, 0.50, 0.75], id: \.self) { mark in
                             Rectangle()
-                                .fill(.white.opacity(0.15))
+                                .fill(Theme.primaryText.opacity(0.15))
                                 .frame(width: 1, height: 6)
                                 .offset(x: width * mark)
                         }
@@ -1163,7 +1220,7 @@ private struct HearingBudgetCard: View {
                             Capsule()
                                 .fill(
                                     LinearGradient(
-                                        colors: [Theme.quiet.color, Theme.moderate.color, Theme.loud.color],
+                                        colors: [Theme.quietColor, Theme.moderateColor, Theme.loudColor],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
@@ -1171,7 +1228,7 @@ private struct HearingBudgetCard: View {
                                 .mask(alignment: .leading) {
                                     Capsule().frame(width: fillWidth)
                                 }
-                                .shadow(color: tint.opacity(0.48), radius: 5)
+                                .shadow(color: tint.opacity(isLight ? 0.25 : 0.48), radius: 5)
                         }
 
                         // Luminous precision indicator bead
@@ -1179,7 +1236,7 @@ private struct HearingBudgetCard: View {
                             .fill(hasVisibleFill ? .white : tint.opacity(0.85))
                             .frame(width: 8, height: 8)
                             .overlay(Circle().strokeBorder(tint, lineWidth: 1.5))
-                            .shadow(color: tint.opacity(0.75), radius: 4)
+                            .shadow(color: tint.opacity(isLight ? 0.35 : 0.75), radius: 4)
                             .offset(x: max(1, pipX - 4))
                     }
                 }
@@ -1193,7 +1250,7 @@ private struct HearingBudgetCard: View {
                     Text(verbatim: "100%")
                 }
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.30))
+                .foregroundStyle(Theme.tertiaryText)
             }
             .accessibilityHidden(true)
 
@@ -1217,9 +1274,12 @@ private struct AllTimeArchiveCard: View {
     let rarity: Rarity
     let isAccessibilitySize: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let hours = summary.lifetimeMinutes / 60
         let progress = rarity.progressToNextTier(minutes: summary.lifetimeMinutes)
+        let isLight = colorScheme == .light
 
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 8) {
@@ -1228,46 +1288,46 @@ private struct AllTimeArchiveCard: View {
                         .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(rarity.accent)
                         .accessibilityHidden(true)
-                    Eyebrow("ALL-TIME ARCHIVE", color: .white.opacity(0.68))
+                    Eyebrow("ALL-TIME ARCHIVE", color: Theme.primaryText.opacity(0.68))
                 }
                 Spacer(minLength: 8)
                 if summary.firstUse != "—" {
                     Text("Since \(summary.firstUse)")
                         .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.64))
+                        .foregroundStyle(Theme.primaryText.opacity(0.64))
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4)
-                        .background(.white.opacity(0.055), in: Capsule())
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.09), lineWidth: 0.75))
+                        .background(Theme.surfaceFill, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.75))
                 }
             }
 
             if isAccessibilitySize {
                 VStack(spacing: 10) {
                     statWell("Listening time", summary.lifetimeMinutes.minutesText, icon: "clock.fill", tint: rarity.accent, featured: true)
-                    statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quiet.color)
-                    statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: .white.opacity(0.75))
-                    statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderate.color)
+                    statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quietColor)
+                    statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: Theme.primaryText.opacity(0.75))
+                    statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderateColor)
                 }
             } else {
                 Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                     GridRow {
                         statWell("Listening time", summary.lifetimeMinutes.minutesText, icon: "clock.fill", tint: rarity.accent, featured: true)
-                        statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quiet.color)
+                        statWell("Sessions", summary.sessions.formatted(), icon: "waveform.path.ecg", tint: Theme.quietColor)
                     }
                     GridRow {
-                        statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: .white.opacity(0.75))
-                        statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderate.color)
+                        statWell("Avg. session", summary.averageSessionMinutes.minutesText, icon: "timer", tint: Theme.primaryText.opacity(0.75))
+                        statWell("Longest session", summary.longestSessionMinutes.minutesText, icon: "flame.fill", tint: Theme.moderateColor)
                     }
                 }
             }
 
-            // Sleek Collector Tier Progress footer tying Rings into the 10-tier vault
+            // Sleek Collector Tier Progress footer tying Rings into the 6-tier vault
             VStack(alignment: .leading, spacing: 7) {
                 Rectangle()
                     .fill(
                         LinearGradient(
-                            colors: [.clear, .white.opacity(0.11), .clear],
+                            colors: [.clear, Theme.hairline, .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -1288,7 +1348,7 @@ private struct AllTimeArchiveCard: View {
                         let remaining = max(1, Int(ceil(next - hours)))
                         Text("\(remaining)h to next tier")
                             .font(.caption2.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(.white.opacity(0.70))
+                            .foregroundStyle(Theme.primaryText.opacity(0.70))
                             .lineLimit(1)
                     } else {
                         Text("Max tier reached ✦")
@@ -1303,7 +1363,7 @@ private struct AllTimeArchiveCard: View {
                     let barW = w > 0 ? min(w, max(8, w * progress)) : 0
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(.white.opacity(0.08))
+                            .fill(Theme.surfaceFillStrong)
                         if barW > 0 {
                             Capsule()
                                 .fill(rarity.foil)
@@ -1314,7 +1374,7 @@ private struct AllTimeArchiveCard: View {
                                         .frame(height: 1.5)
                                         .padding(.horizontal, 3)
                                 }
-                                .shadow(color: rarity.glow.opacity(0.45), radius: 4)
+                                .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.45), radius: 4)
                         }
                     }
                 }
@@ -1335,6 +1395,7 @@ private struct AllTimeArchiveCard: View {
         featured: Bool = false
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let isLight = colorScheme == .light
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Text(title)
@@ -1352,22 +1413,28 @@ private struct AllTimeArchiveCard: View {
             Text(value)
                 .font(.system(.title3, design: .rounded).weight(.heavy))
                 .monospacedDigit()
-                .foregroundStyle(featured ? tint : .white)
+                .foregroundStyle(featured ? tint : Theme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
         .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            shape.fill(
-                LinearGradient(
-                    colors: featured
-                        ? [tint.opacity(0.15), Color.black.opacity(0.28)]
-                        : [Color.white.opacity(0.048), Color.black.opacity(0.26)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            Group {
+                if isLight {
+                    shape.fill(featured ? tint.opacity(0.08) : Theme.surfaceFill)
+                } else {
+                    shape.fill(
+                        LinearGradient(
+                            colors: featured
+                                ? [tint.opacity(0.15), Color.black.opacity(0.28)]
+                                : [Color.white.opacity(0.048), Color.black.opacity(0.26)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                }
+            }
             .overlay(alignment: .top) {
                 if featured {
                     LinearGradient(
@@ -1384,8 +1451,8 @@ private struct AllTimeArchiveCard: View {
             shape.strokeBorder(
                 LinearGradient(
                     colors: featured
-                        ? [tint.opacity(0.42), .white.opacity(0.06)]
-                        : [.white.opacity(0.15), .white.opacity(0.04)],
+                        ? [tint.opacity(0.42), Theme.hairline]
+                        : [Theme.hairline, Theme.hairline.opacity(0.6)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),

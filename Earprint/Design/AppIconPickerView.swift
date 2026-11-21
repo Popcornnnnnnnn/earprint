@@ -289,17 +289,21 @@ struct SettingsView: View {
         case appIcon
         case modelGallery
         case cardTiers
+        case privacy
     }
 
     let ownedCards: [HeadphoneCard]
+    var onConnectHealth: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
     @State private var iconManager = AppIconManager()
     @State private var path: [Destination]
 
-    init(ownedCards: [HeadphoneCard] = [], openIconPicker: Bool = false) {
+    init(ownedCards: [HeadphoneCard] = [], openIconPicker: Bool = false, onConnectHealth: (() -> Void)? = nil) {
         self.ownedCards = ownedCards
+        self.onConnectHealth = onConnectHealth
         _path = State(initialValue: openIconPicker ? [.appIcon] : [])
     }
 
@@ -311,31 +315,73 @@ struct SettingsView: View {
         ModelGalleryCatalog.allAppleAndBeatsCount
     }
 
+    private var appVersion: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(short) (\(build))"
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             Form {
-                NavigationLink(value: Destination.appIcon) {
-                    Label("App Icon", systemImage: "app")
-                }
-                Picker(selection: $language) {
-                    ForEach(AppLanguage.allCases) { option in
-                        Text(option.name).tag(option)
+                Section {
+                    Picker(selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    } label: {
+                        Label("Appearance", systemImage: "circle.lefthalf.filled")
                     }
-                } label: {
-                    Label("Language", systemImage: "globe")
+                    .pickerStyle(.menu)
+
+                    NavigationLink(value: Destination.appIcon) {
+                        Label("App Icon", systemImage: "app")
+                    }
+
+                    Picker(selection: $language) {
+                        ForEach(AppLanguage.allCases) { option in
+                            Text(option.name).tag(option)
+                        }
+                    } label: {
+                        Label("Language", systemImage: "globe")
+                    }
+                    .pickerStyle(.navigationLink)
                 }
-                .pickerStyle(.navigationLink)
-                NavigationLink(value: Destination.modelGallery) {
+
+                Section {
+                    NavigationLink(value: Destination.modelGallery) {
+                        HStack {
+                            Label("Model Gallery", systemImage: "cube.transparent")
+                            Spacer()
+                            Text("\(unlockedCount)/\(totalCatalogModels)")
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    NavigationLink(value: Destination.cardTiers) {
+                        Label("Card Tiers", systemImage: "trophy")
+                    }
+                }
+
+                Section {
+                    NavigationLink(value: Destination.privacy) {
+                        Label("Apple Health Privacy", systemImage: "hand.raised.fill")
+                    }
+                    if let onConnectHealth {
+                        Button {
+                            dismiss()
+                            onConnectHealth()
+                        } label: {
+                            Label("Sync Apple Health", systemImage: "arrow.trianglehead.2.clockwise")
+                        }
+                    }
                     HStack {
-                        Label("Model Gallery", systemImage: "cube.transparent")
+                        Label("Version", systemImage: "info.circle")
                         Spacer()
-                        Text("\(unlockedCount)/\(totalCatalogModels)")
+                        Text(appVersion)
                             .font(.footnote.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
-                }
-                NavigationLink(value: Destination.cardTiers) {
-                    Label("Card Tiers", systemImage: "trophy")
                 }
             }
             .navigationTitle("Settings")
@@ -353,10 +399,155 @@ struct SettingsView: View {
                     ModelGalleryView(ownedCards: ownedCards)
                 case .cardTiers:
                     CardTiersView(ownedCards: ownedCards)
+                case .privacy:
+                    PrivacyPolicyView()
                 }
             }
         }
         .interactiveDismissDisabled(iconManager.isUpdating)
+    }
+}
+
+struct PrivacyPolicyView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                privacyRow(
+                    icon: "heart.text.square.fill",
+                    tint: Theme.loudColor,
+                    title: "Read-only Apple Health access",
+                    detail: "Earprint reads your Headphone Audio Exposure samples solely to build your cards, tiers, and listening rings."
+                )
+                privacyRow(
+                    icon: "iphone",
+                    tint: Theme.quietColor,
+                    title: "Stays on your iPhone",
+                    detail: "All aggregation happens locally. There is no account, no cloud upload, no ads, and no analytics tracking."
+                )
+                privacyRow(
+                    icon: "square.and.arrow.up",
+                    tint: Theme.moderateColor,
+                    title: "You control sharing",
+                    detail: "Only exported poster images leave the app when you tap Share. Manage Health permission anytime in iOS Settings › Health."
+                )
+            }
+            .padding(16)
+        }
+        .background(Theme.canvas.ignoresSafeArea())
+        .navigationTitle("Apple Health Privacy")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func privacyRow(icon: String, tint: Color, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.primaryText)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .card()
+    }
+}
+
+/// One-screen pre-permission introduction explaining why Earprint reads Apple Health headphone audio exposure.
+struct HealthOnboardingView: View {
+    let onConnect: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer(minLength: 16)
+
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.quietColor.opacity(0.15))
+                        .frame(width: 84, height: 84)
+                    Image(systemName: "headphones.circle.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(Theme.quietColor)
+                }
+
+                Text("Your Headphone Archive")
+                    .font(.system(.title, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.primaryText)
+                    .multilineTextAlignment(.center)
+
+                Text("Turn your listening history into collector cards and 28-day Earprint rings.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+            }
+
+            VStack(spacing: 12) {
+                bullet(icon: "waveform.path.ecg", tint: Theme.quietColor,
+                       title: "Read-only Health data",
+                       subtitle: "Uses Apple Health headphone audio exposure minutes and dB levels.")
+                bullet(icon: "lock.shield.fill", tint: Theme.moderateColor,
+                       title: "Private by design",
+                       subtitle: "Processed on your iPhone with no account, cloud servers, or tracking.")
+                bullet(icon: "sparkles", tint: Theme.loudColor,
+                       title: "6 metallic card tiers",
+                       subtitle: "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).")
+            }
+            .padding(16)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.cardStroke, lineWidth: 1))
+            .shadow(color: Theme.cardShadow, radius: 12, y: 4)
+
+            Spacer(minLength: 8)
+
+            VStack(spacing: 10) {
+                Button(action: onConnect) {
+                    Label("Connect Apple Health", systemImage: "heart.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Theme.invertedFill, in: Capsule())
+                        .foregroundStyle(Theme.invertedText)
+                }
+                .buttonStyle(.plain)
+
+                Button("Not Now", action: onSkip)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                    .padding(.vertical, 8)
+            }
+        }
+        .padding(22)
+        .background(Theme.canvas.ignoresSafeArea())
+        .interactiveDismissDisabled()
+    }
+
+    private func bullet(icon: String, tint: Color, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.primaryText)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -385,7 +576,7 @@ struct AppIconPickerView: View {
             }
             .padding(20)
         }
-        .background(Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea())
+        .background(Theme.canvasElevated.ignoresSafeArea())
         .navigationTitle("App Icon")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(manager.isUpdating)
@@ -423,9 +614,9 @@ struct AppIconPickerView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(.white.opacity(isSelected ? 0.12 : 0.04), in: RoundedRectangle(cornerRadius: 14))
+                        .background(isSelected ? Theme.surfaceFillStrong : Theme.surfaceFill, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(.white.opacity(isSelected ? 0.56 : 0.08)))
+                            .strokeBorder(isSelected ? Theme.primaryText.opacity(0.56) : Theme.hairline))
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -465,7 +656,7 @@ struct AppIconPickerView: View {
                 ZStack {
                     if isSelected {
                         Circle()
-                            .strokeBorder(.white, lineWidth: 2)
+                            .strokeBorder(Theme.primaryText, lineWidth: 2)
                             .frame(width: 48, height: 48)
                     }
                     Circle()
@@ -479,15 +670,15 @@ struct AppIconPickerView: View {
                         .frame(width: 38, height: 38)
                         .overlay(
                             Circle()
-                                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+                        .shadow(color: Theme.cardShadow, radius: 4, y: 2)
                 }
                 .frame(width: 50, height: 50)
 
                 Text(LocalizedStringKey(finish.title))
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+                    .foregroundStyle(isSelected ? Theme.primaryText : Theme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
@@ -501,14 +692,14 @@ struct AppIconPickerView: View {
         HStack {
             Text(title)
                 .font(.footnote.weight(.bold))
-                .foregroundStyle(.white.opacity(0.62))
+                .foregroundStyle(Theme.secondaryText)
                 .textCase(.uppercase)
                 .tracking(0.8)
             Spacer()
             if let detail {
                 Text(detail)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(Theme.tertiaryText)
             }
         }
     }

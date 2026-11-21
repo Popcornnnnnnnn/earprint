@@ -215,36 +215,42 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertGreaterThan(dealt.zIndex, top.zIndex)
     }
 
-    func testTenTierAchievementProgressionUpTo2000Hours() {
+    func testSixTierAchievementProgressionAndLegacyCodableFallback() throws {
         XCTAssertEqual(
             Rarity.allAscending,
-            [.bronze, .silver, .gold, .emerald, .sapphire, .amethyst, .platinum, .diamond, .obsidian, .holo]
+            [.bronze, .silver, .sapphire, .platinum, .obsidian, .holo]
         )
         XCTAssertEqual(Rarity(minutes: 0), .bronze)
-        XCTAssertEqual(Rarity(minutes: 9.9 * 60), .bronze)
-        XCTAssertEqual(Rarity(minutes: 10 * 60), .silver)
-        XCTAssertEqual(Rarity(minutes: 35 * 60), .gold)
-        XCTAssertEqual(Rarity(minutes: 80 * 60), .emerald)
-        XCTAssertEqual(Rarity(minutes: 160 * 60), .sapphire)
-        XCTAssertEqual(Rarity(minutes: 300 * 60), .amethyst)
-        XCTAssertEqual(Rarity(minutes: 550 * 60), .platinum)
-        XCTAssertEqual(Rarity(minutes: 900 * 60), .diamond)
-        XCTAssertEqual(Rarity(minutes: 1400 * 60), .obsidian)
+        XCTAssertEqual(Rarity(minutes: 24.9 * 60), .bronze)
+        XCTAssertEqual(Rarity(minutes: 25 * 60), .silver)
+        XCTAssertEqual(Rarity(minutes: 120 * 60), .sapphire)
+        XCTAssertEqual(Rarity(minutes: 400 * 60), .platinum)
+        XCTAssertEqual(Rarity(minutes: 1000 * 60), .obsidian)
         XCTAssertEqual(Rarity(minutes: 1999.9 * 60), .obsidian)
         XCTAssertEqual(Rarity(minutes: 2000 * 60), .holo)
         XCTAssertEqual(Rarity(minutes: 5000 * 60), .holo)
 
         XCTAssertEqual(Rarity.bronze.nextTier, .silver)
-        XCTAssertEqual(Rarity.diamond.nextTier, .obsidian)
+        XCTAssertEqual(Rarity.silver.nextTier, .sapphire)
+        XCTAssertEqual(Rarity.sapphire.nextTier, .platinum)
+        XCTAssertEqual(Rarity.platinum.nextTier, .obsidian)
         XCTAssertEqual(Rarity.obsidian.nextTier, .holo)
         XCTAssertNil(Rarity.holo.nextTier)
-        XCTAssertEqual(Rarity.sapphire.progressToNextTier(minutes: 230 * 60), 0.5, accuracy: 0.001)
+        XCTAssertEqual(Rarity.sapphire.progressToNextTier(minutes: 260 * 60), 0.5, accuracy: 0.001)
         XCTAssertEqual(Rarity.holo.progressToNextTier(minutes: 2500 * 60), 1.0, accuracy: 0.001)
 
-        XCTAssertEqual(Set(Rarity.allCases.map(\.title)).count, 10)
+        XCTAssertEqual(Set(Rarity.allCases.map(\.title)).count, 6)
         XCTAssertTrue(Rarity.allCases.allSatisfy { !$0.finishLabel.isEmpty })
         XCTAssertEqual(Rarity.obsidian.material, .carbon)
         XCTAssertEqual(Rarity.holo.material, .holo)
+
+        // Legacy 10-tier raw strings map cleanly to the 6-tier system via Codable.
+        let decoder = JSONDecoder()
+        XCTAssertEqual(try decoder.decode(Rarity.self, from: Data(#""GOLD""#.utf8)), .silver)
+        XCTAssertEqual(try decoder.decode(Rarity.self, from: Data(#""EMERALD""#.utf8)), .sapphire)
+        XCTAssertEqual(try decoder.decode(Rarity.self, from: Data(#""AMETHYST""#.utf8)), .platinum)
+        XCTAssertEqual(try decoder.decode(Rarity.self, from: Data(#""DIAMOND""#.utf8)), .obsidian)
+        XCTAssertEqual(try decoder.decode(Rarity.self, from: Data(#""UNKNOWN_TIER""#.utf8)), .bronze)
     }
 
     func testMultiDeviceCombinedHomeSummaryAndSingleDeviceSelection() {
@@ -718,5 +724,129 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(rig.zoom, 1.0, accuracy: 0.0001)
         XCTAssertEqual(rig.velocity.x, 3.5, accuracy: 0.0001)
         XCTAssertEqual(rig.velocity.y, -1.2, accuracy: 0.0001)
+    }
+
+    func testLibrarySnapshotComputesRealTierAchievedDatesFromDailyHistory() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day1 = utc.date(from: DateComponents(year: 2025, month: 10, day: 1, hour: 8))!
+        let day2 = utc.date(from: DateComponents(year: 2025, month: 10, day: 2, hour: 8))!
+        let day3 = utc.date(from: DateComponents(year: 2025, month: 10, day: 3, hour: 8))!
+        let now = utc.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 15))!
+
+        let device = DeviceDescriptor(name: "AirPods Pro", manufacturer: "Apple Inc.", model: "0x2024", localIdentifier: "pro-history")
+        var agg = ListeningAggregate()
+        // Keep each sample <= maxSampleDuration (6h): 12h + 12h + 2h = 26h, crossing 25h on day3,
+        // and keep all dates older than the 35-day slot window so lifetime daily history drives dates.
+        agg.ingest([
+            RawListeningSample(start: day1, end: day1.addingTimeInterval(6 * 3600), decibels: 62, device: device),
+            RawListeningSample(start: day1.addingTimeInterval(7 * 3600), end: day1.addingTimeInterval(13 * 3600), decibels: 63, device: device),
+            RawListeningSample(start: day2, end: day2.addingTimeInterval(6 * 3600), decibels: 64, device: device),
+            RawListeningSample(start: day2.addingTimeInterval(7 * 3600), end: day2.addingTimeInterval(13 * 3600), decibels: 64, device: device),
+            RawListeningSample(start: day3, end: day3.addingTimeInterval(2 * 3600), decibels: 65, device: device),
+        ], now: now, calendar: utc)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: utc)
+        XCTAssertEqual(snapshot.devices.count, 1)
+        let summary = snapshot.devices[0]
+        XCTAssertEqual(summary.tierAchievedDates[.bronze], day1)
+        if let silverDate = summary.tierAchievedDates[.silver] {
+            XCTAssertTrue(utc.isDate(silverDate, inSameDayAs: day3))
+        } else {
+            XCTFail("Expected .silver achievement date from lifetime daily history")
+        }
+        XCTAssertNil(summary.tierAchievedDates[.sapphire])
+
+        let cards = snapshot.cards(now: now, calendar: utc)
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertEqual(cards[0].tierAchievedDates[.bronze], summary.tierAchievedDates[.bronze])
+        XCTAssertEqual(cards[0].tierAchievedDates[.silver], summary.tierAchievedDates[.silver])
+    }
+
+    func testCardTierBinderSummaryMultiDeviceAndSingleDeviceAttribution() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let oct25 = utc.date(from: DateComponents(year: 2025, month: 10, day: 15, hour: 12))!
+        let mar26 = utc.date(from: DateComponents(year: 2026, month: 3, day: 10, hour: 12))!
+
+        let maxCard = HeadphoneCard(
+            id: "max-1",
+            nickname: "Desk Max",
+            model: "AirPods Max · USB-C",
+            symbol: "airpodsmax",
+            lifetimeMinutes: 500 * 60, // Platinum (400h+)
+            sessions: 120,
+            longestMinutes: 180,
+            averageDecibels: 64,
+            firstMet: "2025.01.01",
+            lastUsed: "Today",
+            serial: 1,
+            grid: ListeningGrid(minutes: [], decibels: []),
+            modelKey: .airpodsMax,
+            kind: .overEar,
+            tierAchievedDates: [.bronze: oct25, .silver: oct25, .sapphire: mar26]
+        )
+        let proCard = HeadphoneCard(
+            id: "pro-1",
+            nickname: "Pocket Pro",
+            model: "AirPods Pro 2 (ANC)",
+            symbol: "airpodspro",
+            lifetimeMinutes: 200 * 60, // Sapphire (120h+)
+            sessions: 90,
+            longestMinutes: 120,
+            averageDecibels: 62,
+            firstMet: "2024.06.01",
+            lastUsed: "Today",
+            serial: 2,
+            grid: ListeningGrid(minutes: [], decibels: []),
+            modelKey: .airpodsPro,
+            kind: .earbuds,
+            tierAchievedDates: [.bronze: oct25, .silver: mar26, .sapphire: oct25]
+        )
+        let cards = [maxCard, proCard]
+
+        // All Pairs scope: Sapphire unlocked by both, earliest achiever is proCard (oct25 < mar26).
+        let allSapphire = CardTierBinderSummary(cards: cards, selectedCardID: nil, tier: .sapphire)
+        XCTAssertTrue(allSapphire.isUnlocked)
+        XCTAssertTrue(allSapphire.isCurrent) // proCard currently sits at Sapphire
+        XCTAssertEqual(allSapphire.firstAchiever?.id, "pro-1")
+        XCTAssertEqual(allSapphire.unlockedCards.count, 2)
+        let expectedOct = DateText.shortMonthYear(oct25, calendar: utc, locale: Locale(identifier: "en_US"))
+        XCTAssertEqual(
+            allSapphire.compactAttribution(calendar: utc, isSingleDevice: false, locale: Locale(identifier: "en_US")),
+            "AirPods Pro 2 +1 · \(expectedOct)"
+        )
+
+        // Single-device scope: Pocket Pro hasn't unlocked Platinum, and Sapphire shows compact date only.
+        let singleSapphire = CardTierBinderSummary(cards: cards, selectedCardID: "pro-1", tier: .sapphire)
+        XCTAssertTrue(singleSapphire.isUnlocked)
+        XCTAssertEqual(
+            singleSapphire.compactAttribution(calendar: utc, isSingleDevice: true, locale: Locale(identifier: "en_US")),
+            expectedOct
+        )
+        let singlePlatinum = CardTierBinderSummary(cards: cards, selectedCardID: "pro-1", tier: .platinum)
+        XCTAssertFalse(singlePlatinum.isUnlocked)
+        XCTAssertNil(singlePlatinum.firstAchiever)
+        XCTAssertNil(singlePlatinum.compactAttribution(calendar: utc, isSingleDevice: true, locale: Locale(identifier: "en_US")))
+    }
+
+    @MainActor
+    func testModelRigApplyDepthDimModulatesAndRestoresLightIntensity() {
+        let rig = ModelRig()
+        let keyLight = DirectionalLight()
+        keyLight.light.intensity = 3600
+
+        rig.configureLights(key: keyLight, fill: nil, rim: nil)
+        rig.applyDepthDim(0.5)
+        XCTAssertLessThan(keyLight.light.intensity, 3600)
+
+        // Extreme negative / huge values clamp cleanly and dim <= max clamp.
+        rig.applyDepthDim(2.0)
+        let maxDimmed = keyLight.light.intensity
+        XCTAssertGreaterThan(maxDimmed, 0)
+        XCTAssertLessThan(maxDimmed, 3600)
+
+        rig.applyDepthDim(0)
+        XCTAssertEqual(keyLight.light.intensity, 3600, accuracy: 1)
     }
 }

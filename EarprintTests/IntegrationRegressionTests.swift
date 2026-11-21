@@ -280,13 +280,48 @@ final class IntegrationRegressionTests: XCTestCase {
 
     @MainActor
     func testShareCardAndBatchedEarprintGlyphRenderNonBlankImage() {
-        let renderer = ImageRenderer(content: ShareCardView(summary: SampleData.summary, primaryCard: SampleCards.all.first))
-        renderer.scale = 2
-        let image = renderer.uiImage
-        XCTAssertNotNil(image)
-        XCTAssertEqual(image?.size.width ?? 0, 360, accuracy: 1)
-        XCTAssertEqual(image?.size.height ?? 0, 640, accuracy: 1)
-        XCTAssertGreaterThan(image?.pngData()?.count ?? 0, 10_000)
+        let defaultRenderer = ImageRenderer(
+            content: ShareCardView(summary: SampleData.summary, primaryCard: SampleCards.all.first)
+                .environment(\.colorScheme, .dark)
+        )
+        defaultRenderer.scale = 2
+        let defaultImage = defaultRenderer.uiImage
+        XCTAssertNotNil(defaultImage)
+        XCTAssertEqual(defaultImage?.size.width ?? 0, 360, accuracy: 1)
+        XCTAssertEqual(defaultImage?.size.height ?? 0, 480, accuracy: 1)
+        XCTAssertGreaterThan(defaultImage?.pngData()?.count ?? 0, 10_000)
+
+        let lightPortraitRenderer = ImageRenderer(
+            content: ShareCardView(
+                summary: SampleData.summary,
+                primaryCard: SampleCards.all.first,
+                aspect: .portrait3x4,
+                colorScheme: .light
+            )
+            .environment(\.colorScheme, .light)
+        )
+        lightPortraitRenderer.scale = 2
+        let lightPortrait = lightPortraitRenderer.uiImage
+        XCTAssertNotNil(lightPortrait)
+        XCTAssertEqual(lightPortrait?.size.width ?? 0, 360, accuracy: 1)
+        XCTAssertEqual(lightPortrait?.size.height ?? 0, 480, accuracy: 1)
+        XCTAssertGreaterThan(lightPortrait?.pngData()?.count ?? 0, 10_000)
+
+        let storyRenderer = ImageRenderer(
+            content: ShareCardView(
+                summary: SampleData.summary,
+                primaryCard: SampleCards.all.first,
+                aspect: .story9x16,
+                colorScheme: .dark
+            )
+            .environment(\.colorScheme, .dark)
+        )
+        storyRenderer.scale = 2
+        let storyImage = storyRenderer.uiImage
+        XCTAssertNotNil(storyImage)
+        XCTAssertEqual(storyImage?.size.width ?? 0, 360, accuracy: 1)
+        XCTAssertEqual(storyImage?.size.height ?? 0, 640, accuracy: 1)
+        XCTAssertGreaterThan(storyImage?.pngData()?.count ?? 0, 10_000)
     }
 
     @MainActor
@@ -338,33 +373,38 @@ final class IntegrationRegressionTests: XCTestCase {
         var maxHoloCard = SampleCards.all[0]
         maxHoloCard.lifetimeMinutes = 2_100 * 60
         let cards = [maxHoloCard] + SampleCards.all.dropFirst()
-        let view = NavigationStack {
-            CardTiersView(ownedCards: cards)
-        }
-        .preferredColorScheme(.dark)
-
         let size = CGSize(width: 393, height: 1080)
-        let host = UIHostingController(rootView: view)
-        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
-        window.rootViewController = host
-        window.makeKeyAndVisible()
-        host.view.frame = CGRect(origin: .zero, size: size)
-        host.view.setNeedsLayout()
-        host.view.layoutIfNeeded()
-
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
-        }
-        window.isHidden = true
 
-        XCTAssertEqual(image.size.width, size.width, accuracy: 1)
-        XCTAssertEqual(image.size.height, size.height, accuracy: 1)
+        for (index, scheme) in [ColorScheme.dark, ColorScheme.light].enumerated() {
+            let view = NavigationStack {
+                CardTiersView(ownedCards: cards)
+            }
+            .preferredColorScheme(scheme)
 
-        if let outPath = ProcessInfo.processInfo.environment["EARPRINT_TIERS_SNAPSHOT_PATH"],
-           let png = image.pngData() {
-            try png.write(to: URL(fileURLWithPath: outPath))
+            let host = UIHostingController(rootView: view)
+            let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            host.view.frame = CGRect(origin: .zero, size: size)
+            host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
+
+            let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+            }
+            window.isHidden = true
+
+            XCTAssertEqual(image.size.width, size.width, accuracy: 1)
+            XCTAssertEqual(image.size.height, size.height, accuracy: 1)
+            XCTAssertGreaterThan(image.pngData()?.count ?? 0, 10_000)
+
+            if index == 0,
+               let outPath = ProcessInfo.processInfo.environment["EARPRINT_TIERS_SNAPSHOT_PATH"],
+               let png = image.pngData() {
+                try png.write(to: URL(fileURLWithPath: outPath))
+            }
         }
     }
 

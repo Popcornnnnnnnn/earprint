@@ -54,29 +54,51 @@ extension Rarity {
     var foil: LinearGradient {
         LinearGradient(colors: Array(baseColors.prefix(4)), startPoint: .topLeading, endPoint: .bottomTrailing)
     }
-    /// Light accent that reads on the dark dossier background.
+    /// Adaptive tier accent tuned for crisp contrast in both Light and Dark mode.
     var accent: Color {
         switch self {
-        case .holo: Color(red: 0.533, green: 0.961, blue: 0.925)
-        case .obsidian: Color(red: 0.494, green: 0.651, blue: 0.878)
-        case .diamond: Color(red: 0.565, green: 0.510, blue: 0.761)
-        case .platinum: Color(red: 0.639, green: 0.510, blue: 0.839)
-        case .amethyst: Color(red: 0.549, green: 0.647, blue: 0.871)
-        case .sapphire: Color(red: 0.494, green: 0.690, blue: 0.741)
-        case .emerald: Color(red: 0.686, green: 0.788, blue: 0.737)
-        case .gold: Color(red: 0.902, green: 0.851, blue: 0.745)
-        case .silver: Color(red: 0.867, green: 0.890, blue: 0.929)
-        case .bronze: Color(red: 0.800, green: 0.588, blue: 0.459)
+        case .holo:
+            Color.adaptive(
+                light: UIColor(red: 0.04, green: 0.56, blue: 0.54, alpha: 1),
+                dark: UIColor(red: 0.533, green: 0.961, blue: 0.925, alpha: 1)
+            )
+        case .obsidian:
+            Color.adaptive(
+                light: UIColor(red: 0.18, green: 0.34, blue: 0.58, alpha: 1),
+                dark: UIColor(red: 0.494, green: 0.651, blue: 0.878, alpha: 1)
+            )
+        case .platinum:
+            Color.adaptive(
+                light: UIColor(red: 0.40, green: 0.25, blue: 0.62, alpha: 1),
+                dark: UIColor(red: 0.639, green: 0.510, blue: 0.839, alpha: 1)
+            )
+        case .sapphire:
+            Color.adaptive(
+                light: UIColor(red: 0.14, green: 0.43, blue: 0.49, alpha: 1),
+                dark: UIColor(red: 0.494, green: 0.690, blue: 0.741, alpha: 1)
+            )
+        case .silver:
+            Color.adaptive(
+                light: UIColor(red: 0.35, green: 0.39, blue: 0.46, alpha: 1),
+                dark: UIColor(red: 0.867, green: 0.890, blue: 0.929, alpha: 1)
+            )
+        case .bronze:
+            Color.adaptive(
+                light: UIColor(red: 0.56, green: 0.34, blue: 0.21, alpha: 1),
+                dark: UIColor(red: 0.800, green: 0.588, blue: 0.459, alpha: 1)
+            )
         }
     }
 }
 
 enum DossierPalette {
-    static let ink = Color(red: 0.035, green: 0.035, blue: 0.055)
-    static let panel = Color(red: 0.075, green: 0.075, blue: 0.105)
-    static let hairline = Color.white.opacity(0.09)
-    static let dim = Color.white.opacity(0.5)
-    static let faint = Color.white.opacity(0.32)
+    static let ink = Theme.canvas
+    static let panel = Theme.card
+    static let surfaceFill = Theme.surfaceFill
+    static let hairline = Theme.hairline
+    static let primaryText = Theme.primaryText
+    static let dim = Theme.secondaryText
+    static let faint = Theme.tertiaryText
 }
 
 /// "01  AIRTIME ———" numbered section header, like the tabs of a case file.
@@ -95,7 +117,7 @@ struct DossierSectionHeader: View {
             Text(AppLanguage.current.text(title).uppercased())
                 .font(.system(.caption, design: .rounded, weight: .heavy))
                 .tracking(2.0)
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                 .lineLimit(1)
                 .fixedSize()
             Rectangle().fill(DossierPalette.hairline).frame(height: 1).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 4 }
@@ -112,26 +134,58 @@ struct DossierSectionHeader: View {
     }
 }
 
-/// Small rounded "object" surface used by tiles. Darker and crisper than the generic frosted card.
+/// Small rounded "object" surface used by tiles; crisp white ceramic card in Light mode, obsidian glass in Dark mode.
 struct DossierTile: ViewModifier {
-    var tint: Color = .white
+    var tint: Color = Theme.primaryText
+    @Environment(\.colorScheme) private var colorScheme
+
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         content
             .padding(14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(LinearGradient(colors: [tint.opacity(0.10), Color.white.opacity(0.025)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                if colorScheme == .light {
+                    shape.fill(Theme.card)
+                        .overlay {
+                            shape.fill(
+                                LinearGradient(
+                                    colors: [tint.opacity(0.06), Color.clear],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        }
+                        .shadow(color: Theme.cardShadow, radius: 10, y: 4)
+                } else {
+                    shape.fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.10), Color.white.opacity(0.025)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [.white.opacity(0.16), .white.opacity(0.03)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                if colorScheme == .light {
+                    shape.strokeBorder(Theme.cardStroke, lineWidth: 1)
+                } else {
+                    shape.strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.16), .white.opacity(0.03)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+                }
             }
     }
 }
 
 extension View {
-    func dossierTile(tint: Color = .white) -> some View { modifier(DossierTile(tint: tint)) }
+    func dossierTile(tint: Color = Theme.primaryText) -> some View { modifier(DossierTile(tint: tint)) }
 
     /// Fade, lift and sharpen as the view scrolls into place.
     func dossierAppear() -> some View {
@@ -161,7 +215,7 @@ struct Eyebrow: View {
 /// Deterministic barcode, like the strip on a grading label.
 struct DossierBarcode: View, Equatable {
     let seed: Int
-    var color: Color = .white
+    var color: Color = DossierPalette.primaryText
 
     var body: some View {
         Canvas { context, size in

@@ -98,6 +98,10 @@ final class ModelRig {
     private var hiddenConfirmFramesRemaining = 0
     private var pendingHiddenToken: Int?
     private var pendingHiddenCallback: ((Int) -> Void)?
+    private var keyLight: DirectionalLight?
+    private var fillLight: DirectionalLight?
+    private var rimLight: DirectionalLight?
+    private var appliedDepthDim: Float = -1
 
     init() {
         root.addChild(tiltPivot)
@@ -106,7 +110,13 @@ final class ModelRig {
         spinPivot.isEnabled = false
     }
 
-    func attach(to content: RealityViewCameraContent) {
+    func attach(
+        to content: RealityViewCameraContent,
+        keyLight: DirectionalLight? = nil,
+        fillLight: DirectionalLight? = nil,
+        rimLight: DirectionalLight? = nil
+    ) {
+        configureLights(key: keyLight, fill: fillLight, rim: rimLight)
         content.add(root)
         content.add(iblLightEntity)
         iblReceiver = ImageBasedLightReceiverComponent(imageBasedLight: iblLightEntity)
@@ -115,6 +125,31 @@ final class ModelRig {
             MainActor.assumeIsolated {
                 self?.tick(Float(event.deltaTime))
             }
+        }
+    }
+
+    func configureLights(key: DirectionalLight?, fill: DirectionalLight?, rim: DirectionalLight?) {
+        self.keyLight = key
+        self.fillLight = fill
+        self.rimLight = rim
+        if appliedDepthDim >= 0 {
+            let dim = appliedDepthDim
+            appliedDepthDim = -1
+            applyDepthDim(dim)
+        }
+    }
+
+    func applyDepthDim(_ dim: Float) {
+        let clamped = min(max(dim, 0), 0.65)
+        if abs(clamped - appliedDepthDim) < 0.01 { return }
+        appliedDepthDim = clamped
+        let scale = max(0.32, 1 - clamped * 0.72)
+        keyLight?.light.intensity = 3600 * scale
+        fillLight?.light.intensity = 1400 * scale
+        rimLight?.light.intensity = 900 * scale
+        if var ibl = iblLightEntity.components[ImageBasedLightComponent.self] {
+            ibl.intensityExponent = 1.3 - clamped * 1.4
+            iblLightEntity.components.set(ibl)
         }
     }
 
@@ -132,6 +167,7 @@ final class ModelRig {
         isVisible: Bool,
         reduceMotion: Bool,
         hideToken: Int = 0,
+        depthDim: Float = 0,
         onModelReady: @escaping (String) -> Void,
         onHiddenConfirmed: @escaping (Int) -> Void = { _ in }
     ) {
@@ -141,6 +177,7 @@ final class ModelRig {
         self.latestFinishID = finishID
         self.isVisible = isVisible
         applyTilt(tilt)
+        applyDepthDim(depthDim)
 
         if hideToken != lastProcessedHideToken {
             lastProcessedHideToken = hideToken
@@ -278,7 +315,10 @@ final class ModelRig {
         step(0)
 
         if let studioLighting, appliedTintKey != tintKey {
-            iblLightEntity.components.set(ImageBasedLightComponent(source: .single(studioLighting), intensityExponent: 1.3))
+            let dim = max(0, appliedDepthDim)
+            iblLightEntity.components.set(
+                ImageBasedLightComponent(source: .single(studioLighting), intensityExponent: 1.3 - dim * 1.4)
+            )
             appliedTintKey = tintKey
         }
         if let receiver = iblReceiver {
@@ -452,6 +492,8 @@ struct HeadphoneModelView: View {
     var hideToken: Int = 0
     /// Incrementing this forces `RealityView.update` to re-run `syncModel` (e.g. after a hide-cancelled load returns to the same card).
     var reloadNonce: Int = 0
+    /// Subtle RealityKit studio light dim (0...0.65) when a card tucks behind another card during a right-swipe.
+    var depthDim: Float = 0
     var onTap: (() -> Void)? = nil
     var onManipulationChanged: (Bool) -> Void = { _ in }
     var onModelReady: (String) -> Void = { _ in }
@@ -488,7 +530,7 @@ struct HeadphoneModelView: View {
             rim.look(at: .zero, from: [-0.5, 0.2, -0.6], relativeTo: nil)
             content.add(rim)
 
-            rig.attach(to: content)
+            rig.attach(to: content, keyLight: key, fillLight: fill, rimLight: rim)
             rig.syncModel(
                 modelID: modelID,
                 kind: kind,
@@ -503,6 +545,7 @@ struct HeadphoneModelView: View {
                 isVisible: isVisible,
                 reduceMotion: reduceMotion,
                 hideToken: hideToken,
+                depthDim: depthDim,
                 onModelReady: onModelReady,
                 onHiddenConfirmed: onHiddenConfirmed
             )
@@ -522,6 +565,7 @@ struct HeadphoneModelView: View {
                 isVisible: isVisible,
                 reduceMotion: reduceMotion,
                 hideToken: hideToken,
+                depthDim: depthDim,
                 onModelReady: onModelReady,
                 onHiddenConfirmed: onHiddenConfirmed
             )

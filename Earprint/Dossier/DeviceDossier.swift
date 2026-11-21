@@ -317,10 +317,7 @@ struct DeviceDossier: Identifiable {
                   detail: "First wear · \(first.minutes.minutesText)", tier: .bronze),
         ]
         let hourMarks: [Double] = [50, 100, 250, 500, 1000, 2000]
-        let tiers: [(Double, Rarity)] = [
-            (10, .silver), (35, .gold), (80, .emerald), (160, .sapphire),
-            (300, .amethyst), (550, .platinum), (900, .diamond), (1400, .obsidian), (2000, .holo)
-        ]
+        let tiers: [(Double, Rarity)] = Rarity.allAscending.dropFirst().map { ($0.minimumHours, $0) }
         var cumulative = 0.0
         for session in sessions {
             let before = cumulative

@@ -43,6 +43,7 @@ struct DeviceDossierView: View {
     private let isSampleData: Bool
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
 
     @State private var period: DossierPeriod = .month
@@ -97,8 +98,7 @@ struct DeviceDossierView: View {
                 }
             }
         }
-        .foregroundStyle(.white)
-        .preferredColorScheme(.dark)
+        .foregroundStyle(DossierPalette.primaryText)
         .sheet(isPresented: $showShare) {
             DossierShareSheet(
                 card: card,
@@ -123,7 +123,7 @@ struct DeviceDossierView: View {
                     Spacer()
                     dataSourceNote
                 }
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.8))
                 .padding(.top, 4)
             }
             slabStage(exporting: exporting)
@@ -159,10 +159,11 @@ struct DeviceDossierView: View {
     // MARK: - Backdrop & Sticky Header
 
     private var backdrop: some View {
-        ZStack {
+        let isLight = colorScheme == .light
+        return ZStack {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
-                colors: [rarity.glow.opacity(0.24), rarity.accent.opacity(0.06), .clear],
+                colors: [rarity.glow.opacity(isLight ? 0.14 : 0.24), rarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
                 center: UnitPoint(x: 0.5, y: 0.14),
                 startRadius: 20,
                 endRadius: 420
@@ -204,11 +205,11 @@ struct DeviceDossierView: View {
                         Text(AppLanguage.current.text("DOSSIER · #%04d", card.serial))
                             .font(.system(.caption, design: .monospaced, weight: .bold))
                             .tracking(1.4)
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
-                    .background(.white.opacity(0.06), in: Capsule())
+                    .background(DossierPalette.surfaceFill, in: Capsule())
                     .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
                     .transition(.opacity)
                 }
@@ -229,7 +230,7 @@ struct DeviceDossierView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(.white.opacity(0.06), in: Capsule())
+                .background(DossierPalette.surfaceFill, in: Capsule())
                 .overlay(Capsule().strokeBorder(rarity.accent.opacity(0.3), lineWidth: 1))
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
@@ -269,10 +270,10 @@ struct DeviceDossierView: View {
     private func topBarIcon(_ symbol: String) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.88))
+            .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
             .frame(width: 34, height: 34)
-            .background(.white.opacity(0.10), in: Circle())
-            .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+            .background(DossierPalette.surfaceFill, in: Circle())
+            .overlay(Circle().strokeBorder(DossierPalette.hairline, lineWidth: 1))
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
     }
@@ -338,7 +339,7 @@ struct DeviceDossierView: View {
                     .foregroundStyle(rarity.accent.opacity(0.85))
                 Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
                     .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
                 if let fw = dossier.hardware.firmwareVersion {
                     Text("· FW \(fw)")
                         .font(.system(.caption2, design: .monospaced, weight: .medium))
@@ -358,7 +359,7 @@ struct DeviceDossierView: View {
         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 28)
     }
 
-    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = .white) -> some View {
+    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = DossierPalette.primaryText) -> some View {
         VStack(spacing: 3) {
             Text(label)
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -412,12 +413,16 @@ struct DeviceDossierView: View {
                     }
                     Spacer()
                     let nightPct = Int((dossier.nightShare * 100).rounded())
+                    let moonColor = Color.adaptive(
+                        light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1),
+                        dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)
+                    )
                     Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
-                        .foregroundStyle(nightPct > 20 ? Theme.moderate.color : Color(red: 0.65, green: 0.72, blue: 1))
+                        .foregroundStyle(nightPct > 20 ? Theme.moderateColor : moonColor)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .background(.white.opacity(0.06), in: Capsule())
+                        .background(DossierPalette.surfaceFill, in: Capsule())
                 }
 
                 DayClock(stats: stats, rarity: rarity, selectedHour: exporting ? .constant(nil) : $selectedHour)
@@ -574,6 +579,8 @@ private struct LifetimeLedgerCard: View {
     let dossier: DeviceDossier
     let rarity: Rarity
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
@@ -626,7 +633,7 @@ private struct LifetimeLedgerCard: View {
                         HStack {
                             Text(row.label)
                                 .font(.system(.caption, design: .monospaced, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.88))
+                                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                                 .frame(width: 64, alignment: .leading)
                             Text(row.minutes.minutesText)
                                 .font(.system(.caption, design: .rounded, weight: .bold))
@@ -642,7 +649,7 @@ private struct LifetimeLedgerCard: View {
                                 .frame(width: 58, alignment: .trailing)
                             Text("\(Int(row.averageDecibels.rounded())) dB")
                                 .font(.system(.caption, design: .monospaced, weight: .semibold))
-                                .foregroundStyle(Theme.levelColor(db: row.averageDecibels))
+                                .foregroundStyle(Theme.levelColor(db: row.averageDecibels, colorScheme: colorScheme))
                                 .frame(width: 48, alignment: .trailing)
                         }
                     }
@@ -668,7 +675,7 @@ private struct LifetimeLedgerCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
@@ -707,7 +714,7 @@ struct MilestoneTimelineCard: View {
                         if !isLast {
                             let nextIsFuture = milestones[index + 1].isFuture
                             Rectangle()
-                                .fill(nextIsFuture ? Color.white.opacity(0.10) : nodeColor.opacity(0.28))
+                                .fill(nextIsFuture ? DossierPalette.hairline : nodeColor.opacity(0.28))
                                 .frame(width: 1.5)
                                 .frame(minHeight: 28)
                                 .padding(.vertical, 3)
@@ -718,7 +725,7 @@ struct MilestoneTimelineCard: View {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(LocalizedStringKey(item.title))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(item.isFuture ? .white.opacity(0.78) : .white)
+                                .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.75) : DossierPalette.primaryText)
                             if let tier = item.tier, item.kind == .tier || item.kind == .minted {
                                 Text(LocalizedStringKey(tier.rawValue))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
@@ -768,9 +775,9 @@ struct MilestoneTimelineCard: View {
     private func color(for item: DossierMilestone) -> Color {
         if let tier = item.tier { return tier.accent }
         switch item.kind {
-        case .longest: return Theme.moderate.color
+        case .longest: return Theme.moderateColor
         case .bestDay: return rarity.accent
-        case .hours: return Theme.quiet.color
+        case .hours: return Theme.quietColor
         case .upcoming: return rarity.accent
         case .minted, .tier: return rarity.accent
         }

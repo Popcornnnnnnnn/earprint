@@ -27,6 +27,7 @@ struct CollectionView: View {
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var space = LayoutSpace()
 
     private var listMotionActive: Bool {
@@ -35,7 +36,7 @@ struct CollectionView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
+            Theme.canvasElevated.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -101,7 +102,9 @@ struct CollectionView: View {
                 .zIndex(1)
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.primaryText)
+        .toolbar(selected == nil ? .visible : .hidden, for: .tabBar)
+        .animation(.easeInOut(duration: 0.22), value: selected != nil)
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(card: card, isSampleData: isSampleData) { dossierCard = nil }
         }
@@ -109,12 +112,17 @@ struct CollectionView: View {
             NavigationStack {
                 CardTiersView(ownedCards: cards, showsDoneButton: true)
             }
-            .preferredColorScheme(.dark)
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(ownedCards: cards, openIconPicker: openIconPicker)
+            SettingsView(ownedCards: cards, openIconPicker: openIconPicker, onConnectHealth: onConnectHealth)
                 .presentationDragIndicator(.visible)
+        }
+        .task(id: cards.first?.modelAssetName) {
+            guard let asset = cards.first?.modelAssetName else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            await HeadphoneModelLoader.prewarm(assetName: asset)
         }
         .task { await runDemoIfNeeded() }
         .onAppear {
@@ -150,7 +158,7 @@ struct CollectionView: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(Theme.secondaryText)
             }
             Spacer(minLength: 8)
             settingsButton
@@ -166,6 +174,8 @@ struct CollectionView: View {
                 .font(.system(size: 19, weight: .medium))
                 .frame(width: 44, height: 44)
                 .background(Theme.card, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.cardStroke, lineWidth: 1))
+                .shadow(color: Theme.cardShadow, radius: 6, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")
@@ -185,22 +195,22 @@ struct CollectionView: View {
         VStack(spacing: 14) {
             Image(systemName: "headphones")
                 .font(.system(size: 36, weight: .light))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(Theme.tertiaryText)
             Text(isLoading ? "Reading Apple Health…" : "No supported headphones yet")
                 .font(.headline)
             Text("Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
             if let onConnectHealth, !isLoading {
                 Button(action: onConnectHealth) {
                     Text("Sync Apple Health")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Theme.invertedText)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
-                        .background(.white, in: Capsule())
+                        .background(Theme.invertedFill, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 4)
@@ -209,14 +219,15 @@ struct CollectionView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 44)
         .padding(.horizontal, 20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.white.opacity(0.04)))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.surfaceFill))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
     }
 
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
         let disableTilt = reduceMotion
+        let isLight = colorScheme == .light
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             selected = card
@@ -228,8 +239,12 @@ struct CollectionView: View {
                     }
                     .background {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color.black)
-                            .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                            .fill(Theme.card)
+                            .shadow(
+                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.32),
+                                radius: isLight ? 12 : 14,
+                                y: isLight ? 5 : 8
+                            )
                     }
                     .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.8), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
                     .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3.0), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
@@ -252,6 +267,7 @@ struct CollectionView: View {
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
+        let isLight = colorScheme == .light
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             selected = card
@@ -263,8 +279,12 @@ struct CollectionView: View {
                     }
                     .background {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(Color.black)
-                            .shadow(color: card.rarity.glow.opacity(0.32), radius: 14, y: 8)
+                            .fill(Theme.card)
+                            .shadow(
+                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.32),
+                                radius: isLight ? 12 : 14,
+                                y: isLight ? 5 : 8
+                            )
                     }
                     .rotation3DEffect(.degrees(Double(liveTilt.width) * 3.5), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
                     .rotation3DEffect(.degrees(Double(-liveTilt.height) * 2.8), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
@@ -281,31 +301,31 @@ struct CollectionView: View {
     private var lockedSlotHorizontal: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
-            .foregroundStyle(.white.opacity(0.18))
+            .foregroundStyle(Theme.hairline)
             .frame(height: 86)
             .overlay {
                 HStack(spacing: 14) {
                     Image(systemName: "lock.fill")
                         .font(.title3)
                         .frame(width: 40, height: 40)
-                        .background(.white.opacity(0.06), in: Circle())
+                        .background(Theme.surfaceFill, in: Circle())
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Next pair").font(.subheadline.weight(.semibold))
                         Text("Listen with supported headphones to unlock a card")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(Theme.secondaryText)
                     }
                     Spacer()
                 }
                 .padding(.horizontal, 18)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(Theme.secondaryText)
             }
     }
 
     private var lockedSlotVertical: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
-            .foregroundStyle(.white.opacity(0.2))
+            .foregroundStyle(Theme.hairline)
             .aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
             .overlay {
                 VStack(spacing: 6) {
@@ -317,7 +337,7 @@ struct CollectionView: View {
                         .minimumScaleFactor(0.8)
                 }
                 .padding(.horizontal, 12)
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(Theme.tertiaryText)
             }
     }
 
@@ -509,7 +529,7 @@ struct ModelGalleryView: View {
             case .airPods: .silver
             case .airPodsPro: .platinum
             case .airPodsMax: .obsidian
-            case .beats: .gold
+            case .beats: .sapphire
             case .generic: .bronze
             }
             return (entry.id, surface)
@@ -524,9 +544,9 @@ struct ModelGalleryView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "trophy.fill")
                             .font(.title3)
-                            .foregroundStyle(Color(red: 0.94, green: 0.78, blue: 0.36))
+                            .foregroundStyle(Theme.moderateColor)
                             .frame(width: 34, height: 34)
-                            .background(Color(red: 0.94, green: 0.78, blue: 0.36).opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .background(Theme.moderateColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(unlockedIDs.count) of \(ModelGalleryCatalog.allAppleAndBeatsCount) unlocked")
                                 .font(.subheadline.weight(.semibold))
@@ -548,10 +568,10 @@ struct ModelGalleryView: View {
                                 HStack(spacing: 12) {
                                     Image(systemName: entry.model.resolvedSymbol)
                                         .font(.system(size: 16, weight: .medium))
-                                        .foregroundStyle(unlocked ? Color(red: 0.45, green: 0.90, blue: 0.76) : .secondary)
+                                        .foregroundStyle(unlocked ? Theme.quietColor : .secondary)
                                         .frame(width: 32, height: 32)
                                         .background(
-                                            (unlocked ? Color(red: 0.45, green: 0.90, blue: 0.76).opacity(0.14) : Color.white.opacity(0.06)),
+                                            (unlocked ? Theme.quietColor.opacity(0.14) : Theme.surfaceFill),
                                             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                                         )
 
@@ -574,7 +594,10 @@ struct ModelGalleryView: View {
 
                                     if unlocked {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(Color(red: 0.32, green: 0.86, blue: 0.56))
+                                            .foregroundStyle(Color.adaptive(
+                                                light: UIColor(red: 0.12, green: 0.65, blue: 0.36, alpha: 1),
+                                                dark: UIColor(red: 0.32, green: 0.86, blue: 0.56, alpha: 1)
+                                            ))
                                             .accessibilityLabel("Unlocked")
                                     } else {
                                         Image(systemName: "chevron.right")
@@ -932,6 +955,7 @@ struct CardDetail: View {
     let close: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("cardDetail.hasSeenFlipHint") private var hasSeenFlipHint = false
     @State private var showsFlipHintThisVisit = false
     @State private var flipState = CardDeckFlipState()
@@ -1065,11 +1089,12 @@ struct CardDetail: View {
     }
 
     var body: some View {
+        let isLight = colorScheme == .light
         ZStack {
             ZStack {
-                Color(red: 0.03, green: 0.03, blue: 0.05).opacity(0.94)
+                Theme.detailBackdrop
                 RadialGradient(
-                    colors: [card.rarity.glow.opacity(0.20), .clear],
+                    colors: [card.rarity.glow.opacity(isLight ? 0.14 : 0.20), .clear],
                     center: UnitPoint(x: 0.5, y: 0.42),
                     startRadius: 20,
                     endRadius: 340
@@ -1199,11 +1224,11 @@ struct CardDetail: View {
         Button(action: dismissDetail) {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Theme.primaryText.opacity(0.9))
                 .frame(width: 36, height: 36)
                 .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 1))
-                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+                .shadow(color: Theme.cardShadow, radius: 8, y: 4)
         }
         .buttonStyle(.plain)
         .padding(.top, 14)
@@ -1614,6 +1639,7 @@ struct CardDetail: View {
                     isVisible: canShow3DNow,
                     hideToken: swapHideToken,
                     reloadNonce: modelReloadNonce,
+                    depthDim: Float(CardStackPose.pose(forDelta: CGFloat(targetIdx) - deckPosition).dimAmount),
                     onTap: canFlip ? { flip() } : nil,
                     onManipulationChanged: { manipulating in
                         modelInteractionTilt = manipulating ? activeTilt : nil
@@ -1713,10 +1739,13 @@ struct CardDetail: View {
                 }
             }
             .background {
+                let isLight = colorScheme == .light
                 RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-                    .fill(Color.black)
+                    .fill(Theme.card)
                     .shadow(
-                        color: isTop ? surfaceRarity.glow.opacity(0.48) : .black.opacity(0.42),
+                        color: isTop
+                            ? surfaceRarity.glow.opacity(isLight ? 0.30 : 0.48)
+                            : (isLight ? Theme.cardShadow : .black.opacity(0.42)),
                         radius: isTop ? 24 : 16,
                         y: isTop ? 16 : 12
                     )
@@ -1768,12 +1797,13 @@ struct CardDetail: View {
 
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
+        let isLight = colorScheme == .light
         return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
             .id(card.id)
             .background {
                 RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-                    .fill(Color.black)
-                    .shadow(color: card.rarity.glow.opacity(0.4), radius: 24, y: 14)
+                    .fill(Theme.card)
+                    .shadow(color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.4), radius: 24, y: 14)
             }
             .scaleEffect(scale)
             .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
@@ -1818,7 +1848,7 @@ struct CardDetail: View {
             HStack(spacing: 6) {
                 ForEach(deckCards.indices, id: \.self) { idx in
                     Capsule()
-                        .fill(idx == activeIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.24))
+                        .fill(idx == activeIndex ? Theme.primaryText.opacity(0.85) : Theme.primaryText.opacity(0.22))
                         .frame(width: idx == activeIndex ? 16 : 6, height: 6)
                 }
             }
@@ -1826,10 +1856,10 @@ struct CardDetail: View {
         } else {
             Text("\(activeIndex + 1) / \(deckCards.count)")
                 .font(.caption2.weight(.semibold).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(Theme.secondaryText)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
-                .background(.white.opacity(0.08), in: Capsule())
+                .background(Theme.surfaceFill, in: Capsule())
         }
     }
 
@@ -1870,19 +1900,19 @@ struct CardDetail: View {
                 Circle()
                     .fill(LinearGradient(colors: [active.swatchTop, active.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 15, height: 15)
-                    .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 1))
+                    .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
                 Text(LocalizedStringKey(active.title))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.primaryText)
             .background(
-                Capsule().fill(showColorBar ? .white.opacity(0.24) : .white.opacity(0.12))
+                Capsule().fill(showColorBar ? Theme.surfaceFillStrong : Theme.surfaceFill)
             )
             .overlay(
-                Capsule().strokeBorder(.white.opacity(showColorBar ? 0.4 : 0.14), lineWidth: 1)
+                Capsule().strokeBorder(Theme.hairline, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -1901,13 +1931,13 @@ struct CardDetail: View {
                         ZStack {
                             if isSelected {
                                 Circle()
-                                    .strokeBorder(.white, lineWidth: 2)
+                                    .strokeBorder(Theme.primaryText, lineWidth: 2)
                                     .frame(width: 34, height: 34)
                             }
                             Circle()
                                 .fill(LinearGradient(colors: [option.swatchTop, option.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
                                 .frame(width: 26, height: 26)
-                                .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 0.9))
+                                .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 0.9))
                         }
                         .frame(width: 34, height: 34)
                     }
@@ -1922,7 +1952,7 @@ struct CardDetail: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth: 330)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
     }
 
     private func flip(_ direction: CardFlipDirection = .left) {

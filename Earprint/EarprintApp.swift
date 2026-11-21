@@ -7,7 +7,22 @@ struct EarprintApp: App {
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @Environment(\.scenePhase) private var scenePhase
+
+    private var resolvedColorScheme: ColorScheme? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "-appearance"), idx + 1 < args.count {
+            switch args[idx + 1].lowercased() {
+            case "light": return .light
+            case "dark": return .dark
+            default: break
+            }
+        }
+        #endif
+        return appearance.colorScheme
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -43,7 +58,13 @@ struct EarprintApp: App {
             .environment(colorStore)
             .environment(routeMonitor)
             .environment(\.locale, language.locale)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(resolvedColorScheme)
+            .sheet(isPresented: $library.needsHealthOnboarding) {
+                HealthOnboardingView(
+                    onConnect: { Task { await library.completeOnboarding(connect: true) } },
+                    onSkip: { Task { await library.completeOnboarding(connect: false) } }
+                )
+            }
             #if DEBUG
             .sheet(item: $router.developerScreen) { screen in
                 DeveloperToolsView(library: library, openProbe: screen == .probe)

@@ -17,6 +17,8 @@ struct GradingSlab: View {
     var flipped = false
     var animateSeal = true
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let grade = dossier.grade
         let rarity = card.rarity
@@ -50,27 +52,27 @@ struct GradingSlab: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 HStack(spacing: 5) {
-                    DossierBarcode(seed: card.serial * 7 + 3, color: .white.opacity(0.75))
+                    DossierBarcode(seed: card.serial * 7 + 3, color: DossierPalette.primaryText.opacity(0.75))
                         .frame(width: 44, height: 11)
                     Text(certNumber)
                         .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(DossierPalette.dim)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
                 .padding(.top, 3)
             }
             Spacer(minLength: 0)
-            Rectangle().fill(.white.opacity(0.12)).frame(width: 1).padding(.vertical, 6)
+            Rectangle().fill(DossierPalette.hairline).frame(width: 1).padding(.vertical, 6)
             VStack(spacing: 0) {
                 Text("EAR GRADE")
                     .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                     .tracking(1.2)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(DossierPalette.dim)
                 Text(grade.scoreText)
                     .font(.system(size: 34, weight: .black, design: .rounded))
                     .foregroundStyle(rarity.foil)
-                    .shadow(color: rarity.glow.opacity(0.5), radius: 6)
+                    .shadow(color: rarity.glow.opacity(colorScheme == .light ? 0.28 : 0.5), radius: 6)
                 Text(LocalizedStringKey(grade.label))
                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                     .tracking(1)
@@ -78,11 +80,15 @@ struct GradingSlab: View {
             }
             .frame(width: 74)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(DossierPalette.primaryText)
         .padding(.horizontal, 12)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.14), Color(red: 0.05, green: 0.05, blue: 0.08)], startPoint: .top, endPoint: .bottom))
+                .fill(
+                    colorScheme == .light
+                        ? LinearGradient(colors: [.white, Color(red: 0.96, green: 0.965, blue: 0.98)], startPoint: .top, endPoint: .bottom)
+                        : LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.14), Color(red: 0.05, green: 0.05, blue: 0.08)], startPoint: .top, endPoint: .bottom)
+                )
         }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -99,7 +105,7 @@ struct GradingSlab: View {
         }
         .scaleEffect(SlabMetrics.cardScale)
         .frame(width: SlabMetrics.cardSize.width, height: SlabMetrics.cardSize.height)
-        .shadow(color: .black.opacity(0.55), radius: 8, y: 4)
+        .shadow(color: colorScheme == .light ? Theme.cardShadow : .black.opacity(0.55), radius: 8, y: 4)
         .padding(1)
     }
 
@@ -118,27 +124,40 @@ struct GradingSlab: View {
             HoloSeal(tilt: tilt, size: 30, isAnimated: animateSeal)
                 .offset(y: -4)
         }
-        .foregroundStyle(.white.opacity(0.42))
+        .foregroundStyle(DossierPalette.faint)
         .padding(.horizontal, 6)
     }
 
     /// Clear plastic case: faint fill, double rim, moving reflection.
     private func acrylic(rarity: Rarity) -> some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        let isLight = colorScheme == .light
         return ZStack {
-            shape.fill(Color.black.opacity(0.65))
-                .shadow(color: rarity.glow.opacity(0.35), radius: 26, y: 14)
-            shape.fill(LinearGradient(colors: [Color.white.opacity(0.13), Color.white.opacity(0.04), Color.white.opacity(0.09)],
-                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-            shape.fill(.ultraThinMaterial.opacity(0.35))
+            shape.fill(isLight ? Color.white.opacity(0.82) : Color.black.opacity(0.65))
+                .shadow(color: isLight ? Theme.cardShadow : rarity.glow.opacity(0.35), radius: isLight ? 18 : 26, y: isLight ? 8 : 14)
+            shape.fill(LinearGradient(
+                colors: [Color.white.opacity(isLight ? 0.55 : 0.13), Color.white.opacity(0.04), Color.white.opacity(isLight ? 0.35 : 0.09)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ))
+            shape.fill(.ultraThinMaterial.opacity(isLight ? 0.5 : 0.35))
             shape.fill(
-                LinearGradient(colors: [.clear, .white.opacity(0.22), .clear],
+                LinearGradient(colors: [.clear, .white.opacity(isLight ? 0.45 : 0.22), .clear],
                                startPoint: UnitPoint(x: -0.2 + tilt.width * 0.6, y: 0.0 + tilt.height * 0.4),
                                endPoint: UnitPoint(x: 0.45 + tilt.width * 0.6, y: 0.55 + tilt.height * 0.4))
             )
             .blendMode(.screen)
-            shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.15), .white.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
-            shape.inset(by: 5).strokeBorder(.white.opacity(0.09), lineWidth: 1)
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: isLight
+                        ? [Color.black.opacity(0.14), Color.black.opacity(0.05), Color.black.opacity(0.12)]
+                        : [.white.opacity(0.65), .white.opacity(0.15), .white.opacity(0.4)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.5
+            )
+            shape.inset(by: 5).strokeBorder(DossierPalette.hairline, lineWidth: 1)
         }
     }
 
@@ -155,10 +174,13 @@ struct CertificateLabel: View {
     var tilt: CGSize = .zero
     var animateSeal = true
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let hw = dossier.hardware
         let grade = dossier.grade
         let rarity = card.rarity
+        let isLight = colorScheme == .light
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("EARPRINT GRADING AUTHORITY")
@@ -180,24 +202,24 @@ struct CertificateLabel: View {
                         .minimumScaleFactor(0.8)
                     Text("\(hw.manufacturer) · \(hw.productID)")
                         .font(.system(.footnote, design: .monospaced, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(DossierPalette.dim)
                 }
                 Spacer(minLength: 0)
                 VStack(spacing: 2) {
                     Text("EAR GRADE")
                         .font(.system(size: 8, weight: .heavy, design: .rounded)).tracking(1.2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(DossierPalette.dim)
                     Text(grade.scoreText)
                         .font(.system(size: 44, weight: .black, design: .rounded))
                         .foregroundStyle(rarity.foil)
-                        .shadow(color: rarity.glow.opacity(0.45), radius: 8)
+                        .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.45), radius: 8)
                     Text(LocalizedStringKey(grade.label))
                         .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
                         .foregroundStyle(rarity.accent)
                 }
                 .padding(.vertical, 8)
                 .frame(width: 104)
-                .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(rarity.foil, lineWidth: 1))
             }
 
@@ -247,20 +269,25 @@ struct CertificateLabel: View {
                         .foregroundStyle(DossierPalette.dim)
                         .lineLimit(2)
                         .minimumScaleFactor(0.9)
-                    DossierBarcode(seed: card.serial * 13 + 1, color: .white.opacity(0.6))
+                    DossierBarcode(seed: card.serial * 13 + 1, color: DossierPalette.primaryText.opacity(0.6))
                         .frame(height: 18)
                         .padding(.top, 4)
                 }
                 HoloSeal(tilt: tilt, size: 64, isAnimated: animateSeal)
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(DossierPalette.primaryText)
         .padding(18)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.11, green: 0.11, blue: 0.15), Color(red: 0.06, green: 0.06, blue: 0.09)], startPoint: .top, endPoint: .bottom))
+                .fill(
+                    isLight
+                        ? LinearGradient(colors: [.white, Color(red: 0.965, green: 0.968, blue: 0.982)], startPoint: .top, endPoint: .bottom)
+                        : LinearGradient(colors: [Color(red: 0.11, green: 0.11, blue: 0.15), Color(red: 0.06, green: 0.06, blue: 0.09)], startPoint: .top, endPoint: .bottom)
+                )
+                .shadow(color: Theme.cardShadow, radius: 12, y: 5)
                 .overlay {
-                    GuillochePattern()
+                    GuillochePattern(lineColor: isLight ? Color.black.opacity(0.03) : Color.white.opacity(0.025))
                         .equatable()
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
@@ -279,9 +306,7 @@ struct CertificateLabel: View {
                 .foregroundStyle(DossierPalette.faint)
             Text(value)
                 .font(.system(.footnote, design: .monospaced, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.88))
-                .shadow(color: .black.opacity(0.9), radius: 0, x: 0, y: -0.6)
-                .shadow(color: .white.opacity(0.12), radius: 0, x: 0, y: 0.6)
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
                 .lineLimit(2)
                 .minimumScaleFactor(0.75)
         }
@@ -292,6 +317,8 @@ struct CertificateLabel: View {
 
 /// Static guilloché security line pattern, isolated as `Equatable` so tilt updates never redraw 26 sine paths.
 private struct GuillochePattern: View, Equatable {
+    var lineColor: Color = Color.white.opacity(0.025)
+
     var body: some View {
         Canvas { context, size in
             var combined = Path()
@@ -302,7 +329,7 @@ private struct GuillochePattern: View, Equatable {
                     combined.addLine(to: CGPoint(x: x, y: y0 + sin(x / 26 + CGFloat(i)) * 9))
                 }
             }
-            context.stroke(combined, with: .color(.white.opacity(0.025)), lineWidth: 0.8)
+            context.stroke(combined, with: .color(lineColor), lineWidth: 0.8)
         }
     }
 }
@@ -312,7 +339,7 @@ struct Perforation: View {
     var body: some View {
         HStack(spacing: 0) {
             Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: -24)
-            Line().stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 4])).foregroundStyle(.white.opacity(0.18)).frame(height: 1)
+            Line().stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 4])).foregroundStyle(DossierPalette.hairline).frame(height: 1)
             Circle().fill(DossierPalette.ink).frame(width: 12, height: 12).offset(x: 24)
         }
         .accessibilityHidden(true)
@@ -329,6 +356,8 @@ struct Perforation: View {
 struct GradeBreakdown: View {
     let grade: EarGrade
     let accent: Color
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -349,9 +378,9 @@ struct GradeBreakdown: View {
                         }
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(.white.opacity(0.08))
+                                Capsule().fill(DossierPalette.surfaceFill)
                                 Capsule()
-                                    .fill(LinearGradient(colors: [Theme.quiet.color, Theme.moderate.color, Theme.loud.color], startPoint: .leading, endPoint: .trailing))
+                                    .fill(LinearGradient(colors: [Theme.quietColor, Theme.moderateColor, Theme.loudColor], startPoint: .leading, endPoint: .trailing))
                                     .frame(width: max(6, geo.size.width * factor.severity))
                             }
                         }
@@ -359,7 +388,7 @@ struct GradeBreakdown: View {
                     }
                     Text(factor.penalty < 0.05 ? "0.0" : String(format: "−%.1f", factor.penalty))
                         .font(.system(.footnote, design: .monospaced, weight: .bold))
-                        .foregroundStyle(factor.penalty < 0.05 ? Theme.quiet.color : (factor.penalty < 0.5 ? Theme.moderate.color : Theme.loud.color))
+                        .foregroundStyle(factor.penalty < 0.05 ? Theme.quietColor : (factor.penalty < 0.5 ? Theme.moderateColor : Theme.loudColor))
                         .frame(width: 44, alignment: .trailing)
                 }
                 .accessibilityElement(children: .combine)

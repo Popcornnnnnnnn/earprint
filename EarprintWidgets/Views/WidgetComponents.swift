@@ -51,13 +51,6 @@ struct MiniFoil: View {
             case .satin:
                 LinearGradient(colors: [hi, mid, sh, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
                 RadialGradient(colors: [hi.opacity(0.45), .clear], center: UnitPoint(x: 0.82, y: 0.18), startRadius: 2, endRadius: 85)
-            case .frosted:
-                LinearGradient(colors: [hi, mid, sh], startPoint: .topTrailing, endPoint: .bottomLeading)
-                RadialGradient(colors: [.white.opacity(0.28), .clear], center: UnitPoint(x: 0.78, y: 0.18), startRadius: 4, endRadius: 95)
-            case .faceted:
-                LinearGradient(colors: [sh, mid, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                LinearGradient(colors: [.clear, hi.opacity(0.32), .white.opacity(0.16), .clear], startPoint: .topLeading, endPoint: UnitPoint(x: 0.9, y: 0.7))
-                    .blendMode(.screen)
             case .carbon:
                 LinearGradient(colors: [mid, deep, sh], startPoint: .top, endPoint: .bottom)
                 RadialGradient(colors: [hi.opacity(0.55), rarity.glow.opacity(0.22), .clear], center: UnitPoint(x: 0.85, y: 0.12), startRadius: 2, endRadius: 75)
@@ -84,7 +77,7 @@ struct MiniFoil: View {
                         path.addLine(to: CGPoint(x: x + size.height, y: size.height))
                     }
                     context.stroke(path, with: .color(.white.opacity(0.06)), lineWidth: 0.6)
-                case .matteGrain, .frosted, .satin, .faceted, .holo:
+                case .matteGrain, .satin, .holo:
                     stride(from: -size.height, to: size.width, by: 3.5).forEach { x in
                         path.move(to: CGPoint(x: x, y: size.height))
                         path.addLine(to: CGPoint(x: x + size.height, y: 0))

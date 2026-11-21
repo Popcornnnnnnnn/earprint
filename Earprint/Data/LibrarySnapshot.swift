@@ -28,6 +28,7 @@ struct DeviceSummary: Identifiable, Sendable {
     var weekDecibels: Double?
     /// Share of the WHO weekly budget used in the last 7 local days (today + 6), 1.0 = 100 %.
     var weeklyBudget: Double
+    var tierAchievedDates: [Rarity: Date] = [:]
 }
 
 struct LibrarySnapshot: Sendable {
@@ -96,6 +97,7 @@ struct LibrarySnapshot: Sendable {
             : DeviceDescriptor.clean(acc.descriptor?.name) ?? model.shortName
         let window = gridWindow(slots: acc.slots, now: now, calendar: calendar, days: gridDays)
         let sessions = acc.sessions
+        let tierDates = achievedTierDates(for: acc, now: now, calendar: calendar)
         return DeviceSummary(
             id: acc.key,
             aliasIDs: aliasIDs,
@@ -117,8 +119,36 @@ struct LibrarySnapshot: Sendable {
             grid: window.grid,
             weekSeconds: window.weekSeconds,
             weekDecibels: HearingBudget.averageDecibels(energy: window.weekEnergy, seconds: window.weekSeconds),
-            weeklyBudget: HearingBudget.dose(energy: window.weekEnergy)
+            weeklyBudget: HearingBudget.dose(energy: window.weekEnergy),
+            tierAchievedDates: tierDates
         )
+    }
+
+    private static func achievedTierDates(for acc: DeviceAccumulator, now: Date, calendar: Calendar) -> [Rarity: Date] {
+        var dates: [Rarity: Date] = [:]
+        if let first = acc.first {
+            dates[.bronze] = first
+        }
+        var cumulativeSeconds = 0.0
+        for (dayKey, seconds) in acc.daily.sorted(by: { $0.key < $1.key }) where seconds > 0 {
+            cumulativeSeconds += seconds
+            let year = dayKey / 10_000
+            let month = (dayKey / 100) % 100
+            let day = dayKey % 100
+            let dayDate = calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12)) ?? now
+            if dates[.bronze] == nil {
+                dates[.bronze] = dayDate
+            }
+            for tier in Rarity.allAscending.dropFirst() where dates[tier] == nil {
+                if cumulativeSeconds >= tier.minimumHours * 3600 {
+                    dates[tier] = dayDate
+                }
+            }
+        }
+        for tier in Rarity.allAscending.dropFirst() where dates[tier] == nil && acc.seconds >= tier.minimumHours * 3600 {
+            dates[tier] = acc.last ?? now
+        }
+        return dates
     }
 
     struct GridWindow {
@@ -258,7 +288,8 @@ extension LibrarySnapshot {
                 grid: d.grid,
                 modelKey: d.model.key,
                 kind: d.model.key.kind,
-                aliasIDs: d.aliasIDs
+                aliasIDs: d.aliasIDs,
+                tierAchievedDates: d.tierAchievedDates
             )
         }
     }
@@ -434,6 +465,19 @@ enum DateText {
     /// "Oct 30"
     static func monthDay(_ date: Date, calendar: Calendar) -> String {
         formatTemplate(date, template: "MMM d", calendar: calendar, locale: AppLanguage.current.locale)
+    }
+
+    /// Concise tier achievement date: "Oct '25" in English or "25年10月" in Chinese.
+    static func shortMonthYear(_ date: Date, calendar: Calendar, locale: Locale = AppLanguage.current.locale) -> String {
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        let yy = (comps.year ?? 0) % 100
+        let m = comps.month ?? 1
+        if locale.identifier.hasPrefix("zh") {
+            return "\(yy)年\(m)月"
+        }
+        let month = format(date, dateFormat: "MMM", calendar: calendar, locale: AppLanguage.english.locale)
+        let year = format(date, dateFormat: "yy", calendar: calendar, locale: AppLanguage.english.locale)
+        return "\(month) '\(year)"
     }
 
     /// Stable date strings consumed by the sample dossier's parser.

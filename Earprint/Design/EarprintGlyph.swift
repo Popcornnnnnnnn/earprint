@@ -76,6 +76,9 @@ struct ListeningGrid: Equatable {
 struct EarprintGlyph: View, Equatable {
     let grid: ListeningGrid
     var showHourLabels = true
+    var forcedColorScheme: ColorScheme? = nil
+
+    @Environment(\.colorScheme) private var envColorScheme
 
     private struct HourGeometry {
         let startAngle: Angle
@@ -92,29 +95,22 @@ struct EarprintGlyph: View, Equatable {
         return HourGeometry(startAngle: start, endAngle: end, cosStart: CGFloat(cos(rad)), sinStart: CGFloat(sin(rad)))
     }
 
-    private static let crispPalette: [Color] = [
-        Theme.levelColor(db: 56),
-        Theme.levelColor(db: 61),
-        Theme.levelColor(db: 63),
-        Theme.levelColor(db: 65),
-        Theme.levelColor(db: 67),
-        Theme.levelColor(db: 69),
-        Theme.levelColor(db: 71),
-        Theme.levelColor(db: 73.25),
-        Theme.levelColor(db: 75.75),
-        Theme.levelColor(db: 78.25),
-        Theme.levelColor(db: 80.75),
-        Theme.levelColor(db: 84),
-    ]
+    private static let crispPaletteDark: [Color] = makeCrispPalette(colorScheme: .dark)
+    private static let crispPaletteLight: [Color] = makeCrispPalette(colorScheme: .light)
+    private static let glowPaletteDark: [Color] = makeGlowPalette(colorScheme: .dark)
+    private static let glowPaletteLight: [Color] = makeGlowPalette(colorScheme: .light)
 
-    private static let glowPalette: [Color] = [
-        Theme.levelColor(db: 56),
-        Theme.levelColor(db: 63),
-        Theme.levelColor(db: 68),
-        Theme.levelColor(db: 73),
-        Theme.levelColor(db: 78),
-        Theme.levelColor(db: 84),
-    ]
+    private static func makeCrispPalette(colorScheme: ColorScheme) -> [Color] {
+        [56, 61, 63, 65, 67, 69, 71, 73.25, 75.75, 78.25, 80.75, 84].map {
+            Theme.levelColor(db: $0, colorScheme: colorScheme)
+        }
+    }
+
+    private static func makeGlowPalette(colorScheme: ColorScheme) -> [Color] {
+        [56, 63, 68, 73, 78, 84].map {
+            Theme.levelColor(db: $0, colorScheme: colorScheme)
+        }
+    }
 
     private static let intensityLevels: [Double] = [0.16, 0.44, 0.72, 0.96]
 
@@ -126,10 +122,27 @@ struct EarprintGlyph: View, Equatable {
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.showHourLabels == rhs.showHourLabels && lhs.grid == rhs.grid
+        lhs.showHourLabels == rhs.showHourLabels
+            && lhs.forcedColorScheme == rhs.forcedColorScheme
+            && lhs.grid == rhs.grid
     }
 
     var body: some View {
+        let scheme = forcedColorScheme ?? envColorScheme
+        let isLight = scheme == .light
+        let crispPalette = isLight ? Self.crispPaletteLight : Self.crispPaletteDark
+        let glowPalette = isLight ? Self.glowPaletteLight : Self.glowPaletteDark
+        let trackColor = isLight ? Color.black.opacity(0.07) : Color.white.opacity(0.055)
+        let innerRingColor = isLight ? Color.black.opacity(0.12) : Color.white.opacity(0.11)
+        let outerRingColor = isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.10)
+        let tickColor = isLight ? Color.black.opacity(0.22) : Color.white.opacity(0.18)
+        let dotZeroColor = isLight ? Color.black.opacity(0.75) : Color.white.opacity(0.90)
+        let dotMinorColor = isLight ? Color.black.opacity(0.38) : Color.white.opacity(0.55)
+        let labelZeroColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.84) : Color.white.opacity(0.82)
+        let labelMinorColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.54) : Color.white.opacity(0.55)
+        let glowAlpha: Double = isLight ? 0.28 : 0.76
+        let minArcAlpha: Double = isLight ? 0.45 : 0.32
+
         Canvas { context, size in
             let side = min(size.width, size.height)
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -154,7 +167,7 @@ struct EarprintGlyph: View, Equatable {
                     trackPath.addArc(center: center, radius: r, startAngle: g.startAngle, endAngle: g.endAngle, clockwise: false)
                 }
             }
-            context.stroke(trackPath, with: .color(.white.opacity(0.055)),
+            context.stroke(trackPath, with: .color(trackColor),
                            style: StrokeStyle(lineWidth: step * 0.55, lineCap: .round))
 
             // 2. Concentric inner & outer precision chronometer hairline rings.
@@ -170,8 +183,8 @@ struct EarprintGlyph: View, Equatable {
                 width: outerRingRadius * 2,
                 height: outerRingRadius * 2
             )
-            context.stroke(Path(ellipseIn: innerRingRect), with: .color(.white.opacity(0.11)), lineWidth: hairlineWidth)
-            context.stroke(Path(ellipseIn: outerRingRect), with: .color(.white.opacity(0.10)), lineWidth: hairlineWidth)
+            context.stroke(Path(ellipseIn: innerRingRect), with: .color(innerRingColor), lineWidth: hairlineWidth)
+            context.stroke(Path(ellipseIn: outerRingRect), with: .color(outerRingColor), lineWidth: hairlineWidth)
 
             // 3. Precision 24-hour chronometer bezel micro-ticks (batched into 1 Path).
             if showHourLabels {
@@ -185,13 +198,13 @@ struct EarprintGlyph: View, Equatable {
                     minorTicks.move(to: CGPoint(x: center.x + r0 * c, y: center.y + r0 * s))
                     minorTicks.addLine(to: CGPoint(x: center.x + r1 * c, y: center.y + r1 * s))
                 }
-                context.stroke(minorTicks, with: .color(.white.opacity(0.18)), lineWidth: max(0.65, hairlineWidth * 0.85))
+                context.stroke(minorTicks, with: .color(tickColor), lineWidth: max(0.65, hairlineWidth * 0.85))
             }
 
             // 4. Bucket active arcs into batched paths (≤6 glow paths, ≤48 crisp paths vs up to 1,344 strokes).
-            var glowBuckets = Array(repeating: Path(), count: Self.glowPalette.count)
-            var glowHasArcs = Array(repeating: false, count: Self.glowPalette.count)
-            let crispCount = Self.crispPalette.count * Self.intensityLevels.count
+            var glowBuckets = Array(repeating: Path(), count: glowPalette.count)
+            var glowHasArcs = Array(repeating: false, count: glowPalette.count)
+            let crispCount = crispPalette.count * Self.intensityLevels.count
             var crispBuckets = Array(repeating: Path(), count: crispCount)
             var crispHasArcs = Array(repeating: false, count: crispCount)
 
@@ -225,20 +238,20 @@ struct EarprintGlyph: View, Equatable {
                 let glowStyle = StrokeStyle(lineWidth: step * 0.72, lineCap: .round)
                 context.drawLayer { glow in
                     glow.addFilter(.blur(radius: step * 1.15))
-                    for gIdx in 0..<Self.glowPalette.count where glowHasArcs[gIdx] {
-                        glow.stroke(glowBuckets[gIdx], with: .color(Self.glowPalette[gIdx].opacity(0.76)), style: glowStyle)
+                    for gIdx in 0..<glowPalette.count where glowHasArcs[gIdx] {
+                        glow.stroke(glowBuckets[gIdx], with: .color(glowPalette[gIdx].opacity(glowAlpha)), style: glowStyle)
                     }
                 }
 
-                for cIdx in 0..<Self.crispPalette.count {
-                    let color = Self.crispPalette[cIdx]
+                for cIdx in 0..<crispPalette.count {
+                    let color = crispPalette[cIdx]
                     for iIdx in 0..<Self.intensityLevels.count {
                         let bucket = cIdx * Self.intensityLevels.count + iIdx
                         guard crispHasArcs[bucket] else { continue }
                         let level = Self.intensityLevels[iIdx]
                         context.stroke(
                             crispBuckets[bucket],
-                            with: .color(color.opacity(0.32 + 0.68 * level)),
+                            with: .color(color.opacity(minArcAlpha + (1 - minArcAlpha) * level)),
                             style: StrokeStyle(lineWidth: step * (0.32 + 0.55 * level), lineCap: .round)
                         )
                     }
@@ -262,7 +275,7 @@ struct EarprintGlyph: View, Equatable {
                 )
                 context.fill(
                     Path(ellipseIn: dotRect),
-                    with: .color(.white.opacity(hour == 0 ? 0.90 : 0.55))
+                    with: .color(hour == 0 ? dotZeroColor : dotMinorColor)
                 )
 
                 if showHourLabels {
@@ -274,7 +287,7 @@ struct EarprintGlyph: View, Equatable {
                     context.draw(
                         Text(label)
                             .font(.system(size: 10, weight: hour == 0 ? .bold : .semibold, design: .monospaced))
-                            .foregroundStyle(hour == 0 ? .white.opacity(0.82) : Theme.secondaryText),
+                            .foregroundStyle(hour == 0 ? labelZeroColor : labelMinorColor),
                         at: labelPoint
                     )
                 }
