@@ -8,6 +8,7 @@ struct DossierTrendChart: View {
     let firstWear: Date?
     @Binding var selection: Date?
     var showsInteractionHint = true
+    var showsMintedMarker = true
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -124,7 +125,7 @@ struct DossierTrendChart: View {
                     .foregroundStyle(DossierPalette.faint)
             }
 
-            if let firstWear, stats.bucketUnit == .day, let firstBucket = stats.buckets.first, firstWear > firstBucket.end {
+            if showsMintedMarker, let firstWear, stats.bucketUnit == .day, let firstBucket = stats.buckets.first, firstWear > firstBucket.end {
                 RuleMark(x: .value("Minted", Calendar.current.startOfDay(for: firstWear), unit: .day))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     .foregroundStyle(rarity.accent.opacity(0.7))
