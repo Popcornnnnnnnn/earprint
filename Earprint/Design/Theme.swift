@@ -169,7 +169,20 @@ struct SampleDataBanner: View {
     var isLoading: Bool = false
     var onConnect: (() -> Void)?
 
+    @ViewBuilder
     var body: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-hideSampleBanner") {
+            EmptyView()
+        } else {
+            bannerContent
+        }
+        #else
+        bannerContent
+        #endif
+    }
+
+    private var bannerContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 HStack(spacing: 5) {

@@ -149,6 +149,17 @@ struct DeviceDossierView: View {
 
     @ViewBuilder
     private var dataSourceNote: some View {
+        #if DEBUG
+        if !ProcessInfo.processInfo.arguments.contains("-hideSampleBanner") {
+            rawDataSourceNote
+        }
+        #else
+        rawDataSourceNote
+        #endif
+    }
+
+    @ViewBuilder
+    private var rawDataSourceNote: some View {
         if isSampleData {
             Text("Sample data").font(.caption)
         } else if !includesHealthDetails {

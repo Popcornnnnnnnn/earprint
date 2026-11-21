@@ -4,6 +4,13 @@ Ready-to-paste bilingual (**English `en-US`** + **Simplified Chinese `zh-Hans`**
 
 > **Note on character limits:** Apple App Store Connect enforces strict per-field character limits (`30` for Name/Subtitle, `170` for Promotional Text, `100` for Keywords, `4,000` for Description). Every field below is verified under limit.
 
+### App Store Connect URLs & Contact
+- **Privacy Policy URL:** `https://popcornnnnnnnn.github.io/earprint/privacy.html`
+- **Support URL:** `https://popcornnnnnnnn.github.io/earprint/support.html`
+- **Marketing URL:** `https://popcornnnnnnnn.github.io/earprint/`
+- **App Privacy (Nutrition Label):** `Data Not Collected`
+- **Contact Email:** `wmax43906@gmail.com` (`Weizhi Wang`)
+
 ---
 
 ## 1. Naming & Trademark Positioning ("Earprint")

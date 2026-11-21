@@ -69,7 +69,8 @@ Earprint does not collect personal information from anyone, including children u
 If this Privacy Policy is updated for a future version (for example, if optional iCloud sync or new features are ever introduced), the updated policy will be published at this URL with a revised Effective Date before those changes take effect.
 
 Questions or privacy inquiries: **wmax43906@gmail.com**  
-Support page: See `docs/site/support.html` (hosted via GitHub Pages alongside this policy)
+Hosted Policy URL: https://popcornnnnnnnn.github.io/earprint/privacy.html  
+Support & FAQ: https://popcornnnnnnnn.github.io/earprint/support.html
 
 ---
 
@@ -132,4 +133,5 @@ Earprint 不向任何用户（包括未满 13 周岁或所在司法辖区适用�
 如未来版本因新增功能（例如用户主动开启的 iCloud 同步等）而需调整本隐私政策，我们将在更新生效前于本页面公布修订内容并更新生效日期。
 
 隐私相关咨询或问题反馈：**wmax43906@gmail.com**  
-技术支持页面：见 `docs/site/support.html`（将随本政策一并托管于 GitHub Pages）
+在线隐私政策页面：https://popcornnnnnnnn.github.io/earprint/privacy.html  
+技术支持页面：https://popcornnnnnnnn.github.io/earprint/support.html
