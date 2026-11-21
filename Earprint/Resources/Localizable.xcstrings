@@ -2581,6 +2581,16 @@
         }
       }
     },
+    "Preview First Launch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览首次启动"
+          }
+        }
+      }
+    },
     "Preview cards use sample listening stats.": {
       "localizations": {
         "zh-Hans": {

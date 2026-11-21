@@ -8,6 +8,7 @@ struct CollectionView: View {
     var isLoading: Bool = false
     var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
+    var onPreviewFirstLaunch: (() -> Void)? = nil
 
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
@@ -115,8 +116,13 @@ struct CollectionView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(ownedCards: cards, openIconPicker: openIconPicker, onConnectHealth: onConnectHealth)
-                .presentationDragIndicator(.visible)
+            SettingsView(
+                ownedCards: cards,
+                openIconPicker: openIconPicker,
+                onConnectHealth: onConnectHealth,
+                onPreviewFirstLaunch: onPreviewFirstLaunch
+            )
+            .presentationDragIndicator(.visible)
         }
         .task(id: cards.first?.modelAssetName) {
             guard let asset = cards.first?.modelAssetName else { return }

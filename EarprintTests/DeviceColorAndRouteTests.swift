@@ -849,4 +849,19 @@ final class DeviceColorAndRouteTests: XCTestCase {
         rig.applyDepthDim(0)
         XCTAssertEqual(keyLight.light.intensity, 3600, accuracy: 1)
     }
+
+    @MainActor
+    func testPreviewFirstLaunchResetsInMemoryStateAndTriggersOnboarding() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("FirstLaunchPreview.\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let cache = AggregateCache(url: dir.appendingPathComponent("agg.json"))
+        let library = HeadphoneLibrary(cache: cache)
+        await library.previewFirstLaunch(afterDelayMilliseconds: 0)
+
+        XCTAssertNil(library.snapshot)
+        XCTAssertEqual(library.state, .idle)
+        XCTAssertTrue(library.needsHealthOnboarding)
+    }
 }

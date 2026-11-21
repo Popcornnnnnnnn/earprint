@@ -26,6 +26,12 @@ struct EarprintApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+            let previewFirstLaunch: (() -> Void)? = { Task { await library.previewFirstLaunch() } }
+            #else
+            let previewFirstLaunch: (() -> Void)? = nil
+            #endif
+
             TabView(selection: $router.tab) {
                 CollectionView(
                     cards: library.cards,
@@ -34,7 +40,8 @@ struct EarprintApp: App {
                     statusMessage: library.statusMessage,
                     isLoading: library.isLoading,
                     isActiveTab: router.tab == .collection,
-                    onConnectHealth: { Task { await library.connectAndSync() } }
+                    onConnectHealth: { Task { await library.connectAndSync() } },
+                    onPreviewFirstLaunch: previewFirstLaunch
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
                 .tag(DeepLinkRouter.Tab.collection)

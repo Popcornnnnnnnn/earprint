@@ -294,6 +294,7 @@ struct SettingsView: View {
 
     let ownedCards: [HeadphoneCard]
     var onConnectHealth: (() -> Void)? = nil
+    var onPreviewFirstLaunch: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
@@ -301,9 +302,15 @@ struct SettingsView: View {
     @State private var iconManager = AppIconManager()
     @State private var path: [Destination]
 
-    init(ownedCards: [HeadphoneCard] = [], openIconPicker: Bool = false, onConnectHealth: (() -> Void)? = nil) {
+    init(
+        ownedCards: [HeadphoneCard] = [],
+        openIconPicker: Bool = false,
+        onConnectHealth: (() -> Void)? = nil,
+        onPreviewFirstLaunch: (() -> Void)? = nil
+    ) {
         self.ownedCards = ownedCards
         self.onConnectHealth = onConnectHealth
+        self.onPreviewFirstLaunch = onPreviewFirstLaunch
         _path = State(initialValue: openIconPicker ? [.appIcon] : [])
     }
 
@@ -373,6 +380,14 @@ struct SettingsView: View {
                             onConnectHealth()
                         } label: {
                             Label("Sync Apple Health", systemImage: "arrow.trianglehead.2.clockwise")
+                        }
+                    }
+                    if let onPreviewFirstLaunch {
+                        Button {
+                            dismiss()
+                            onPreviewFirstLaunch()
+                        } label: {
+                            Label("Preview First Launch", systemImage: "sparkles.rectangle.stack")
                         }
                     }
                     HStack {

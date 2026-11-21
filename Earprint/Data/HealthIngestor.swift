@@ -26,10 +26,15 @@ actor HealthIngestor {
     private var observer: HKObserverQuery?
     private var syncing = false
 
-    init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache(), initialSaved: AggregateCache.Saved? = nil) {
+    init(
+        store: HKHealthStore = HKHealthStore(),
+        cache: AggregateCache = AggregateCache(),
+        initialSaved: AggregateCache.Saved? = nil,
+        ignoreCache: Bool = false
+    ) {
         self.store = store
         self.cache = cache
-        if let saved = initialSaved ?? cache.load() {
+        if !ignoreCache, let saved = initialSaved ?? cache.load() {
             aggregate = saved.aggregate
             anchor = saved.anchor
         } else {
@@ -37,6 +42,14 @@ actor HealthIngestor {
             anchor = nil
         }
     }
+
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    /// Clears in-memory aggregate and anchor without erasing the on-disk cache so test builds can replay first-launch sync cleanly.
+    func resetInMemoryState() {
+        aggregate = ListeningAggregate()
+        anchor = nil
+    }
+    #endif
 
     static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 

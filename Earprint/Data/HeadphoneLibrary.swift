@@ -34,6 +34,12 @@ final class HeadphoneLibrary: ObservableObject {
 
     static let onboardingSeenKey = "onboarding.healthIntroSeen"
 
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    static var isFirstLaunchSimulation: Bool {
+        ProcessInfo.processInfo.arguments.contains("-firstLaunch")
+    }
+    #endif
+
     /// Precomputed display models so SwiftUI reads stay O(1) with zero per-frame allocations or DateFormatter work.
     private(set) var cards: [HeadphoneCard] = []
     private(set) var homeSummary: ListeningSummary = SampleData.summary
@@ -53,8 +59,14 @@ final class HeadphoneLibrary: ObservableObject {
 
     init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
         // Instant launch: decode the on-disk aggregate cache ONCE and share it with HealthIngestor.
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        let simulateFirstLaunch = Self.isFirstLaunchSimulation
+        let saved = simulateFirstLaunch ? nil : cache.load()
+        self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved, ignoreCache: simulateFirstLaunch)
+        #else
         let saved = cache.load()
         self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved)
+        #endif
         if let saved, !saved.aggregate.isEmpty {
             let cached = LibrarySnapshot(aggregate: saved.aggregate)
             self.snapshot = cached
@@ -282,6 +294,13 @@ final class HeadphoneLibrary: ObservableObject {
         }
         #endif
 
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        if Self.isFirstLaunchSimulation {
+            needsHealthOnboarding = true
+            return
+        }
+        #endif
+
         let authStatus = await ingestor.authorizationRequestStatus()
         if authStatus == .unnecessary || snapshot != nil {
             UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
@@ -297,6 +316,19 @@ final class HeadphoneLibrary: ObservableObject {
             #endif
         }
     }
+
+    #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+    /// Replays a cold-start first launch without deleting the user's cached Health history on disk.
+    func previewFirstLaunch(afterDelayMilliseconds delayMs: UInt64 = 350) async {
+        await ingestor.resetInMemoryState()
+        snapshot = nil
+        state = .idle
+        if delayMs > 0 {
+            try? await Task.sleep(for: .milliseconds(delayMs))
+        }
+        needsHealthOnboarding = true
+    }
+    #endif
 
     func completeOnboarding(connect: Bool) async {
         UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
