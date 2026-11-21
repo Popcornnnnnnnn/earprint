@@ -247,20 +247,45 @@ private struct DiagonalBottomRightTriangle: Shape {
 }
 
 enum AppLanguage: String, CaseIterable, Identifiable {
+    case system = "system"
     case english = "en"
     case simplifiedChinese = "zh-Hans"
 
     static let storageKey = "appLanguage"
-    static var systemDefault: Self {
-        Locale.preferredLanguages.first?.hasPrefix("zh") == true ? .simplifiedChinese : .english
+
+    /// Resolves the highest-priority supported language from a preferred language list.
+    static func systemResolved(preferredLanguages: [String] = Locale.preferredLanguages) -> Self {
+        for id in preferredLanguages {
+            let lower = id.lowercased()
+            if lower.hasPrefix("zh") { return .simplifiedChinese }
+            if lower.hasPrefix("en") { return .english }
+        }
+        return .english
     }
+
+    static var systemDefault: Self { .system }
+
+    static var stored: Self {
+        UserDefaults.standard.string(forKey: storageKey).flatMap(Self.init(rawValue:)) ?? .system
+    }
+
+    /// Effective concrete language (`.english` or `.simplifiedChinese`), never `.system`.
     static var current: Self {
-        UserDefaults.standard.string(forKey: storageKey).flatMap(Self.init(rawValue:)) ?? systemDefault
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        if HeadphoneLibrary.isFirstLaunchSimulation {
+            return systemResolved()
+        }
+        #endif
+        return stored.resolved
+    }
+
+    var resolved: Self {
+        self == .system ? Self.systemResolved() : self
     }
 
     private static let cachedBundles: [AppLanguage: Bundle] = {
         var result: [AppLanguage: Bundle] = [:]
-        for lang in AppLanguage.allCases {
+        for lang in [AppLanguage.english, .simplifiedChinese] {
             if let path = Bundle.main.path(forResource: lang.rawValue, ofType: "lproj"),
                let bundle = Bundle(path: path) {
                 result[lang] = bundle
@@ -275,13 +300,30 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     ]
 
     func text(_ key: String, _ arguments: CVarArg...) -> String {
-        let template = Self.cachedBundles[self]?.localizedString(forKey: key, value: nil, table: nil) ?? key
-        return arguments.isEmpty ? template : String(format: template, locale: locale, arguments: arguments)
+        let target = resolved
+        let template = Self.cachedBundles[target]?.localizedString(forKey: key, value: nil, table: nil) ?? key
+        return arguments.isEmpty ? template : String(format: template, locale: target.locale, arguments: arguments)
     }
 
     var id: String { rawValue }
-    var locale: Locale { Self.cachedLocales[self] ?? Locale(identifier: rawValue) }
-    var name: String { self == .english ? "English" : "简体中文" }
+    var locale: Locale {
+        let target = resolved
+        return Self.cachedLocales[target] ?? Locale(identifier: target.rawValue)
+    }
+    var title: LocalizedStringKey {
+        switch self {
+        case .system: "System"
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        }
+    }
+    var name: String {
+        switch self {
+        case .system: "System"
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        }
+    }
 }
 
 struct SettingsView: View {
@@ -298,7 +340,7 @@ struct SettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
-    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @State private var iconManager = AppIconManager()
     @State private var path: [Destination]
 
@@ -347,7 +389,7 @@ struct SettingsView: View {
 
                     Picker(selection: $language) {
                         ForEach(AppLanguage.allCases) { option in
-                            Text(option.name).tag(option)
+                            Text(option.title).tag(option)
                         }
                     } label: {
                         Label("Language", systemImage: "globe")

@@ -864,4 +864,12 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(library.state, .idle)
         XCTAssertTrue(library.needsHealthOnboarding)
     }
+
+    func testAppLanguageSystemResolutionFollowsPreferredLanguages() {
+        XCTAssertEqual(AppLanguage.systemResolved(preferredLanguages: ["zh-Hans-CN", "en-US"]), .simplifiedChinese)
+        XCTAssertEqual(AppLanguage.systemResolved(preferredLanguages: ["en-US", "zh-Hans-CN"]), .english)
+        XCTAssertEqual(AppLanguage.systemResolved(preferredLanguages: ["ja-JP", "zh-Hant-TW"]), .simplifiedChinese)
+        XCTAssertEqual(AppLanguage.systemResolved(preferredLanguages: ["fr-FR"]), .english)
+        XCTAssertEqual(AppLanguage.system.locale, AppLanguage.systemResolved().locale)
+    }
 }

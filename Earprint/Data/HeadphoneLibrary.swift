@@ -35,7 +35,7 @@ final class HeadphoneLibrary: ObservableObject {
     static let onboardingSeenKey = "onboarding.healthIntroSeen"
 
     #if DEBUG || EARPRINT_REPEAT_CARD_HINT
-    static var isFirstLaunchSimulation: Bool {
+    nonisolated static var isFirstLaunchSimulation: Bool {
         ProcessInfo.processInfo.arguments.contains("-firstLaunch")
     }
     #endif

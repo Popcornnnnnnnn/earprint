@@ -6,9 +6,18 @@ struct EarprintApp: App {
     @State private var router = DeepLinkRouter()
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
-    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.systemDefault
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @Environment(\.scenePhase) private var scenePhase
+
+    private var resolvedLocale: Locale {
+        #if DEBUG || EARPRINT_REPEAT_CARD_HINT
+        if HeadphoneLibrary.isFirstLaunchSimulation {
+            return AppLanguage.systemResolved().locale
+        }
+        #endif
+        return language.locale
+    }
 
     private var resolvedColorScheme: ColorScheme? {
         #if DEBUG
@@ -64,17 +73,21 @@ struct EarprintApp: App {
             .environment(router)
             .environment(colorStore)
             .environment(routeMonitor)
-            .environment(\.locale, language.locale)
+            .environment(\.locale, resolvedLocale)
             .preferredColorScheme(resolvedColorScheme)
             .sheet(isPresented: $library.needsHealthOnboarding) {
                 HealthOnboardingView(
                     onConnect: { Task { await library.completeOnboarding(connect: true) } },
                     onSkip: { Task { await library.completeOnboarding(connect: false) } }
                 )
+                .environment(\.locale, resolvedLocale)
+                .preferredColorScheme(resolvedColorScheme)
             }
             #if DEBUG
             .sheet(item: $router.developerScreen) { screen in
                 DeveloperToolsView(library: library, openProbe: screen == .probe)
+                    .environment(\.locale, resolvedLocale)
+                    .preferredColorScheme(resolvedColorScheme)
             }
             #endif
             // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, ...
