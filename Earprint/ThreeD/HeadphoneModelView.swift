@@ -145,6 +145,11 @@ final class ModelRig {
         if hideToken != lastProcessedHideToken {
             lastProcessedHideToken = hideToken
             let wasRendered = spinPivot.isEnabled || visualOpacity > 0 || warmupFramesRemaining > 0
+            if loadTask != nil || displayedModelID != targetModelID || loadedModel == nil {
+                targetModelID = nil
+                appliedAssetName = nil
+                appliedModelKey = nil
+            }
             loadTask?.cancel()
             loadTask = nil
             warmupFramesRemaining = 0
@@ -410,6 +415,16 @@ final class ModelRig {
         velocity = simd_clamp(velocity, SIMD2(repeating: -16), SIMD2(repeating: 16))
     }
 
+    /// Resets interaction flags if iOS cancels the 3D drag/pinch gesture without delivering `onEnded`.
+    func cancelInteractionIfNeeded() {
+        if dragging {
+            dragging = false
+        }
+        if zoom != 1 {
+            zoom = 1
+        }
+    }
+
     /// A playful 360° spin, e.g. after a long press.
     func twirl() {
         velocity.x += 14
@@ -523,7 +538,12 @@ struct HeadphoneModelView: View {
                         .onEnded { _ in rig.zoom = 1 })
                 .updating($isManipulating) { _, active, _ in active = true }
         )
-        .onChange(of: isManipulating) { _, active in onManipulationChanged(active) }
+        .onChange(of: isManipulating) { _, active in
+            if !active {
+                rig.cancelInteractionIfNeeded()
+            }
+            onManipulationChanged(active)
+        }
         .onDisappear {
             rig.cancelLoad()
             if isManipulating { onManipulationChanged(false) }

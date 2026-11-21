@@ -367,4 +367,41 @@ final class IntegrationRegressionTests: XCTestCase {
             try png.write(to: URL(fileURLWithPath: outPath))
         }
     }
+
+    @MainActor
+    func testCardDetailMultiCardDeckRendersCleanly() {
+        let cards = SampleCards.all
+        XCTAssertGreaterThanOrEqual(cards.count, 3)
+
+        let view = CardDetail(
+            card: cards[1],
+            cards: cards,
+            colorStore: DeviceColorStore(defaults: UserDefaults(suiteName: "CardDetailRenderTest") ?? .standard),
+            onSelectCard: { _ in },
+            openDossier: {},
+            openTiers: {},
+            close: {}
+        )
+        .preferredColorScheme(.dark)
+
+        let size = CGSize(width: 393, height: 852)
+        let host = UIHostingController(rootView: view)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.frame = CGRect(origin: .zero, size: size)
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        window.isHidden = true
+
+        XCTAssertEqual(image.size.width, size.width, accuracy: 1)
+        XCTAssertEqual(image.size.height, size.height, accuracy: 1)
+        XCTAssertGreaterThan(image.pngData()?.count ?? 0, 5_000)
+    }
 }

@@ -464,4 +464,193 @@ final class DeviceColorAndRouteTests: XCTestCase {
             1
         )
     }
+
+    func testCardDeckNavigationDragPositionTracksMonotonicallyAndRubberBandsBoundaries() {
+        // Steady global-space left drag must advance monotonically without oscillation.
+        var previous: CGFloat = 0
+        for deltaX in stride(from: CGFloat(-20), through: CGFloat(-220), by: -20) {
+            let pos = CardDeckNavigation.dragPosition(origin: 0, activeIndex: 0, count: 4, dragDeltaX: deltaX)
+            XCTAssertGreaterThan(pos, previous)
+            previous = pos
+        }
+        XCTAssertEqual(previous, 1.0, accuracy: 0.0001)
+
+        // Holding mid-drag with tiny finger jitter stays tightly clustered (no sign flip / frame strobe).
+        let midA = CardDeckNavigation.dragPosition(origin: 1, activeIndex: 1, count: 3, dragDeltaX: -80)
+        let midB = CardDeckNavigation.dragPosition(origin: 1, activeIndex: 1, count: 3, dragDeltaX: -81)
+        let midC = CardDeckNavigation.dragPosition(origin: 1, activeIndex: 1, count: 3, dragDeltaX: -79)
+        XCTAssertEqual(midA, 1 + 80.0 / 220.0, accuracy: 0.0001)
+        XCTAssertEqual(midB, midA, accuracy: 0.01)
+        XCTAssertEqual(midC, midA, accuracy: 0.01)
+
+        // Deck start and deck end rubber-band at 0.22x resistance.
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 0, activeIndex: 0, count: 3, dragDeltaX: 110),
+            -0.11,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 2, activeIndex: 2, count: 3, dragDeltaX: -110),
+            2.11,
+            accuracy: 0.0001
+        )
+
+        // Dragging further than one card step rubber-bands gently beyond activeIndex ± 1.
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 0, activeIndex: 0, count: 5, dragDeltaX: -330),
+            1.11,
+            accuracy: 0.0001
+        )
+
+        // Mid-flight catch between 0 and 1 can drag 1:1 back to 0 or forward to 2.
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 0.55, activeIndex: 1, count: 5, dragDeltaX: 121),
+            0.0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 0.55, activeIndex: 1, count: 5, dragDeltaX: -220),
+            1.55,
+            accuracy: 0.0001
+        )
+
+        // Single-card deck never moves off index 0.
+        XCTAssertEqual(
+            CardDeckNavigation.dragPosition(origin: 0, activeIndex: 0, count: 1, dragDeltaX: -120),
+            0,
+            accuracy: 0.0001
+        )
+    }
+
+    func testCardDeckNavigationShouldCompleteOverlaySwapRejectsDragAndStaleToken() {
+        XCTAssertTrue(
+            CardDeckNavigation.shouldCompleteOverlaySwap(
+                confirmedToken: 3,
+                currentHideToken: 3,
+                isHidingForSwap: true,
+                isDragging: false
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldCompleteOverlaySwap(
+                confirmedToken: 3,
+                currentHideToken: 3,
+                isHidingForSwap: true,
+                isDragging: true
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldCompleteOverlaySwap(
+                confirmedToken: 2,
+                currentHideToken: 3,
+                isHidingForSwap: true,
+                isDragging: false
+            )
+        )
+        XCTAssertFalse(
+            CardDeckNavigation.shouldCompleteOverlaySwap(
+                confirmedToken: 3,
+                currentHideToken: 3,
+                isHidingForSwap: false,
+                isDragging: false
+            )
+        )
+    }
+
+    func testCardDeckFlipStatePreservesOutgoingBackFaceAndRecoversMidFlightCatch() {
+        var state = CardDeckFlipState()
+        state.toggle(.left)
+        XCTAssertTrue(state.isFlipped)
+        XCTAssertEqual(state.angle, -180)
+        XCTAssertTrue(state.isShowingBack("card-0", isTop: true))
+
+        // Switching to card-1 keeps card-0 showing its back face while card-1 arrives face-up.
+        state.transition(from: "card-0", to: "card-1")
+        XCTAssertFalse(state.isFlipped)
+        XCTAssertEqual(state.angle, 0)
+        XCTAssertEqual(state.outgoingCardID, "card-0")
+        XCTAssertEqual(state.outgoingAngle, -180)
+        XCTAssertTrue(state.isOutgoingFlipped("card-0", isTop: false))
+        XCTAssertTrue(state.isShowingBack("card-0", isTop: false))
+        XCTAssertEqual(state.faceAngle(for: "card-0", isTop: false), -180)
+        XCTAssertFalse(state.isShowingBack("card-1", isTop: true))
+        XCTAssertEqual(state.faceAngle(for: "card-1", isTop: true), 0)
+
+        // Catching card-0 mid-flight and pulling it back restores its back face seamlessly.
+        state.transition(from: "card-1", to: "card-0")
+        XCTAssertTrue(state.isFlipped)
+        XCTAssertEqual(state.angle, -180)
+        XCTAssertNil(state.outgoingCardID)
+
+        // If the tucked outgoing card has already begun unflipping to a front-facing angle,
+        // returning to it must land cleanly face-up instead of inverting isFlipped vs angle.
+        state.transition(from: "card-0", to: "card-1")
+        state.outgoingAngle = CardDeckFlipState.nearestFrontAngle(from: state.outgoingAngle)
+        XCTAssertEqual(state.outgoingAngle, -360)
+        XCTAssertFalse(state.isShowingBack("card-0", isTop: false))
+        state.transition(from: "card-1", to: "card-0")
+        XCTAssertFalse(state.isFlipped)
+        XCTAssertEqual(state.angle, 0)
+        XCTAssertNil(state.outgoingCardID)
+
+        XCTAssertEqual(CardDeckFlipState.nearestFrontAngle(from: 180), 360)
+        XCTAssertEqual(CardDeckFlipState.nearestFrontAngle(from: -540), -720)
+    }
+
+    @MainActor
+    func testPersistentModelRigReloadsAfterHideTokenCancelsInFlightLoad() async throws {
+        await HeadphoneModelLoader.prewarm(assetName: "AirPodsPro")
+        let rig = ModelRig()
+        var readyIDs: [String] = []
+        var confirmedTokens: [Int] = []
+
+        func sync(isVisible: Bool, hideToken: Int) {
+            rig.syncModel(
+                modelID: "pro",
+                kind: .earbuds,
+                finish: .glossWhite,
+                finishID: "default",
+                modelKey: .airpodsPro,
+                assetName: "AirPodsPro",
+                modelSize: 0.18,
+                tint: [],
+                tintKey: "BRONZE",
+                tilt: .zero,
+                isVisible: isVisible,
+                reduceMotion: false,
+                hideToken: hideToken,
+                onModelReady: { readyIDs.append($0) },
+                onHiddenConfirmed: { confirmedTokens.append($0) }
+            )
+        }
+
+        // Start loading "pro", then immediately cancel via hideToken before load completes.
+        sync(isVisible: true, hideToken: 0)
+        sync(isVisible: false, hideToken: 1)
+        rig.stepFrameForTesting(1 / 60)
+        rig.stepFrameForTesting(1 / 60)
+        XCTAssertEqual(confirmedTokens, [1])
+        XCTAssertNil(rig.displayedModelID)
+
+        // Returning to "pro" must restart loading cleanly rather than staying permanently blank.
+        sync(isVisible: true, hideToken: 1)
+        for _ in 0..<200 where rig.displayedModelID != "pro" {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(rig.displayedModelID, "pro")
+    }
+
+    @MainActor
+    func testModelRigCancelInteractionResetsStuckDraggingAndZoomWithoutWipingMomentum() {
+        let rig = ModelRig()
+        rig.dragging = true
+        rig.zoom = 1.28
+        rig.velocity = SIMD2<Float>(3.5, -1.2)
+
+        rig.cancelInteractionIfNeeded()
+        XCTAssertFalse(rig.dragging)
+        XCTAssertEqual(rig.zoom, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(rig.velocity.x, 3.5, accuracy: 0.0001)
+        XCTAssertEqual(rig.velocity.y, -1.2, accuracy: 0.0001)
+    }
 }
