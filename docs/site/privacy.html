@@ -84,7 +84,7 @@
       <h3>2. Apple Health (HealthKit) Access (Read-Only)</h3>
       <p>With your explicit permission, Earprint requests read-only access to a single HealthKit data type: <strong>Headphone Audio Levels</strong> (<code>HKQuantityType(.headphoneAudioExposure)</code>), including sample start/end timestamps, A-weighted sound level (<code>dB(A)</code>), and associated <code>HKDevice</code> / <code>HKSource</code> hardware metadata.</p>
       <ul>
-        <li>Release builds never request Apple Health write access (<code>NSHealthUpdateUsageDescription</code> is omitted).</li>
+        <li>Release builds request read-only Apple Health access (<code>toShare: []</code>) and never write data to Apple Health (<code>NSHealthUpdateUsageDescription</code> is present in <code>Info.plist</code> solely to satisfy App Store Connect validation).</li>
         <li>Earprint never accesses heart rate, workouts, sleep, medical records, microphone, camera, contacts, location, or media playback names.</li>
       </ul>
 
@@ -115,7 +115,7 @@
       <h3>二、访问的 Apple「健康」（HealthKit）范围（严格只读）</h3>
       <p>仅在获得你的明确授权后，Earprint 会以只读方式读取唯一一项数据类型：<strong>耳机音量（Headphone Audio Levels）</strong>（<code>HKQuantityType(.headphoneAudioExposure)</code>），包括起止时间、A 计权分贝值（<code>dB(A)</code>）以及关联耳机设备的系统元信息（<code>HKDevice</code> 与 <code>HKSource</code>）。</p>
       <ul>
-        <li>正式发布版本不请求 Apple「健康」写入权限（不包含 <code>NSHealthUpdateUsageDescription</code>）。</li>
+        <li>正式发布版本仅请求 Apple「健康」只读权限（<code>toShare: []</code>），不会向 Apple「健康」写入任何数据（<code>Info.plist</code> 中的 <code>NSHealthUpdateUsageDescription</code> 仅用于满足 App Store Connect 静态校验要求）。</li>
         <li>不访问心率、体能训练、睡眠、医疗记录、麦克风、相机、通讯录、位置或具体的播放歌名内容。</li>
       </ul>
 

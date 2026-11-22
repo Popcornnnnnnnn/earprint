@@ -29,7 +29,7 @@ Specifically, Earprint reads the following properties locally on your iPhone:
 - Associated audio accessory metadata (`HKDevice` fields such as headphone Bluetooth nickname, manufacturer, Bluetooth product ID, hardware/firmware version, and accessory local identifier, plus recording `HKSource` name/bundle ID)
 
 Earprint does **not**:
-- Request write access to Apple Health in App Store / Release builds (`NSHealthUpdateUsageDescription` is not included in Release builds).
+- Request write access to Apple Health or write any HealthKit samples in App Store / Release builds (Release calls `requestAuthorization(toShare: [], read:)` strictly read-only; `NSHealthUpdateUsageDescription` is included in `Info.plist` solely to satisfy App Store Connect's static validation check).
 - Access any other Apple Health categories (such as heart rate, workouts, sleep, or medical records).
 - Access your microphone, camera, contacts, location, or raw audio playback streams.
 
@@ -93,7 +93,7 @@ Earprint 是一款独立开发的 iOS 应用，用于将存储在 Apple“健康
 - 关联耳机设备的系统元信息（`HKDevice`：耳机蓝牙名称、制造商、蓝牙产品型号 ID、硬件/固件版本、设备本地标识符及写入来源 `HKSource`）
 
 Earprint **不会**：
-- 在 App Store 正式发布版本中请求 Apple“健康”的写入权限（Release 版本不包含 `NSHealthUpdateUsageDescription`）。
+- 在 App Store 正式发布版本中请求 Apple“健康”写入权限或写入任何健康数据（Release 版本仅以 `toShare: []` 只读方式请求授权，`Info.plist` 中的 `NSHealthUpdateUsageDescription` 仅用于满足 App Store Connect 静态校验要求）。
 - 读取心率、体能训练、睡眠、医疗记录等其他任何健康数据类别。
 - 访问麦克风、相机、通讯录、定位信息或你正在播放的具体音频/歌单内容。
 

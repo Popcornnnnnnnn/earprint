@@ -177,7 +177,7 @@ Thank you for reviewing Earprint.
 
 1. HEALTHKIT ACCESS & PRIVACY (READ-ONLY)
 - Earprint requests read-only HealthKit access for a single data type: HKQuantityType(.headphoneAudioExposure) ("Headphone Audio Levels").
-- Release builds do not request HealthKit write access (NSHealthUpdateUsageDescription is omitted from the Release Info.plist).
+- Release builds request strictly read-only HealthKit access (toShare: []) and never write to Apple Health (HealthKitSeeder is compiled out in Release; NSHealthUpdateUsageDescription is included in Info.plist solely to satisfy App Store Connect static validation ITMS-90683).
 - No account or sign-in is required. All HealthKit aggregation stays 100% on-device inside Application Support and the private App Group container (group.com.popcornnn.earprint) for widgets. Zero servers or third-party analytics SDKs are used.
 
 2. TESTING ON A CLEAN REVIEW DEVICE (ZERO SAMPLES / PERMISSION DENIED)
@@ -190,7 +190,7 @@ Thank you for reviewing Earprint.
 3. GENERATING REAL HEALTHKIT SAMPLES ON A TEST DEVICE
 - Note: Manually adding entries inside Apple Health attributes samples to the host iPhone (HKDevice.local()), which Earprint intentionally excludes so phone speakers never appear as headphones.
 - To test card and Dossier generation with live hardware: connect AirPods or Bluetooth headphones to the test iPhone, play audio for 1–2 minutes until iOS writes a Headphone Audio Levels sample, then tap "Sync Apple Health" in Earprint.
-- An unedited screen recording from a physical iPhone is attached showing the live Apple Health sync, 3D card interaction (spin/zoom/flip/swipe), real HealthKit Device Dossier, Light/Dark themes, 3:4 PNG export, and Home/Lock Screen widgets.
+- Because a clean review device may have 0 headphone samples, the empty states and Settings screens (Model Gallery, 6-tier Card Tiers, App Icon Studio, Language, Credits & Attributions) are all directly browsable without Health data.
 
 4. NON-AFFILIATION & NON-MEDICAL DISCLAIMER
 - Earprint is an independent app by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc.

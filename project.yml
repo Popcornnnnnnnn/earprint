@@ -40,6 +40,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSHealthShareUsageDescription: Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone.
+        NSHealthUpdateUsageDescription: Earprint reads your headphone audio levels from Apple Health to build your listening archive and never writes data to Apple Health.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: com.popcornnn.earprint
@@ -61,11 +62,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIconMidnightAuto AppIconMidnightLight AppIconMidnightDark AppIconMidnightHolo AppIconStarlightAuto AppIconStarlightLight AppIconStarlightDark AppIconStarlightHolo AppIconBlueAuto AppIconBlueLight AppIconBlueDark AppIconBlueHolo AppIconPurpleAuto AppIconPurpleLight AppIconPurpleDark AppIconPurpleHolo AppIconOrangeAuto AppIconOrangeLight AppIconOrangeDark AppIconOrangeHolo AppIconSpaceGrayAuto AppIconSpaceGrayLight AppIconSpaceGrayDark AppIconSpaceGrayHolo AppIconSilverAuto AppIconSilverLight AppIconSilverDark AppIconSilverHolo AppIconSkyBlueAuto AppIconSkyBlueLight AppIconSkyBlueDark AppIconSkyBlueHolo AppIconGreenAuto AppIconGreenLight AppIconGreenDark AppIconGreenHolo AppIconPinkAuto AppIconPinkLight AppIconPinkDark AppIconPinkHolo"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
-      configs:
-        Debug:
-          # Debug-only write description for the Simulator HealthKit seeder (`HealthKitSeeder.swift`).
-          # Release builds omit this key and never request write authorization.
-          INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Debug builds can write sample headphone audio data into the simulator's Apple Health store for local testing."
 
   # Home Screen + Lock Screen widgets and the "Listening now" Live Activity.
   EarprintWidgets:

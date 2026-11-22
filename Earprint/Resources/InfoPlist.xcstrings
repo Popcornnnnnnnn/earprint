@@ -17,6 +17,23 @@
           }
         }
       }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earprint reads your headphone audio levels from Apple Health to build your listening archive and never writes data to Apple Health."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earprint 仅以只读方式读取 Apple“健康”中的耳机音量数据以生成你的聆听档案，不会向 Apple“健康”写入数据。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

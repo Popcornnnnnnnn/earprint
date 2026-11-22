@@ -20,12 +20,12 @@ Work that does not depend on final Rings layout pixels and should start immediat
   - Decided for `v1.0.0`: removed `NSSupportsLiveActivities` and `ListeningLiveActivity()` from `EarprintWidgetsBundle.swift` and aligned metadata to widgets-only (`Earprint` Home & Lock Screen widgets).
 - [x] **Prepare Trademark Fallback Plan & Primary Icon Audit** *(see §4a below)*
   - Shipped in `v1.0.0-rc1`: switched primary `AppIcon.appiconset` (`Light`, `Dark`, `Tinted`) to a custom trademark-safe concentric **Earprint Rings Emblem**, moved old AirPods Max icon to optional `AppIconMidnightAuto`, and kept `ProceduralHeadphones` verified as a fallback.
-- [ ] **Stand Up Privacy Policy & Support URL Hosting** *(see §4d below)*
-  - Static bilingual HTML pages created under `docs/site/` with `.github/workflows/pages.yml` targeting `https://popcornnnnnnnn.github.io/earprint/`; awaiting live `HTTP 200` verification once enabled on GitHub Pages.
+- [x] **Stand Up Privacy Policy & Support URL Hosting** *(see §4d below)*
+  - Live `HTTP 200` static bilingual HTML pages served from `docs/site/` via `.github/workflows/pages.yml` at `https://popcornnnnnnnn.github.io/earprint/`, `/privacy.html`, and `/support.html`.
 - [x] **Add `ITSAppUsesNonExemptEncryption = NO` to `project.yml` / `Info.plist`**
   - Shipped in `v1.0.0-rc1` (`project.yml` & `Earprint/Info.plist`) plus `PrivacyInfo.xcprivacy` for both app and widget targets.
-- [ ] **Reserve `"Earprint"` in App Store Connect**
-  - Create the App Store Connect app record (`com.popcornnn.earprint`), confirm `"Earprint"` name availability across target territories (`en-US`, `zh-Hans`), and register App Group `group.com.popcornnn.earprint` + HealthKit capability on the Apple Developer Portal (`TEAM: R26X7B8XDT`).
+- [x] **Reserve App Record in App Store Connect**
+  - Created `Earprint - Headphone Archive` (`Apple ID: 6837883616`, bundle ID `com.popcornnn.earprint`) under team `R26X7B8XDT` with App Group `group.com.popcornnn.earprint` + HealthKit capability.
 
 ---
 
@@ -33,16 +33,9 @@ Work that does not depend on final Rings layout pixels and should start immediat
 
 Capture marketing assets only after `@rings-ui` finalizes `Theme.swift`, `EarprintGlyph.swift`, `HomeView.swift`, and `ShareCardView.swift`:
 
-- [ ] **Generate Clean Release-Styled Screenshots (6.9" & 6.5" iPhone)**
-  - Follow the 6-frame storyboard in [APP_STORE_METADATA.md](APP_STORE_METADATA.md#5-6-frame-app-store-screenshot-storyboard):
-    1. Hero 3D Interactive Card (`HOLO · LEGENDARY` / `GOLD` tilted card)
-    2. 10-Tier Rarity Ladder (`0h Bronze` → `2,000h Holo Legendary`)
-    3. PSA-Style `DeviceDossierView` (acrylic grading slab + `EAR GRADE` + 30-day chart / 24h clock)
-    4. Redesigned 28-Day `Rings` (`HomeView`) hero chronometer + WHO weekly budget
-    5. `DossierShareSheet` 4-page PNG export + AirPods Max / Beats finish & App Icon customization
-    6. Home Screen + Lock Screen Widgets (`docs/widgets/`) + `100% On-Device` callout
-  - **Hygiene check:** Strip `"Sample data · Simulator"` debug banners from marketing shots; force `9:41` / 100% battery status bar via `xcrun simctl status_bar`.
-  - Capture both **English (`en-US`)** and **Simplified Chinese (`zh-Hans`)** localized screenshot sets (`Settings → Language` or `-AppleLanguages`).
+- [x] **Generate Clean Release-Styled Screenshots (6.1"/6.3" & 6.9" iPhone)**
+  - Captured and uploaded 40 screenshots (`10 en-US` + `10 zh-Hans` across both required `1206 × 2622` and optional `1320 × 2868` Dynamic Island slots).
+  - **Hygiene check:** Stripped `"Sample data · Simulator"` debug banners and forced `9:41` / 100% battery status bar via `xcrun simctl status_bar`.
 - [ ] **Record App Preview Video (15–30s, Portrait 6.9")** *(recommended for 3D motion)*
   - Physical iPhone or clean capture showing: real-time phone tilt shimmering holographic foil → dragging & pinching 3D RealityKit AirPods → tapping to flip card → scrolling PSA Device Dossier slab & scrubbing 30-day bars → Rings tab 28-day chronometer.
   - Keep within Apple App Preview specs (H.264/ProRes, 15–30s, no device mockups/hands outside screen bounds, clear non-sample UI).
@@ -58,10 +51,10 @@ Do **not** submit to App Store Review until every blocker below is green:
 1. [x] **CC-BY 4.0 In-App Credits screen live in Release** (`Settings → Credits & Attributions` for all 4 Sketchfab models + `AirPods4Credits.txt`).
 2. [x] **Real `DeviceDossier` data wired** (no synthetic sample sessions inside real cards' Dossiers).
 3. [x] **Clean Release empty/denied HealthKit UX** across `Collection`, `Rings`, and `EarprintWidgets`.
-4. [x] **Release `Info.plist` & binary verified read-only** (`NSHealthShareUsageDescription` present, `NSHealthUpdateUsageDescription` **absent**, `HealthKitSeeder.swift` compiled out).
+4. [x] **Release `Info.plist` & binary verified read-only** (`HealthKitSeeder.swift` compiled out, zero HealthKit save/write symbols linked via `nm -u`, strictly `toShare: []`, and truthful read-only `NSHealthShareUsageDescription` + `NSHealthUpdateUsageDescription` included for `ITMS-90683`).
 5. [x] **`project.yml` bumped to `MARKETING_VERSION: "1.0.0"`**, `CURRENT_PROJECT_VERSION: "1"`, `xcodegen generate` re-run, and Release candidate tagged on clean SHA `v1.0.0-rc1` (re-tag final App Store release SHA if updated before archive).
 6. [ ] **1-week real-device daily-drive & TestFlight external beta pass completed** ([Issue #2](https://github.com/Popcornnnnnnnn/earprint/issues/2) closed/verified).
-7. [ ] **App Store Connect Privacy Nutrition Label (`Data Not Collected`)**, **Support URL**, and **Privacy Policy URL** live (`HTTP 200`, HTTPS, no auth wall) and matching [APP_STORE_METADATA.md](APP_STORE_METADATA.md) + [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+7. [x] **App Store Connect Privacy Nutrition Label (`Data Not Collected`)**, **Support URL**, and **Privacy Policy URL** live (`HTTP 200`, HTTPS, no auth wall) and matching [APP_STORE_METADATA.md](APP_STORE_METADATA.md) + [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
 8. [ ] **Unit tests (`EarprintTests`, 21+ tests) + Release build + physical iPhone smoke test** passing on the exact release commit.
 
 ---
@@ -117,14 +110,15 @@ Add **`Credits & Attributions`** (`版权声明与致谢`) to `SettingsView` dis
 ### (c) HealthKit Guideline 5.1.3 Compliance & Empty/Denied UX
 
 1. **Read-Only `Info.plist` & Entitlements Verification:**
-   - `Earprint/Info.plist` & `project.yml` define `NSHealthShareUsageDescription`:
+   - `Earprint/Info.plist`, `project.yml`, and `InfoPlist.xcstrings` define `NSHealthShareUsageDescription`:
      > `"Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone."`
-   - `project.yml` puts `INFOPLIST_KEY_NSHealthUpdateUsageDescription` **exclusively under `configs: Debug:`**, and `Earprint/Data/HealthKitSeeder.swift` is wrapped in `#if DEBUG`.
+   - Because Apple's App Store Connect static analyzer (`ITMS-90683`) rejects binaries linking `HKHealthStore.requestAuthorization(toShare:read:)` without `NSHealthUpdateUsageDescription` (even with `toShare: []`), `project.yml` & `InfoPlist.xcstrings` also include a truthful read-only `NSHealthUpdateUsageDescription` explaining that Earprint never writes data to Apple Health, while `Earprint/Data/HealthKitSeeder.swift` remains wrapped in `#if DEBUG`.
    - **Required pre-submit shell check** on the built Release `.app` inside the `.xcarchive`:
      ```sh
-     plutil -p build/Release-iphoneos/Earprint.app/Info.plist | grep -E "NSHealth|ITSAppUsesNonExemptEncryption"
+     plutil -p Earprint.app/Info.plist | grep -E "NSHealth|ITSAppUsesNonExemptEncryption"
+     nm -u Earprint.app/Earprint | grep -iE "Health|HK.*save|HK.*delete|HK.*write"
      ```
-     Confirm `NSHealthShareUsageDescription` is present and `NSHealthUpdateUsageDescription` is **not printed**.
+     Confirm both `NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription` + `ITSAppUsesNonExemptEncryption => 0` are present, and `nm -u` links zero HealthKit write/save/delete APIs.
 2. **Guideline 5.1.3 HealthKit Policy Checks:**
    - Never share HealthKit data with third parties, advertisers, or data brokers (verified: zero network calls, zero analytics SDKs).
    - Never store HealthKit data in iCloud or unencrypted backups without user consent (verified: `<Application Support>/listening-aggregate.json` uses `.completeFileProtectionUntilFirstUserAuthentication`).

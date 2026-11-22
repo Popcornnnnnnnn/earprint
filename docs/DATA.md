@@ -58,7 +58,7 @@ To keep years of history fast and off the main thread:
   - `schemaVersion` mismatch invalidates the cache and triggers a clean rebuild.
   - If an encoded anchor exists in the file but fails to unarchive, both aggregate and anchor are dropped to prevent double-counting on the next sync.
 - **Slot retention**: 15-minute slots older than 35 days are pruned on ingest (the Earprint glyph needs 28 local days). Lifetime totals, active day counts, and session stats remain complete across the entire history.
-- **Read-only Release builds**: Release builds only include `NSHealthShareUsageDescription` in `Info.plist`, compile out `HealthKitSeeder.swift`, and never call `requestAuthorization(toShare:)` with non-empty share types. Debug builds add `INFOPLIST_KEY_NSHealthUpdateUsageDescription` solely for the simulator seeder.
+- **Read-only Release builds**: Release builds compile out `HealthKitSeeder.swift`, link zero HealthKit write/save/delete APIs, and only ever call `requestAuthorization(toShare: [], read:)` with an empty share set. `NSHealthUpdateUsageDescription` is included in `Info.plist` solely because App Store Connect's static validation (`ITMS-90683`) requires it whenever `requestAuthorization(toShare:read:)` is linked.
 
 ## Device Identity & Model Mapping
 

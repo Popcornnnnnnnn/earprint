@@ -74,7 +74,7 @@ Every pair of headphones becomes a real-time **RealityKit** trading card floatin
   - Export crisp Light or Dark **`3:4`** and **`9:16`** Earprint Rings share posters, plus 1-page or 4-page Dossier carousel PNGs.
   - Native Home Screen widgets (`Today`, multi-card `Card Shelf` with `earprint://card/<id>` deep links, and `Large Earprint Ring`) plus Lock Screen `WHO Budget`, `Today`, and inline accessories.
 - **100% On-Device Privacy (`Earprint/Data/`, `PrivacyInfo.xcprivacy`):**
-  - Reads **only** `HKQuantityType(.headphoneAudioExposure)` in strict read-only mode (`NSHealthUpdateUsageDescription` is absent in Release builds).
+  - Reads **only** `HKQuantityType(.headphoneAudioExposure)` in strict read-only mode (requests read-only access with `toShare: []` and never writes to Apple Health; `NSHealthUpdateUsageDescription` is included solely to satisfy App Store Connect's HealthKit validation).
   - Zero user accounts, zero servers, zero analytics or ad SDKs (`Data Not Collected`). Incremental `HKAnchoredObjectQueryDescriptor` sync runs off the main thread into an encrypted Application Support cache (`NSFileProtectionCompleteUntilFirstUserAuthentication`).
 
 ---
