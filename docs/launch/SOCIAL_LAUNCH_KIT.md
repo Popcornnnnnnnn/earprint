@@ -1,450 +1,396 @@
-# Earprint 社媒宣发实战手册（小红书 & 抖音） / Social Launch Kit
+# Earprint Multi-Platform Launch Kit (`v1.0.0`)
 
-> **定位：** 面向小红书（图文/多图滑动种草）与抖音（15–30 秒高完播短视频）的实操宣发手册。  
-> **语言与调性：** 以「真实独立开发者分享好玩小工具」的口吻写内容——克制、真诚、有细节，不写“天花板/颠覆/全网最强”等硬广营销腔，不夸大未上线功能。  
-> **适用版本：** 对应当前 Earprint 代码库（iOS 18+ iPhone，只读 Apple 健康耳机音量暴露数据）。
+Complete, platform-tailored launch playbook for **`Earprint - Headphone Archive`** (`v1.0.0`, iOS 18+):
 
----
-
-## 1. Core Viral Hooks & Product Positioning
-
-### 1.1 为什么 Earprint 在小红书与抖音天然容易出圈
-
-| 传播钩子 | 用户心理共鸣 | App 真实对应能力 | 适合平台表现形式 |
-| --- | --- | --- | --- |
-| **耳机陪伴时长怀旧**<br>「你的 AirPods 到底陪了你多少小时」 | iPhone 的「健康」App 默默记录了好几年的 AirPods 佩戴音量数据，但系统里只有枯燥的柱状图。把压箱底的历史数据变成实体感收藏卡，瞬间戳中「这副耳机陪我走过几年通勤/熬夜」的情绪共鸣。 | 只读 Apple 健康 `headphoneAudioExposure` 全历史数据，按蓝牙产品 ID（覆盖 30 款型号 / 34 个 Apple/Beats 蓝牙产品 ID）与设备昵称归并计算累计时长、聆听次数、首次佩戴日期（`MINTED`）与最长单次。 | 抖音悬念开箱、小红书对比晒卡 |
-| **10 阶收藏卡面爬梯**<br>「0h 青铜 → 2,000h 全息传说」 | 类比球星卡/TCG 卡牌稀有度，10 个清晰阈值天然制造「好奇自己第几阶」和「评论区晒段位」的攀比与互动。 | 10 个分段等级（见 1.2 表），随累计聆听小时自动升级，支持在「设置 → 卡片等级（`CardTiersView`）」查看进度与实拍材质缩略图。 | 小红书段位合集、抖音踩点变身 |
-| **真 3D 交互 + 10 色切换**<br>「能转的 AirPods & 换色 AirPods Max」 | 静态截图很难让人停留，但手机倾斜时金属镭射反光滑动、指尖拨动 3D 耳机旋转惯性、一键切换官方 10 种头戴配色，极符合科技数码区高点赞审美。 | RealityKit 实时渲染（`AirPods4.usdz` 含开盖仓、`AirPodsPro.usdz` 含 MagSafe 仓、`AirPodsMax.usdz`），支持拖动旋转、双指缩放、长按旋转换向与触觉反馈、陀螺仪视差；AirPods Max 支持 10 款官方配色实时换肤。 | 抖音纯视觉实体拍屏、小红书动图/Live 图 |
-| **PSA 评级卡套 + 一键导出长图**<br>「给耳机做一次品相鉴定」 | 「PSA 亚克力封套 + 0.0–10.0 聆听评分 + 玑镂防伪证书」把耳机数据做成有仪式感的数字藏品；且内置导出面板直接帮你排好 4 页滑动组图。 | `GradingSlab` 评级卡套与 `EAR GRADE` 算法（基于 WHO 安全准则计算）；`DossierShareSheet` 内置「简图（1 页）」和「长图（4 页）」高清 PNG 导出。 | 小红书 4 页滑动图、晒评分求鉴定 |
-| **28 天声学指环 + 听众画像**<br>「你的声音指纹长什么样」 | 像 Apple Watch 健身圆环一样直觉，但记录的是近 28 天每小时佩戴时间与分贝，能一眼看出自己是「夜猫子」还是「通勤听众」。 | `EarprintGlyph` 28 圈同心圆（最外圈为今天，12 点位为午夜），按能量平均分贝着色（低音量轻柔冷色 → 中等暖金 → 高音量警示红）；配 WHO 每周参考额度（80 dB(A) 下每周 40 小时）与桌面/锁屏小组件。 | 小红书熬夜党共鸣、9:16 锁屏/快拍分享 |
-
-### 1.2 十阶收藏卡面梯队速查（与 `Shared/Rarity.swift` 完全一致）
-
-发帖配文、画字与回复评论时，请严格使用以下官方阈值与中文名称：
-
-| 阶位 | 累计小时阈值 | 英文标识（卡面/代码） | App 简体中文标识（`Localizable.xcstrings`） | 常用社媒口语简称 | 卡片材质与反光特点 |
-| --- | --- | --- | --- | --- | --- |
-| 01 | `0h+` | `BRONZE` | 铜卡 | 青铜（初始卡） | 哑光青铜暖调（首次聆听即铸造） |
-| 02 | `10h+` | `SILVER · UNCOMMON` | 白银 · 进阶 | 白银 | 哑光冷银金属拉丝质感 |
-| 03 | `35h+` | `GOLD · RARE` | 黄金 · 稀有 | 黄金 | 24K 暖金光面，开启彩色反光 |
-| 04 | `80h+` | `EMERALD · VIVID` | 祖母绿 · 灵动 | 祖母绿 | 祖母绿宝石光泽 |
-| 05 | `160h+` | `SAPPHIRE · COBALT` | 蓝宝石 · 深海 | 蓝宝石 | 深海钴蓝渐变 |
-| 06 | `300h+` | `AMETHYST · MYSTIC` | 紫水晶 · 秘境 | 紫水晶 | 丝绒紫外微光 |
-| 07 | `550h+` | `PLATINUM · MASTER` | 铂金 · 大师 | 铂金 | 冰钛金属大师卡面 |
-| 08 | `900h+` | `DIAMOND · PRISM` | 钻石 · 棱镜 | 钻石 | 高亮晶莹棱镜切面 |
-| 09 | `1400h+` | `OBSIDIAN · PRESTIGE` | 黑曜 · 臻享 | 黑曜 | 深邃碳黑极光纹理（高强度光泽） |
-| 10 | `2000h+` | `HOLO · LEGENDARY` | 幻彩 · 传奇 | 全息传说 | 满级全光谱高折射幻彩镭射（最高 0.90 sheen） |
-
-> **补充彩蛋（适合做小红书二楼图或隐藏细节）：**
-> - AirPods Max 支持 **10 款官方配色**实时切换：2024 USB-C 款（午夜色、星光色、蓝色、紫色、橙色）+ 2020 Lightning 款（深空灰色、银色、天蓝色、绿色、粉色）。
-> - `设置 → App 图标` 内置 **40 款主屏幕图标**（上述 10 种配色 × 4 种背景：`自动` / `浅色` / `深色` / `幻彩`），非常适合作为数码桌面搭配内容发布。
-
-### 1.3 内置导出规格与社媒画幅匹配指南
-
-| App 导出入口 | 导出形式 | 实际像素与比例（代码实测） | 社媒使用建议 |
-| --- | --- | --- | --- |
-| **设备档案 → 分享档案 → 简图（Simple）** | 1 张高清 PNG | `400×560 pt @3x` = **`1200×1680 px`**（约 `5:7` 竖屏） | 适合单图微博/朋友圈，或做小红书「对比展示图」。 |
-| **设备档案 → 分享档案 → 长图（Long）** | 4 张高清 PNG 组图<br>`01 封面 / 02 节律 / 03 习惯与听力 / 04 认证证书` | 每张 `400×560 pt @3x` = **`1200×1680 px`**（`5:7` 竖屏） | **小红书主力素材**：直接拖进小红书发图，原生接近小红书 `3:4`（`1200×1600`）/ `4:5`（`1200×1500`）信息流，极度清晰。*建议：首图如做大字封面，用修图软件放进 `3:4` 或 `4:5` 深色画布居中加安全边距，防止列表页裁掉顶/底文字。* |
-| **聆听（Rings）首页 → 右上分享按钮** | 1 张高清 PNG | `360×640 pt @3x` = **`1080×1920 px`**（标准 **`9:16`**） | 适合作为**抖音竖屏视频结尾定格帧**、小红书竖屏图文内页，或微信/小红书群内分享「本周听众画像」（含 28 天耳纹指环、当前段位徽章与主力耳机缩略图）。 |
+- **App Store Name:** `Earprint - Headphone Archive` (search keyword: `Earprint` · `ID: 6837883616`)
+- **App Store URL (active once approved):** `https://apps.apple.com/app/id6837883616`
+- **Landing Page:** `https://popcornnnnnnnn.github.io/earprint/`
+- **Support FAQ:** `https://popcornnnnnnnn.github.io/earprint/support.html`
+- **Privacy Policy:** `https://popcornnnnnnnn.github.io/earprint/privacy.html`
+- **Public GitHub Repo (Open Source):** `https://github.com/Popcornnnnnnnn/earprint`
+- **Price / Business Model:** Free (`$0`), zero accounts, zero servers, zero analytics/ads (`Data Not Collected`)
 
 ---
 
-## 2. Account Bio & Pre-Launch TestFlight Funnel
+## 1. Truthful Product Spec Sheet (Verify Before Posting)
 
-### 2.1 小红书个人主页 Bio 模板
+Use these exact verified numbers and labels from `Shared/Rarity.swift`, `HeadphoneModelCatalog.swift`, `DossierShareView.swift`, and `project.yml` so posts stay accurate and code-consistent:
 
-> 平台注意：小红书新号/未认证账号的个人简介**不要出现微信/WX/VX、外部网址、`testflight.apple.com` 短链或二维码指引**，否则极易被系统折叠或触发引流限流。
+### 1.1 Six Collector Foil Tiers (`Shared/Rarity.swift`)
+Cards evolve automatically as lifetime HealthKit hours accumulate, and the `2×3` **Collector Binder** (`CardTiersView`) records the exact month each tier unlocked across your headphones:
 
-- **模板 A（独立开发日志风 — 推荐用于内测与打磨阶段）：**
-  ```text
-  正在写一个叫 Earprint 的 iOS 小应用 🎧
-  把 Apple 健康里的 AirPods 历史变成 3D 收藏卡
-  独研独立作品 · 纯本地只读 · 无服务器无账号
-  👇 内测进度与更新看置顶第一条笔记
-  ```
-
-- **模板 B（上架后极简工具风）：**
-  ```text
-  Earprint 开发者｜iOS 18+
-  读懂你的 AirPods 陪伴时长与 28 天声学指环
-  App Store 搜「Earprint」｜非 Apple 官方应用
-  数据仅留在你的 iPhone，绝不上传
-  ```
-
-### 2.2 抖音个人主页 Bio 模板
-
-- **模板 A（视觉演示 + 产品预告）：**
-  ```text
-  独立开发者｜做了一个给 AirPods 发收藏卡的 App
-  看看你的耳机在「健康」里藏了多少小时 🎧
-  iOS 18+ 专属 · 纯本地读取 Apple 健康 · 非苹果官方
-  内测/上架动态看置顶视频评论区 👇
-  ```
-
-- **模板 B（数据极客风）：**
-  ```text
-  把你戴过几百小时的 AirPods 变成 3D 镭射卡
-  App 名：Earprint（目前仅支持 iPhone）
-  只读本地数据不联网｜开发碎碎念持续更新中
-  ```
-
-### 2.3 内测期 TestFlight 招募漏斗策略（安全防封号版）
-
-开发收尾期与正式上架前，如何把小红书/抖音的自然流量安全转化为高质量 TestFlight 测试用户：
-
-1. **阶段一：开发日志蓄水（TestFlight 链接尚未对外公开时）**
-   - **动作**：发 Post 1 / Post 2，**不发任何链接**，引导用户在评论区留言「**报上你的耳机型号 + 预估佩戴小时数**」，比如「评论区报下你的 AirPods 型号，下周开 TestFlight 第一批踢大家试玩」。
-   - **优势**：评论区真实型号互动会直接推高笔记权重，同时提前筛选出真正用 AirPods 1/2/3/4/Pro/Max 的精准 iOS 用户，避开无效吃瓜群众。
-
-2. **阶段二：TestFlight 开放测试（无需在公域贴外部 URL）**
-   - **安全路径 1（小红书群聊闭环 — 最稳）**：在小红书站内建立「Earprint 内测体验群」（小红书官方群聊功能允许在群公告内发应用或测试说明，或通过置顶笔记引导「想测的宝子进我主页置顶的测试群」），避免在公域笔记正文或评论区狂发外链/微信号。
-   - **安全路径 2（主页合集 + 置顶评论口令）**：创建名为 `#Earprint内测进度` 的合集并置顶 1 条图文笔记，在置顶笔记图里用清晰的纯文字说明步骤（例如：「1. App Store 先装苹果官方的 TestFlight → 2. 查看本条置顶评论区的公开测试口令/群入口 → 3. 允许读取 Apple 健康里的耳机音量」）。
-   - **安全路径 3（正式上架切换）**：一旦 App Store 过审上架，立刻把所有新旧高热笔记的置顶评论统一替换为：**「已经过审上架啦！直接在 App Store 搜英文名 `Earprint` 就能下载（认准浅白底午夜色头戴耳机图标那个，深色模式下会切为深黑底），纯本地读取不收费/不传数据～」**——直接引导去 App Store 搜名字是绝对安全且转化率最高的方式。
-
-3. **阶段三：抖音评论区安全引导**
-   - 抖音不要在评论区直接放 `https://...` 链接（未挂官方小程序/下载组件的外链会被屏蔽甚至扣分）。
-   - 内测期统一回复：**「还没正式上架 App Store，在果粉测试通道 TestFlight 内测中，进我主页置顶视频看怎么上车」**；上架后统一回复：**「App Store 直接搜英文名 Earprint 即可（iOS 18+）」**。
-
-### 2.4 平台违禁词与限流雷区避坑表
-
-| 千万别写（易限流/判违规） | 为什么危险 | 推荐安全平替表达 |
-| --- | --- | --- |
-| `加我VX / 私信发链接 / 扫码进群` | 小红书/抖音强打击站外导流，极易限流或禁言 | `看我主页置顶笔记` / `在站内群聊更新` / `评论区蹲个名额` |
-| `苹果官方出品 / 苹果隐藏功能` | 侵权+虚假宣传，极易被举报下架 | `独立开发者小作品，读取你 iPhone 自带的 Apple 健康记录（非 Apple 官方应用）` |
-| `医疗级护耳检测 / 预防耳聋神器` | 触碰医疗器械/医疗效果宣称红线 | `参照 WHO 每周安全聆听指南做可视化提醒，帮助你直观留意音量习惯` |
-| `全网首创 / 最好用 / 天花板 / 绝对安全` | 广告法极限词 + 机器判软广降权 | `我自己平时在用的小工具` / `花了几周打磨的交互细节` |
-| `100% 精准识别所有耳机` | 违背代码事实（Beats 等不生成收藏卡，静默 ANC 不产生健康采样） | `支持 AirPods 全系列收藏卡片；其他耳机数据可在健康原始记录与模型预览中查看` |
-
----
-
-## 3. Xiaohongshu (小红书) 5-Post Pre-Launch to Launch Calendar
-
-### 排期总览表
-
-| 篇目 | 建议发布节奏 | 核心主题 | 对应 App 核心卖点 | 主要目标 |
+| Tier | Hours | English Title (`Finish`) | 简体中文名称 | Max Holo Sheen |
 | --- | --- | --- | --- | --- |
-| **Post 1** | **本周即可发（Day 1）** | Build-in-Public 开发日志：把健康数据变成 3D 实体收藏卡 | 健康历史读取 + 3D USDZ 旋转 + 陀螺仪镭射 | 测自然流量与情绪共鸣，攒首批种子关注 |
-| **Post 2** | **Day 4** | 0h–2000h 十阶梯队 & AirPods Max 10 色展示 | 10 级段位卡片 + 10 色实时切换 + 40 款图标 | 拉高评论区「晒时长/报段位」互动率 |
-| **Post 3** | **Day 8** | PSA 亚克力评级卡套 & 原生 4 页导出长图 | `GradingSlab` + `EAR GRADE` + 内置 4 页导出 | 展示产品审美与一键出图「小红书友好度」 |
-| **Post 4** | **Day 11–12** | TestFlight 招募 + 28 天声学指环 & 小组件 | 28 天耳纹圆环 + 听众画像 + WHO 额度 + 小组件 | 转化 TestFlight 真实测试用户 |
-| **Post 5** | **App Store 上架日** | 正式发布 + 10 秒上手教程 + 纯本地隐私宣言 | App Store 下载指引 + 零服务器本地读取承诺 | 冲刺首日下载、转化前期蓄水评论区 |
+| 01 | `0h+` | **BRONZE SLATE** (`Anodized Matte`) | 青铜岩 / 青铜岩板 | `0.00` |
+| 02 | `25h+` | **SILVER ALUMINUM** (`Beaded Alloy`) | 银铝 | `0.00` |
+| 03 | `120h+` | **FJORD TEAL** (`Brushed Slate`) | 峡湾青 | `0.26` |
+| 04 | `400h+` | **DEEP PURPLE** (`Frosted Plum`) | 深紫 / 深紫釉 | `0.42` |
+| 05 | `1,000h+` | **MIDNIGHT CARBON** (`DLC Coating`) | 午夜碳纤 | `0.62` |
+| 06 | `2,000h+` | **LIQUID HOLO · LEGENDARY** (`Prism Oxide`) | 液态全息 | `0.90` |
+
+### 1.2 Hardware, Customization & Exports
+- **Bluetooth Product IDs:** `34` Apple/Beats Bluetooth PIDs (`0x2002`–`0x2036`) mapped in `HeadphoneModelCatalog.swift` (AirPods 1–5, AirPods 4 & ANC, AirPods Pro 1–3, AirPods Max Lightning / USB-C / 2, Beats & Powerbeats), plus third-party over-ear/in-ear fallback; host iPhone/Watch (`HKDevice.local()`) samples are excluded so phone speakers never appear as headphones.
+- **3D Models & Retail Colors:** Real-time RealityKit `.usdz` models (`AirPods4.usdz`, `AirPodsPro.usdz`, `AirPodsMax.usdz` + `HeadphoneGeneric.usdz` in Model Gallery & procedural fallback), with **10 official AirPods Max colors** (5 USB-C 2024 + 5 Lightning 2020) and Beats retail finishes.
+- **App Appearance & Icons:** Full **Light / Dark / System** appearance across every view, Dossier slab, exported PNG, and widget; bilingual **English & 简体中文** matching system language automatically; custom concentric **Earprint Rings Emblem** primary icon + `40` alternate icons (**`41` total**).
+- **PSA Device Dossier (`DeviceDossierView`):** Transparent acrylic grading slab with **`EAR GRADE` (`1.0–10.0`)** (`PRISTINE` / `GEM MINT` / etc.), `Week / Month / Year / All` ranges, scrubbable 30-day bar chart, 24-hour radial Day Clock, Habits & Hearing bento, monthly Career Ledger, milestone ETAs, and guilloché provenance certificate.
+- **Customizable Share PNG Exports:**
+  - **Dossier Share Sheet:** `Simple` (1 page) or `Long` (1–4 customizable pages: Cover, Rhythm, Habits & Hearing, Certificate) at `420×560 pt @3x` = **`1260 × 1680 px`** (`3:4` portrait), toggleable sections, Light or Dark theme.
+  - **Rings Share Card:** `3:4` (`1080 × 1440 px`) or `9:16` (`1080 × 1920 px`), Light or Dark theme.
+- **28-Day Earprint Rings & WHO Weekly Budget:** Concentric `28 × 24` local-time chronometer dial colored by energy-averaged loudness (`Leq` in `dB(A)`), listening personas (`Night Owl`, `Commute Soundtracker`, `Early Bird`, `All-Day Listener`), and **WHO / ITU H.870** budget (`80 dB(A)` × `40h/week` = `100%`, equal-energy `+3.01 dB` halving rule).
+- **Widgets (No Live Activity in `v1.0.0`):** Home Screen `Today` (interactive card cycler), `Card Shelf` (up to 3 cards with `earprint://card/<id>` deep links), and `Large Earprint Ring + Heatmap + WHO Budget`, plus Lock Screen Circular, Rectangular, and Inline accessories.
+- **Verifiable Privacy:** Zero networking code, zero servers, zero accounts, zero tracking/ad SDKs. Calls `HKHealthStore.requestAuthorization(toShare: [], read:)` strictly read-only for `headphoneAudioExposure` (`NSHealthUpdateUsageDescription` is declared in `Info.plist` solely to satisfy Apple static check `ITMS-90683`, while zero HealthKit write/save symbols exist in the Release binary).
 
 ---
 
-### Post 1：开发日志 — 把 Apple 健康里沉睡的 AirPods 历史做成 3D 收藏卡（本周可发）
+## 2. Rollout Strategy: Pre-Launch (Now) vs Launch Day
 
-- **标题备选（3 选 1）：**
-  1. `把 Apple 健康里沉睡的 AirPods 数据，做成了会反光的 3D 卡片`
-  2. `原来我的 AirPods Pro 已经陪了我 188 小时，顺手给它做了张镭射卡`
-  3. `独立开发日记｜翻出 iPhone 几年的耳机记录，做了一副能转动的数字藏品`
-
-- **图文分镜（建议使用 `3:4` 或 `4:5` 竖屏画布，保证小红书首图列表不被裁切）：**
-  - **Slide 1（封面 Cover · `4:5`）：** 深邃黑曜石渐变底，居中放置 **AirPods Pro 2 · USB-C** 卡片倾斜特写（展示真实 3D 模型浮出卡面 + `188h 22m` 大号圆体数字 + `蓝宝石 · 深海` 箔金标签）。顶部留白用干净无衬线白字写：`你的 AirPods 到底陪了你多少小时？`，底部小字：`读取 Apple 健康 · 纯本地运行 · 独立开发日记 #01`。
-  - **Slide 2（对比痛点 · `4:5`）：** 左右或上下拼图。上半部分放 iOS 原生「健康」App 里平平无奇的耳机音量柱状图截图（文字标注：`系统健康里只是一堆安静躺着的柱状图`）；下半部分箭头指向 Earprint 的「我的耳机（Collection）」列表页（`CardHorizontalFront` 横版金属卡片流）。
-  - **Slide 3（3D 交互演示 · `4:5` / 建议附带 Live 实况图或动图）：** 展示 `CardDetail` 放大视图——打开的 AirPods 4 / AirPods Pro 充电仓悬浮 3D 模型，周围用极简引导线标注三个手势：`单指拖动旋转 3D`、`双指放大看细节`、`长按炫酷自转带震动`。
-  - **Slide 4（翻面与多副耳机 · `4:5`）：** 展示卡片翻转到背面的状态（背面显示近 4 周 Earprint 环形图、累计时长、聆听次数、最长单次与平均音量），旁边叠放第 2 张 `AirPods Max` 黄金卡与第 3 张 `AirPods 4` 铜卡。
-  - **Slide 5（开发初心与隐私声明 · `4:5`）：** 极简深色文字卡片截图或 UI 实拍（`Settings` + `只读 Apple 健康权限弹窗`），标注重点：`1. 不联网、不建账号、不传服务器` / `2. 只读 Apple 健康耳机音量曝光` / `3. 独立开发者作品，非 Apple 官方应用`。
-
-- **自然中文正文：**
-  ```text
-  前几天无意间点开 iPhone 里的「健康」App，才发现只要一直开着耳机音量测量，系统其实默默把你这几年戴 AirPods 的每一次听歌、通勤、熬夜通话都记了下来。
-
-  只是原生的数字太像体检报告了，冷冰冰的，看一眼就关掉了。
-
-  我平时喜欢收一点实体小卡片，突然觉得——既然这副耳机陪了我们几百个小时，为什么不能给它发一张专属的「收藏卡」呢？
-
-  于是最近自己抽空写了一个小 App，名字叫 **Earprint**（耳纹）。
-
-  打开后它会自动读取你本机 Apple 健康里的历史（不用重新从零记起）：
-  🔸 每一副戴过的 AirPods 都会生成一张带编号的卡片，记录首次陪伴的日期和累计小时数
-  🔸 卡片上的 AirPods 4、Pro 和 Max 都是可以手指直接转动的 3D 模型，倾斜手机时卡面会有金属镭射反光
-  🔸 点一下卡片能翻到背面，看你最近 28 天的听歌时间分布
-
-  为了安心，我把所有计算全部放在手机本地做：不需要注册登录，也没有后端服务器，只读健康里的分贝与时长，绝不读取你在听什么歌，也不会把任何数据传出你的 iPhone。
-
-  目前还在做最后的界面打磨，打算近期先开一小批 TestFlight 给感兴趣的朋友试试。
-  你觉得自己主力那副 AirPods 在健康里大概攒了多少小时了？评论区先猜一个，等上线后回来对答案 👇
-
-  （注：独立开发者个人作品，非 Apple 官方应用）
-  ```
-
-- **话题标签（Hashtags）：**
-  `#独立开发` `#iOSApp` `#AirPods` `#宝藏App` `#Apple健康` `#数码好物` `#极简美学`
-
-- **置顶评论 CTA：**
-  `谢谢大家喜欢！目前还在收尾修细节，想要首批 TestFlight 试玩的可以在评论区报一下你的主力耳机型号（AirPods 几代 / Pro / Max），开放测试的时候我直接在评论区踢大家 👇`
-
----
-
-### Post 2：好奇心 & 段位晒图 — 0h 到 2000h 十阶卡面梯队 + AirPods Max 10 色
-
-- **标题备选（3 选 1）：**
-  1. `看看你的 AirPods 修到第几层？从青铜到 2,000 小时全息传说`
-  2. `给耳机做了一套 10 级段位卡面，戴到 2000 小时才解锁满级幻彩`
-  3. `AirPods Max 十款颜色全做进 3D 卡片里了！顺便测测你的耳机什么段位`
-
-- **图文分镜（`4:5` 竖屏）：**
-  - **Slide 1（封面 Cover · `4:5`）：** 将 `CardTiersView` 中的 10 种材质卡面扇形或阶梯排布，居中突出最顶级的 `2000h 幻彩 · 传奇` 与 `0h 铜卡` 的质感反差。顶部大字：`你的 AirPods 练到第几阶了？`，副标：`0h 青铜 → 2,000h 全息传说，10 个收集等级`。
-  - **Slide 2（10 阶完整门槛表 · `4:5`）：** 直接截取 App 内中文界面「卡片等级（`Card Tiers`）」长图上半段/整页拼接，清晰露出全部 10 档：`0h 铜卡`、`10h 白银`、`35h 黄金`、`80h 祖母绿`、`160h 蓝宝石`、`300h 紫水晶`、`550h 铂金`、`900h 钻石`、`1400h 黑曜`、`2000h 幻彩·传奇`。
-  - **Slide 3（AirPods Max 10 款官方配色实时换肤 · `4:5`）：** 展示 `CardDetail` 底部配色条展开的界面，拼出 4 个热门实拍色：USB-C 新款「午夜色 / 紫色 / 橙色」与经典款「天蓝色」，标注：`2020 Lightning 与 2024 USB-C 共 10 款配色都能在 3D 模型上实时切换`。
-  - **Slide 4（强迫症福音：40 款自定义 App 图标 · `4:5`）：** 截取 `设置 → App 图标（AppIconPickerView）` 界面，展示上面 4 种背景（自动 / 浅色 / 深色 / 幻彩）配 10 种头戴颜色的网格，配字：`连桌面图标也要跟你的耳机配色对齐`。
-  - **Slide 5（互动自测引导 · `4:5`）：** 放一张带进度条的「蓝宝石卡还差 112 小时升级紫水晶」局部特写，左下角提示：`去 iPhone「健康 → 浏览 → 听力 → 耳机音量」看一眼，你大概在哪个位置？`
-
-- **自然中文正文：**
-  ```text
-  做完第一版卡片之后，我发现只有 3 个等级有点不够过瘾——身边有朋友才戴了一周，也有人一副初代/二代 Pro 戴了快四年，总不能大家都是同一个颜色的卡吧。
-
-  所以这周把 Earprint 的卡牌梯队扩展到了 **10 个等级**，每副耳机只要首次被记录就会铸造一张初始铜卡，之后全靠你在真实生活里一小时一小时戴出来：
-
-  🥉 0h 铜卡｜10h 白银｜35h 黄金
-  💚 80h 祖母绿｜💙 160h 蓝宝石｜💜 300h 紫水晶
-  🤍 550h 铂金｜💎 900h 钻石｜🖤 1400h 黑曜
-  🌈 2000h 全息传说（全光谱幻彩镭射）
-
-  另外顺手满足了一下自己的强迫症：因为很多用 AirPods Max 的朋友耳机颜色不一样，我就把两代一共 **10 种官方配色**都写进了 3D 材质和卡面里，点一下底部的色盘就能直接把模型换色，甚至连桌面 App 图标也能配出 40 种组合。
-
-  好奇问一句：在座各位现在手里的主力 AirPods，按这个表算大概卡在哪个段位？
-  有达到 1400 小时黑曜或者 2000 小时全息传说的大佬吗，让我膜拜一下 👀
-  ```
-
-- **话题标签（Hashtags）：**
-  `#AirPodsMax` `#AirPodsPro` `#独立开发者` `#桌面美学` `#耳机收集` `#iOS小众软件` `#果粉`
-
-- **置顶评论 CTA：**
-  `快去 iPhone「健康 → 听力 → 耳机音量」翻一下年总计/历史，来评论区报个坐标：型号 + 大概段位（比如：Pro 2 / 估摸在蓝宝石和紫水晶之间）！`
-
----
-
-### Post 3：产品工艺 & PSA 档案 — 亚克力评级卡套 + 直接导出 4 页滑动组图
-
-- **标题备选（3 选 1）：**
-  1. `给我的 AirPods 做了个 PSA 风格评级卡套，顺便把「档案导出」接好了`
-  2. `戴耳机也要打分？来看看你的 AirPods 能拿几分 GEM MINT`
-  3. `为了方便发小红书，我直接在 App 里做了一键导出 4 页竖屏档案图`
-
-- **图文分镜（`5:7` 原生导出直出，完美演绎「用自己写的 App 出图发小红书」）：**
-  - **Slide 1（封面 Cover · `4:5`）：** 放 `DeviceDossierView` 顶部的「PSA 亚克力评级卡套（`GradingSlab`）」全貌实拍/截图，重点露出边框通透反光、防伪全息标、`EARPRINT · AUTHENTICATED` 与右上醒目的 **`EAR GRADE` 评级徽章（如 `9.x GEM MINT`）**。压字：`这副耳机，给你评几分？` / `PSA 评级风格档案 + 4 页组图一键导出`。
-  - **Slide 2（App 原生导出第 1 页 · `01 / 04 封面`）：** 直接使用 `DossierShareSheet` 导出的 `Earprint-*-01-Cover.png`（`1200×1680`），零后期，展示评级卡套 + 累计时长 + 首次佩戴 + 记录天数 + `Apple Inc. · 0x2024` 硬件编号。
-  - **Slide 3（App 原生导出第 2 页 · `02 / 04 节律`）：** 直接使用导出的 `02-Rhythm.png`，展示该设备的佩戴占比、30 天按音量着色的柱状图与 24 小时佩戴时钟（`DayClock`）。
-  - **Slide 4（App 原生导出第 3 页 · `03 / 04 习惯与听力`）：** 直接使用导出的 `03-Habits.png`，展示最长单次佩戴、平均音量 `dB(A)`、WHO 每周剂量百分比、高音量占比（≥80 dB）与从 `10.0` 满分逐项扣分的透明评分表。
-  - **Slide 5（App 原生导出第 4 页 · `04 / 04 认证证书`）：** 直接使用导出的 `04-Certificate.png`，展示带防伪底纹（Guilloché 玑镂纹）的硬件证书、读入的样本总数以及带预计达成时间（ETA）的里程碑时间线。
-
-- **自然中文正文：**
-  ```text
-  写卡片背面的数据页时总觉得还差一口气——既然正面做成了收藏卡，那点进去看详情，干脆就做成球星卡圈里那种 **PSA 亚克力评级卡套** 吧。
-
-  这周把「设备档案（Device Dossier）」和导出功能一起做完了，后面这 4 张图**全都是 App 内置「长图导出」直接生成的 1200×1680 原图**，一张图都没用 PS 修：
-
-  1️⃣ **听力评分（EAR GRADE）**：从 10.0 分起评，参照 WHO 每周安全聆听准则（80 dB(A) 下每周 40 小时）。平均音量越小、高分贝（≥80 dB）和凌晨 0–5 点熬夜听歌越少，就越容易拿到 `GEM MINT (9.0+)` 甚至 `PRISTINE (9.95+)`。
-  2️⃣ **24 小时节律表盘**：一眼看出你到底是早高峰通勤听得多，还是深夜关灯以后才戴上耳机。
-  3️⃣ **带防伪纹的硬件证书**：把系统记录里的制造商、蓝牙产品编号（比如 `0x2024`）、固件版本和读取的样本条数印在证书上，仪式感拉满。
-
-  也顺便做了「简图（1 页海报）」和「长图（4 页滑动组图）」两种格式，以后大家拿到测试包，点一下分享就能直接发笔记对对看谁的评分更高。
-
-  （注：如果一直开大音量蹦迪式听歌，评分真的会掉到 `WELL WORN <5.0` 哦，也算是给耳朵提个小醒 🙉）
-  ```
-
-- **话题标签（Hashtags）：**
-  `#UI设计` `#SwiftUI` `#独立开发` `#PSA评级卡` `#听力保护` `#AirPodsPro` `#数字藏品`
-
-- **置顶评论 CTA：**
-  `后面第 2～5 页都是 App 一键导出的原图，不用自己排版拼图。目前正在准备首批 TestFlight 测试包，想第一时间给自己耳机测个评分的评论区扣个「1」或者留个耳机型号，开测了马上通知～`
-
----
-
-### Post 4：TestFlight 招募 + 28 天声学指环预告
-
-- **标题备选（3 选 1）：**
-  1. `TestFlight 内测开启｜把最近 28 天戴耳机的节奏，画成一圈彩色指环`
-  2. `熬夜听歌还是通勤常客？Earprint 首批内测招募（纯本地读取健康数据）`
-  3. `做了一个「声音指纹」小组件，顺便招一批用 AirPods 的朋友帮忙内测`
-
-- **图文分镜（`4:5` 竖屏）：**
-  - **Slide 1（封面 Cover · `4:5`）：** `Rings（聆听）` 页面主视觉大特写——28 圈渐变的 `EarprintGlyph` 同心圆像一枚精密腕表表盘一样发光，旁边是清晰的图例（低音量薄荷青 / 适中暖金 / 高音量警示红）与「夜猫子 Night Owl 🦉」标签。顶部大字：`你的「耳纹」长什么样？｜TestFlight 首测招募`。
-  - **Slide 2（近 7 天 & WHO 听力额度 · `4:5`）：** 展示 `Rings` 页的本周数据条 + `声音暴露限额（Hearing budget）` 进度条，附简短白话科普：`WHO 参考值：80 dB(A) 下每周最多 40 小时；每提高 3 dB，安全时长减半`。
-  - **Slide 3（四种听众画像 + 9:16 分享卡 · `4:5`）：** 用 `ShareCardView`（`1080×1920`）搭配 4 个小徽章框展示四种算法自动判定的人格：`🦉 夜猫子`（22:00–03:59 占比较高）、`🚇 通勤听众`（早晚高峰）、`🐦 早起听众`（5:00–7:59）、`🎧 全天听众`。
-  - **Slide 4（桌面小组件 & 灵动岛实机预览 · `4:5`）：** 展示 iPhone 桌面与锁屏实拍：`小号今日概览`、`中号 3 张卡片架（点击直达对应卡片）`、`大号 28 天耳纹圆环 + 28 天热力图`，以及锁屏/灵动岛样式预览。
-  - **Slide 5（内测参与方式 & 须知 · `4:5`）：** 纯文字黑曜石卡片，清晰写明：`要求：iOS 18+ iPhone｜AirPods 用户最佳` / `说明：只读 Apple 健康耳机音量，不联网不收集隐私` / `入群或领码方式：见主页置顶说明（请先在 App Store 下载 TestFlight）`。
-
-- **自然中文正文：**
-  ```text
-  前面发了 3D 卡片和档案页，很多朋友都在问什么时候能玩上。这几天把最核心的「28 天聆听指环（Rings）」和桌面小组件也收好尾了，**第一批 TestFlight 内测今天开放！**
-
-  简单说一下这个页面能看什么：
-  🌀 **28 天声学指环**：一圈代表一天，最外圈是今天，正上方 12 点是午夜。颜色会跟着你当时的音量变——轻柔时是清冷的青绿色，适中是暖金，太响了就会变成警示红。
-  🦉 **听众画像**：根据你过去 4 周的佩戴时段，看看你是「夜猫子」「通勤听众」「早起听众」还是「全天听众」。
-  🛡️ **WHO 安全额度条**：直观显示你这周已经用了多少健康参考额度，戴久了心里有数。
-  📱 **桌面 & 锁屏小组件**：把卡片架和今日耳纹直接摆到桌面上，点一下小组件就能跳到对应耳机的 3D 卡片。
-
-  **内测前请先了解 3 件实在的事：**
-  1. 需要 **iOS 18 及以上系统** 的 iPhone；
-  2. 卡片视觉主要针对 **AirPods 全系列** 做了完整配图与 3D 模型；如果你用 Beats 或其他蓝牙耳机，记录依然会在健康计算里，但暂不生成专属 3D 藏品卡；
-  3. iOS 只会在**播放音频时**记录耳机音量，且 Earprint 仅做本地只读分析，不建账号也不上传任何数据。
-
-  想参加首测帮我找 Bug、提建议的朋友，先在 App Store 装好苹果官方的 **TestFlight**，然后看我主页置顶笔记/站内群公告的测试入口即可 👇
-  ```
-
-- **话题标签（Hashtags）：**
-  `#TestFlight` `#内测招募` `#独立开发` `#iOS18小组件` `#AirPods` `#听力健康` `#宝藏App`
-
-- **置顶评论 CTA：**
-  `内测名额已开！注意事项：如果打开后先看到「示例数据」，记得点击横幅上的「连接健康」或在「设置 → 健康 → 数据访问 → Earprint」里把读取打开。遇到任何界面 Bug 或型号没识别对，直接在这条下面带图/型号反馈给我！`
-
----
-
-### Post 5：App Store 正式上架日 — 上线官宣 + 10 秒读取教程 + 本地隐私宣言
-
-- **标题备选（3 选 1）：**
-  1. `我写的 AirPods 收藏卡 App 上架 App Store 了：Earprint，只读本地不传数据`
-  2. `历时几周打磨，Earprint 正式上线｜快去翻翻你的 AirPods 陪了你几百小时`
-  3. `给每副 AirPods 发一张 3D 收藏卡：Earprint 今日上架（附 10 秒授权指南）`
-
-- **图文分镜（`4:5` 竖屏）：**
-  - **Slide 1（封面 Cover · `4:5`）：** 深色极简发布会构图，居中是 **Earprint 默认图标（浅白底午夜色 AirPods Max 头戴耳机质感，可搭配展示深色/幻彩款自定义图标）** + 一张正在 3D 悬停的最高阶 **2,000h 全息传说卡**，底部干净排布一行信息：`App Store 搜索「Earprint」｜支持 iOS 18+｜纯本地运行`。
-  - **Slide 2（3 步极速上手教程 · `4:5`）：** `01 App Store 搜 Earprint 下载` → `02 弹出 Apple 健康授权时点击「全部打开 / 允许」` → `03 1 秒加载出你过去几年的 AirPods 卡片，不用从头积累！`（附真实 iOS 健康授权界面示意图，重点提醒「不授权就只能看到示例数据」）。
-  - **Slide 3（核心功能全家福 · `4:5`）：** 4 宫格拼接：`左上：3D 卡片旋转换色` / `右上：10 阶稀有度梯队` / `左下：PSA 评级与 4 页导出` / `右下：28 天耳纹与桌面小组件`。
-  - **Slide 4（零服务器隐私承诺 · `4:5`）：** 放大展示 App Store 隐私标签承诺或技术透明卡片：`✅ 无登录账号` / `✅ 无云端服务器` / `✅ 无第三方广告与追踪 SDK` / `✅ 运行时仅请求 Apple 健康只读授权（toShare: []），绝不写入数据`。
-  - **Slide 5（致谢与真实 Q&A · `4:5`）：** 附上开源 3D 模型 CC-BY 4.0 署名致谢（Falah3D、polyman Studio、crow）与非官方声明：`独立开发者作品，非 Apple 官方应用`。
-
-- **自然中文正文：**
-  ```text
-  之前很多朋友在评论区蹲上架，今天终于可以来交作业了——**Earprint 已经正式通过审核，上架 App Store！**
-
-  只要你用的是 iOS 18 及以上的 iPhone，并且平时在用 AirPods，现在就能去 **App Store 直接搜索英文名 `Earprint`** 下载体验，不需要重新等几天才能看数据，只要你的 Apple 健康里原本存着记录，打开就能瞬间生成这几年属于你的耳机收藏卡。
-
-  **上手只需 10 秒（避坑提示）：**
-  打开 App 提示读取「Apple 健康 → 耳机音量」时，请点击允许读取。如果你之前把手机系统里的「耳机音量通知/测量」完全关掉了，或者拒绝了读取权限，出于苹果隐私机制 App 是无法区分“没数据”还是“被拒绝”的，只会显示示例数据，可以在「设置 › 健康 › 数据访问 › Earprint」里随时重新打开。
-
-  **再认真承诺一次隐私问题：**
-  整个 App 没有账号系统、没有后台服务器、也没有接入任何数据埋点 SDK。Release 正式版安装包在系统底层就只申请了**只读权限**，你的所有佩戴时长和分贝图谱都在自己手机上加密缓存与计算，一个字节都不会传到网上。
-
-  （独立开发者作品，非 Apple 官方应用；内置 3D 模型基于 Sketchfab 创作者 Falah3D、polyman Studio、crow 的 CC-BY 4.0 作品适配制作，已在应用及文档中完整署名。）
-
-  大家已经下载出来的，快来评论区晒晒你目前最高的一张卡是什么段位、多少小时、EAR GRADE 拿了多少分吧 👇
-  ```
-
-- **话题标签（Hashtags）：**
-  `#Earprint` `#AppStore上架` `#独立开发` `#iOS应用推荐` `#AirPods` `#宝藏App` `#隐私保护`
-
-- **置顶评论 CTA：**
-  `App Store 直接搜「Earprint」即可（认准浅白底午夜色头戴耳机图标；开启 iOS 深色模式时主屏会显示为深黑底）。如果打开只看到示例数据：点顶部「连接健康」或在「设置 → 健康 → 数据访问 → Earprint」允许读取即可；注意 Apple 健康只记录播放声音时的佩戴时长，纯开降噪不放歌系统是不记的哦！`
-
----
-
-## 4. Douyin (抖音) 3 Short-Video Scripts (15–30s each)
-
-### Script 1：纯视觉炫技流 — 倾斜镭射 + 3D 旋转 + 10 色瞬切（约 18–20 秒）
-
-- **核心目的：** 靠「物理反光 + 丝滑 3D 动效」吃满前 3 秒停留与高点赞收藏，无需过多文字门槛。
-- **拍摄准备：** 暗调桌面台灯环境（微弱侧逆光最能凸显实体手机屏幕与卡片的反光对比），开启 App 内 `-demo` 或真机演示数据，关闭多余桌面通知。
-
-| 时间轴 | 画面与机位（Shot List） | 屏幕花字（On-Screen Text） | 音效 / BGM 节拍 |
+| Timing | Where to Post | Purpose | Link / CTA |
 | --- | --- | --- | --- |
-| `0–3s` | **特写手部持机**：真实右手握持 iPhone，在暗色桌面前轻轻左右微倾手机，让屏幕里一张 `2000h 全息传说`（或 `蓝宝石`）卡片的斜向镭射高光随陀螺仪滑过全屏。 | `给 AirPods 做了张「会反光的 3D 收藏卡」` | 清脆的机械表/卡片滑动音效（Whoosh），BGM 进前奏重鼓点前蓄力。 |
-| `3–7s` | **无缝切高清录屏（或继续微距实拍手指触摸）**：手指轻点卡片进入 `CardDetail` 放大视图，大拇指在 **AirPods 4** 悬浮开盖 3D 模型上横向一拨，模型带着物理惯性顺滑旋转；接着双指微张放大看内部耳塞细节，再长按触发一次快速 360° 炫酷自转。 | `单指转 · 双指放大 · 长按旋风转圈` | 随长按旋转配合 App 真实的微弱 Taptic 震动/清脆咔哒声，卡准鼓点 Drop。 |
-| `7–12s` | **向左轻划切换下张卡片（卡堆翻页）**：划出 **AirPods Max** 卡片，点开底部颜色按钮，按音乐快节奏依次点击色盘：`午夜色 → 星光色 → 蓝色 → 紫色 → 橙色 → 天蓝色 → 粉色`，3D 头戴耳机金属耳罩与网面颜色瞬间实时变换。 | `10 款官方配色实时换皮肤 🎨` | **强踩点！** 每 0.6s 一次重鼓点或合成器音阶切换一种颜色。 |
-| `12–16s` | **横划翻面**：在卡片边缘轻轻一划，卡片 3D 翻转 180°，露出背面的 28 天声学圆环与统计格。 | `翻面就是你的 28 天声音指纹` | 空气感翻页音效，节奏稍微放缓。 |
-| `16–19s` | **回到手机实体持机远景**：把手机轻放在桌上的实体 AirPods 旁边，屏幕定格在卡片主页。 | `Earprint · 仅 iOS 18+（非 Apple 官方）` | 旋律收尾余音。 |
+| **Now (`Waiting for Review`)** | X (Build-in-Public teaser), 即刻, V2EX（谨慎预告）或暂存草稿 | Warm up indie-dev / AirPods audience without asking people to download a link that isn't live yet | Link to GitHub repo (`github.com/Popcornnnnnnnn/earprint`) & landing page (`popcornnnnnnnn.github.io/earprint/`) |
+| **Hour 0–2 after Monitor Alerts `READY_FOR_DISTRIBUTION`** | App Store Link check → 小红书 Post 1 + 抖音 Video 1 + 即刻 + X Launch Thread + `r/iosapps` + `r/airpods` | First wave of high-intent organic traffic across visual + indie channels | Direct App Store link (`apps.apple.com/app/id6837883616`) globally; `App Store 搜「Earprint」` on Douyin/Rednote |
+| **Launch Day (Pacific Morning ~00:01–08:00 PT / 北京 15:00–23:00)** | Product Hunt + Hacker News (`Show HN`) + `r/swift` | Synchronize 24-hour Product Hunt voting window and technical HN reading wave | Landing page + App Store + GitHub source |
+| **Day 2–7** | 小红书 Post 2/3/4, 抖音 Video 2/3, TikTok 3 Reels, `r/Apple` (Promo Sunday only!), 少数派投搞 | Sustain discovery with 6-tier showcase, PSA Ear Grade challenge, AirPods Max 10 colors, and Light/Dark craft | Encourage comment comparisons (`段位 / Ear Grade`) |
 
-- **BGM 与口播方向：** 全程**纯音乐不口播**，选未来感/Synthwave 或带有清脆弹拨/鼓点踩点的电子轻音乐（如适合数码开箱的节奏感电子乐），保留手指点击时的清脆拟音。
-- **发布文案：** `花了几个周末给 AirPods 写了一个 3D 收藏卡小应用，连倾斜反光和 Max 的十种配色都做进去了。你的 AirPods 已经戴了多少小时？#独立开发 #AirPods #iOS #数码好物 #Apple`
-- **置顶评论互动钩子：** `评论区说说你手里这副 AirPods 是第几代，一共出了 10 个段位卡面，最高要 2000 小时才能拿全息传说 👀`
+> **Important:** `com.forge.appstore-review-monitor` is running on this Mac and will ping your iMessage (`+8618616100625`) + Antigravity as soon as Apple moves `1.0.0` out of `WAITING_FOR_REVIEW`. Do **not** publish "Download on App Store now" posts until App Store URL loads cleanly!
 
 ---
 
-### Script 2：悬念揭晓流 — 「看看这副 AirPods 在健康里藏了多少小时」（约 25–28 秒）
+## 3. Compliance & Platform Safety Rules (All Channels)
 
-- **核心目的：** 用「我到底戴了多久」的好奇心钩住完播率，走完「发现数据 → 揭晓段位 → 翻面看档案 → PSA 评分」完整故事线。
-
-| 时间轴 | 画面与机位（Shot List） | 屏幕花字（On-Screen Text） | 声音 / 口播台词方向 |
-| --- | --- | --- | --- |
-| `0–3s` | **第一视角举着一副旧 AirPods Pro 充电盒**，镜头拉近对焦到微微有划痕的外壳，随后移向屏幕打开系统「健康」App 的耳机音量栏一闪而过。 | `这副 AirPods Pro，到底在 Apple 健康里藏了多少小时？` | **口播（自然随和男/女声）：**“你知不知道，你 iPhone 里的健康 App，其实默默记了好几年你戴 AirPods 的总时间？” |
-| `3–8s` | **切屏幕录屏**：打开 **Earprint**，瞬间读取本地记录，屏幕依次弹出用户拥有过的耳机卡片——停在主力 **AirPods Pro 2**，数字滚动定格（如 `188h 22m · 269 次聆听`），顶部标签亮起 `蓝宝石 · 深海`。 | `188 小时！刚摸到「蓝宝石」段位` | **口播：**“我把我这几年的数据读进自己写的这个小工具里，好家伙，原来这副 Pro 已经陪了我 188 个小时。” |
-| `8–13s` | **手指点击进入卡片并向左翻面**：先转半圈悬浮的 3D Pro 模型，随后直接翻到背面，特写居中的 28 天声学指环与进度条（`距 紫水晶 · 秘境 还差 112 小时`）。 | `累计满 2,000h 才到「全息传说」` | **口播：**“一共分了十个段位，我现在才刚到第五阶蓝宝石，要戴满 2000 小时才能变全息幻彩。” |
-| `13–21s` | **点击右下角「档案（Dossier）」按钮**：进入全屏深邃页面，展示最上方的 **PSA 风格亚克力卡套**与右上闪亮的 **`EAR GRADE`（如 `9.x · GEM MINT`）**，手指顺势往下滑展示 `24 小时聆听表盘` 和最底部的 `硬件防伪证书（Apple Inc. · 0x2024）`。 | `甚至连 PSA 评级卡套和硬件编号都安排上了` | **口播：**“点开档案还能给佩戴习惯打个分，看看你是不是总在深夜大音量听歌；数据全部只在手机本地算，不用登录也不用联网。” |
-| `21–26s` | **点击右上分享生成 4 页长图预览**，快速划过 4 张海报，结尾定格在 App Logo 与小字免责提示。 | `Earprint · 纯本地只读 · 非官方小工具` | **口播：**“有 iPhone 的朋友先猜猜你的耳机攒了多少小时，评论区留个数字！” |
-
-- **BGM 与口播方向：** 人声口播为主（节奏紧凑不拖沓），垫一层极轻的低保真 Lo-fi 或科技极简垫底音乐（音量压到人声 20%）。
-- **发布文案：** `测了一下陪伴我最久的 AirPods Pro，居然已经 188 小时了！顺手把 Apple 健康数据做成了能翻面的 3D 收藏卡和 PSA 评级档案。#AirPodsPro #iPhone技巧 #独立开发 #听力健康 #宝藏App`
-- **置顶评论互动钩子：** `测试方法：目前限 iOS 18+ iPhone。还没装的先去系统「健康 → 听力 → 耳机音量」看一眼，评论区晒出你的总时长！`
+1. **Mandatory Apple Non-Affiliation Notice:** Always state (in bio, footer, or pinned comment) that Earprint is an **independent app not affiliated with, sponsored by, or endorsed by Apple Inc.**
+2. **No Medical Claims:** Frame as personal informational visualization and WHO/ITU H.870 awareness — **never** call it a medical device or hearing-loss diagnostic tool.
+3. **Silent ANC Reality Check:** Remind new users in pinned comments that iOS only writes `Headphone Audio Levels` while audio is actively playing (not silent ANC), and that App Store apps cannot distinguish denied Health permission from zero samples (point to `Settings > Health > Data Access > Earprint`).
+4. **Douyin / Rednote Anti-Ban Rules:** Never write `加微信 / WX / 私信领链接 / 扫码`, raw URLs in Rednote bio or Douyin comments, or夸张极限词 (`最强 / 天花板 / 绝对安全`). Guide users to **search `Earprint` in the App Store** (`App Store 搜索英文名 Earprint`).
 
 ---
 
-### Script 3：踩点收集蒙太奇 — 从 0h 青铜一路进化到 2,000h 全息传说（约 22–25 秒）
+## 4. 抖音 (Douyin) — 3 Ready Scripts (`9:16` Vertical, `15–22s`)
 
-- **核心目的：** 展示 10 阶卡面的视觉差异与 28 天声学指环、桌面小组件生态，制造「好想集齐/好想升满级」的种草冲动。
+> **Asset ready to post:** `/Users/forge/.gemini/antigravity/brain/86907472-1f5c-45c9-88c5-a1dab54d1c23/promo-kit/videos/earprint-reel-zh-9x16.mp4` (`1080×1920`, H.264, `0` white flash frames).
 
-| 时间轴 | 画面与机位（Shot List） | 屏幕花字（On-Screen Text） | 音效 / BGM 节拍 |
-| --- | --- | --- | --- |
-| `0–3s` | **黑底起手**：屏幕出现第一张 `0h+ 铜卡`（`BRONZE`），上方出现进度条快速向右冲刺。 | `你的每一小时聆听，都在给卡片升级` | 紧迫的上升音效（Riser），倒计时感。 |
-| `3–13s` | **十连快切踩点蒙太奇**（建议录屏 `CardTiersView` 或准备 10 档同角度卡片，每 0.9s 切一张，卡在强节拍上）：<br>`0h 青铜` → `10h 白银` → `35h 黄金` → `80h 祖母绿` → `160h 蓝宝石` → `300h 紫水晶` → `550h 铂金` → `900h 钻石` → `1400h 黑曜` → 轰然定格在 **`2,000h 幻彩·传奇（全息传说）`**！最后这张微倾展示七彩流动高光。 | 依次闪过大号数字：<br>`0h 青铜` / `10h 白银` / `35h 黄金` / `80h 祖母绿` / `160h 蓝宝石` / `300h 紫水晶` / `550h 铂金` / `900h 钻石` / `1400h 黑曜` → **`2,000h 全息传说 ✦`** | **高潮踩点！** 每一声重鼓或音阶跃迁换高一阶卡面，2000h 配合清亮玻璃/水晶音效。 |
-| `13–18s` | **画面缩进到 `Rings（聆听）` 首页**：28 圈同心圆声学指环缓缓展开细节，镜头推近最外圈不同颜色（薄荷青 / 暖金 / 玫红），弹出听众标签 `夜猫子 🦉`。 | `每圈一天，记录音量和熬夜听歌习惯` | 音乐进入流畅旋律副歌段。 |
-| `18–23s` | **滑回 iPhone 主屏幕**：展示已经摆好的 `Earprint` 桌面中号 3 卡架小组件 + 大号 28 天耳纹圆环小组件，手指轻点中号小组件里的 AirPods 卡片，丝滑深链接直接拉起对应 3D 卡片收尾。 | `摆上桌面小组件，一秒直达你的耳机卡` | 轻快收尾，淡出。 |
+### 抖音 Script 1：纯视觉 3D 炫技流（19s，强推荐首发）
+- **核心视觉：** 深色背景 3D AirPods 卡片陀螺仪斜向镭射反光 → 单指旋转/翻面统计 → 浅色模式 PSA 设备档案与 30 天柱状图 → 深色 28 天声纹指环。
+- **视频配乐：** 节拍清晰的轻节奏电子 / Synthwave，无口播，保留原生动效节奏。
+- **发布标题文案：**
+  ```text
+  给我的 AirPods 做了一套会反光的 3D 收藏卡，翻开 Apple 健康才发现已经戴了一百多小时。纯本地只读不联网、免费无广，已开源。#独立开发 #AirPods #iOS技巧 #数码好物 #Apple健康
+  ```
+- **置顶评论：**
+  ```text
+  App Store 直接搜索英文名「Earprint」（全名 Earprint - Headphone Archive，iOS 18+ 可用）。纯本地读取 Apple 健康耳机音量，没有服务器、不用注册登录，项目代码也在 GitHub 开源啦～ 如果打开没有数据，记得去「设置 - 健康 - 数据访问」确认已允许读取（另外苹果系统只有放声音时才会记时长，纯开降噪不记）。（独立开发者作品，非 Apple 官方应用）
+  ```
 
-- **BGM 与口播方向：** 无口播，选择**强鼓点、有明显阶梯递进感**的热门卡点纯音乐（约 120–130 BPM 方便按每拍或每两拍切卡面）。
-- **发布文案：** `从 0 小时的铜卡一路听满 2,000 小时才能变全息传说，这大概是最耐玩也最安静的桌面小组件了 🎧 #AirPods #桌面美化 #iOS小组件 #独立开发 #收集癖`
-- **置顶评论互动钩子：** `赌五毛钱，评论区大多数人目前都在「黄金 35h」到「紫水晶 300h」之间，超过 1400 小时黑曜卡的请举手 🙋`
+### 抖音 Script 2：悬念揭晓流（22–25s，实拍+录屏）
+- **拍摄节奏：**
+  - `0–3s` 手拿微旧 AirPods 充电盒特写：`这副 AirPods 在健康里偷偷攒了多少小时？`
+  - `3–8s` 切 App 首页：`188h 22m` + 6 阶稀有度（`0h 青铜岩 → 25h 银铝 → 120h 峡湾青 → 400h 深紫 → 1000h 午夜碳纤 → 2000h 液态全息`）
+  - `8–16s` 翻转进入 **PSA 亚克力评级档案**：展示 `EAR GRADE` 评分（如 `9.5 GEM MINT`）、`周/月/年/全部` 切换与 `24 小时钟盘`
+  - `16–22s` 滑到桌面上小号/中号 3 卡架/大号 28 天耳纹小组件
+- **口播参考：** “你知道 iPhone 里的健康 App，默默记了好几年你戴 AirPods 的总时间吗？我写了这个免费开源工具，一秒把你的历史数据变成 3D 收藏卡，还能给佩戴习惯做 PSA 评级，全程纯本地不联网。快看你的耳机现在排第几阶？”
+- **发布文案：**
+  ```text
+  翻出 iPhone 健康里存了好几年的耳机记录，给每副 AirPods 都发了张带编号的 3D 收藏卡 + PSA 评级档案。你是第几阶？#AirPodsPro #AirPodsMax #iPhone #独立开发者 #宝藏App
+  ```
+
+### 抖音 Script 3：强迫症踩点换色（18s）
+- **核心卖点：** AirPods Max `10` 款官方配色实时切换（USB-C 5 色 + Lightning 5 色）+ `41` 款桌面自定义图标 + 浅色/深色双主题对比。
+- **发布文案：**
+  ```text
+  强迫症把 AirPods Max 的 10 种官方配色和 41 款桌面图标全塞进一个免费 App 里了 🎨 浅色/深色主题无缝切换。#AirPodsMax #桌面美学 #iOS小组件 #独立开发 #极简设计
+  ```
 
 ---
 
-## 5. Platform & Apple Compliance Notes
+## 5. TikTok (Global) — 3 Ready English Scripts (`9:16` Vertical, `15–22s`)
 
-### 5.1 Apple 非关联声明与商标使用边界（必读）
+> **Assets ready to post:**
+> - Captioned Reel: `.../promo-kit/videos/earprint-reel-en-9x16.mp4` (`1080×1920`, H.264)
+> - Raw Clean Cut (add native TikTok text/sounds): `.../promo-kit/videos/earprint-raw-en.mp4` (`1080×1920`, H.264)
 
-- **标准中文声明（建议放在账号简介、发帖正文底部或视频末尾小字）：**
-  > **「独立开发者作品，非 Apple 官方应用」**
-- **标准英文声明（用于双语卡片或 App 宣传图角标）：**
-  > *"Independent app, not affiliated with, sponsored by, or endorsed by Apple Inc."*
-- **商标规避原则（依据 `docs/ASSETS.md`）：**
-  - **Apple**、**AirPods**、**AirPods Pro**、**AirPods Max**、**Apple Health**、**MagSafe** 均为 Apple Inc. 的注册商标。
-  - 在社媒宣传中，只能客观陈述「**兼容读取 Apple 健康中记录的 AirPods / 耳机音量数据**」，绝对不能使用「Apple 联名」「苹果隐藏官方功能」「Apple 官方认证评级」等暗示官方背书的措辞。
+### TikTok 1 — Curiosity Reveal Hook (Top Performer Format)
+- **On-screen hook (`0–2.5s`):** `Your iPhone has been tracking EVERY hour you wore your AirPods 👀`
+- **Voiceover / Captions:**
+  - `Apple Health quietly stores years of your headphone listening history.`
+  - `I built a free, 100% offline iOS app that turns it into 3D collectible foil cards.`
+  - `6 tiers from Bronze Slate up to Liquid Holo at 2,000 hours — plus a PSA-style Ear Grade slab & 28-day Earprint Rings.`
+  - `No login. Zero servers. Open source on GitHub.`
+- **Caption:**
+  ```text
+  Turns out Apple Health kept receipts on every single hour in my AirPods 💀 Built a free, 100% offline + open-source iOS app called Earprint to turn that history into 3D foil cards & a PSA-style Ear Grade slab. Search "Earprint" on the App Store (iOS 18+). #airpods #iphone #iosapp #applehealth #indiedev #tech #opensource
+  ```
+- **Pinned Comment:**
+  ```text
+  App is "Earprint - Headphone Archive" (free, zero ads/accounts). Note: Apple Health only logs while audio is actively playing (not silent ANC). Independent app, not affiliated with Apple Inc.
+  ```
 
-### 5.2 3D 模型开源协议 CC-BY 4.0 署名规范
+### TikTok 2 — "PSA Grading My AirPods" Challenge
+- **On-screen hook:** `Grading my daily-driver AirPods like a PSA Pokémon card 💎`
+- **Beats:** Card flip → Light-mode Acrylic Grading Slab (`EAR GRADE 9.5 · GEM MINT`) → WHO Weekly Hearing Budget (`80 dB(A) for 40h/wk`) → Export customizable 4-page carousel PNGs.
+- **Caption:**
+  ```text
+  My AirPods Pro graded 9.5 GEM MINT based on decibels, WHO safe listening limits, and late-night hours 😂 Search "Earprint" on iOS (free & offline). What grade would yours get? #airpodspro #tech #edc #ios #apple #earprint
+  ```
 
-如果发帖内容专门介绍「3D 建模是怎么放进 App 里的」或做开源/技术向开发复盘（对应 `docs/ASSETS.md` 与包内 `AirPods4Credits.txt`），请保持完整署名：
+### TikTok 3 — "Zero Servers, Audit the Code Yourself"
+- **On-screen hook:** `A Health data app that actually sends 0 bytes to the internet 🔓`
+- **Caption:**
+  ```text
+  Most health/tracker apps want an account & cloud sync. Earprint asks read-only Apple Health access, makes 0 network calls, and the Swift code is public on GitHub. #privacy #iosdev #swiftui #realitykit #opensource #airpods
+  ```
 
-- **AirPods 4** 3D 模型与卡面基础素材：基于 **Falah3D (`3dFalah`)** 的 *"AirPods 4"*（<https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e>）改编，遵循 **CC-BY 4.0** 协议。
-- **AirPods Max** 3D 模型：基于 **polyman Studio (`Polyman_3D`)** 的 *"Airpods max sky blue"*（<https://sketchfab.com/3d-models/airpods-max-sky-blue-3d0643db08fc4ef89bda55a74077ece4>）改编，遵循 **CC-BY 4.0** 协议。
-- **AirPods Pro** 3D 模型：基于 **polyman Studio (`Polyman_3D`)** 的 *"Airpods Pro With Magsafe Charging Case Ios15"*（<https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689>）改编，遵循 **CC-BY 4.0** 协议。
-- **通用头戴耳机（Model Gallery 预览用）**：基于 **crow (`crow.bite`)** 的 *"Studio Headphones"*（<https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8>）改编，遵循 **CC-BY 4.0** 协议。
+---
 
-### 5.3 诚实的隐私宣传口径（与 `project.yml` & `docs/DATA.md` 严格对齐）
+## 6. 小红书 (Rednote) — 4 Carousel Posts (`3:4`, Zero Shadowban)
 
-宣传隐私安全性时，只讲**代码层面真实做到**的事实，底气最足：
+> **Assets ready to post:** `/Users/forge/.gemini/antigravity/brain/86907472-1f5c-45c9-88c5-a1dab54d1c23/promo-kit/rednote-zh/` (`01`–`06`, `1200 × 1600 px` exact `3:4`).
+> **Bio 建议（已过审可用）：**
+> ```text
+> 独立开发者｜做了一款免费开源的 AirPods 3D 收藏卡 App 🎧
+> App Store 搜「Earprint」｜iOS 18+ 免费无广
+> 只读 Apple 健康 · 100% 本地不联网 · 非 Apple 官方应用
+> ```
 
-1. **只读权限，绝不写入：** 正式发布版（Release）仅在 `Info.plist` 声明 `NSHealthShareUsageDescription`（读取健康数据），调试用的模拟写入代码（`HealthKitSeeder`）在打包正式版时已被完全编译剔除。
-2. **零账号、零服务器、零追踪：** 无需手机号或邮箱登录，没有后台服务端，没有任何第三方统计/广告 SDK。
-3. **100% 本机加密计算：** 所有时长、能量平均分贝（`Leq`）、WHO 剂量与 28×24 时间网格都在 iPhone 本地算完，缓存文件写入应用沙盒时启用 Apple 数据保护（`completeFileProtectionUntilFirstUserAuthentication`），绝不离开你的设备。
+### 小红书 Post 1：正式上线主推（直接使用 `rednote-zh/01..06`）
+- **标题备选：**
+  1. `给陪伴你几百小时的 AirPods，发一张会反光的 3D 收藏卡`
+  2. `翻开 Apple 健康才发现我戴了 188 小时耳机，顺手做了这个免费开源 App`
+  3. `把 iPhone 健康里的耳机记录变成 PSA 评级闪卡（纯本地零上传）`
+- **正文：**
+  ```text
+  之前突然发现，只要 iPhone 开着「耳机音量」记录，Apple 健康其实默默攒了好几年的 AirPods 听歌数据——只是原生的柱状图太枯燥了，很少有人点进去看。
 
-### 5.4 诚实边界：绝不承诺未上线或客观做不到的功能
+  花了几周用 SwiftUI + RealityKit 写了一个完全免费、开源、不联网的小工具，叫 **Earprint**，今天正式上架 App Store 了：
 
-| 严禁虚构/夸大的说法 | 真实技术现状（请照实沟通） |
-| --- | --- |
-| ❌「能看出我今年最爱听周杰伦还是 Taylor Swift」 | **做不到。** Apple 健康只记录分贝数和佩戴时间段，不记录也不提供曲目、歌手或播放 App 名称。Earprint 永远无法生成年度歌单报告。 |
-| ❌「索尼 / Bose / 华强北 / 漫步者都能生成专属 3D 卡片」 | **暂不支持专属卡片。** 目前内置 34 个 Apple/Beats 蓝牙 ID 映射，可在「设置 → 耳机型号预览」查看目录，但「收藏（Collection）」卡片与小组件**只为带专属美术资源的 AirPods 系列（AirPods 1/2/3/4/5、Pro 1/2/3、Max 1/2）生成收藏卡**；Beats 与第三方耳机记录仍保存在 Apple 健康历史中。 |
-| ❌「在公司戴一整天降噪不放歌也会算进时长」 | **做不到。** iOS 系统机制决定只有**正在播放音频（音乐/播客/视频/通话）**时才会向健康写入采样，纯开 ANC 静音佩戴没有数据。 |
-| ❌「把每一年每一天的精确听歌分钟都原封不动还原进 Dossier」 | **谨慎表述：** 当前「收藏」卡片总时长、聆听次数、28 天图谱与「聆听（Rings）」首页均直接读取真实 HealthKit 汇总数据；而点开后的「设备档案（`DeviceDossierView`）」目前按卡片真实总计数据结合确定性示例会话模型生成趋势与流水，完整逐条历史会话尚未全面切入 Dossier，发帖切忌吹嘘"能查几年前某天精确到秒的每首歌会话"。 |
-| ❌「每次一戴上 AirPods 就会后台全自动弹出灵动岛」 | **不要承诺后台全自动弹出。** 目前灵动岛实时活动可在 App 内体验/触发，但受限于 iOS 后台蓝牙唤醒机制，尚未实现不打开 App 即自动静默拉起灵动岛。 |
-| ❌「支持安卓 / Mac / 多设备云同步」 | **不支持。** 当前仅为 **iOS 18.0+ iPhone 专属原生应用**，没有云账号，数据不跨设备自动同步。 |
+  🔸 **实时 3D 耳机收藏卡**：自动读取本机健康里的历史（不用从零攒起），每副 AirPods / Beats 都会生成带首次佩戴日期与编号的立体卡片。拖动旋转、双指放大、长按飞旋、倾斜手机看镭射反光，轻点翻面查看近 4 周听歌环形图。
+  🔸 **6 阶稀有度收藏图鉴（0h → 2,000h）**：0h 青铜岩 → 25h 银铝 → 120h 峡湾青 → 400h 深紫 → 1,000h 午夜碳纤 → 2,000h 液态全息，记录每副耳机达成高阶的月份。
+  🔸 **PSA 级设备档案 & 自定义导出**：透明亚克力评级卡套 + 1.0–10.0「聆听评分」，含 30 天趋势、24 小时钟盘、习惯看板和硬件溯源证书；内置浅色/深色高清长图导出（简图 1 页或自由勾选 1–4 页 3:4 组图，直接用来发笔记都不用再 P 图）。
+  🔸 **28 天声学聆听环 & WHO 护耳预算**：一眼看清自己是「夜猫子」还是「通勤声景师」，对照 WHO 每周安全额度（80 dB(A) 下每周 40 小时）。
+  🔸 **桌面/锁屏小组件 + 41 款图标 + AirPods Max 10 色切换**，浅色/深色主题随意切。
 
-### 5.5 评论区高频问题真诚回复话术库（FAQ Quick-Replies）
+  **最重要的是：** 零登录、零服务器、零广告和统计 SDK，所有健康计算加密留在你的 iPhone 上，源码也已在 GitHub 公开（同名搜 `Popcornnnnnnnn/earprint`）欢迎检查。
 
-复制微调即可直接回复评论区：
+  App Store 直接搜英文名 **`Earprint`** 就能免费下载（iOS 18+，支持中英文随系统切换）。快去看看你的主力耳机攒了多少小时、拿了几分 Ear Grade，评论区蹲一波最高段位 👀
 
-- **Q1：为什么我打开只看到一个叫“🧸's AirPods Pro”的卡片 / 提示示例数据？**
-  > 那个是内置的示例数据～点一下顶部提示条的「连接健康」允许读取「耳机音量」就会刷新成你的耳机了！如果之前点过拒绝，系统为了隐私不会二次弹窗，去「设置 › 健康 › 数据访问 › Earprint」把权限打开再重进一下就好。
+  （注：独立开发者个人作品，与 Apple Inc. 无任何关联；不构成医疗诊断设备。）
+  ```
+- **Tags：** `#Earprint` `#AirPods` `#宝藏App` `#iOS应用推荐` `#独立开发` `#苹果健康` `#开源项目` `#极简桌面`
+- **置顶评论：**
+  ```text
+  上手小贴士：① 打开授权时记得允许只读「耳机音量」，如果以前关过权限可在「设置 → 健康 → 数据访问 → Earprint」重新打开；② Apple 健康只会在主动播放音频时记录，纯戴耳机开降噪不放歌系统不生成数据哦～
+  ```
 
-- **Q2：我明明授权了，为什么还是 0 条记录 / 时长特别少？**
-  > 两个常见原因：1）你以前在 iOS「设置 → 隐私与安全性 → 健康 → 耳机音量」或「声音与触感 → 耳机安全」里关闭了「测量耳机音量」；2）苹果系统只在**播放音频**时才记录，纯开降噪不放声音是不记的。只要以后保持开启测量，数据就会慢慢攒起来啦。
+### 小红书 Post 2：6 阶进化 + AirPods Max 10 色 + 41 款桌面图标专场
+- **配图：** `app-store-screenshots/zh-Hans/` 中的 `02-card-tiers.png`、`07-airpods-max-finishes.png`、`05-collection-themes.png` + `rednote-zh/05-max-colors-themes.png`。
+- **标题：** `从 0h 青铜岩到 2,000h 液态全息：测测你的 AirPods 第几阶？`
+- **互动问题：** `大家目前主力 AirPods 在哪个段位？达到 1,000h 午夜碳纤或 2,000h 液态全息的大佬请现身`
 
-- **Q3：能看到我每天听了哪几首歌吗？**
-  > 看不到歌名的！苹果把「听什么内容」和「音量/佩戴时长」拆得很开，Apple 健康里完全不存歌曲信息，Earprint 也只读健康的声学时长与分贝数据，所以没法做歌单总结，专注做耳机陪伴和听力图谱～
+### 小红书 Post 3：直接展示 App 一键导出的 `3:4` 档案长图（“用自己写的 App 出图发小红书”）
+- **操作：** 直接在手机实机用 **设备档案 → 分享档案 → 长图（4 页 `1260×1680` `3:4` PNG）** 导出你真实耳机的数据图 + 1 页浅色卡套特写发组图！真实个人数据天然比 Demo 数据转化率高很多。
+- **标题：** `为了发小红书省事，我直接在 App 里做了浅/深色 4 页 3:4 档案导出`
 
-- **Q4：我的 Beats / Sony XM5 / Bose 可以生成卡片吗？**
-  > 目前「收藏」卡片和小组件只支持 **AirPods 全系列**（因为要匹配专门的 3D 模型和精修图）；不过你在「设置 → 耳机型号预览（Model Gallery）」里可以看到 Beats 和通用头戴耳机的 3D 预览，其他耳机的历史也依然安安静静保存在你的 Apple 健康里。
+### 小红书 Post 4：夜猫子听歌图谱 + 28 天声纹环 & 小组件
+- **标题：** `把最近 28 天戴耳机的节奏画成一圈彩色指环，才发现自己半夜两点最爱听歌`
+- **配图：** `rednote-zh/04-28day-rings-who.png` + 实机摆放小组件桌拍图 + `ShareCardView` 导出图。
 
-- **Q5：安卓什么时候出？有 iPad 或 Mac 版吗？**
-  > 暂时没有哈，Earprint 深度依赖 iPhone 的 Apple 健康（HealthKit）底层，目前仅支持 **iOS 18 及以上的 iPhone**（iPad 上目前也是兼容视图/暂未做独立版）。
+---
 
-- **Q6：读我好几年的健康数据，会不会上传或者偷偷卖隐私？**
-  > 完全不会！我是个人独立开发者，这应用甚至**没有后端服务器、不用注册登录**，正式上架（Release）安装包里连写入健康的权限都没带。所有统计、评级和缓存全在你的 iPhone 本地加密算完，断网都能看。
+## 7. X (Twitter) — Thread & Standalone Posts
+
+> **Assets ready to post:**
+> - Single-post / Thread #1 Hero Banner: `.../promo-kit/global-en/00-hero-banner-16x9.png` (`1600×900`)
+> - Video post: `.../promo-kit/videos/earprint-raw-en.mp4` or `earprint-reel-en-9x16.mp4`
+> - 4-image grid option: `.../promo-kit/global-en/01..04-*.png` (`1200×1500`)
+
+### X Launch Thread (5 Posts)
+- **Tweet 1/5 (Attach `earprint-raw-en.mp4` or `00-hero-banner-16x9.png`):**
+  ```text
+  Apple Health has been silently logging every hour you wore your AirPods for years.
+
+  So I built Earprint — a free, open-source, 100% offline iOS app that turns your headphone history into interactive 3D foil cards, a PSA-style Device Dossier & 28-day acoustic rings.
+
+  Just shipped on the App Store 🧵👇
+  https://apps.apple.com/app/id6837883616
+  ```
+- **Tweet 2/5 (Attach `02-card-tiers-4x5.png`):**
+  ```text
+  Cards automatically level up across 6 metallic foil tiers from your real Apple Health lifetime hours:
+
+  0h+ Bronze Slate
+  25h+ Silver Aluminum
+  120h+ Fjord Teal
+  400h+ Deep Purple
+  1,000h+ Midnight Carbon
+  2,000h+ Liquid Holo · Legendary
+
+  Flip any card for 4-week stats or tap Dossier for its Ear Grade slab.
+  ```
+- **Tweet 3/5 (Attach `03-psa-dossier-4x5.png`):**
+  ```text
+  Built a collector-grade Device Dossier in Light & Dark mode:
+
+  • Transparent acrylic slab + EAR GRADE (1.0–10.0) scored from loudness, late-night habits & WHO weekly limits
+  • Scrubbable 30-day bar chart & 24h radial Day Clock
+  • Customizable 1-page & 4-page 3:4 PNG poster exports
+  • 34 Apple/Beats Bluetooth PIDs + 10 AirPods Max finishes + 41 app icons
+  ```
+- **Tweet 4/5 (Attach `04-rings-privacy-4x5.png`):**
+  ```text
+  Everything runs locally in SwiftUI + RealityKit:
+
+  • Strictly read-only HealthKit (headphoneAudioExposure only)
+  • Zero servers, zero accounts, zero analytics/ad SDKs
+  • Home & Lock Screen widgets included
+  • Excludes host iPhone speakers automatically
+
+  Inspect the full Swift source on GitHub:
+  https://github.com/Popcornnnnnnnn/earprint
+  ```
+- **Tweet 5/5:**
+  ```text
+  Grab Earprint for free (iOS 18+, English & 简体中文):
+  App Store: https://apps.apple.com/app/id6837883616
+  Site & FAQ: https://popcornnnnnnnn.github.io/earprint/
+
+  Curious what Ear Grade & tier your daily-driver AirPods hit — drop a screenshot below 👇
+
+  (Independent app, not affiliated with Apple Inc.)
+  ```
+
+### X Build-in-Public / Dev Craft Tweet
+```text
+Fun SwiftUI + HealthKit edge cases solved while shipping Earprint:
+1. Equal-energy Leq & WHO ITU H.870 dose (10*log10(2) ≈ 3.01 dB exchange) over UTC 15-min slots so DST transitions stay aligned
+2. Stripping "-tacl" from HKDevice.localIdentifier so renamed AirPods don't split cards
+3. Static ITMS-90683 HealthKit purpose-string quirks even with toShare: []
+
+All open source: https://github.com/Popcornnnnnnnn/earprint
+```
+
+---
+
+## 8. Reddit Strategy & Subreddit Drafts (Strict Anti-Spam Etiquette)
+
+> **Reddit Rule:** Post genuine, story-first text with specs & open-source link; reply to every comment; check `r/Apple` Self-Promotion Sunday rule before posting there (`r/iosapps`, `r/airpods`, `r/swift`, `r/SideProject` allow launch posts any day following their flair/disclosure rules).
+
+### `r/iosapps` (`[Free · Open Source]`)
+- **Title:** `[iOS 18+] [Free] [Open Source] Earprint – Turns your Apple Health AirPods history into 3D collectible cards, PSA Device Dossier & 28-day rings (100% offline)`
+- **Body (Attach `00-hero-banner-16x9.png` + `01..04` or video):**
+  ```text
+  Hey r/iosapps! Apple Health quietly logs every hour you listen through headphones (`headphoneAudioExposure`), usually buried inside a tiny chart. I built **Earprint** to turn that existing multi-year history into something tactile and fun.
+
+  **What it does:**
+  - **Interactive 3D Collectible Cards:** Real-time RealityKit AirPods 4 / Pro / Max cards with gyroscope tilt foil shimmer, drag-to-spin physics, pinch zoom, long-press twirl haptics, 10 official AirPods Max finishes, and flip-to-stats backs.
+  - **6 Collector Foil Tiers (0h → 2,000h):** Bronze Slate → Silver Aluminum → Fjord Teal → Deep Purple → Midnight Carbon → Liquid Holo Legendary, tracked in a multi-device Collector Binder.
+  - **PSA-Style Device Dossier:** Acrylic grading slab with an Ear Grade (1.0–10.0) scored from loudness, loud-session share, late-night habits, and WHO weekly budgets (`80 dB(A)` × `40h/week`), plus 30-day scrub charts, 24h Day Clock, hardware ID (`0x2024`), and customizable 1-to-4-page 3:4 PNG exports.
+  - **28-Day Earprint Rings & Widgets:** Concentric 28×24 chronometer dial + listening persona + Home & Lock Screen widgets.
+  - **Light / Dark / System** themes, **41** app icons, and **English + 简体中文**.
+
+  **Privacy & Cost:**
+  - **100% free**, no IAPs, no subscriptions, no ads, no accounts.
+  - **100% offline & open source:** Zero network code, read-only HealthKit access (`toShare: []`), excludes `HKDevice.local()` iPhone speakers.
+
+  - App Store: https://apps.apple.com/app/id6837883616
+  - GitHub (full Swift source): https://github.com/Popcornnnnnnnn/earprint
+  - Landing Page / FAQ: https://popcornnnnnnnn.github.io/earprint/
+
+  *(Quick tip: Apple iOS only logs `Headphone Audio Levels` while audio is playing — silent ANC wear generates no samples.)*
+  ```
+
+### `r/airpods`
+- **Title:** `I built a free, offline iOS app that turns years of your Apple Health AirPods listening history into 3D collectible cards (no account, open source)`
+- **Tone:** Lead with the relatable AirPods nostalgia hook + `34` mapped Apple/Beats Bluetooth PIDs + `10` AirPods Max colors + quick tip about `HKDevice.local()` / silent ANC, plus clear non-affiliation disclaimer.
+
+### `r/swift` & `r/iOSProgramming`
+- **Title:** `Open-sourced Earprint (SwiftUI + RealityKit + HealthKit): incremental anchored audio-exposure aggregation, 6-tier foil shaders, and App Group widgets`
+- **Focus:** Technical architecture (`ListeningAggregate` v2, UTC 15-min slots preserving midnight-crossing sessions & DST shifts, `Energy = 10^(dB/10) * t`, `HKDevice.localIdentifier` `-tacl` merging, SwiftUI `ImageRenderer` PDF/PNG sharing sheets, and `75` XCTest cases).
+
+### `r/Apple` (Promo Sunday Only!)
+- Keep strictly compliant with r/Apple's Self-Promotion Sunday rule: clear free/open-source/no-ads disclosure, technical value, responsive in comments.
+
+---
+
+## 9. Product Hunt Launch Package
+
+- **Name:** `Earprint - Headphone Archive`
+- **Tagline (`49 / 60 chars`):** `Turn Apple Health headphone history into 3D cards`
+- **Topics:** `iPhone`, `Health & Fitness`, `Open Source`, `Audio`, `Design Tools`
+- **Pricing:** `Free` (`Open Source`)
+- **Gallery Order (`5` slides + Video):**
+  1. `earprint-reel-en-9x16.mp4` (or YouTube mirror of `earprint-raw-en.mp4`)
+  2. `00-hero-banner-16x9.png` — *"6-Tier 3D Foil Cards, PSA Device Dossier & 28-Day Rings"*
+  3. `app-store-screenshots/en-US/02-card-tiers.png` — *"Evolve from Bronze Slate (0h) to Liquid Holo (2,000h)"*
+  4. `app-store-screenshots/en-US/03-device-dossier.png` — *"Collector-Grade Acrylic Dossier, Ear Grade & 3:4 PNG Export"*
+  5. `app-store-screenshots/en-US/04-earprint-rings.png` — *"28-Day Acoustic Chronometer & WHO Weekly Budget (Zero Servers)"*
+- **Maker First Comment (Copy & Paste):**
+  ```text
+  Hey Product Hunt! 👋
+
+  I noticed Apple Health quietly stores years of `Headphone Audio Levels` on your iPhone — how many hours you listened, which AirPods pair you wore, and how loud it was — buried inside static bar charts.
+
+  So I built **Earprint** to turn that private local history into tactile collector cards you actually enjoy revisiting:
+  • **Interactive 3D Foil Cards** powered by RealityKit + gyroscope tilt parallax (AirPods 4, Pro, Max + Beats finishes)
+  • **6 Evolving Tiers (0h → 2,000h)** tracked in a multi-device Collector Binder
+  • **PSA-Style Device Dossier** with an Ear Grade (1.0–10.0), 30-day scrub charts, 24h Day Clock, WHO/ITU H.870 safe-listening score, and customizable 1-to-4-page 3:4 PNG share posters
+  • **28-Day Earprint Rings + Native Home & Lock Screen Widgets**
+  • **Free, 100% offline & Open Source** — zero accounts, zero servers, zero tracking SDKs (`toShare: []` read-only HealthKit).
+
+  Source code & architecture docs: https://github.com/Popcornnnnnnnn/earprint
+  App Store (iOS 18+, EN & 简体中文): https://apps.apple.com/app/id6837883616
+
+  *(Tip: Apple only logs headphone audio levels while audio is actively playing, not during silent ANC.)*
+  I'd love to hear your thoughts, feedback, or what Ear Grade your main headphones landed on!
+  ```
+
+---
+
+## 10. Hacker News (`Show HN`)
+
+- **Title (`74 chars`):** `Show HN: Earprint – Open-source iOS app turning HealthKit audio into 3D cards`
+- **URL:** `https://github.com/Popcornnnnnnnn/earprint` (HN strongly prefers direct GitHub / technical writeup over App Store redirects, with App Store link in README & top comment!)
+- **First Comment:**
+  ```text
+  Hi HN, I built Earprint (`com.popcornnn.earprint`), a free, open-source SwiftUI + RealityKit iOS 18+ app that visualizes Apple Health `HKQuantityType(.headphoneAudioExposure)` history without touching a network socket.
+
+  A few interesting implementation notes in case you're building with HealthKit audio data:
+  1. **True energy-averaged Leq & WHO dose:** Apple's individual exposure samples are weighted cleanly via `E = 10^(dB/10) * duration`, computing weekly budget share against WHO/ITU H.870 (`80 dB(A)` × 40h/week, halving every `10*log10(2) ≈ 3.01 dB`).
+  2. **Time-zone-invariant bucketing:** Recent samples are quantized into UTC 15-minute buckets (`epoch / 900`) and projected into local calendar hours at render time, handling midnight crossings and DST shifts cleanly (verified across 75 unit tests).
+  3. **Device identity merging & speaker filtering:** Stripping `-tacl` from `HKDevice.localIdentifier` merges cards seamlessly when a user renames Bluetooth headphones; samples matching `HKDevice.local()` (host iPhone/Watch) are excluded so speaker playback never generates headphone cards.
+  4. **ITMS-90683 quirk:** Even when calling `requestAuthorization(toShare: [], read:)` strictly read-only with zero HealthKit save/write symbols in the Release binary, App Store Connect requires `NSHealthUpdateUsageDescription` statically if that selector is linked.
+
+  GitHub: https://github.com/Popcornnnnnnnn/earprint
+  App Store: https://apps.apple.com/app/id6837883616
+  ```
+
+---
+
+## 11. 即刻 (Jike) / V2EX / 少数派 (SSPai)
+
+### 11.1 即刻（发「独立开发者 / App 推荐 / AirPods」圈子）
+```text
+做了个免费开源的 iOS 小工具「Earprint」🎧
+
+把 Apple 健康里躺了好几年的 AirPods 耳机音量历史，直接变成可转动的 3D 收藏闪卡（0h 青铜岩 → 2000h 液态全息 6 阶进化）、带 EAR GRADE 的 PSA 评级档案和 28 天声纹指环，顺手把小组件、浅/深色主题和 41 款图标也补齐了。
+
+零账号、零服务器、不联网，GitHub 已全量开源，App Store 直接搜 `Earprint` 就能装～
+（个人独立作品，非 Apple 官方 App）
+
+GitHub：https://github.com/Popcornnnnnnnn/earprint
+App Store：https://apps.apple.com/app/id6837883616
+```
+
+### 11.2 V2EX（`/go/apple` 或 `/go/share` 节点）
+- **标题：** `[开源免费 / iOS] Earprint：把 Apple 健康里的 AirPods 历史变成 3D 收藏卡、PSA 档案与 28 天声纹环（纯本地不联网）`
+- **要点：** 简洁技术风：说明用 `HKAnchoredObjectQueryDescriptor` 增量只读 `headphoneAudioExposure`、按 `-tacl` 合并改名设备、排除 `HKDevice.local()`、Leq 能量加权 + WHO ITU H.870 剂量算法、支持中英文与深浅主题、开源地址 + App Store 链接 + 免责声明。
+
+### 11.3 少数派 (SSPai) — App+1 / Matrix 投稿结构
+- **切入点：** 「为什么你的 AirPods 值得一张实体感数字档案？」—— 从系统“健康”里被埋没的 `headphoneAudioExposure` 讲起 → 设计理念（实体球星卡 foil 金属光学质感 + PSA 亚克力评级隐喻 + 克制的 WHO 听力剂量提醒）→ 隐私架构透明性（开源无网络权限审计）。配 `promo-kit/rednote-zh/` 与 App 原生导出的 4 张 `1260×1680` 长图效果极佳。
+
+---
+
+## 12. Third-Party CC-BY 4.0 Attribution & Non-Affiliation Reference
+
+- **AirPods 4:** Falah3D (`3dFalah`), *"AirPods 4"*, `https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e` (CC-BY 4.0)
+- **AirPods Max:** polyman Studio (`Polyman_3D`), *"Airpods max sky blue"*, `https://sketchfab.com/3d-models/airpods-max-sky-blue-3d0643db08fc4ef89bda55a74077ece4` (CC-BY 4.0)
+- **AirPods Pro:** polyman Studio (`Polyman_3D`), *"Airpods Pro With Magsafe Charging Case Ios15"*, `https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689` (CC-BY 4.0)
+- **Generic Headphones:** crow (`crow.bite`), *"Studio Headphones"*, `https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8` (CC-BY 4.0)
+- **Disclaimer:** Earprint is an independent app by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc. Informational only, not a medical device.
