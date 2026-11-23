@@ -941,6 +941,16 @@
         }
       }
     },
+    "Brushed titanium · Default": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝钛灰耳机 · 默认图标"
+          }
+        }
+      }
+    },
     "CARBON": {
       "localizations": {
         "zh-Hans": {
@@ -1727,6 +1737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 声纹环"
+          }
+        }
+      }
+    },
+    "Earprint Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 经典钛灰"
           }
         }
       }

@@ -806,24 +806,21 @@ struct AppIconPickerView: View {
                 draft = .ringsEmblem
             } label: {
                 HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12.5, style: .continuous)
-                            .fill(colorScheme == .light ? Color(red: 0.95, green: 0.96, blue: 0.98) : Color(red: 0.08, green: 0.09, blue: 0.13))
-                        EarprintGlyph(grid: SampleData.summary.grid, showHourLabels: false)
-                            .equatable()
-                            .padding(5)
-                    }
-                    .frame(width: 52, height: 52)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12.5, style: .continuous)
-                            .strokeBorder(Theme.hairline, lineWidth: 1)
-                    )
+                    Image("AppIconDefaultPreview")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 12.5, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12.5, style: .continuous)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
+                        )
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Earprint Rings")
+                        Text("Earprint Studio")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.primaryText)
-                        Text("Acoustic dial emblem · Default")
+                        Text("Brushed titanium · Default")
                             .font(.caption)
                             .foregroundStyle(Theme.secondaryText)
                     }
