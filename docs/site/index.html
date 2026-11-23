@@ -106,7 +106,7 @@
             </p>
 
             <div class="hero-cta-row">
-              <a class="btn btn-primary" href="https://apps.apple.com/app/id6837883616" data-i18n="hero.ctaPrimary">Download on the App Store · Free (iOS 18+)</a>
+              <a class="btn btn-primary" href="https://apps.apple.com/app/id6837883616" data-i18n="hero.ctaPrimary">Download on App Store · Free</a>
               <a class="btn btn-secondary" href="https://github.com/Popcornnnnnnnn/earprint" data-i18n="hero.ctaSecondary">View Source on GitHub</a>
             </div>
 
@@ -117,11 +117,11 @@
               </div>
               <div>
                 <span class="hero-spec-val" data-i18n="hero.spec2Val">34 MODEL PIDS</span>
-                <span class="hero-spec-lbl" data-i18n="hero.spec2Lbl">Bluetooth 0x2002–0x2036 Hardware Lookup</span>
+                <span class="hero-spec-lbl" data-i18n="hero.spec2Lbl">Bluetooth 0x2002–0x2036 Lookup</span>
               </div>
               <div>
                 <span class="hero-spec-val" data-i18n="hero.spec3Val">0 BYTES SENT</span>
-                <span class="hero-spec-lbl" data-i18n="hero.spec3Lbl">Read-Only HealthKit · Data Not Collected</span>
+                <span class="hero-spec-lbl" data-i18n="hero.spec3Lbl">Read-Only HealthKit · No Tracking</span>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@
           <div class="motion-grid">
             <article class="motion-stage">
               <div class="motion-stage-head">
-                <span class="motion-label" data-i18n="showcase.video1Title">DARK STUDIO · AIRPODS PRO 2 (FJORD TEAL)</span>
+                <span class="motion-label" data-i18n="showcase.video1Title">DARK STUDIO · AIRPODS PRO 2</span>
                 <span class="mono meta-caption">RealityKit · 60fps</span>
               </div>
               <div class="motion-frame">
@@ -289,7 +289,7 @@
 
             <article class="motion-stage">
               <div class="motion-stage-head">
-                <span class="motion-label" data-i18n="showcase.video2Title">MUSEUM LIGHT · AIRPODS MAX (SILVER ALUMINUM)</span>
+                <span class="motion-label" data-i18n="showcase.video2Title">MUSEUM LIGHT · AIRPODS MAX</span>
                 <span class="mono meta-caption">RealityKit · 10 Finishes</span>
               </div>
               <div class="motion-frame">
@@ -409,18 +409,21 @@
                 <span id="rings-persona-badge" class="mono badge-pill">Night Owl</span>
               </div>
 
-              <div class="persona-row" role="group" aria-label="Listening persona presets">
-                <button type="button" class="persona-btn" data-rings-persona="nightOwl" aria-pressed="true" data-i18n="rings.personaNight">Night Owl</button>
-                <button type="button" class="persona-btn" data-rings-persona="commuter" aria-pressed="false" data-i18n="rings.personaCommute">Commute</button>
-                <button type="button" class="persona-btn" data-rings-persona="earlyBird" aria-pressed="false" data-i18n="rings.personaEarly">Early Bird</button>
-                <button type="button" class="persona-btn" data-rings-persona="allDay" aria-pressed="false" data-i18n="rings.personaAllDay">All-Day</button>
+              <div>
+                <p class="mono meta-caption persona-label" data-i18n="rings.personaFilterLabel">Explore Listening Personas</p>
+                <div class="persona-row" role="group" aria-label="Listening persona presets">
+                  <button type="button" class="persona-btn" data-rings-persona="nightOwl" aria-pressed="true" data-i18n="rings.personaNight">Night Owl</button>
+                  <button type="button" class="persona-btn" data-rings-persona="commuter" aria-pressed="false" data-i18n="rings.personaCommute">Commute</button>
+                  <button type="button" class="persona-btn" data-rings-persona="earlyBird" aria-pressed="false" data-i18n="rings.personaEarly">Early Bird</button>
+                  <button type="button" class="persona-btn" data-rings-persona="allDay" aria-pressed="false" data-i18n="rings.personaAllDay">All-Day</button>
+                </div>
               </div>
 
               <div class="rings-dial-stage">
                 <canvas id="earprint-rings-canvas" width="640" height="640" role="img" tabindex="0" aria-label="28-day concentric Earprint loudness dial plotting 24 local hours"></canvas>
                 <div class="rings-center-readout">
-                  <span id="rings-center-hours" class="rings-center-hours">35h 19m</span>
-                  <span id="rings-center-db" class="rings-center-db">70 dB(A)</span>
+                  <span id="rings-center-hours" class="rings-center-hours">29h 20m</span>
+                  <span id="rings-center-db" class="rings-center-db">68.7 dB(A)</span>
                 </div>
               </div>
 
@@ -435,10 +438,10 @@
               </div>
 
               <dl id="rings-a11y-summary" class="rings-a11y-dl">
-                <dt>7-day listening</dt><dd>35h 19m</dd>
-                <dt>Energy Leq</dt><dd>70.0 dB(A)</dd>
+                <dt>7-day listening</dt><dd>29h 20m</dd>
+                <dt>Energy Leq</dt><dd>68.7 dB(A)</dd>
                 <dt>Listening persona</dt><dd>🦉 Night Owl</dd>
-                <dt>WHO weekly budget</dt><dd>9%</dd>
+                <dt>WHO weekly budget</dt><dd>5%</dd>
               </dl>
             </div>
 
@@ -454,17 +457,17 @@
                 <div class="range-field">
                   <div class="range-header">
                     <label for="who-db-range" data-i18n="rings.whoDbLabel">Weekly Average Loudness (Leq)</label>
-                    <span id="who-db-value" class="range-value">70 dB(A)</span>
+                    <span id="who-db-value" class="range-value">69 dB(A)</span>
                   </div>
-                  <input id="who-db-range" type="range" min="55" max="95" value="70" step="1">
+                  <input id="who-db-range" type="range" min="55" max="95" value="69" step="1">
                 </div>
 
                 <div class="range-field">
                   <div class="range-header">
                     <label for="who-hours-range" data-i18n="rings.whoHoursLabel">Weekly Listening Duration</label>
-                    <span id="who-hours-value" class="range-value">35.0h</span>
+                    <span id="who-hours-value" class="range-value">29.3h</span>
                   </div>
-                  <input id="who-hours-range" type="range" min="1" max="50" value="35" step="0.5">
+                  <input id="who-hours-range" type="range" min="1" max="50" value="29.3" step="0.5">
                 </div>
 
                 <div class="who-budget-meter" aria-hidden="true">
@@ -474,19 +477,19 @@
                 <div class="who-metrics-grid">
                   <div class="metric-box">
                     <span class="metric-box-label" data-i18n="rings.whoPctLbl">Budget Used</span>
-                    <span id="who-budget-pct" class="metric-box-value">8.7%</span>
+                    <span id="who-budget-pct" class="metric-box-value">5.4%</span>
                   </div>
                   <div class="metric-box">
                     <span class="metric-box-label" data-i18n="rings.whoAllowLbl">Safe Weekly Ceiling</span>
-                    <span id="who-allowed-hours" class="metric-box-value">403h</span>
+                    <span id="who-allowed-hours" class="metric-box-value">508h</span>
                   </div>
                   <div class="metric-box">
                     <span class="metric-box-label" data-i18n="rings.whoExposedLbl">Exposed Time</span>
-                    <span id="who-exposed-min" class="metric-box-value">2,100m</span>
+                    <span id="who-exposed-min" class="metric-box-value">1,760m</span>
                   </div>
                   <div class="metric-box">
                     <span class="metric-box-label" data-i18n="rings.whoRemainLbl">Remaining Budget</span>
-                    <span id="who-remaining-pct" class="metric-box-value">91.3%</span>
+                    <span id="who-remaining-pct" class="metric-box-value">94.6%</span>
                   </div>
                 </div>
 
@@ -509,11 +512,11 @@
                 <div id="share-poster-preview" data-aspect="3:4" data-scheme="dark">
                   <div class="poster-preview-head mono">
                     <span>EARPRINT · 28D</span>
-                    <span id="poster-avg-db">70 dB</span>
+                    <span id="poster-avg-db">69 dB</span>
                   </div>
                   <canvas id="share-poster-canvas" width="220" height="220" aria-hidden="true"></canvas>
                   <div class="poster-preview-foot mono">
-                    <span id="poster-week-hours" class="poster-stat">35h 19m</span>
+                    <span id="poster-week-hours" class="poster-stat">29h 20m</span>
                     <span id="poster-persona" class="poster-sub">🦉 Night Owl</span>
                   </div>
                 </div>
@@ -714,7 +717,7 @@
           </div>
 
           <div class="widgets-showcase">
-            <div class="widget-cluster">
+            <div class="widgets-top-grid">
               <figure class="widget-tile">
                 <img src="./assets/widgets/board-home-screen.webp" alt="Home Screen Small Today, Medium Card Shelf, and Large Earprint Ring widgets" width="720" height="1587" loading="lazy">
                 <figcaption class="screen-caption">Home Screen · Today · Card Shelf · Large Ring</figcaption>
@@ -723,17 +726,23 @@
                 <img src="./assets/widgets/board-lock-screen.webp" alt="Lock Screen WHO Budget circular gauge, Today summary, and Live Activity" width="720" height="1565" loading="lazy">
                 <figcaption class="screen-caption">Lock Screen · WHO Gauge &amp; Live Activity</figcaption>
               </figure>
+              <div class="widget-stack-col">
+                <figure class="widget-tile">
+                  <img src="./assets/widgets/island-expanded.webp" alt="Dynamic Island expanded view showing live headphone loudness and ear-break timer" width="900" height="313" loading="lazy">
+                  <figcaption class="screen-caption">Dynamic Island · Expanded Acoustic Timer</figcaption>
+                </figure>
+                <figure class="widget-tile">
+                  <img src="./assets/widgets/live-activity-lock-screen.webp" alt="Lock Screen Live Activity banner with 40 minute ear-break countdown" width="900" height="364" loading="lazy">
+                  <figcaption class="screen-caption">ActivityKit · Ear Break Countdown</figcaption>
+                </figure>
+                <figure class="widget-tile">
+                  <img src="./assets/widgets/medium-card-shelf.webp" alt="Medium Card Shelf widget deep linking 3 headphone cards" width="760" height="355" loading="lazy">
+                  <figcaption class="screen-caption">Card Shelf · Deep Links earprint://card/&lt;id&gt;</figcaption>
+                </figure>
+              </div>
             </div>
 
-            <div class="widget-cluster">
-              <figure class="widget-tile widget-tile--wide">
-                <img src="./assets/widgets/island-expanded.webp" alt="Dynamic Island expanded view showing live headphone loudness and ear-break timer" width="900" height="313" loading="lazy">
-                <figcaption class="screen-caption">Dynamic Island · Expanded Acoustic Timer</figcaption>
-              </figure>
-              <figure class="widget-tile widget-tile--wide">
-                <img src="./assets/widgets/live-activity-lock-screen.webp" alt="Lock Screen Live Activity banner with 40 minute ear-break countdown" width="900" height="364" loading="lazy">
-                <figcaption class="screen-caption">ActivityKit · Ear Break Countdown</figcaption>
-              </figure>
+            <div class="widgets-bottom-grid">
               <figure class="widget-tile">
                 <img src="./assets/widgets/small-today.webp" alt="Small Today interactive card cycler widget" width="510" height="510" loading="lazy">
                 <figcaption class="screen-caption">Today · NextCardIntent</figcaption>
@@ -741,10 +750,6 @@
               <figure class="widget-tile">
                 <img src="./assets/widgets/large-earprint.webp" alt="Large Earprint Ring widget with 28-day heatmap and WHO budget bar" width="760" height="798" loading="lazy">
                 <figcaption class="screen-caption">Large Earprint Ring + Heatmap</figcaption>
-              </figure>
-              <figure class="widget-tile widget-tile--wide">
-                <img src="./assets/widgets/medium-card-shelf.webp" alt="Medium Card Shelf widget deep linking 3 headphone cards" width="760" height="355" loading="lazy">
-                <figcaption class="screen-caption">Card Shelf · Deep Links earprint://card/&lt;id&gt;</figcaption>
               </figure>
             </div>
           </div>
