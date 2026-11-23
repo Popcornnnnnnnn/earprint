@@ -101,7 +101,7 @@ function initAccessibleTabs() {
     const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
     const panels = tabs.map((tab) => root?.querySelector(`[role="tabpanel"][aria-labelledby="${CSS.escape(tab.id)}"]`));
 
-    const activateTab = (nextTab, { focus = false } = {}) => {
+    const activateTab = (nextTab, { focus = false, scroll = true } = {}) => {
       const idx = tabs.indexOf(nextTab);
       if (idx === -1) return;
 
@@ -125,13 +125,15 @@ function initAccessibleTabs() {
         }
       });
 
-      nextTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (scroll) {
+        nextTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
       if (focus) nextTab.focus();
     };
 
-    // Initialize roving tabindex from HTML aria-selected state
+    // Initialize roving tabindex from HTML aria-selected state without scrolling page on load
     const initial = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true') ?? tabs[0];
-    if (initial) activateTab(initial, { focus: false });
+    if (initial) activateTab(initial, { focus: false, scroll: false });
 
     tablist.addEventListener('click', (event) => {
       const tab = event.target.closest('[role="tab"]');
