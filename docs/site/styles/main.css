@@ -449,7 +449,7 @@
 
   .section--hero {
     border-block-start: 0;
-    padding-block: clamp(1.5rem, 2.8vw, 2.5rem) clamp(3rem, 5vw, 5rem);
+    padding-block: clamp(0.9rem, 1.6vw, 1.35rem) clamp(3rem, 5vw, 5rem);
   }
 
   .section-head {
@@ -683,17 +683,6 @@
     font-weight: 650;
   }
 
-  /* Ensure 6-tier spotlight & binder cards always inherit contrasting foil ink */
-  #tier-spotlight :where(h3, p, span, .eyebrow, .tier-spotlight-hours, .section-lead),
-  [data-tier-card] :where(strong, span, div, .meta-caption) {
-    color: inherit;
-  }
-
-  #tier-spotlight :where(.eyebrow, .section-lead),
-  [data-tier-card] .meta-caption {
-    opacity: 0.84;
-  }
-
   /* Share Poster Preview layout helpers */
   #share-poster-canvas {
     display: block;
@@ -760,6 +749,17 @@
   .meta-caption {
     font-size: 0.75rem;
     color: var(--text-tertiary);
+  }
+
+  /* Ensure 6-tier spotlight & binder cards always inherit contrasting foil ink */
+  #tier-spotlight :is(h3, p, span, .eyebrow, .tier-spotlight-hours, .section-lead),
+  [data-tier-card] :is(strong, span, div, .meta-caption) {
+    color: inherit;
+  }
+
+  #tier-spotlight :is(.eyebrow, .section-lead),
+  [data-tier-card] .meta-caption {
+    opacity: 0.86;
   }
 
   .binder-title {
