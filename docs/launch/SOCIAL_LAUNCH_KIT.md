@@ -3,7 +3,7 @@
 Complete, platform-tailored launch playbook for **`Earprint - Headphone Archive`** (`v1.0.0`, iOS 18+):
 
 - **App Store Name:** `Earprint - Headphone Archive` (search keyword: `Earprint` · `ID: 6837883616`)
-- **App Store URL (active once approved):** `https://apps.apple.com/app/id6837883616`
+- **App Store URL (LIVE — v1.0.0 approved 2026-11-23):** `https://apps.apple.com/app/id6837883616`
 - **Landing Page:** `https://popcornnnnnnnn.github.io/earprint/`
 - **Support FAQ:** `https://popcornnnnnnnn.github.io/earprint/support.html`
 - **Privacy Policy:** `https://popcornnnnnnnn.github.io/earprint/privacy.html`
@@ -42,16 +42,21 @@ Cards evolve automatically as lifetime HealthKit hours accumulate, and the `2×3
 
 ---
 
-## 2. Rollout Strategy: Pre-Launch (Now) vs Launch Day
+## 2. Rollout Strategy: Live Global Launch (`READY_FOR_SALE`)
+
+`v1.0.0` was approved on `2026-11-23` and is **LIVE (`READY_FOR_SALE`)** in **US, EU (`de`), UK (`gb`), Japan (`jp`), Hong Kong (`hk`), and Taiwan (`tw`)**.
 
 | Timing | Where to Post | Purpose | Link / CTA |
 | --- | --- | --- | --- |
-| **Now (`Waiting for Review`)** | X (Build-in-Public teaser), 即刻, V2EX（谨慎预告）或暂存草稿 | Warm up indie-dev / AirPods audience without asking people to download a link that isn't live yet | Link to GitHub repo (`github.com/Popcornnnnnnnn/earprint`) & landing page (`popcornnnnnnnn.github.io/earprint/`) |
-| **Hour 0–2 after Monitor Alerts `READY_FOR_DISTRIBUTION`** | App Store Link check → 小红书 Post 1 + 抖音 Video 1 + 即刻 + X Launch Thread + `r/iosapps` + `r/airpods` | First wave of high-intent organic traffic across visual + indie channels | Direct App Store link (`apps.apple.com/app/id6837883616`) globally; `App Store 搜「Earprint」` on Douyin/Rednote |
-| **Launch Day (Pacific Morning ~00:01–08:00 PT / 北京 15:00–23:00)** | Product Hunt + Hacker News (`Show HN`) + `r/swift` | Synchronize 24-hour Product Hunt voting window and technical HN reading wave | Landing page + App Store + GitHub source |
-| **Day 2–7** | 小红书 Post 2/3/4, 抖音 Video 2/3, TikTok 3 Reels, `r/Apple` (Promo Sunday only!), 少数派投搞 | Sustain discovery with 6-tier showcase, PSA Ear Grade challenge, AirPods Max 10 colors, and Light/Dark craft | Encourage comment comparisons (`段位 / Ear Grade`) |
+| **Live Now (Global Storefronts)** | X Launch Thread, `r/iosapps`, `r/airpods`, TikTok, **即刻 / V2EX (for HK/TW/US Apple IDs)** | Launch across live regions right away using direct links while App Store search indexing completes (typically 12–24h) | Always use direct link `https://apps.apple.com/app/id6837883616` until `Earprint` ranks in App Store search |
+| **Product Hunt / HN (`00:01 PT` / `16:01` Beijing)** | Product Hunt + Hacker News (`Show HN`) + `r/swift` | Start the 24-hour Product Hunt voting window at `00:01 PT` and technical HN wave together | Landing page (`popcornnnnnnnn.github.io/earprint/`) + App Store (`apps.apple.com/app/id6837883616`) + GitHub source |
+| **After China Mainland (`cn`) Goes Live** | 小红书 Post 1 + 抖音 Video 1 + 少数派 | Hold China Mainland download posts until `cn` storefront (`https://apps.apple.com/cn/app/id6837883616`, currently `404`) is verified in App Store Connect | Direct search `App Store 搜「Earprint」` once `cn` is live & indexed |
+| **Day 2–7** | 小红书 Post 2/3/4, 抖音 Video 2/3, TikTok Reels, `r/Apple` (Promo Sunday only!) | Sustain discovery with 6-tier showcase, PSA Ear Grade challenge, AirPods Max 10 colors, and Light/Dark craft | Encourage comment comparisons (`段位 / Ear Grade`) |
 
-> **Important:** `com.forge.appstore-review-monitor` is running on this Mac and will ping your iMessage (`+8618616100625`) + Antigravity as soon as Apple moves `1.0.0` out of `WAITING_FOR_REVIEW`. Do **not** publish "Download on App Store now" posts until App Store URL loads cleanly!
+> **Important (2026-11-23 Status):**
+> - **Use direct link globally:** Apple Search API indexing for newly released apps can take **12–24 hours**, so phone keyword search for `Earprint` may not surface it immediately even where it is live. Always include `https://apps.apple.com/app/id6837883616` in global posts.
+> - **China Mainland (`cn`) check pending:** `https://apps.apple.com/cn/app/id6837883616` currently returns `404` (likely awaiting ICP / China territory verification in App Store Connect). Do **not** tell China Mainland users to search the CN App Store until confirmed.
+> - **Monitor runtime:** `appstore-review-monitor` runs as an Antigravity sidecar (`App Store Review Monitor`) with per-channel delivery retries for iMessage, macOS notifications, and Antigravity briefings.
 
 ---
 

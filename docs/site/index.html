@@ -58,6 +58,20 @@
     .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
     footer { margin-top: 40px; font-size: 0.9rem; color: var(--muted); }
     a.link { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .cta-row { margin: 0 0 28px; }
+    .cta-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.98rem;
+      padding: 12px 20px;
+      border-radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .cta-btn { color: #0b0d13; }
+    }
   </style>
 </head>
 <body>
@@ -70,6 +84,10 @@
       <br>
       将 Apple“健康”中的耳机音量记录变为 6 阶 3D 金属收藏卡、设备档案与 28 天声纹环，全程 100% 在本机运行。
     </p>
+
+    <div class="cta-row">
+      <a class="cta-btn" href="https://apps.apple.com/app/id6837883616">Download on the App Store &middot; Free (iOS 18+)</a>
+    </div>
 
     <div class="grid">
       <a class="card" href="support.html">
