@@ -12,6 +12,7 @@ const TIERS = [
     minHours: 0,
     presetHours: 12,
     titleEn: 'BRONZE SLATE',
+    labelEn: 'Bronze Slate',
     titleZh: '青铜岩',
     shortEn: 'Bronze',
     shortZh: '青铜',
@@ -30,6 +31,7 @@ const TIERS = [
     minHours: 25,
     presetHours: 64,
     titleEn: 'SILVER ALUMINUM',
+    labelEn: 'Silver Aluminum',
     titleZh: '银灰铝',
     shortEn: 'Silver',
     shortZh: '银铝',
@@ -46,8 +48,9 @@ const TIERS = [
   {
     id: 'sapphire',
     minHours: 120,
-    presetHours: 188,
+    presetHours: 188 + 22 / 60,
     titleEn: 'FJORD TEAL',
+    labelEn: 'Fjord Teal',
     titleZh: '峡湾青',
     shortEn: 'Fjord',
     shortZh: '峡湾',
@@ -66,6 +69,7 @@ const TIERS = [
     minHours: 400,
     presetHours: 580,
     titleEn: 'DEEP PURPLE',
+    labelEn: 'Deep Purple',
     titleZh: '深紫',
     shortEn: 'Purple',
     shortZh: '深紫',
@@ -84,6 +88,7 @@ const TIERS = [
     minHours: 1000,
     presetHours: 1280,
     titleEn: 'MIDNIGHT CARBON',
+    labelEn: 'Midnight Carbon',
     titleZh: '午夜碳纤',
     shortEn: 'Carbon',
     shortZh: '碳纤',
@@ -102,6 +107,7 @@ const TIERS = [
     minHours: 2000,
     presetHours: 2240,
     titleEn: 'LIQUID HOLO · LEGENDARY',
+    labelEn: 'Liquid Holo',
     titleZh: '流光全息 · 传说',
     shortEn: 'Holo',
     shortZh: '全息',
@@ -210,7 +216,8 @@ function getLang() {
 function getResolvedTheme() {
   if (window.earprintState?.getTheme) {
     const t = window.earprintState.getTheme();
-    if (t === 'light' || t === 'dark') return t;
+    const resolved = typeof t === 'string' ? t : t?.resolved || t?.theme;
+    if (resolved === 'light' || resolved === 'dark') return resolved;
   }
   const ds = document.documentElement.dataset.resolvedTheme;
   if (ds === 'light' || ds === 'dark') return ds;
@@ -653,8 +660,12 @@ export function initFoilCard() {
   const slabFlipBtn = document.getElementById('slab-flip-btn');
 
   let activeDeviceKey = heroStage?.dataset.device && DEVICES[heroStage.dataset.device] ? heroStage.dataset.device : 'pro2';
-  let activeHours = Number(hoursRange?.value ?? heroStage?.dataset.hours ?? DEVICES[activeDeviceKey].defaultHours);
-  if (Number.isNaN(activeHours)) activeHours = DEVICES[activeDeviceKey].defaultHours;
+  const defaultDeviceHours = DEVICES[activeDeviceKey].defaultHours;
+  const rawInitialHours = Number(hoursRange?.value ?? heroStage?.dataset.hours);
+  let activeHours =
+    !Number.isFinite(rawInitialHours) || Math.round(rawInitialHours) === Math.round(defaultDeviceHours)
+      ? defaultDeviceHours
+      : rawInitialHours;
   let isHeroFlipped = heroStage?.dataset.face === 'back';
   let activeBinderTierId = TIERS[2].id;
   let isPsaFlipped = psaSlab?.dataset.face === 'back';
@@ -667,7 +678,7 @@ export function initFoilCard() {
     heroBack.prepend(guilloche);
     heroBack.classList.add('slab-back-shell');
   }
-  binderCards.forEach((btn) => ensureFoilLayers(btn, false));
+  binderCards.forEach((btn) => ensureFoilLayers(btn, true));
   if (spotlightEl) ensureFoilLayers(spotlightEl, true);
 
   let heroSpring = null;
@@ -689,12 +700,31 @@ export function initFoilCard() {
   let psaSpring = null;
   const psaFront = psaSlab?.querySelector('.psa-slab-front, [data-slab-face="front"]');
   const psaBack = psaSlab?.querySelector('.psa-slab-back, [data-slab-face="back"]');
+  if (psaBack && !psaBack.querySelector(':scope > .slab-guilloche')) {
+    const guilloche = document.createElement('div');
+    guilloche.className = 'slab-guilloche';
+    guilloche.setAttribute('aria-hidden', 'true');
+    psaBack.prepend(guilloche);
+    psaBack.classList.add('slab-back-shell');
+  }
+
+  function syncPsaFlipButton() {
+    if (!slabFlipBtn) return;
+    const lang = getLang();
+    slabFlipBtn.setAttribute('aria-pressed', String(isPsaFlipped));
+    slabFlipBtn.textContent = isPsaFlipped
+      ? lang === 'zh-Hans'
+        ? '翻转回正面评级'
+        : 'Flip to Front Grade'
+      : lang === 'zh-Hans'
+        ? '翻转查看背面防伪证书'
+        : 'Inspect Guilloché Certificate';
+  }
+
   const togglePsaFlip = () => {
     isPsaFlipped = !isPsaFlipped;
     psaSpring?.setFlipped(isPsaFlipped);
-    if (slabFlipBtn) {
-      slabFlipBtn.setAttribute('aria-pressed', String(isPsaFlipped));
-    }
+    syncPsaFlipButton();
     if (psaSlab) {
       psaSlab.dataset.face = isPsaFlipped ? 'back' : 'front';
     }
@@ -739,6 +769,7 @@ export function initFoilCard() {
     }
 
     const tierBadgeEl = document.getElementById('hero-card-tier-badge');
+    const frontSerialEl = heroFront?.querySelector('.slab-serial-chip');
     const artworkEl = document.getElementById('hero-card-artwork');
     const modelEl = document.getElementById('hero-card-model');
     const hoursEl = document.getElementById('hero-card-hours');
@@ -746,6 +777,9 @@ export function initFoilCard() {
 
     if (tierBadgeEl) {
       tierBadgeEl.textContent = lang === 'zh-Hans' ? tier.titleZh : tier.titleEn;
+    }
+    if (frontSerialEl) {
+      frontSerialEl.textContent = `#${String(dev.serial).padStart(4, '0')} · ${dev.pid}`;
     }
     if (artworkEl && artworkEl.getAttribute('src') !== dev.cutout) {
       artworkEl.setAttribute('src', dev.cutout);
@@ -791,7 +825,7 @@ export function initFoilCard() {
         progressEl.textContent =
           lang === 'zh-Hans'
             ? `距「${nextTier.titleZh}」还差 ${rem.toLocaleString('en-US')}h`
-            : `${rem.toLocaleString('en-US')}h to ${nextTier.titleEn}`;
+            : `${rem.toLocaleString('en-US')}h to ${nextTier.labelEn}`;
       }
     } else if (progressEl) {
       progressEl.textContent = lang === 'zh-Hans' ? '已达到最高等级 ✦' : 'Max tier reached ✦';
@@ -823,17 +857,17 @@ export function initFoilCard() {
 
     if (flipBtn) {
       flipBtn.setAttribute('aria-pressed', String(isHeroFlipped));
-      flipBtn.setAttribute(
-        'aria-label',
-        isHeroFlipped
-          ? lang === 'zh-Hans'
-            ? '翻转回正面卡面'
-            : 'Flip to front card face'
-          : lang === 'zh-Hans'
-            ? '翻转查看背面档案卡'
-            : 'Flip to provenance back'
-      );
+      const label = isHeroFlipped
+        ? lang === 'zh-Hans'
+          ? '翻转回正面卡面'
+          : 'Flip to Front Face'
+        : lang === 'zh-Hans'
+          ? '翻转查看背面溯源'
+          : 'Inspect Rear Provenance';
+      flipBtn.textContent = label;
+      flipBtn.setAttribute('aria-label', label);
     }
+    syncPsaFlipButton();
 
     document.dispatchEvent(
       new CustomEvent('earprint:tierchange', {

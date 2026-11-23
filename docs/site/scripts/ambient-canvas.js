@@ -10,7 +10,8 @@ let didInit = false;
 function getResolvedTheme() {
   if (window.earprintState?.getTheme) {
     const t = window.earprintState.getTheme();
-    if (t === 'light' || t === 'dark') return t;
+    const resolved = typeof t === 'string' ? t : t?.resolved || t?.theme;
+    if (resolved === 'light' || resolved === 'dark') return resolved;
   }
   const ds = document.documentElement.dataset.resolvedTheme;
   if (ds === 'light' || ds === 'dark') return ds;

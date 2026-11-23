@@ -30,22 +30,52 @@
     }
   }
 
+  /* Default foil shader custom properties on every tiered card & foil-layers wrapper */
+  [data-tier],
+  .foil-layers {
+    --tx: 0;
+    --ty: 0;
+    --px: 68%;
+    --py: 24%;
+    --sheen-angle: 122deg;
+    --bevel-angle: 135deg;
+  }
+
+  [data-tier="bronze"],
+  [data-tier="sapphire"],
+  [data-tier="platinum"],
+  [data-tier="obsidian"] {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(8, 12, 18, 0.28);
+  }
+
+  [data-tier="silver"],
+  [data-tier="holo"] {
+    color: #14141a;
+    text-shadow: none;
+  }
+
   /* --------------------------------------------------------------------------
      1. Hero 3D Foil Slab Lab (#hero-slab-mount & #hero-card-stage)
      -------------------------------------------------------------------------- */
   #hero-slab-mount {
     position: relative;
     display: grid;
-    gap: 1.35rem;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
+    inline-size: 100%;
+    gap: 0.8rem;
     justify-items: center;
   }
 
   .slab-stage-wrap {
     position: relative;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     place-items: center;
+    min-inline-size: 0;
     inline-size: 100%;
-    padding-block: 0.5rem 0.75rem;
+    padding-block: 0.1rem 0.2rem;
   }
 
   #hero-card-stage {
@@ -65,7 +95,7 @@
     --tier-ink-local: var(--tier-ink, #ffffff);
 
     position: relative;
-    inline-size: min(100%, 336px);
+    inline-size: min(100%, 304px);
     aspect-ratio: 300 / 440;
     perspective: 1400px;
     touch-action: pan-y;
@@ -73,6 +103,12 @@
     -webkit-user-select: none;
     cursor: grab;
     outline: none;
+  }
+
+  @media (max-width: 480px) {
+    #hero-card-stage {
+      inline-size: min(100%, 288px);
+    }
   }
 
   #hero-card-stage.is-dragging {
@@ -161,6 +197,7 @@
     padding: 18px 18px 16px;
     background: var(--bg-card, #13131b);
     color: var(--text-primary, #ffffff);
+    text-shadow: none;
     transform:
       perspective(1400px)
       translateZ(var(--z-lift))
@@ -233,10 +270,10 @@
   [data-tier="bronze"] .foil-base {
     background: linear-gradient(
       calc(132deg + var(--tx) * 10deg),
-      #b58263 0%,
-      #74503b 38%,
-      #5a3b2a 72%,
-      #432b1e 100%
+      #96664a 0%,
+      #6a4733 36%,
+      #523424 72%,
+      #3a2317 100%
     );
   }
   [data-tier="bronze"] .foil-texture {
@@ -246,8 +283,8 @@
   }
   [data-tier="bronze"] .foil-light {
     background:
-      radial-gradient(circle at var(--px) var(--py), rgba(226, 173, 138, 0.42) 0%, rgba(181, 130, 99, 0.12) 45%, transparent 72%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, transparent 48%, rgba(0, 0, 0, 0.22) 100%);
+      radial-gradient(circle at var(--px) var(--py), rgba(226, 173, 138, 0.34) 0%, rgba(181, 130, 99, 0.1) 45%, transparent 72%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, transparent 48%, rgba(0, 0, 0, 0.24) 100%);
     mix-blend-mode: soft-light;
   }
   [data-tier="bronze"] .foil-sheen {
@@ -261,10 +298,10 @@
   [data-tier="silver"] .foil-base {
     background: linear-gradient(
       calc(138deg + var(--tx) * 14deg),
-      #b9c0cc 0%,
-      #eef1f6 34%,
-      #b9c0cc 64%,
-      #7b8391 100%
+      #c5cbd6 0%,
+      #eef1f6 38%,
+      #c0c6d2 70%,
+      #98a0ae 100%
     );
   }
   [data-tier="silver"] .foil-texture {
@@ -290,11 +327,11 @@
   [data-tier="sapphire"] .foil-base {
     background: linear-gradient(
       calc(148deg + var(--ty) * 12deg),
-      #3a606b 0%,
-      #527b86 28%,
-      #86aeb8 54%,
-      #3a606b 78%,
-      #26454e 100%
+      #2d525d 0%,
+      #426b77 32%,
+      #598591 56%,
+      #2f545f 82%,
+      #1e3b43 100%
     );
   }
   [data-tier="sapphire"] .foil-texture {
@@ -678,10 +715,13 @@
 
   /* Interactive Hero Controls (Device Tabs, 0-2500h Scrubber, 6 Tiers, Flip) */
   .hero-lab-controls {
-    inline-size: min(100%, 420px);
+    inline-size: min(100%, 444px);
+    max-inline-size: 100%;
+    min-inline-size: 0;
     display: grid;
-    gap: 0.85rem;
-    padding: 1rem 1.1rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.56rem;
+    padding: 0.78rem 0.95rem;
     border-radius: 20px;
     background: color-mix(in oklab, var(--bg-card, #13131b) 84%, transparent);
     border: 1px solid var(--border-card, rgba(255, 255, 255, 0.1));
@@ -694,10 +734,30 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0.55rem;
+    gap: 0.5rem;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+
+  .hero-lab-controls [role="tablist"] {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .hero-lab-controls [role="tablist"]::-webkit-scrollbar {
+    display: none;
   }
 
   [data-hero-device] {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.38rem 0.66rem;
+    font-size: 0.78rem;
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
   }
@@ -716,13 +776,13 @@
 
   .hero-tier-pills {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
   }
 
-  @media (min-width: 520px) {
+  @media (min-width: 380px) {
     .hero-tier-pills {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -733,7 +793,8 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    min-block-size: 42px;
+    min-block-size: 40px;
+    min-inline-size: 0;
     padding: 6px 8px;
     border-radius: 12px;
     border: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.12));
@@ -741,8 +802,17 @@
     color: var(--text-primary, #ffffff);
     font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
     cursor: pointer;
     transition: border-color 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+  }
+
+  [data-hero-tier] .tier-pill-hours {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.66rem;
+    opacity: 0.72;
   }
 
   [data-hero-tier]:hover {
@@ -797,6 +867,7 @@
     position: relative;
     isolation: isolate;
     overflow: hidden;
+    background: transparent;
     cursor: pointer;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
@@ -814,7 +885,10 @@
 
   [data-tier-card][aria-pressed="true"] {
     transform: translateY(-2px);
-    box-shadow: 0 12px 26px -12px color-mix(in oklab, var(--tier-glow, #6d9ca8) 55%, transparent);
+    border-color: var(--inverted-fill, #ffffff);
+    box-shadow:
+      0 0 0 1.5px var(--inverted-fill, #ffffff),
+      0 14px 28px -12px color-mix(in oklab, var(--tier-glow, #6d9ca8) 55%, transparent);
   }
 
   /* --------------------------------------------------------------------------
@@ -912,7 +986,8 @@
     block-size: 100%;
     inline-size: 0%;
     border-radius: inherit;
-    background: var(--leq-quiet, #52e6db);
+    background-image: none;
+    background-color: var(--leq-quiet, #52e6db);
     transition: inline-size 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
   }
 
@@ -996,8 +1071,20 @@
     transform: perspective(1400px) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip)));
   }
 
-  #psa-slab .psa-slab-back,
-  #psa-slab [data-slab-face="back"] {
+  #psa-slab .psa-slab-back {
+    position: absolute;
+    inset: 0;
+    isolation: isolate;
+    overflow: hidden;
+    transform: perspective(1400px) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip) + 180deg));
+  }
+
+  #psa-slab .psa-slab-back > :not(.slab-guilloche) {
+    position: relative;
+    z-index: 2;
+  }
+
+  #psa-slab [data-slab-face="back"]:not(.psa-slab-back) {
     position: absolute;
     inset: 0;
     transform: perspective(1400px) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip) + 180deg));
