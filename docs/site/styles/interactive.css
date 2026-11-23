@@ -1,0 +1,1031 @@
+/* Earprint Interactive Layers: 3D Foil Slab Lab, 28-Day Acoustic Chronometer & Ambient Field
+ * Respects tokens.css variables, dual Dark/Light color-schemes, and prefers-reduced-motion.
+ */
+
+  /* --------------------------------------------------------------------------
+     0. Ambient Acoustic Field Canvas
+     -------------------------------------------------------------------------- */
+  #ambient-field-canvas,
+  #ambient-canvas {
+    position: fixed;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    pointer-events: none;
+    z-index: 0;
+    display: block;
+    opacity: 0.78;
+    transition: opacity 0.45s ease;
+  }
+
+  :root[data-resolved-theme="light"] #ambient-field-canvas,
+  :root[data-resolved-theme="light"] #ambient-canvas {
+    opacity: 0.56;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #ambient-field-canvas,
+    #ambient-canvas {
+      opacity: 0.48;
+    }
+  }
+
+  /* --------------------------------------------------------------------------
+     1. Hero 3D Foil Slab Lab (#hero-slab-mount & #hero-card-stage)
+     -------------------------------------------------------------------------- */
+  #hero-slab-mount {
+    position: relative;
+    display: grid;
+    gap: 1.35rem;
+    justify-items: center;
+  }
+
+  .slab-stage-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 100%;
+    padding-block: 0.5rem 0.75rem;
+  }
+
+  #hero-card-stage {
+    --rx: 0deg;
+    --ry: 0deg;
+    --flip: 0deg;
+    --tx: 0;
+    --ty: 0;
+    --px: 50%;
+    --py: 30%;
+    --z-lift: 0px;
+    --sheen-angle: 118deg;
+    --sheen-alpha: 0.34;
+    --bevel-angle: 135deg;
+    --tier-accent-local: var(--tier-accent, #7eb0bd);
+    --tier-glow-local: var(--tier-glow, #6d9ca8);
+    --tier-ink-local: var(--tier-ink, #ffffff);
+
+    position: relative;
+    inline-size: min(100%, 336px);
+    aspect-ratio: 300 / 440;
+    perspective: 1400px;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+    outline: none;
+  }
+
+  #hero-card-stage.is-dragging {
+    cursor: grabbing;
+  }
+
+  #hero-card-stage:focus-visible {
+    outline: 2px solid var(--tier-accent-local);
+    outline-offset: 8px;
+    border-radius: 30px;
+  }
+
+  /* Soft atmospheric hardware podium shadow synced to tier glow */
+  #hero-card-stage::before {
+    content: "";
+    position: absolute;
+    inset: 10% 8% -6%;
+    border-radius: 34px;
+    background: radial-gradient(
+      ellipse at 50% 45%,
+      color-mix(in oklab, var(--tier-glow-local) 42%, transparent) 0%,
+      transparent 72%
+    );
+    filter: blur(26px);
+    opacity: 0.68;
+    transform: translate3d(calc(var(--tx) * -10px), calc(var(--ty) * -6px + 12px), 0);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  :root[data-resolved-theme="light"] #hero-card-stage::before {
+    opacity: 0.34;
+  }
+
+  /* Shared front & back 3D slab geometry */
+  #hero-card-front,
+  #hero-card-back {
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
+    z-index: 1;
+    box-shadow:
+      0 26px 54px -18px rgba(0, 0, 0, 0.56),
+      0 6px 18px -6px rgba(0, 0, 0, 0.35);
+  }
+
+  :root[data-resolved-theme="light"] #hero-card-front,
+  :root[data-resolved-theme="light"] #hero-card-back {
+    box-shadow:
+      0 24px 48px -18px rgba(19, 20, 28, 0.24),
+      0 8px 20px -8px rgba(19, 20, 28, 0.14);
+  }
+
+  #hero-card-front {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 22px;
+    color: var(--tier-ink-local);
+    transform:
+      perspective(1400px)
+      translateZ(var(--z-lift))
+      rotateX(var(--rx))
+      rotateY(calc(var(--ry) + var(--flip)));
+  }
+
+  #hero-card-front > :not(.foil-layers):not(.foil-bevel),
+  #hero-card-back > :not(.slab-guilloche) {
+    position: relative;
+    z-index: 2;
+  }
+
+  #hero-card-front :where(#hero-card-model, #hero-card-hours, #hero-card-meta, .slab-serial-chip) {
+    color: inherit;
+  }
+
+  #hero-card-back {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 18px 18px 16px;
+    background: var(--bg-card, #13131b);
+    color: var(--text-primary, #ffffff);
+    transform:
+      perspective(1400px)
+      translateZ(var(--z-lift))
+      rotateX(var(--rx))
+      rotateY(calc(var(--ry) + var(--flip) + 180deg));
+  }
+
+  #hero-card-stage[data-face="front"] #hero-card-back,
+  #hero-card-stage[data-face="back"] #hero-card-front {
+    pointer-events: none;
+  }
+
+  /* Foil Clip Surface (separated from preserve-3d parent so Safari never flattens Z-parallax) */
+  .foil-layers {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .foil-base,
+  .foil-texture,
+  .foil-light,
+  .foil-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .foil-bevel {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+    padding: 1.5px;
+    background: linear-gradient(
+      var(--bevel-angle),
+      rgba(255, 255, 255, 0.68) 0%,
+      rgba(255, 255, 255, 0.16) 34%,
+      color-mix(in oklab, var(--tier-glow-local) 52%, transparent) 64%,
+      rgba(255, 255, 255, 0.52) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  :root[data-resolved-theme="light"] .foil-bevel {
+    background: linear-gradient(
+      var(--bevel-angle),
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(19, 20, 28, 0.14) 38%,
+      color-mix(in oklab, var(--tier-glow-local) 45%, rgba(19, 20, 28, 0.18)) 68%,
+      rgba(19, 20, 28, 0.18) 100%
+    );
+  }
+
+  /* --- 6 Tier Material Shaders (matching Shared/Rarity.swift & CardViews.swift) --- */
+
+  /* 1. Bronze Slate (0h+ · Anodized Matte · matteGrain) */
+  [data-tier="bronze"] .foil-base {
+    background: linear-gradient(
+      calc(132deg + var(--tx) * 10deg),
+      #b58263 0%,
+      #74503b 38%,
+      #5a3b2a 72%,
+      #432b1e 100%
+    );
+  }
+  [data-tier="bronze"] .foil-texture {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 0.75px, transparent 0.75px);
+    background-size: 6px 6px;
+    opacity: 0.42;
+  }
+  [data-tier="bronze"] .foil-light {
+    background:
+      radial-gradient(circle at var(--px) var(--py), rgba(226, 173, 138, 0.42) 0%, rgba(181, 130, 99, 0.12) 45%, transparent 72%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, transparent 48%, rgba(0, 0, 0, 0.22) 100%);
+    mix-blend-mode: soft-light;
+  }
+  [data-tier="bronze"] .foil-sheen {
+    opacity: 0.18;
+    background: linear-gradient(var(--sheen-angle), transparent 28%, rgba(255, 232, 214, 0.36) 50%, transparent 72%);
+    transform: translate3d(calc(var(--tx) * 26%), calc(var(--ty) * 14%), 0);
+    mix-blend-mode: soft-light;
+  }
+
+  /* 2. Silver Aluminum (25h+ · Beaded Alloy · brushed) */
+  [data-tier="silver"] .foil-base {
+    background: linear-gradient(
+      calc(138deg + var(--tx) * 14deg),
+      #b9c0cc 0%,
+      #eef1f6 34%,
+      #b9c0cc 64%,
+      #7b8391 100%
+    );
+  }
+  [data-tier="silver"] .foil-texture {
+    background-image:
+      repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(180deg, rgba(20, 20, 26, 0.05) 0 1px, transparent 1px 5px);
+    opacity: 0.55;
+  }
+  [data-tier="silver"] .foil-light {
+    background:
+      radial-gradient(circle at var(--px) var(--py), rgba(255, 255, 255, 0.55) 0%, rgba(238, 241, 246, 0.2) 42%, transparent 72%),
+      linear-gradient(calc(115deg + var(--ty) * 18deg), transparent 15%, rgba(255, 255, 255, 0.42) 48%, transparent 82%);
+    mix-blend-mode: screen;
+  }
+  [data-tier="silver"] .foil-sheen {
+    opacity: 0.44;
+    background: linear-gradient(var(--sheen-angle), transparent 22%, rgba(255, 255, 255, 0.62) 50%, transparent 78%);
+    transform: translate3d(calc(var(--tx) * 30%), calc(var(--ty) * 22%), 0);
+    mix-blend-mode: soft-light;
+  }
+
+  /* 3. Fjord Teal (120h+ · Brushed Slate · brushed) */
+  [data-tier="sapphire"] .foil-base {
+    background: linear-gradient(
+      calc(148deg + var(--ty) * 12deg),
+      #3a606b 0%,
+      #527b86 28%,
+      #86aeb8 54%,
+      #3a606b 78%,
+      #26454e 100%
+    );
+  }
+  [data-tier="sapphire"] .foil-texture {
+    background-image:
+      repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 7px);
+    opacity: 0.62;
+  }
+  [data-tier="sapphire"] .foil-light {
+    background:
+      radial-gradient(circle at calc(78% + var(--tx) * 18%) calc(18% + var(--ty) * 16%), rgba(164, 214, 224, 0.46) 0%, transparent 62%),
+      linear-gradient(calc(104deg + var(--tx) * 20deg), transparent 24%, rgba(212, 245, 252, 0.28) 50%, transparent 76%);
+    mix-blend-mode: overlay;
+  }
+  [data-tier="sapphire"] .foil-sheen {
+    opacity: 0.34;
+    background: linear-gradient(var(--sheen-angle), transparent 24%, rgba(176, 232, 244, 0.48) 50%, transparent 76%);
+    transform: translate3d(calc(var(--tx) * 32%), calc(var(--ty) * 16%), 0);
+    mix-blend-mode: screen;
+  }
+
+  /* 4. Deep Purple (400h+ · Frosted Plum · satin) */
+  [data-tier="platinum"] .foil-base {
+    background: linear-gradient(
+      calc(42deg + var(--tx) * 12deg),
+      #24163a 0%,
+      #362352 34%,
+      #4b346d 64%,
+      #8563b5 100%
+    );
+  }
+  [data-tier="platinum"] .foil-texture {
+    background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 4.5px);
+    opacity: 0.66;
+  }
+  [data-tier="platinum"] .foil-light {
+    background:
+      radial-gradient(circle at calc(76% + var(--tx) * 20%) calc(22% + var(--ty) * 18%), rgba(188, 152, 242, 0.5) 0%, rgba(133, 99, 181, 0.16) 45%, transparent 74%),
+      linear-gradient(128deg, transparent 20%, rgba(255, 255, 255, 0.16) 50%, transparent 80%);
+    mix-blend-mode: soft-light;
+  }
+  [data-tier="platinum"] .foil-sheen {
+    opacity: 0.46;
+    background: linear-gradient(var(--sheen-angle), transparent 22%, rgba(218, 192, 255, 0.48) 50%, transparent 78%);
+    transform: translate3d(calc(var(--tx) * 34%), calc(var(--ty) * 18%), 0);
+    mix-blend-mode: screen;
+  }
+
+  /* 5. Midnight Carbon (1,000h+ · DLC Coating · carbon 2x2 twill) */
+  [data-tier="obsidian"] .foil-base {
+    background: linear-gradient(
+      calc(146deg + var(--tx) * 10deg),
+      #161e2e 0%,
+      #080b12 40%,
+      #252e42 74%,
+      #06080e 100%
+    );
+  }
+  [data-tier="obsidian"] .foil-texture {
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.085) 0 1.2px, transparent 1.2px 7.5px),
+      repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.065) 0 1.2px, transparent 1.2px 7.5px);
+    opacity: 0.85;
+  }
+  [data-tier="obsidian"] .foil-light {
+    background:
+      radial-gradient(circle at calc(82% + var(--tx) * 24%) calc(14% + var(--ty) * 18%), rgba(77, 144, 196, 0.54) 0%, rgba(77, 144, 196, 0.16) 40%, transparent 70%),
+      linear-gradient(180deg, transparent 42%, rgba(0, 0, 0, 0.42) 100%);
+  }
+  [data-tier="obsidian"] .foil-sheen {
+    opacity: 0.62;
+    background: linear-gradient(
+      var(--sheen-angle),
+      transparent 20%,
+      rgba(77, 144, 196, 0.34) 44%,
+      rgba(255, 255, 255, 0.28) 50%,
+      rgba(77, 144, 196, 0.26) 56%,
+      transparent 80%
+    );
+    transform: translate3d(calc(var(--tx) * 42%), calc(var(--ty) * 20%), 0);
+    mix-blend-mode: screen;
+  }
+
+  /* 6. Liquid Holo · Legendary (2,000h+ · Prism Oxide · holo diffraction) */
+  [data-tier="holo"] .foil-base {
+    background: linear-gradient(
+      calc(130deg + var(--tx) * 16deg),
+      #6cf5e8 0%,
+      #9a84ff 34%,
+      #ff84ce 68%,
+      #fff08c 100%
+    );
+  }
+  [data-tier="holo"] .foil-texture {
+    background-image:
+      repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 5.5px),
+      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 9px);
+    opacity: 0.72;
+  }
+  [data-tier="holo"] .foil-light {
+    background:
+      radial-gradient(circle at calc(20% + var(--tx) * 26%) calc(20% + var(--ty) * 22%), rgba(108, 245, 232, 0.64) 0%, transparent 56%),
+      radial-gradient(circle at calc(82% - var(--tx) * 22%) calc(38% + var(--ty) * 20%), rgba(255, 132, 206, 0.56) 0%, transparent 56%),
+      radial-gradient(circle at calc(32% + var(--tx) * 20%) calc(84% - var(--ty) * 18%), rgba(255, 240, 140, 0.54) 0%, transparent 54%);
+    mix-blend-mode: screen;
+  }
+  [data-tier="holo"] .foil-sheen {
+    opacity: 0.88;
+    background: linear-gradient(
+      var(--sheen-angle),
+      transparent 10%,
+      rgba(255, 132, 206, 0.45) 28%,
+      rgba(255, 240, 140, 0.42) 40%,
+      rgba(255, 255, 255, 0.72) 50%,
+      rgba(108, 245, 232, 0.48) 60%,
+      rgba(154, 132, 255, 0.44) 72%,
+      transparent 90%
+    );
+    transform: translate3d(calc(var(--tx) * 46%), calc(var(--ty) * 24%), 0);
+    mix-blend-mode: color-dodge;
+  }
+
+  /* Front Face Interior Elements & Z-Offset Hardware Cutout */
+  .slab-front-head,
+  .slab-front-foot {
+    position: relative;
+    z-index: 3;
+    transform-style: preserve-3d;
+  }
+
+  .slab-front-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  #hero-card-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(8, 10, 16, 0.34);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transform: translateZ(14px);
+  }
+
+  .slab-serial-chip {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0.78;
+    transform: translateZ(10px);
+  }
+
+  .slab-artwork-stage {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    flex: 1 1 auto;
+    min-block-size: 168px;
+    transform-style: preserve-3d;
+  }
+
+  #hero-card-artwork {
+    display: block;
+    inline-size: clamp(148px, 46vw, 186px);
+    block-size: auto;
+    max-block-size: 186px;
+    object-fit: contain;
+    transform: translate3d(calc(var(--tx) * -12px), calc(var(--ty) * -10px), 34px);
+    filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.36));
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .slab-front-foot {
+    display: grid;
+    gap: 3px;
+    transform: translate3d(calc(var(--tx) * 3px), calc(var(--ty) * 2px), 16px);
+  }
+
+  #hero-card-model {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+  }
+
+  #hero-card-hours {
+    font-size: clamp(2rem, 1.65rem + 1.4vw, 2.55rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.04;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #hero-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-block-start: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 0.76;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --------------------------------------------------------------------------
+     2. PSA Rear Acrylic Provenance Slab (#hero-card-back & #psa-slab)
+     -------------------------------------------------------------------------- */
+  .slab-back-shell {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-card, rgba(255, 255, 255, 0.14));
+  }
+
+  /* Subtle guilloche security wave + archival acrylic tint */
+  .slab-guilloche {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.36;
+    background-image:
+      radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--tier-glow-local, #7eb0bd) 34%, transparent) 0%, transparent 65%),
+      repeating-radial-gradient(circle at 50% 115%, transparent 0 11px, color-mix(in oklab, var(--tier-accent-local, #7eb0bd) 12%, transparent) 11px 12px),
+      repeating-radial-gradient(circle at 50% -15%, transparent 0 14px, rgba(255, 255, 255, 0.04) 14px 15px);
+  }
+
+  :root[data-resolved-theme="light"] .slab-guilloche {
+    opacity: 0.5;
+    background-image:
+      radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--tier-glow-local, #246e7d) 18%, transparent) 0%, transparent 65%),
+      repeating-radial-gradient(circle at 50% 115%, transparent 0 11px, rgba(19, 20, 28, 0.045) 11px 12px),
+      repeating-radial-gradient(circle at 50% -15%, transparent 0 14px, rgba(19, 20, 28, 0.03) 14px 15px);
+  }
+
+  .slab-back-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    block-size: 100%;
+    gap: 10px;
+  }
+
+  /* PSA-style Graded Top Header Plate */
+  .psa-plate {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border-radius: 13px;
+    background: var(--surface-fill, rgba(255, 255, 255, 0.07));
+    border: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.12));
+  }
+
+  .psa-plate-kicker {
+    display: block;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.55));
+  }
+
+  #hero-back-serial {
+    display: block;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+  }
+
+  .psa-grade-badge {
+    display: grid;
+    justify-items: end;
+    text-align: right;
+  }
+
+  #hero-back-grade {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--tier-accent-local, var(--tier-accent, #7eb0bd));
+    letter-spacing: 0.04em;
+  }
+
+  .slab-back-glyph-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-block-size: 112px;
+  }
+
+  #hero-back-glyph {
+    display: block;
+    inline-size: 118px;
+    block-size: 118px;
+  }
+
+  .slab-back-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .slab-stat-cell {
+    padding: 7px 9px;
+    border-radius: 11px;
+    background: var(--surface-fill, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.09));
+    display: grid;
+    gap: 2px;
+  }
+
+  .slab-stat-label {
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.64));
+  }
+
+  .slab-stat-val {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text-primary, #ffffff);
+  }
+
+  .slab-back-footer {
+    display: grid;
+    gap: 5px;
+    padding-block-start: 4px;
+    border-top: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.1));
+  }
+
+  #hero-back-progress {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slab-progress-track {
+    inline-size: 100%;
+    block-size: 4px;
+    border-radius: 999px;
+    background: var(--surface-fill-strong, rgba(255, 255, 255, 0.14));
+    overflow: hidden;
+  }
+
+  .slab-progress-fill {
+    block-size: 100%;
+    inline-size: var(--tier-progress, 35%);
+    border-radius: inherit;
+    background: var(--tier-accent-local, var(--tier-accent, #7eb0bd));
+    transition: inline-size 0.25s ease, background-color 0.25s ease;
+  }
+
+  /* Interactive Hero Controls (Device Tabs, 0-2500h Scrubber, 6 Tiers, Flip) */
+  .hero-lab-controls {
+    inline-size: min(100%, 420px);
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    border-radius: 20px;
+    background: color-mix(in oklab, var(--bg-card, #13131b) 84%, transparent);
+    border: 1px solid var(--border-card, rgba(255, 255, 255, 0.1));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .hero-lab-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+  }
+
+  [data-hero-device] {
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
+  }
+
+  [data-hero-device][aria-selected="true"] {
+    background: var(--inverted-fill, #ffffff);
+    color: var(--inverted-text, #000000);
+    border-color: transparent;
+  }
+
+  #hero-hours-range {
+    inline-size: 100%;
+    accent-color: var(--tier-accent, #7eb0bd);
+    cursor: pointer;
+  }
+
+  .hero-tier-pills {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  @media (min-width: 520px) {
+    .hero-tier-pills {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  [data-hero-tier] {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-block-size: 42px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.12));
+    background: var(--surface-fill, rgba(255, 255, 255, 0.06));
+    color: var(--text-primary, #ffffff);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+  }
+
+  [data-hero-tier]:hover {
+    transform: translateY(-1px);
+    border-color: var(--tier-accent, #7eb0bd);
+  }
+
+  [data-hero-tier][aria-pressed="true"] {
+    border-color: var(--tier-accent, #7eb0bd);
+    box-shadow: 0 0 0 1px var(--tier-accent, #7eb0bd), 0 8px 18px -8px var(--tier-glow, #6d9ca8);
+    background: color-mix(in oklab, var(--tier-accent, #7eb0bd) 16%, var(--surface-fill, rgba(255, 255, 255, 0.06)));
+  }
+
+  .tier-swatch-dot {
+    inline-size: 12px;
+    block-size: 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    flex-shrink: 0;
+  }
+
+  #hero-flip-btn {
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
+  }
+
+  #hero-flip-btn[aria-pressed="true"] {
+    background: color-mix(in oklab, var(--tier-accent, #7eb0bd) 18%, var(--surface-fill-strong, rgba(255, 255, 255, 0.12)));
+    border-color: var(--tier-accent, #7eb0bd);
+  }
+
+  /* --------------------------------------------------------------------------
+     3. Section 02: 6-Tier Collector Binder Spotlight (#tier-binder-mount)
+     -------------------------------------------------------------------------- */
+  #tier-spotlight {
+    --tx: 0;
+    --ty: 0;
+    --px: 70%;
+    --py: 20%;
+    --sheen-angle: 116deg;
+    --bevel-angle: 130deg;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 24px;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  }
+
+  [data-tier-card] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #tier-spotlight > :not(.foil-layers):not(.foil-bevel),
+  [data-tier-card] > :not(.foil-layers):not(.foil-bevel) {
+    position: relative;
+    z-index: 2;
+  }
+
+  [data-tier-card] > .foil-layers,
+  #tier-spotlight > .foil-layers {
+    z-index: -1;
+  }
+
+  [data-tier-card][aria-pressed="true"] {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px -12px color-mix(in oklab, var(--tier-glow, #6d9ca8) 55%, transparent);
+  }
+
+  /* --------------------------------------------------------------------------
+     4. Section 03: 28-Day Acoustic Chronometer & WHO Sound Budget Lab
+     -------------------------------------------------------------------------- */
+  .rings-dial-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: min(100%, 440px);
+    aspect-ratio: 1;
+    margin-inline: auto;
+  }
+
+  #earprint-rings-canvas {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    aspect-ratio: 1;
+    touch-action: pan-y;
+    cursor: crosshair;
+    border-radius: 50%;
+    outline: none;
+  }
+
+  #earprint-rings-canvas:focus-visible {
+    box-shadow: 0 0 0 2px var(--leq-quiet, #52e6db);
+  }
+
+  .rings-center-readout {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    max-inline-size: 40%;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    text-align: center;
+    pointer-events: none;
+    padding: 0.4rem;
+    gap: 0.15rem;
+  }
+
+  #rings-center-hours {
+    font-size: clamp(1.05rem, 0.92rem + 0.7vw, 1.55rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary, #ffffff);
+  }
+
+  #rings-center-db {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #rings-readout {
+    min-block-size: 56px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: 14px;
+    background: var(--surface-fill, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border-hairline, rgba(255, 255, 255, 0.1));
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+  }
+
+  [data-rings-device][aria-selected="true"],
+  [data-rings-persona][aria-pressed="true"],
+  [data-poster-aspect][aria-pressed="true"],
+  [data-poster-theme][aria-pressed="true"] {
+    background: var(--inverted-fill, #ffffff);
+    color: var(--inverted-text, #000000);
+    border-color: transparent;
+  }
+
+  /* WHO / ITU H.870 Sound Budget Bar */
+  .who-budget-meter {
+    inline-size: 100%;
+    block-size: 10px;
+    border-radius: 999px;
+    background: var(--surface-fill-strong, rgba(255, 255, 255, 0.12));
+    overflow: hidden;
+  }
+
+  #who-bar-fill {
+    display: block;
+    block-size: 100%;
+    inline-size: 0%;
+    border-radius: inherit;
+    background: var(--leq-quiet, #52e6db);
+    transition: inline-size 0.35s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
+  }
+
+  #who-db-range,
+  #who-hours-range {
+    inline-size: 100%;
+    accent-color: var(--leq-quiet, #52e6db);
+    cursor: pointer;
+  }
+
+  /* Share Poster Live Preview */
+  #share-poster-preview {
+    --poster-bg: #09090e;
+    --poster-card: #13131b;
+    --poster-fg: #ffffff;
+    --poster-muted: rgba(255, 255, 255, 0.64);
+    --poster-border: rgba(255, 255, 255, 0.11);
+    --poster-surface: rgba(255, 255, 255, 0.07);
+
+    position: relative;
+    inline-size: min(100%, 300px);
+    aspect-ratio: 3 / 4;
+    margin-inline: auto;
+    padding: 18px;
+    border-radius: 24px;
+    background: var(--poster-bg);
+    color: var(--poster-fg);
+    border: 1px solid var(--poster-border);
+    box-shadow: 0 22px 44px -18px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: aspect-ratio 0.28s ease, background-color 0.25s ease, color 0.25s ease;
+  }
+
+  #share-poster-preview[data-aspect="9:16"] {
+    aspect-ratio: 9 / 16;
+  }
+
+  #share-poster-preview[data-scheme="light"] {
+    --poster-bg: #f5f6fa;
+    --poster-card: #ffffff;
+    --poster-fg: #13141c;
+    --poster-muted: rgba(19, 20, 28, 0.62);
+    --poster-border: rgba(19, 20, 28, 0.1);
+    --poster-surface: rgba(19, 20, 28, 0.05);
+    box-shadow: 0 22px 44px -18px rgba(19, 20, 28, 0.18);
+  }
+
+  /* --------------------------------------------------------------------------
+     5. Section 04: PSA Grading Slab Flip (#psa-slab)
+     -------------------------------------------------------------------------- */
+  #psa-slab {
+    --rx: 0deg;
+    --ry: 0deg;
+    --flip: 0deg;
+    --tx: 0;
+    --ty: 0;
+    position: relative;
+    perspective: 1400px;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+
+  #psa-slab.is-dragging {
+    cursor: grabbing;
+  }
+
+  #psa-slab .psa-slab-front,
+  #psa-slab .psa-slab-back,
+  #psa-slab [data-slab-face="front"],
+  #psa-slab [data-slab-face="back"] {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  #psa-slab .psa-slab-front,
+  #psa-slab [data-slab-face="front"] {
+    transform: perspective(1400px) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip)));
+  }
+
+  #psa-slab .psa-slab-back,
+  #psa-slab [data-slab-face="back"] {
+    position: absolute;
+    inset: 0;
+    transform: perspective(1400px) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip) + 180deg));
+  }
+
+  #psa-slab[data-face="front"] .psa-slab-back,
+  #psa-slab[data-face="front"] [data-slab-face="back"],
+  #psa-slab[data-face="back"] .psa-slab-front,
+  #psa-slab[data-face="back"] [data-slab-face="front"] {
+    pointer-events: none;
+  }
+
+  /* --------------------------------------------------------------------------
+     6. Reduced Motion Guarantees
+     -------------------------------------------------------------------------- */
+  @media (prefers-reduced-motion: reduce) {
+    #hero-card-stage,
+    #hero-card-front,
+    #hero-card-back,
+    #hero-card-artwork,
+    #psa-slab,
+    #tier-spotlight,
+    #who-bar-fill,
+    #share-poster-preview {
+      transition: none !important;
+    }
+
+    #hero-card-artwork {
+      transform: translateZ(20px);
+    }
+  }
