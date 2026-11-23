@@ -3,108 +3,955 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Earprint — 3D Headphone Archive &amp; Acoustic Rings</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #f6f7fa;
-      --card: #ffffff;
-      --border: #e4e7ee;
-      --text: #12151c;
-      --muted: #5a6375;
-      --accent: #129f8a;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0b0d13;
-        --card: #131722;
-        --border: #252b3b;
-        --text: #f3f5fa;
-        --muted: #98a2b6;
-        --accent: #32dfc3;
+  <meta name="color-scheme" content="light dark">
+  <script>
+    try {
+      var t = localStorage.getItem('earprint.theme');
+      var r = (t === 'light' || t === 'dark')
+        ? t
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (t === 'light' || t === 'dark') {
+        document.querySelector('meta[name="color-scheme"]').content = t;
       }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
-    }
-    main { max-width: 760px; margin: 0 auto; padding: 48px 20px 72px; }
-    .badge {
-      display: inline-block;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-    h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 12px; }
-    p.lead { font-size: 1.05rem; color: var(--muted); margin: 0 0 28px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 24px 0; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px;
-      text-decoration: none;
-      color: inherit;
-      display: block;
-    }
-    .card h2 { margin: 0 0 6px; font-size: 1.15rem; }
-    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
-    footer { margin-top: 40px; font-size: 0.9rem; color: var(--muted); }
-    a.link { color: var(--accent); text-decoration: none; font-weight: 600; }
-    .cta-row { margin: 0 0 28px; }
-    .cta-btn {
-      display: inline-block;
-      background: var(--accent);
-      color: #ffffff;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.98rem;
-      padding: 12px 20px;
-      border-radius: 12px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .cta-btn { color: #0b0d13; }
-    }
-  </style>
+      document.documentElement.dataset.resolvedTheme = r;
+      document.documentElement.dataset.themePreference = (t === 'light' || t === 'dark') ? t : 'system';
+      var l = localStorage.getItem('earprint.lang');
+      if (l === 'en' || l === 'zh-Hans') {
+        document.documentElement.lang = l;
+      }
+    } catch (e) {}
+  </script>
+  <title>Earprint — 3D Headphone Archive &amp; Acoustic Rings</title>
+  <meta name="description" content="Turn read-only Apple Health Headphone Audio Levels into 6-tier 3D collectible foil cards, a PSA-style Device Dossier, 28-day Earprint Rings, and Home &amp; Lock Screen widgets — 100% on iPhone.">
+  <link rel="canonical" href="https://earprint.popcornnn.xyz/">
+  <meta property="og:title" content="Earprint — 3D Headphone Archive &amp; Acoustic Rings">
+  <meta property="og:description" content="6-tier 3D foil cards, PSA-style Device Dossier, 28-day Earprint Rings, and WHO safe-listening budget — 100% private on iPhone.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://earprint.popcornnn.xyz/">
+  <meta property="og:image" content="https://earprint.popcornnn.xyz/assets/og-earprint.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Earprint — 3D Headphone Archive &amp; Acoustic Rings">
+  <meta name="twitter:description" content="Read-only Apple Health headphone exposure cast into 3D collector cards and 28-day acoustic rings.">
+  <meta name="twitter:image" content="https://earprint.popcornnn.xyz/assets/og-earprint.jpg">
+
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="preload" as="image" href="./assets/cutouts/airpods-pro-case.webp" fetchpriority="high">
+  <link rel="modulepreload" href="./scripts/main.js">
+  <link rel="modulepreload" href="./scripts/i18n.js">
+
+  <link rel="stylesheet" href="./styles/tokens.css">
+  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./styles/interactive.css">
+  <script type="module" src="./scripts/main.js"></script>
 </head>
-<body>
-  <main>
-    <span class="badge">Earprint for iOS · v1.0.0</span>
-    <h1>Turn headphone listening history into 3D collector cards.</h1>
-    <p class="lead">
-      Read-only Apple Health Headphone Audio Levels visualized as 6-tier 3D foil cards, a collector-grade Device Dossier,
-      28-day Earprint Rings, and Home/Lock Screen widgets — 100% on your iPhone.
-      <br>
-      将 Apple“健康”中的耳机音量记录变为 6 阶 3D 金属收藏卡、设备档案与 28 天声纹环，全程 100% 在本机运行。
-    </p>
+<body data-title-key="meta.title">
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
-    <div class="cta-row">
-      <a class="cta-btn" href="https://apps.apple.com/app/id6837883616">Download on the App Store &middot; Free (iOS 18+)</a>
-    </div>
+  <canvas id="ambient-canvas" aria-hidden="true"></canvas>
 
-    <div class="grid">
-      <a class="card" href="support.html">
-        <h2>Support &amp; FAQ · 使用帮助</h2>
-        <p>Setup guide, Apple Health permissions, troubleshooting, and developer contact.</p>
-      </a>
-      <a class="card" href="privacy.html">
-        <h2>Privacy Policy · 隐私政策</h2>
-        <p>Zero servers, zero tracking, read-only Apple Health details (EN &amp; 简体中文).</p>
-      </a>
-    </div>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand-link" href="./index.html">
+          <img class="brand-icon theme-img-dark" src="./assets/app-icon-dark.webp" alt="" width="256" height="256">
+          <img class="brand-icon theme-img-light" src="./assets/app-icon-light.webp" alt="" width="256" height="256">
+          <span>Earprint</span>
+          <span class="brand-version">v1.0</span>
+        </a>
 
-    <footer>
-      Developer: Weizhi Wang &middot; Contact: <a class="link" href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a> &middot; Source: <a class="link" href="https://github.com/Popcornnnnnnnn/earprint">GitHub</a>
-      <br>
-      Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc.
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="#showcase" data-i18n="nav.cards">3D Cards</a>
+          <a href="#rings-lab" data-i18n="nav.rings">Rings Lab</a>
+          <a href="#dossier" data-i18n="nav.dossier">Dossier</a>
+          <a href="#widgets" data-i18n="nav.widgets">Widgets</a>
+          <a href="./support.html" data-i18n="nav.support">Support</a>
+          <a href="./privacy.html" data-i18n="nav.privacy">Privacy</a>
+        </nav>
+
+        <div class="header-actions">
+          <button type="button" class="pill-toggle" data-lang-toggle data-i18n-aria="controls.langAria" aria-pressed="false">
+            <span data-i18n="controls.langToggle">中文</span>
+          </button>
+          <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false">
+            <span class="theme-option-light">
+              <svg class="theme-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>
+              <span class="visually-hidden" data-i18n="controls.themeLightAria">Ceramic · Switch to Light Museum appearance</span>
+            </span>
+            <span class="theme-option-dark">
+              <svg class="theme-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.2 14.5A8.2 8.2 0 0 1 9.5 3.8a8.5 8.5 0 1 0 10.7 10.7Z"/></svg>
+              <span class="visually-hidden" data-i18n="controls.themeDarkAria">Obsidian · Switch to Dark Studio appearance</span>
+            </span>
+          </button>
+          <a class="header-cta" href="https://apps.apple.com/app/id6837883616" data-i18n="nav.cta">App Store</a>
+        </div>
+      </div>
+      <div class="scroll-progress" aria-hidden="true"></div>
+    </header>
+
+    <main>
+      <!-- 01 HERO -->
+      <section class="section section--hero" id="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="hero.eyebrow">01 / ACOUSTIC ARCHIVE · READ-ONLY HEALTHKIT</span></span>
+              <h1 id="main-content" tabindex="-1" data-i18n="hero.title">Every hour in your headphones, cast in metal.</h1>
+            </div>
+
+            <p class="hero-lead" data-i18n="hero.lead">
+              Turn read-only Apple Health Headphone Audio Levels into 6-tier 3D foil cards, a PSA-style Device Dossier, 28-day Earprint Rings, and Home &amp; Lock Screen widgets — 100% on your iPhone.
+            </p>
+
+            <div class="hero-cta-row">
+              <a class="btn btn-primary" href="https://apps.apple.com/app/id6837883616" data-i18n="hero.ctaPrimary">Download on the App Store · Free (iOS 18+)</a>
+              <a class="btn btn-secondary" href="https://github.com/Popcornnnnnnnn/earprint" data-i18n="hero.ctaSecondary">View Source on GitHub</a>
+            </div>
+
+            <div class="hero-specs">
+              <div>
+                <span class="hero-spec-val" data-i18n="hero.spec1Val">06 FOIL TIERS</span>
+                <span class="hero-spec-lbl" data-i18n="hero.spec1Lbl">0h Bronze Slate → 2,000h+ Liquid Holo</span>
+              </div>
+              <div>
+                <span class="hero-spec-val" data-i18n="hero.spec2Val">34 MODEL PIDS</span>
+                <span class="hero-spec-lbl" data-i18n="hero.spec2Lbl">Bluetooth 0x2002–0x2036 Hardware Lookup</span>
+              </div>
+              <div>
+                <span class="hero-spec-val" data-i18n="hero.spec3Val">0 BYTES SENT</span>
+                <span class="hero-spec-lbl" data-i18n="hero.spec3Lbl">Read-Only HealthKit · Data Not Collected</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="hero-slab-mount" class="slab-mount">
+            <div class="slab-stage-wrap">
+              <div id="hero-card-stage" data-device="pro2" data-tier="sapphire" data-hours="188" data-face="front" tabindex="0" aria-label="Interactive 3D Earprint collectible card">
+                <div id="hero-card-front">
+                  <div class="slab-front-head">
+                    <span id="hero-card-tier-badge">FJORD TEAL</span>
+                    <span class="slab-serial-chip">#0001 · 0x2024</span>
+                  </div>
+
+                  <div class="slab-artwork-stage">
+                    <img id="hero-card-artwork" src="./assets/cutouts/airpods-pro-case.webp" alt="AirPods Pro 2 USB-C 3D headphone collectible render" width="640" height="640" fetchpriority="high">
+                  </div>
+
+                  <div class="slab-front-foot">
+                    <div id="hero-card-model">AirPods Pro 2 · USB-C</div>
+                    <div id="hero-card-hours">188h 22m</div>
+                    <div id="hero-card-meta"><span>269 sessions</span><span>since 2026.10</span></div>
+                  </div>
+                </div>
+
+                <div id="hero-card-back">
+                  <div class="slab-back-content">
+                    <div class="psa-plate">
+                      <div>
+                        <span class="psa-plate-kicker">EARPRINT ARCHIVE · PROVENANCE</span>
+                        <span id="hero-back-serial">#0001 · 0x2024</span>
+                      </div>
+                      <div class="psa-grade-badge">
+                        <span class="psa-plate-kicker">EAR GRADE</span>
+                        <span id="hero-back-grade">9.5 GEM MINT</span>
+                      </div>
+                    </div>
+
+                    <div class="slab-back-glyph-wrap">
+                      <canvas id="hero-back-glyph" width="118" height="118" aria-hidden="true"></canvas>
+                    </div>
+
+                    <div class="slab-back-grid">
+                      <div class="slab-stat-cell">
+                        <span class="slab-stat-label" data-i18n="back.avgDb">Avg Leq</span>
+                        <span id="hero-back-db" class="slab-stat-val">58 dB(A)</span>
+                      </div>
+                      <div class="slab-stat-cell">
+                        <span class="slab-stat-label" data-i18n="back.longest">Longest</span>
+                        <span id="hero-back-longest" class="slab-stat-val">3h 40m</span>
+                      </div>
+                      <div class="slab-stat-cell">
+                        <span class="slab-stat-label" data-i18n="back.active">Active</span>
+                        <span id="hero-back-months" class="slab-stat-val">14 mo</span>
+                      </div>
+                      <div class="slab-stat-cell">
+                        <span class="slab-stat-label" data-i18n="back.sessions">Sessions</span>
+                        <span id="hero-back-sessions" class="slab-stat-val">269</span>
+                      </div>
+                    </div>
+
+                    <div class="slab-back-footer">
+                      <div id="hero-back-progress">212h to Deep Purple</div>
+                      <div class="slab-progress-track" aria-hidden="true">
+                        <div class="slab-progress-fill"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="slab-controls hero-lab-controls">
+              <div class="hero-lab-row">
+                <div role="tablist" aria-label="Headphone pair">
+                  <button type="button" role="tab" id="hero-tab-pro2" data-hero-device="pro2" aria-selected="true">AirPods Pro 2</button>
+                  <button type="button" role="tab" id="hero-tab-max" data-hero-device="max" aria-selected="false">AirPods Max</button>
+                  <button type="button" role="tab" id="hero-tab-airpods4" data-hero-device="airpods4" aria-selected="false">AirPods 4</button>
+                  <button type="button" role="tab" id="hero-tab-beats" data-hero-device="beats" aria-selected="false">Beats Fit Pro</button>
+                </div>
+
+                <button type="button" id="hero-flip-btn" class="btn btn-secondary btn-sm" aria-pressed="false" data-i18n="hero.flipFront">Inspect Rear Provenance</button>
+              </div>
+
+              <div class="range-field">
+                <div class="range-header">
+                  <label for="hero-hours-range" data-i18n="hero.hoursLabel">Lifetime Listening Hours</label>
+                  <span id="hero-hours-value" class="range-value">188h</span>
+                </div>
+                <input id="hero-hours-range" type="range" min="0" max="2500" value="188" step="1">
+              </div>
+
+              <div>
+                <p class="range-header" data-i18n="hero.tierQuickLabel">Jump to Collector Tier</p>
+                <div class="hero-tier-pills" role="group" aria-label="Collector rarity tiers">
+                  <button type="button" data-hero-tier="bronze" aria-pressed="false">
+                    <span class="tier-swatch-dot swatch-bronze" aria-hidden="true"></span>
+                    <span data-i18n="tiers.bronze.name">Bronze Slate</span>
+                    <span class="tier-pill-hours">0h+</span>
+                  </button>
+                  <button type="button" data-hero-tier="silver" aria-pressed="false">
+                    <span class="tier-swatch-dot swatch-silver" aria-hidden="true"></span>
+                    <span data-i18n="tiers.silver.name">Silver Aluminum</span>
+                    <span class="tier-pill-hours">25h+</span>
+                  </button>
+                  <button type="button" data-hero-tier="sapphire" aria-pressed="true">
+                    <span class="tier-swatch-dot swatch-sapphire" aria-hidden="true"></span>
+                    <span data-i18n="tiers.sapphire.name">Fjord Teal</span>
+                    <span class="tier-pill-hours">120h+</span>
+                  </button>
+                  <button type="button" data-hero-tier="platinum" aria-pressed="false">
+                    <span class="tier-swatch-dot swatch-platinum" aria-hidden="true"></span>
+                    <span data-i18n="tiers.platinum.name">Deep Purple</span>
+                    <span class="tier-pill-hours">400h+</span>
+                  </button>
+                  <button type="button" data-hero-tier="obsidian" aria-pressed="false">
+                    <span class="tier-swatch-dot swatch-obsidian" aria-hidden="true"></span>
+                    <span data-i18n="tiers.obsidian.name">Midnight Carbon</span>
+                    <span class="tier-pill-hours">1,000h+</span>
+                  </button>
+                  <button type="button" data-hero-tier="holo" aria-pressed="false">
+                    <span class="tier-swatch-dot swatch-holo" aria-hidden="true"></span>
+                    <span data-i18n="tiers.holo.name">Liquid Holo</span>
+                    <span class="tier-pill-hours">2,000h+</span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="mono slab-hint-note" data-i18n="hero.dragHint">Drag or tilt card to inspect specular grain</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 REALITYKIT MOTION & 6-TIER METALLURGY -->
+      <section class="section reveal" id="showcase">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="showcase.eyebrow">02 / REALITYKIT MOTION &amp; METALLURGY</span></span>
+              <h2 data-i18n="showcase.title">Sculpted in RealityKit. Tempered by hours.</h2>
+            </div>
+            <div>
+              <p class="section-lead" data-i18n="showcase.lead">
+                Every pair renders in real-time 3D above an anodized collector plate — drag with momentum, pinch to zoom, long-press to twirl, and level across 6 curated foil finishes.
+              </p>
+              <div class="action-inline-row">
+                <button type="button" class="video-control-btn" data-video-toggle aria-pressed="false" data-i18n="showcase.pauseVideos">Pause 3D Loops</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="motion-grid">
+            <article class="motion-stage">
+              <div class="motion-stage-head">
+                <span class="motion-label" data-i18n="showcase.video1Title">DARK STUDIO · AIRPODS PRO 2 (FJORD TEAL)</span>
+                <span class="mono meta-caption">RealityKit · 60fps</span>
+              </div>
+              <div class="motion-frame">
+                <video class="motion-video" width="320" height="696" loading="lazy" preload="metadata" autoplay loop muted playsinline poster="./assets/media/card-3d-pro-dark-poster.webp" aria-label="AirPods Pro 2 RealityKit 3D collectible card spinning in Dark mode">
+                  <source src="./assets/media/card-3d-pro-dark.webm" type="video/webm">
+                  <source src="./assets/media/card-3d-pro-dark.mp4" type="video/mp4">
+                </video>
+              </div>
+            </article>
+
+            <article class="motion-stage">
+              <div class="motion-stage-head">
+                <span class="motion-label" data-i18n="showcase.video2Title">MUSEUM LIGHT · AIRPODS MAX (SILVER ALUMINUM)</span>
+                <span class="mono meta-caption">RealityKit · 10 Finishes</span>
+              </div>
+              <div class="motion-frame">
+                <video class="motion-video" width="320" height="696" loading="lazy" preload="metadata" autoplay loop muted playsinline poster="./assets/media/card-3d-max-light-poster.webp" aria-label="AirPods Max RealityKit 3D collectible card spinning in Light mode">
+                  <source src="./assets/media/card-3d-max-light.webm" type="video/webm">
+                  <source src="./assets/media/card-3d-max-light.mp4" type="video/mp4">
+                </video>
+              </div>
+            </article>
+          </div>
+
+          <h3 class="binder-title" data-i18n="showcase.binderHeading">Collector Binder · 6 Rarity Thresholds</h3>
+          <div id="tier-binder-mount" class="binder-mount">
+            <div id="tier-spotlight" class="tier-spotlight" data-tier="sapphire">
+              <div>
+                <span id="tier-spotlight-finish" class="eyebrow">Brushed Slate</span>
+                <h3 id="tier-spotlight-title" class="spotlight-title">FJORD TEAL</h3>
+              </div>
+              <div id="tier-spotlight-hours" class="tier-spotlight-hours">120h+</div>
+              <p id="tier-spotlight-tagline" class="section-lead">Coastal brushed fjord teal at 120+ hours</p>
+            </div>
+
+            <div class="binder-grid" role="group" aria-label="6 collector card tiers">
+              <button type="button" class="binder-card" data-tier-card="bronze" aria-pressed="false">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">01 · 0h+</span>
+                  <span class="binder-swatch swatch-bronze" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.bronze.name">Bronze Slate</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.bronze.finish">Anodized Matte</div>
+                </div>
+              </button>
+
+              <button type="button" class="binder-card" data-tier-card="silver" aria-pressed="false">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">02 · 25h+</span>
+                  <span class="binder-swatch swatch-silver" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.silver.name">Silver Aluminum</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.silver.finish">Beaded Alloy</div>
+                </div>
+              </button>
+
+              <button type="button" class="binder-card" data-tier-card="sapphire" aria-pressed="true">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">03 · 120h+</span>
+                  <span class="binder-swatch swatch-sapphire" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.sapphire.name">Fjord Teal</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.sapphire.finish">Brushed Slate</div>
+                </div>
+              </button>
+
+              <button type="button" class="binder-card" data-tier-card="platinum" aria-pressed="false">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">04 · 400h+</span>
+                  <span class="binder-swatch swatch-platinum" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.platinum.name">Deep Purple</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.platinum.finish">Frosted Plum</div>
+                </div>
+              </button>
+
+              <button type="button" class="binder-card" data-tier-card="obsidian" aria-pressed="false">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">05 · 1,000h+</span>
+                  <span class="binder-swatch swatch-obsidian" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.obsidian.name">Midnight Carbon</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.obsidian.finish">DLC Coating</div>
+                </div>
+              </button>
+
+              <button type="button" class="binder-card" data-tier-card="holo" aria-pressed="false">
+                <div class="binder-card-top">
+                  <span class="mono meta-caption">06 · 2,000h+</span>
+                  <span class="binder-swatch swatch-holo" aria-hidden="true"></span>
+                </div>
+                <div>
+                  <strong data-i18n="tiers.holo.name">Liquid Holo</strong>
+                  <div class="mono meta-caption" data-i18n="tiers.holo.finish">Prism Oxide</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 28-DAY EARPRINT RINGS & WHO SOUND BUDGET LAB -->
+      <section class="section reveal" id="rings-lab">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="rings.eyebrow">03 / ACOUSTIC CHRONOMETER · WHO / ITU H.870</span></span>
+              <h2 data-i18n="rings.title">28 days × 24 hours, plotted by loudness.</h2>
+            </div>
+            <p class="section-lead" data-i18n="rings.lead">
+              Concentric rings map the past four weeks by local hour, energy-averaged loudness (Leq in dB(A)), listening persona, and your weekly safe-listening budget.
+            </p>
+          </div>
+
+          <div id="rings-lab-mount" class="rings-lab">
+            <div class="rings-dial-card">
+              <div class="control-row">
+                <div role="tablist" aria-label="Filter rings by headphone">
+                  <button type="button" role="tab" id="rings-tab-all" data-rings-device="all" aria-selected="true" data-i18n="rings.deviceAll">All Pairs</button>
+                  <button type="button" role="tab" id="rings-tab-pro2" data-rings-device="pro2" aria-selected="false">AirPods Pro 2</button>
+                  <button type="button" role="tab" id="rings-tab-max" data-rings-device="max" aria-selected="false">AirPods Max</button>
+                  <button type="button" role="tab" id="rings-tab-airpods4" data-rings-device="airpods4" aria-selected="false">AirPods 4</button>
+                </div>
+
+                <span id="rings-persona-badge" class="mono badge-pill">Night Owl</span>
+              </div>
+
+              <div class="persona-row" role="group" aria-label="Listening persona presets">
+                <button type="button" class="persona-btn" data-rings-persona="nightOwl" aria-pressed="true" data-i18n="rings.personaNight">Night Owl</button>
+                <button type="button" class="persona-btn" data-rings-persona="commuter" aria-pressed="false" data-i18n="rings.personaCommute">Commute</button>
+                <button type="button" class="persona-btn" data-rings-persona="earlyBird" aria-pressed="false" data-i18n="rings.personaEarly">Early Bird</button>
+                <button type="button" class="persona-btn" data-rings-persona="allDay" aria-pressed="false" data-i18n="rings.personaAllDay">All-Day</button>
+              </div>
+
+              <div class="rings-dial-stage">
+                <canvas id="earprint-rings-canvas" width="640" height="640" role="img" tabindex="0" aria-label="28-day concentric Earprint loudness dial plotting 24 local hours"></canvas>
+                <div class="rings-center-readout">
+                  <span id="rings-center-hours" class="rings-center-hours">35h 19m</span>
+                  <span id="rings-center-db" class="rings-center-db">70 dB(A)</span>
+                </div>
+              </div>
+
+              <div id="rings-readout" class="rings-readout-bar" aria-live="polite">
+                Hover, tap, or arrow across the dial to inspect any hour sector.
+              </div>
+
+              <div class="leq-legend">
+                <span><span class="leq-swatch leq-dot-quiet" aria-hidden="true"></span><span data-i18n="rings.scaleQuiet">&lt;60 dB(A) Glacier Mint</span></span>
+                <span><span class="leq-swatch leq-dot-moderate" aria-hidden="true"></span><span data-i18n="rings.scaleMod">70 dB(A) Champagne Gold</span></span>
+                <span><span class="leq-swatch leq-dot-loud" aria-hidden="true"></span><span data-i18n="rings.scaleLoud">82+ dB(A) Rose Crimson</span></span>
+              </div>
+
+              <dl id="rings-a11y-summary" class="rings-a11y-dl">
+                <dt>7-day listening</dt><dd>35h 19m</dd>
+                <dt>Energy Leq</dt><dd>70.0 dB(A)</dd>
+                <dt>Listening persona</dt><dd>🦉 Night Owl</dd>
+                <dt>WHO weekly budget</dt><dd>9%</dd>
+              </dl>
+            </div>
+
+            <div class="rings-side">
+              <article class="lab-panel">
+                <div>
+                  <h3 data-i18n="rings.whoHeading">WHO / ITU H.870 Weekly Sound Budget</h3>
+                  <p class="panel-subtitle" data-i18n="rings.whoFormula">
+                    Reference ceiling: 80 dB(A) for 40 hours/week, halving every +3 dB.
+                  </p>
+                </div>
+
+                <div class="range-field">
+                  <div class="range-header">
+                    <label for="who-db-range" data-i18n="rings.whoDbLabel">Weekly Average Loudness (Leq)</label>
+                    <span id="who-db-value" class="range-value">70 dB(A)</span>
+                  </div>
+                  <input id="who-db-range" type="range" min="55" max="95" value="70" step="1">
+                </div>
+
+                <div class="range-field">
+                  <div class="range-header">
+                    <label for="who-hours-range" data-i18n="rings.whoHoursLabel">Weekly Listening Duration</label>
+                    <span id="who-hours-value" class="range-value">35.0h</span>
+                  </div>
+                  <input id="who-hours-range" type="range" min="1" max="50" value="35" step="0.5">
+                </div>
+
+                <div class="who-budget-meter" aria-hidden="true">
+                  <div id="who-bar-fill"></div>
+                </div>
+
+                <div class="who-metrics-grid">
+                  <div class="metric-box">
+                    <span class="metric-box-label" data-i18n="rings.whoPctLbl">Budget Used</span>
+                    <span id="who-budget-pct" class="metric-box-value">8.7%</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-box-label" data-i18n="rings.whoAllowLbl">Safe Weekly Ceiling</span>
+                    <span id="who-allowed-hours" class="metric-box-value">403h</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-box-label" data-i18n="rings.whoExposedLbl">Exposed Time</span>
+                    <span id="who-exposed-min" class="metric-box-value">2,100m</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-box-label" data-i18n="rings.whoRemainLbl">Remaining Budget</span>
+                    <span id="who-remaining-pct" class="metric-box-value">91.3%</span>
+                  </div>
+                </div>
+
+                <p id="who-verdict" class="mono verdict-note">
+                  Well within WHO / ITU H.870 safe listening allowance.
+                </p>
+              </article>
+
+              <article class="lab-panel">
+                <div class="control-row">
+                  <h3 data-i18n="rings.posterHeading">3:4 &amp; 9:16 Share Poster Preview</h3>
+                  <div class="control-cluster">
+                    <button type="button" class="pill-toggle" data-poster-aspect="3:4" aria-pressed="true">3:4</button>
+                    <button type="button" class="pill-toggle" data-poster-aspect="9:16" aria-pressed="false">9:16</button>
+                    <button type="button" class="pill-toggle" data-poster-theme="dark" aria-pressed="true" data-i18n="poster.dark">Dark</button>
+                    <button type="button" class="pill-toggle" data-poster-theme="light" aria-pressed="false" data-i18n="poster.light">Light</button>
+                  </div>
+                </div>
+
+                <div id="share-poster-preview" data-aspect="3:4" data-scheme="dark">
+                  <div class="poster-preview-head mono">
+                    <span>EARPRINT · 28D</span>
+                    <span id="poster-avg-db">70 dB</span>
+                  </div>
+                  <canvas id="share-poster-canvas" width="220" height="220" aria-hidden="true"></canvas>
+                  <div class="poster-preview-foot mono">
+                    <span id="poster-week-hours" class="poster-stat">35h 19m</span>
+                    <span id="poster-persona" class="poster-sub">🦉 Night Owl</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 PSA DEVICE DOSSIER & LIGHT/DARK EXHIBITION -->
+      <section class="section reveal" id="dossier">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="dossier.eyebrow">04 / PSA-STYLE DEVICE DOSSIER · EAR GRADE</span></span>
+              <h2 data-i18n="dossier.title">Each pair, acoustically graded.</h2>
+            </div>
+            <p class="section-lead" data-i18n="dossier.lead">
+              Behind every collectible sits a transparent Ear Grade (1.0–10.0), 30-day loudness trend, 24-hour Day Clock, monthly ledger, milestones, and guilloché provenance certificate.
+            </p>
+          </div>
+
+          <div id="dossier-slab-mount" class="dossier-lab">
+            <div class="psa-slab-column">
+              <div id="psa-slab" class="psa-slab" data-face="front">
+                <div class="psa-slab-front" data-slab-face="front">
+                  <div class="psa-cert-header">
+                    <div>
+                      <span class="mono meta-caption">EARPRINT CERTIFICATION LAB</span>
+                      <div id="grade-cert" class="mono"><strong>#0001 · 2024 · 1030</strong></div>
+                    </div>
+                    <div class="psa-grade-box">
+                      <span id="grade-score" class="mono psa-grade-score">9.5</span>
+                      <span id="grade-label" class="mono meta-caption">GEM MINT</span>
+                    </div>
+                  </div>
+
+                  <div class="psa-slab-body">
+                    <img src="./assets/cutouts/airpods-pro.webp" alt="AirPods Pro 2 inside PSA acoustic grading slab" width="512" height="512" loading="lazy">
+                    <div class="mono audit-body">
+                      Apple Inc. &middot; PID 0x2024 &middot; HW A3047 &middot; FW 7E93
+                    </div>
+                  </div>
+                </div>
+
+                <div class="psa-slab-back slab-back-shell" data-slab-face="back">
+                  <div>
+                    <span class="mono meta-caption">GUILLOCHÉ HARDWARE PROVENANCE</span>
+                    <h3>AirPods Pro 2 (USB-C)</h3>
+                  </div>
+                  <dl class="card-back-grid">
+                    <div><dt>HKDevice.name</dt><dd class="mono">AirPods Pro</dd></div>
+                    <div><dt>Manufacturer</dt><dd class="mono">Apple Inc.</dd></div>
+                    <div><dt>HKDevice.model</dt><dd class="mono">0x2024</dd></div>
+                    <div><dt>HKSource</dt><dd class="mono">iPhone 17 Pro</dd></div>
+                  </dl>
+                  <p class="mono audit-body">
+                    Verified read-only HealthKit provenance · On-device cache
+                  </p>
+                </div>
+              </div>
+
+              <div class="slab-flip-row">
+                <button type="button" id="slab-flip-btn" class="btn btn-secondary btn-sm" aria-pressed="false" data-i18n="dossier.slabFlipFront">Inspect Guilloché Certificate</button>
+              </div>
+            </div>
+
+            <article class="lab-panel">
+              <div>
+                <h3 data-i18n="dossier.simHeading">Simulate Ear Grade Formula</h3>
+                <p class="panel-subtitle" data-i18n="dossier.simLead">
+                  Live mirror of DeviceDossier.swift: starts at 10.0 and deducts four transparent acoustic penalties.
+                </p>
+              </div>
+
+              <div class="range-field">
+                <div class="range-header">
+                  <label for="grade-db-input" data-i18n="dossier.dbLabel">30-Day Avg Loudness</label>
+                  <span id="grade-db-val" class="range-value">58 dB(A)</span>
+                </div>
+                <input id="grade-db-input" type="range" min="50" max="90" value="58" step="1">
+              </div>
+
+              <div class="range-field">
+                <div class="range-header">
+                  <label for="grade-dose-input" data-i18n="dossier.doseLabel">Weekly WHO Dose</label>
+                  <span id="grade-dose-val" class="range-value">4%</span>
+                </div>
+                <input id="grade-dose-input" type="range" min="0" max="150" value="4" step="1">
+              </div>
+
+              <div class="range-field">
+                <div class="range-header">
+                  <label for="grade-loud-input" data-i18n="dossier.loudLabel">Sessions ≥ 80 dB(A)</label>
+                  <span id="grade-loud-val" class="range-value">2%</span>
+                </div>
+                <input id="grade-loud-input" type="range" min="0" max="100" value="2" step="1">
+              </div>
+
+              <div class="range-field">
+                <div class="range-header">
+                  <label for="grade-night-input" data-i18n="dossier.nightLabel">Late-Night Share (00–05h)</label>
+                  <span id="grade-night-val" class="range-value">14%</span>
+                </div>
+                <input id="grade-night-input" type="range" min="0" max="100" value="14" step="1">
+              </div>
+
+              <div id="grade-factors-list" class="grade-breakdown" aria-live="polite"></div>
+            </article>
+          </div>
+
+          <div data-tabs-root>
+            <div class="exhibition-header">
+              <h3 data-i18n="dossier.galleryTitle">App Exhibition · Dark Studio &amp; Museum Light</h3>
+              <div role="tablist" aria-label="App exhibition appearance">
+                <button type="button" role="tab" id="tab-gallery-dark" data-gallery-theme="dark" aria-selected="true" data-i18n="dossier.tabDark">Dark Studio</button>
+                <button type="button" role="tab" id="tab-gallery-light" data-gallery-theme="light" aria-selected="false" data-i18n="dossier.tabLight">Museum Light</button>
+              </div>
+            </div>
+
+            <div id="gallery-panels" class="tabpanel-stack">
+              <div role="tabpanel" aria-labelledby="tab-gallery-dark">
+                <div class="panel-inner gallery-strip">
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/collection-dark.webp" alt="Earprint Collection screen in Dark mode" width="560" height="1218" loading="lazy">
+                    <figcaption class="screen-caption">01 · Collection · Dark</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/card-tiers-dark.webp" alt="6-tier Collector Binder in Dark mode" width="560" height="1218" loading="lazy">
+                    <figcaption class="screen-caption">02 · 6-Tier Binder · Dark</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/dossier-dark.webp" alt="PSA Device Dossier in Dark mode" width="560" height="1218" loading="lazy">
+                    <figcaption class="screen-caption">03 · PSA Dossier · Dark</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/rings-dark.webp" alt="28-day Earprint Rings in Dark mode" width="560" height="1218" loading="lazy">
+                    <figcaption class="screen-caption">04 · 28-Day Rings · Dark</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/dossier-clock.webp" alt="Dossier 24-hour radial Day Clock" width="720" height="1565" loading="lazy">
+                    <figcaption class="screen-caption">05 · 24h Day Clock</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/dossier-certificate.webp" alt="Dossier guilloché hardware provenance certificate" width="720" height="1565" loading="lazy">
+                    <figcaption class="screen-caption">06 · Guilloché Certificate</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <video width="340" height="738" loading="lazy" preload="metadata" autoplay loop muted playsinline poster="./assets/media/dossier-demo-poster.webp" aria-label="Device Dossier scrolling and period switching demo">
+                      <source src="./assets/media/dossier-demo.webm" type="video/webm">
+                      <source src="./assets/media/dossier-demo.mp4" type="video/mp4">
+                    </video>
+                    <figcaption class="screen-caption">07 · Dossier Motion Reel</figcaption>
+                  </figure>
+                </div>
+              </div>
+
+              <div role="tabpanel" aria-labelledby="tab-gallery-light" hidden="until-found">
+                <div class="panel-inner gallery-strip">
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/collection-light.webp" alt="Earprint Collection screen in Light mode" width="560" height="1218" loading="lazy" fetchpriority="low">
+                    <figcaption class="screen-caption">01 · Collection · Light</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/card-tiers-light.webp" alt="6-tier Collector Binder in Light mode" width="560" height="1218" loading="lazy" fetchpriority="low">
+                    <figcaption class="screen-caption">02 · 6-Tier Binder · Light</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/dossier-light.webp" alt="PSA Device Dossier in Light mode" width="560" height="1218" loading="lazy" fetchpriority="low">
+                    <figcaption class="screen-caption">03 · PSA Dossier · Light</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/rings-light.webp" alt="28-day Earprint Rings in Light mode" width="560" height="1218" loading="lazy" fetchpriority="low">
+                    <figcaption class="screen-caption">04 · 28-Day Rings · Light</figcaption>
+                  </figure>
+                  <figure class="screen-frame">
+                    <img src="./assets/screens/share-poster-light.webp" alt="Exported 3:4 Earprint Rings Share Poster in Light mode" width="560" height="1218" loading="lazy" fetchpriority="low">
+                    <figcaption class="screen-caption">05 · 3:4 Share Poster</figcaption>
+                  </figure>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 WIDGETS, DYNAMIC ISLAND & 41-ICON STUDIO -->
+      <section class="section reveal" id="widgets">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="widgets.eyebrow">05 / WIDGETKIT · DYNAMIC ISLAND · 41 ICONS</span></span>
+              <h2 data-i18n="widgets.title">Ambient across Home &amp; Lock Screen.</h2>
+            </div>
+            <p class="section-lead" data-i18n="widgets.lead">
+              Interactive Today card cycler, 3-slot Card Shelf deep links, Large 28-day Earprint Ring widget, Lock Screen WHO gauges, Live Activity ear-break timer, and 41 custom App Icons.
+            </p>
+          </div>
+
+          <div class="widgets-showcase">
+            <div class="widget-cluster">
+              <figure class="widget-tile">
+                <img src="./assets/widgets/board-home-screen.webp" alt="Home Screen Small Today, Medium Card Shelf, and Large Earprint Ring widgets" width="720" height="1587" loading="lazy">
+                <figcaption class="screen-caption">Home Screen · Today · Card Shelf · Large Ring</figcaption>
+              </figure>
+              <figure class="widget-tile">
+                <img src="./assets/widgets/board-lock-screen.webp" alt="Lock Screen WHO Budget circular gauge, Today summary, and Live Activity" width="720" height="1565" loading="lazy">
+                <figcaption class="screen-caption">Lock Screen · WHO Gauge &amp; Live Activity</figcaption>
+              </figure>
+            </div>
+
+            <div class="widget-cluster">
+              <figure class="widget-tile widget-tile--wide">
+                <img src="./assets/widgets/island-expanded.webp" alt="Dynamic Island expanded view showing live headphone loudness and ear-break timer" width="900" height="313" loading="lazy">
+                <figcaption class="screen-caption">Dynamic Island · Expanded Acoustic Timer</figcaption>
+              </figure>
+              <figure class="widget-tile widget-tile--wide">
+                <img src="./assets/widgets/live-activity-lock-screen.webp" alt="Lock Screen Live Activity banner with 40 minute ear-break countdown" width="900" height="364" loading="lazy">
+                <figcaption class="screen-caption">ActivityKit · Ear Break Countdown</figcaption>
+              </figure>
+              <figure class="widget-tile">
+                <img src="./assets/widgets/small-today.webp" alt="Small Today interactive card cycler widget" width="510" height="510" loading="lazy">
+                <figcaption class="screen-caption">Today · NextCardIntent</figcaption>
+              </figure>
+              <figure class="widget-tile">
+                <img src="./assets/widgets/large-earprint.webp" alt="Large Earprint Ring widget with 28-day heatmap and WHO budget bar" width="760" height="798" loading="lazy">
+                <figcaption class="screen-caption">Large Earprint Ring + Heatmap</figcaption>
+              </figure>
+              <figure class="widget-tile widget-tile--wide">
+                <img src="./assets/widgets/medium-card-shelf.webp" alt="Medium Card Shelf widget deep linking 3 headphone cards" width="760" height="355" loading="lazy">
+                <figcaption class="screen-caption">Card Shelf · Deep Links earprint://card/&lt;id&gt;</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div id="icon-studio-mount" class="icon-studio">
+            <div class="icon-stage-col">
+              <div id="icon-preview-squircle" class="icon-squircle" data-bg="dark" data-finish="midnight">
+                <img id="icon-preview-cutout" src="./assets/icons/cutout-midnight.webp" alt="Midnight AirPods Max app icon preview" width="256" height="256" loading="lazy">
+              </div>
+              <span id="icon-preview-label" class="mono audit-body">Midnight (USB-C) · Dark</span>
+            </div>
+
+            <div class="icon-studio-controls">
+              <div>
+                <span class="eyebrow" data-i18n="widgets.studioEyebrow">App Icon Studio · 1 Emblem + 10 Finishes × 4 Surfaces = 41 Icons</span>
+                <h3 data-i18n="widgets.studioTitle">Pair your Home Screen with your hardware.</h3>
+              </div>
+
+              <div>
+                <p class="range-header" data-i18n="widgets.bgLabel">Surface Backing</p>
+                <div class="icon-bg-row">
+                  <button type="button" class="pill-toggle" data-icon-default aria-pressed="false" data-i18n="widgets.defaultEmblemBtn">Earprint Studio Emblem (Default)</button>
+                  <button type="button" class="pill-toggle" data-icon-bg="auto" aria-pressed="false" data-i18n="icon.bgAuto">Auto</button>
+                  <button type="button" class="pill-toggle" data-icon-bg="light" aria-pressed="false" data-i18n="icon.bgLight">Light</button>
+                  <button type="button" class="pill-toggle" data-icon-bg="dark" aria-pressed="true" data-i18n="icon.bgDark">Dark</button>
+                  <button type="button" class="pill-toggle" data-icon-bg="holo" aria-pressed="false" data-i18n="icon.bgHolo">Holo</button>
+                </div>
+              </div>
+
+              <div>
+                <p class="range-header" data-i18n="widgets.finishLabel">AirPods Max Finish (USB-C &amp; Lightning)</p>
+                <div class="icon-finish-grid">
+                  <button type="button" class="finish-chip" data-icon-finish="midnight" aria-pressed="true"><span class="finish-dot dot-midnight" aria-hidden="true"></span>Midnight</button>
+                  <button type="button" class="finish-chip" data-icon-finish="starlight" aria-pressed="false"><span class="finish-dot dot-starlight" aria-hidden="true"></span>Starlight</button>
+                  <button type="button" class="finish-chip" data-icon-finish="blue" aria-pressed="false"><span class="finish-dot dot-blue" aria-hidden="true"></span>Blue</button>
+                  <button type="button" class="finish-chip" data-icon-finish="purple" aria-pressed="false"><span class="finish-dot dot-purple" aria-hidden="true"></span>Purple</button>
+                  <button type="button" class="finish-chip" data-icon-finish="orange" aria-pressed="false"><span class="finish-dot dot-orange" aria-hidden="true"></span>Orange</button>
+                  <button type="button" class="finish-chip" data-icon-finish="spaceGray" aria-pressed="false"><span class="finish-dot dot-space-gray" aria-hidden="true"></span>Space Gray</button>
+                  <button type="button" class="finish-chip" data-icon-finish="silver" aria-pressed="false"><span class="finish-dot dot-silver" aria-hidden="true"></span>Silver</button>
+                  <button type="button" class="finish-chip" data-icon-finish="skyBlue" aria-pressed="false"><span class="finish-dot dot-sky-blue" aria-hidden="true"></span>Sky Blue</button>
+                  <button type="button" class="finish-chip" data-icon-finish="green" aria-pressed="false"><span class="finish-dot dot-green" aria-hidden="true"></span>Green</button>
+                  <button type="button" class="finish-chip" data-icon-finish="pink" aria-pressed="false"><span class="finish-dot dot-pink" aria-hidden="true"></span>Pink</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06 PRIVACY VAULT, FAQ, CC-BY 4.0 CREDITS & FINALE -->
+      <section class="section reveal" id="privacy">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span><span data-i18n="privacy.eyebrow">06 / ON-DEVICE ARCHITECTURE · CC-BY 4.0</span></span>
+              <h2 data-i18n="privacy.title">Read-only HealthKit. Zero servers.</h2>
+            </div>
+            <div>
+              <p class="section-lead" data-i18n="privacy.lead">
+                Your listening history never leaves your iPhone. Release builds request strictly read-only Headphone Audio Levels (toShare: []) under Apple Data Not Collected.
+              </p>
+              <div class="action-inline-row">
+                <a href="./privacy.html" data-i18n="privacy.policyLink">Read Full Bilingual Privacy Policy →</a>
+                <a href="./support.html" data-i18n="privacy.supportLink">Open Complete Support &amp; FAQ →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="audit-grid">
+            <article class="audit-card">
+              <span class="audit-kicker" data-i18n="privacy.card1Kicker">SINGLE HK TYPE</span>
+              <h3 data-i18n="privacy.card1Title">Headphone Audio Levels Only</h3>
+              <p class="audit-body" data-i18n="privacy.card1Body">
+                Reads only HKQuantityType(.headphoneAudioExposure) with toShare: []. Never accesses heart rate, sleep, mic, location, or track titles.
+              </p>
+            </article>
+            <article class="audit-card">
+              <span class="audit-kicker" data-i18n="privacy.card2Kicker">ENCRYPTED SANDBOX</span>
+              <h3 data-i18n="privacy.card2Title">Local Cache &amp; App Group</h3>
+              <p class="audit-body" data-i18n="privacy.card2Body">
+                Incremental HKAnchoredObjectQueryDescriptor writes aggregates to listening-aggregate.json under iOS file protection and group.com.popcornnn.earprint.
+              </p>
+            </article>
+            <article class="audit-card">
+              <span class="audit-kicker" data-i18n="privacy.card3Kicker">ZERO TELEMETRY</span>
+              <h3 data-i18n="privacy.card3Title">No Accounts, Servers, or SDKs</h3>
+              <p class="audit-body" data-i18n="privacy.card3Body">
+                Zero analytics, zero crash reporting SDKs, zero ad frameworks. Exported posters leave iPhone only via your explicit iOS Share Sheet choice.
+              </p>
+            </article>
+            <article class="audit-card">
+              <span class="audit-kicker" data-i18n="privacy.card4Kicker">OPEN SOURCE</span>
+              <h3 data-i18n="privacy.card4Title">Inspect Every Line on GitHub</h3>
+              <p class="audit-body" data-i18n="privacy.card4Body">
+                Full SwiftUI, RealityKit, HealthKit, WidgetKit, and test suite source code is auditable publicly on GitHub.
+              </p>
+            </article>
+          </div>
+
+          <div class="faq-credit-grid">
+            <div class="accordion">
+              <h3 data-i18n="faq.heading">Quick Answers</h3>
+              <details>
+                <summary data-i18n="faq.q1">Why are no headphones showing up yet?</summary>
+                <div class="accordion-body">
+                  <p data-i18n="faq.a1">Ensure Settings → Privacy &amp; Security → Health → Earprint has Headphone Audio Levels enabled. Note iOS records samples only while audio actively plays — silent ANC does not generate Health samples.</p>
+                </div>
+              </details>
+              <details>
+                <summary data-i18n="faq.q2">Which headphones receive interactive 3D cards?</summary>
+                <div class="accordion-body">
+                  <p data-i18n="faq.a2">AirPods (1st–4th gen, ANC &amp; standard), AirPods Pro (1–3), and AirPods Max (Lightning &amp; USB-C) receive matched collectible artwork and 3D models. Beats and third-party Bluetooth headphones still count toward Rings and totals.</p>
+                </div>
+              </details>
+              <details>
+                <summary data-i18n="faq.q3">How do the 6 collector tiers unlock?</summary>
+                <div class="accordion-body">
+                  <p data-i18n="faq.a3">Cards upgrade automatically by lifetime listening hours: Bronze Slate (0h+), Silver Aluminum (25h+), Fjord Teal (120h+), Deep Purple (400h+), Midnight Carbon (1,000h+), and Liquid Holo (2,000h+).</p>
+                </div>
+              </details>
+              <details>
+                <summary data-i18n="faq.q4">Is Earprint affiliated with Apple or a medical device?</summary>
+                <div class="accordion-body">
+                  <p data-i18n="faq.a4">No. Earprint is an independent app by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc. Acoustic metrics and WHO budgets are informational only and not a medical device.</p>
+                </div>
+              </details>
+            </div>
+
+            <div class="table-scroll">
+              <table class="credits-table">
+                <caption data-i18n="credits.caption">Bundled 3D Model Attributions (CC-BY 4.0)</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" data-i18n="table.model">Model</th>
+                    <th scope="col" data-i18n="table.work">Source Work</th>
+                    <th scope="col" data-i18n="table.creator">Creator</th>
+                    <th scope="col" data-i18n="table.license">License</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">AirPods4.usdz</td>
+                    <td><a href="https://sketchfab.com/3d-models/airpods-4-e44730974131402eb496352cab19c82e">AirPods 4</a></td>
+                    <td><a href="https://sketchfab.com/3dFalah">Falah3D</a></td>
+                    <td><a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">AirPodsMax.usdz</td>
+                    <td><a href="https://sketchfab.com/3d-models/airpods-max-sky-blue-3d0643db08fc4ef89bda55a74077ece4">Airpods max sky blue</a></td>
+                    <td><a href="https://sketchfab.com/Polyman_3D">polyman Studio</a></td>
+                    <td><a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">AirPodsPro.usdz</td>
+                    <td><a href="https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689">Airpods Pro (MagSafe)</a></td>
+                    <td><a href="https://sketchfab.com/Polyman_3D">polyman Studio</a></td>
+                    <td><a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">HeadphoneGeneric.usdz</td>
+                    <td><a href="https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8">Studio Headphones</a></td>
+                    <td><a href="https://sketchfab.com/crow.bite">crow</a></td>
+                    <td><a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="finale-banner">
+            <div class="finale-copy">
+              <h2 data-i18n="finale.title">Cast your listening history.</h2>
+              <p class="section-lead" data-i18n="finale.body">
+                Free on iOS 18+. Strictly read-only Apple Health integration, 6 foil tiers, 28-day acoustic rings, PSA Device Dossier, and 41 custom app icons.
+              </p>
+              <div class="hero-cta-row">
+                <a class="btn btn-primary" href="https://apps.apple.com/app/id6837883616" data-i18n="finale.cta">Get Earprint on the App Store</a>
+                <a class="btn btn-secondary" href="https://github.com/Popcornnnnnnnn/earprint">GitHub</a>
+              </div>
+              <p class="mono meta-caption" data-i18n="finale.meta">
+                Bundle ID: com.popcornnn.earprint · Developer: Weizhi Wang · wmax43906@gmail.com
+              </p>
+            </div>
+            <img class="finale-preview" src="./assets/screens/hero-showcase.webp" alt="Earprint iOS showcase featuring Collection, 6-Tier Collector Binder, PSA Device Dossier, and 28-Day Earprint Rings" width="1600" height="782" loading="lazy">
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <p class="mono">Earprint &middot; Weizhi Wang &middot; <a href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a></p>
+          <ul class="footer-links">
+            <li><a href="./index.html" data-i18n="footer.showcase">Showcase</a></li>
+            <li><a href="./support.html" data-i18n="nav.support">Support</a></li>
+            <li><a href="./privacy.html" data-i18n="nav.privacy">Privacy</a></li>
+            <li><a href="https://apps.apple.com/app/id6837883616">App Store</a></li>
+            <li><a href="https://github.com/Popcornnnnnnnn/earprint">GitHub</a></li>
+          </ul>
+        </div>
+        <div class="footer-disclaimers">
+          <p data-i18n="footer.disclaimer1">Earprint is an independent app developed by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, AirPods Pro, AirPods Max, and Beats are trademarks of Apple Inc.</p>
+          <p data-i18n="footer.disclaimer2">Earprint visualizations, WHO / ITU H.870 weekly budget estimates, and Ear Grade scores are for personal informational and collectible purposes only and are not a medical device.</p>
+        </div>
+      </div>
     </footer>
-  </main>
+  </div>
 </body>
 </html>

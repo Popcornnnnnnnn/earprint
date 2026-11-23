@@ -1,0 +1,225 @@
+/* Earprint Design System Tokens — Acoustic Horology & Graded Hardware Museum
+ * Pure relative asset architecture; adapts seamlessly between Light (Museum Ceramic)
+ * and Dark (Obsidian Acoustic Gallery) via CSS color-scheme + light-dark().
+ */
+
+@layer reset, base, theme, components, utilities;
+
+@layer theme {
+  :root {
+    color-scheme: light dark;
+
+    /* Core typography */
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono", monospace;
+
+    /* Raw palette pairs (unregistered so light-dark() stays live across subtrees) */
+    --raw-bg-canvas-light: #F3F4F7;
+    --raw-bg-canvas-dark: #09090E;
+    --raw-bg-elevated-light: #F7F8FA;
+    --raw-bg-elevated-dark: #0E0E15;
+    --raw-bg-card-light: #FFFFFF;
+    --raw-bg-card-dark: #13131C;
+    --raw-bg-slab-light: #EAECEF;
+    --raw-bg-slab-dark: #101119;
+
+    --raw-text-primary-light: #13141C;
+    --raw-text-primary-dark: #F7F8FC;
+    --raw-text-secondary-light: rgba(19, 20, 28, 0.70);
+    --raw-text-secondary-dark: rgba(247, 248, 252, 0.70);
+    --raw-text-tertiary-light: rgba(19, 20, 28, 0.54);
+    --raw-text-tertiary-dark: rgba(247, 248, 252, 0.54);
+
+    --raw-border-hairline-light: rgba(19, 20, 28, 0.11);
+    --raw-border-hairline-dark: rgba(255, 255, 255, 0.12);
+    --raw-border-card-light: rgba(19, 20, 28, 0.09);
+    --raw-border-card-dark: rgba(255, 255, 255, 0.10);
+
+    --raw-surface-fill-light: rgba(19, 20, 28, 0.05);
+    --raw-surface-fill-dark: rgba(255, 255, 255, 0.07);
+    --raw-surface-strong-light: rgba(19, 20, 28, 0.10);
+    --raw-surface-strong-dark: rgba(255, 255, 255, 0.13);
+
+    --raw-inverted-fill-light: #151722;
+    --raw-inverted-fill-dark: #F7F8FC;
+    --raw-inverted-text-light: #FFFFFF;
+    --raw-inverted-text-dark: #09090E;
+
+    --raw-backdrop-light: rgba(243, 244, 247, 0.86);
+    --raw-backdrop-dark: rgba(9, 9, 14, 0.84);
+
+    --raw-leq-quiet-light: #0D998C;
+    --raw-leq-quiet-dark: #52E6DB;
+    --raw-leq-moderate-light: #B87206;
+    --raw-leq-moderate-dark: #FAC75C;
+    --raw-leq-loud-light: #DB2947;
+    --raw-leq-loud-dark: #FC5775;
+
+    --raw-scrollbar-track-light: #EAECEF;
+    --raw-scrollbar-track-dark: #101119;
+    --raw-scrollbar-thumb-light: #6E7385;
+    --raw-scrollbar-thumb-dark: #555A6E;
+
+    /* Baseline fallback values (light default, switched via prefers-color-scheme + light-dark()) */
+    --bg-canvas: var(--raw-bg-canvas-light);
+    --bg-elevated: var(--raw-bg-elevated-light);
+    --bg-card: var(--raw-bg-card-light);
+    --bg-slab: var(--raw-bg-slab-light);
+    --text-primary: var(--raw-text-primary-light);
+    --text-secondary: var(--raw-text-secondary-light);
+    --text-tertiary: var(--raw-text-tertiary-light);
+    --border-hairline: var(--raw-border-hairline-light);
+    --border-card: var(--raw-border-card-light);
+    --surface-fill: var(--raw-surface-fill-light);
+    --surface-fill-strong: var(--raw-surface-strong-light);
+    --inverted-fill: var(--raw-inverted-fill-light);
+    --inverted-text: var(--raw-inverted-text-light);
+    --detail-backdrop: var(--raw-backdrop-light);
+
+    --leq-quiet: var(--raw-leq-quiet-light);
+    --leq-moderate: var(--raw-leq-moderate-light);
+    --leq-loud: var(--raw-leq-loud-light);
+
+    --scrollbar-track: var(--raw-scrollbar-track-light);
+    --scrollbar-thumb: var(--raw-scrollbar-thumb-light);
+
+    /* Interactive tier tokens (mutated dynamically by foil-card.js; default Fjord Teal / Sapphire) */
+    --tier-accent: #7EB0BD;
+    --tier-glow: #6D9CA8;
+    --tier-ink: #FFFFFF;
+
+    /* Focus & structural geometry */
+    --accent-focus: var(--leq-quiet);
+    --radius-xs: 8px;
+    --radius-sm: 14px;
+    --radius-md: 22px;
+    --radius-lg: 30px;
+    --radius-pill: 999px;
+
+    /* Spacing & rhythm */
+    --container-max: 1240px;
+    --gutter: clamp(1.125rem, 3.4vw, 2.75rem);
+    --section-space: clamp(4.5rem, 7.5vw, 8.25rem);
+    --header-height: 60px;
+
+    /* Elevation */
+    --shadow-card: 0 18px 46px -22px rgba(0, 0, 0, 0.24), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    --shadow-slab: 0 30px 80px -28px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Fallback for browsers without light-dark() when OS prefers dark */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-canvas: var(--raw-bg-canvas-dark);
+      --bg-elevated: var(--raw-bg-elevated-dark);
+      --bg-card: var(--raw-bg-card-dark);
+      --bg-slab: var(--raw-bg-slab-dark);
+      --text-primary: var(--raw-text-primary-dark);
+      --text-secondary: var(--raw-text-secondary-dark);
+      --text-tertiary: var(--raw-text-tertiary-dark);
+      --border-hairline: var(--raw-border-hairline-dark);
+      --border-card: var(--raw-border-card-dark);
+      --surface-fill: var(--raw-surface-fill-dark);
+      --surface-fill-strong: var(--raw-surface-strong-dark);
+      --inverted-fill: var(--raw-inverted-fill-dark);
+      --inverted-text: var(--raw-inverted-text-dark);
+      --detail-backdrop: var(--raw-backdrop-dark);
+      --leq-quiet: var(--raw-leq-quiet-dark);
+      --leq-moderate: var(--raw-leq-moderate-dark);
+      --leq-loud: var(--raw-leq-loud-dark);
+      --scrollbar-track: var(--raw-scrollbar-track-dark);
+      --scrollbar-thumb: var(--raw-scrollbar-thumb-dark);
+    }
+  }
+
+  /* Modern live color-scheme resolution via light-dark() */
+  @supports (color: light-dark(white, black)) {
+    :root {
+      --bg-canvas: light-dark(var(--raw-bg-canvas-light), var(--raw-bg-canvas-dark));
+      --bg-elevated: light-dark(var(--raw-bg-elevated-light), var(--raw-bg-elevated-dark));
+      --bg-card: light-dark(var(--raw-bg-card-light), var(--raw-bg-card-dark));
+      --bg-slab: light-dark(var(--raw-bg-slab-light), var(--raw-bg-slab-dark));
+      --text-primary: light-dark(var(--raw-text-primary-light), var(--raw-text-primary-dark));
+      --text-secondary: light-dark(var(--raw-text-secondary-light), var(--raw-text-secondary-dark));
+      --text-tertiary: light-dark(var(--raw-text-tertiary-light), var(--raw-text-tertiary-dark));
+      --border-hairline: light-dark(var(--raw-border-hairline-light), var(--raw-border-hairline-dark));
+      --border-card: light-dark(var(--raw-border-card-light), var(--raw-border-card-dark));
+      --surface-fill: light-dark(var(--raw-surface-fill-light), var(--raw-surface-fill-dark));
+      --surface-fill-strong: light-dark(var(--raw-surface-strong-light), var(--raw-surface-strong-dark));
+      --inverted-fill: light-dark(var(--raw-inverted-fill-light), var(--raw-inverted-fill-dark));
+      --inverted-text: light-dark(var(--raw-inverted-text-light), var(--raw-inverted-text-dark));
+      --detail-backdrop: light-dark(var(--raw-backdrop-light), var(--raw-backdrop-dark));
+      --leq-quiet: light-dark(var(--raw-leq-quiet-light), var(--raw-leq-quiet-dark));
+      --leq-moderate: light-dark(var(--raw-leq-moderate-light), var(--raw-leq-moderate-dark));
+      --leq-loud: light-dark(var(--raw-leq-loud-light), var(--raw-leq-loud-dark));
+      --scrollbar-track: light-dark(var(--raw-scrollbar-track-light), var(--raw-scrollbar-track-dark));
+      --scrollbar-thumb: light-dark(var(--raw-scrollbar-thumb-light), var(--raw-scrollbar-thumb-dark));
+    }
+  }
+
+  /* Map <meta name="color-scheme"> override back onto root CSS color-scheme */
+  :root {
+    color-scheme: light dark;
+    accent-color: var(--leq-quiet);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  :root:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+
+  :root:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
+
+  /* Fallback explicit token overrides if browser lacks light-dark() but user toggles meta */
+  @supports not (color: light-dark(white, black)) {
+    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
+      --bg-canvas: var(--raw-bg-canvas-dark);
+      --bg-elevated: var(--raw-bg-elevated-dark);
+      --bg-card: var(--raw-bg-card-dark);
+      --bg-slab: var(--raw-bg-slab-dark);
+      --text-primary: var(--raw-text-primary-dark);
+      --text-secondary: var(--raw-text-secondary-dark);
+      --text-tertiary: var(--raw-text-tertiary-dark);
+      --border-hairline: var(--raw-border-hairline-dark);
+      --border-card: var(--raw-border-card-dark);
+      --surface-fill: var(--raw-surface-fill-dark);
+      --surface-fill-strong: var(--raw-surface-strong-dark);
+      --inverted-fill: var(--raw-inverted-fill-dark);
+      --inverted-text: var(--raw-inverted-text-dark);
+      --detail-backdrop: var(--raw-backdrop-dark);
+      --leq-quiet: var(--raw-leq-quiet-dark);
+      --leq-moderate: var(--raw-leq-moderate-dark);
+      --leq-loud: var(--raw-leq-loud-dark);
+    }
+
+    :root:has(> head > meta[name="color-scheme"][content="light"]) {
+      --bg-canvas: var(--raw-bg-canvas-light);
+      --bg-elevated: var(--raw-bg-elevated-light);
+      --bg-card: var(--raw-bg-card-light);
+      --bg-slab: var(--raw-bg-slab-light);
+      --text-primary: var(--raw-text-primary-light);
+      --text-secondary: var(--raw-text-secondary-light);
+      --text-tertiary: var(--raw-text-tertiary-light);
+      --border-hairline: var(--raw-border-hairline-light);
+      --border-card: var(--raw-border-card-light);
+      --surface-fill: var(--raw-surface-fill-light);
+      --surface-fill-strong: var(--raw-surface-strong-light);
+      --inverted-fill: var(--raw-inverted-fill-light);
+      --inverted-text: var(--raw-inverted-text-light);
+      --detail-backdrop: var(--raw-backdrop-light);
+      --leq-quiet: var(--raw-leq-quiet-light);
+      --leq-moderate: var(--raw-leq-moderate-light);
+      --leq-loud: var(--raw-leq-loud-light);
+    }
+  }
+}
+
+/* Cross-document smooth page transitions (progressive enhancement) */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
