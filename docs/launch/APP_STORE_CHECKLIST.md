@@ -1,100 +1,79 @@
-# App Store Launch & Compliance Checklist — Earprint (`v1.0.0`)
+# App Store Release Checklist for Earprint v1.1.0 (build 10)
 
-Master launch checklist for **Earprint** (`com.popcornnn.earprint` / `EarprintWidgets` `com.popcornnn.earprint.widgets` / App Group `group.com.popcornnn.earprint`).
+App `com.popcornnn.earprint` · widget extension `com.popcornnn.earprint.widgets` · App Group `group.com.popcornnn.earprint`.
 
-Tracked alongside Stage 1 Completion Criteria in [README.md](../../README.md) and physical device verification in [GitHub Issue #2](https://github.com/Popcornnnnnnnn/earprint/issues/2).
+## v1.1.0 (build 10) release gates
 
----
+### App Store Connect
 
-## 1. Do Now (In Parallel with UI Polish)
+- [ ] Confirm the **Paid Apps Agreement** is active and the required tax and banking information is complete.
+- [ ] Create or verify all four In-App Purchase records with the exact product types and IDs below. Add the display name and description for **`en-US`, `zh-Hans`, `ja`, and `ko`** to each record. Set pricing and availability, upload the required review screenshots, and attach the four products to the version submission. [Localized IAP copy](APP_STORE_METADATA.md#app-store-locales)
 
-Work that does not depend on final Rings layout pixels and should start immediately:
+  | Product ID | Type |
+  | --- | --- |
+  | `com.popcornnn.earprint.pro.lifetime` | Non-Consumable |
+  | `com.popcornnn.earprint.tip.small` | Consumable |
+  | `com.popcornnn.earprint.tip.medium` | Consumable |
+  | `com.popcornnn.earprint.tip.large` | Consumable |
 
-- [x] **Add In-App CC-BY 4.0 Credits / Attributions Screen in Settings** *(see §4b below)*
-  - Shipped in `v1.0.0-rc1`: `CreditsView` (`Settings → Credits & Attributions`) in `Earprint/Design/AppIconPickerView.swift` crediting all 4 Sketchfab models plus the Apple non-affiliation & non-medical disclaimers.
-- [x] **Wire Real HealthKit Per-Session History into `DeviceDossierView`** *(README Stage 1 #3)*
-  - Shipped in `v1.0.0-rc1`: `ListeningAggregate.schemaVersion = 2` persists per-span `listeningSeconds` / `energy` / `peakDecibels` and `LibrarySnapshot.dossier(forCardID:)` hydrates `DeviceDossierView` directly.
-- [x] **Fix Release Empty / Denied HealthKit UX Consistency** *(see §4c below)*
-  - Shipped in `v1.0.0-rc1`: `HeadphoneLibrary.isShowingEmptyState` drives consistent zero-data empty states on both Collection and Rings (`HomeView.emptyRingsState`, `CollectionView.emptyCollectionState`, and zero-data `EarprintWidgets` snapshots).
-- [x] **Decide Release Trigger for `ListeningLiveActivity`**
-  - Decided for `v1.0.0`: removed `NSSupportsLiveActivities` and `ListeningLiveActivity()` from `EarprintWidgetsBundle.swift` and aligned metadata to widgets-only (`Earprint` Home & Lock Screen widgets).
-- [x] **Prepare Trademark Fallback Plan & Primary Icon Audit** *(see §4a below)*
-  - Shipped in `v1.0.0-rc1`: switched primary `AppIcon.appiconset` (`Light`, `Dark`, `Tinted`) to a custom trademark-safe concentric **Earprint Rings Emblem**, moved old AirPods Max icon to optional `AppIconMidnightAuto`, and kept `ProceduralHeadphones` verified as a fallback.
-- [x] **Stand Up Privacy Policy & Support URL Hosting** *(see §4d below)*
-  - Live `HTTP 200` static bilingual HTML pages served from `docs/site/` via `.github/workflows/pages.yml` at `https://popcornnnnnnnn.github.io/earprint/`, `/privacy.html`, and `/support.html`.
-- [x] **Add `ITSAppUsesNonExemptEncryption = NO` to `project.yml` / `Info.plist`**
-  - Shipped in `v1.0.0-rc1` (`project.yml` & `Earprint/Info.plist`) plus `PrivacyInfo.xcprivacy` for both app and widget targets.
-- [x] **Reserve App Record in App Store Connect**
-  - Created `Earprint - Headphone Archive` (`Apple ID: 6837883616`, bundle ID `com.popcornnn.earprint`) under team `R26X7B8XDT` with App Group `group.com.popcornnn.earprint` + HealthKit capability.
+- [ ] Add the four localized listings and screenshots. Keep App Name, Subtitle, and every IAP display name and description free of third-party headphone brands. Use the Earprint Rings Emblem as the primary icon. [Listing copy and screenshot storyboard](APP_STORE_METADATA.md)
+- [ ] Set the canonical marketing, support, and privacy URLs. Verify HTTPS and public access to all three pages from an iPhone. Use the documented GitHub Pages URLs if the canonical host is unavailable. Reconfirm the **Data Not Collected** label and the published privacy policy. [URLs](APP_STORE_METADATA.md#app-store-connect-urls--contact) · [Privacy policy](PRIVACY_POLICY.md)
+- [ ] Paste the v1.1.0 App Review Notes and attach a real-device demo if needed to show HealthKit ingestion, cards, and the device features on a phone with listening history. [App Review Notes](APP_STORE_METADATA.md#app-review-notes-v110)
 
----
+### StoreKit 2 sandbox and TestFlight
 
-## 2. After Rings UI Locks (Screenshots & Preview Video)
+- [ ] Start without Pro in Xcode StoreKit testing, then repeat on the uploaded build 10 in TestFlight using a fresh test account. In **Settings → Earprint Pro**, verify the product loads, the purchase sheet shows the localized product name, and a one-time purchase unlocks Pro features. Relaunch and confirm the entitlement persists.
+- [ ] With the same test account, reinstall or use a second device. Tap **Restore Purchases** and verify that Pro is available after sync. If StoreKit restores the entitlement on launch, confirm that the explicit restore action succeeds and keeps access.
+- [ ] In **Settings → Tip Jar**, verify all three consumables load. Purchase each tier in sandbox and smoke-test the Tip Jar on TestFlight with an account without Pro. Confirm a tip can be purchased again, grants no Pro access, and is excluded from Restore Purchases.
+- [ ] Confirm early-collector access is off in Xcode, sandbox, and TestFlight before purchase. On the release commit, run `ProEntitlementTests.testGrandfatheringRequiresProductionAndAnEarlyIntegerBuild` to exercise the verified `.production` `AppTransaction` rule. An integer original build below `10` qualifies. Build `10` or later, a missing or non-integer build, and any other environment do not qualify.
+- [ ] On a clean install with no readable HealthKit data, confirm Collection, Rings, and widgets show zero-data states. Confirm the **Sync Apple Health** path works and Settings remains accessible. With a real logged headphone pair that has no dedicated model, verify that the generic 3D card renders and flips to the pair's own stats.
 
-Capture marketing assets only after `@rings-ui` finalizes `Theme.swift`, `EarprintGlyph.swift`, `HomeView.swift`, and `ShareCardView.swift`:
+### Physical iPhone feature smoke tests
 
-- [x] **Generate Clean Release-Styled Screenshots (6.1"/6.3" & 6.9" iPhone)**
-  - Captured and uploaded 40 screenshots (`10 en-US` + `10 zh-Hans` across both required `1206 × 2622` and optional `1320 × 2868` Dynamic Island slots).
-  - **Hygiene check:** Stripped `"Sample data · Simulator"` debug banners and forced `9:41` / 100% battery status bar via `xcrun simctl status_bar`.
-- [ ] **Record App Preview Video (15–30s, Portrait 6.9")** *(recommended for 3D motion)*
-  - Physical iPhone or clean capture showing: real-time phone tilt shimmering holographic foil → dragging & pinching 3D RealityKit AirPods → tapping to flip card → scrolling PSA Device Dossier slab & scrubbing 30-day bars → Rings tab 28-day chronometer.
-  - Keep within Apple App Preview specs (H.264/ProRes, 15–30s, no device mockups/hands outside screen bounds, clear non-sample UI).
-- [ ] **Record Unedited App Review Demo Video**
-  - Capture a 30–60s unedited physical iPhone video showing Apple Health permission flow, real `headphoneAudioExposure` sync, 3D card interaction, Dossier, and widgets to attach inside App Store Connect Review Notes if the reviewer tests on an iPhone with 0 Health samples.
+- [ ] On a Dynamic Island iPhone with Live Activities enabled and Pro unlocked, start **Settings → Earprint Pro → Live Listening Session**. Check the Lock Screen and Dynamic Island presentation, including the rest countdown. Stop the session from Settings.
+- [ ] Add the Earprint actions in Shortcuts. Run **Start Listening Session**, **Reset Listening Rest Timer**, and **Stop Listening Session** in order. Verify one activity starts, reset restarts the countdown on that activity, and stop ends it.
+- [ ] With 2026 listening data and Pro unlocked, open **2026 Earprint Wrapped** in Rings. Go offline and export the card reel as 1080p MP4 (`1080 × 1920 px`) and 540p GIF (`540 × 960 px`). Open both saved files and confirm they animate.
+- [ ] In a Device Dossier, try the four Pro foil finishes and customize the slab engraving. In the share sheet, enable High-Res and hide the watermark. Open the exported PNG and verify `2100 × 2800 px` and no footer watermark.
+- [ ] From **Settings → Export Archive**, export both CSV and JSON with listening data spanning at least two years. Open the saved files and confirm devices, dates, and listening totals agree with the source history.
+- [ ] With no Pro entitlement, confirm the 3D cards, Device Dossier, Rings, widgets, and Wrapped recap are still accessible.
 
----
+### Final Release archive
 
-## 3. Pre-Submit Blockers (Hard Gates Before Submitting `v1.0.0`)
+- [ ] Confirm `project.yml` and the generated Release settings use `MARKETING_VERSION = 1.1.0` and `CURRENT_PROJECT_VERSION = 10`. Run `EarprintTests` and archive the exact release commit with the Release configuration.
+- [ ] Check the archived `Earprint.app` and embedded widget extension for bundle version `1.1.0` and build `10`. Confirm the read-only HealthKit purpose strings and `ITSAppUsesNonExemptEncryption = NO`.
+- [ ] Confirm the Release code requests only Headphone Audio Levels with `toShare: []` and excludes the DEBUG-only HealthKit seeder. Inspect the binary with `nm -u` and verify zero HealthKit write, save, or delete symbols. Check the Objective-C selector table for direct HealthKit save/delete calls.
+- [ ] Confirm the Release `Earprint.app`, including the embedded extension, contains zero `.storekit` or `l10n-*.json` files.
+- [ ] Upload the verified archive, confirm TestFlight export compliance, and complete the smoke tests above on the uploaded build before submitting to App Review.
 
-Do **not** submit to App Store Review until every blocker below is green:
+Run the checks against the app in the archive selected for upload.
 
-1. [x] **CC-BY 4.0 In-App Credits screen live in Release** (`Settings → Credits & Attributions` for all 4 Sketchfab models + `AirPods4Credits.txt`).
-2. [x] **Real `DeviceDossier` data wired** (no synthetic sample sessions inside real cards' Dossiers).
-3. [x] **Clean Release empty/denied HealthKit UX** across `Collection`, `Rings`, and `EarprintWidgets`.
-4. [x] **Release `Info.plist` & binary verified read-only** (`HealthKitSeeder.swift` compiled out, zero HealthKit save/write symbols linked via `nm -u`, strictly `toShare: []`, and truthful read-only `NSHealthShareUsageDescription` + `NSHealthUpdateUsageDescription` included for `ITMS-90683`).
-5. [x] **`project.yml` bumped to `MARKETING_VERSION: "1.0.0"`**, `CURRENT_PROJECT_VERSION: "1"`, `xcodegen generate` re-run, and Release candidate tagged on clean SHA `v1.0.0-rc1` (re-tag final App Store release SHA if updated before archive).
-6. [ ] **1-week real-device daily-drive & TestFlight external beta pass completed** ([Issue #2](https://github.com/Popcornnnnnnnn/earprint/issues/2) closed/verified).
-7. [x] **App Store Connect Privacy Nutrition Label (`Data Not Collected`)**, **Support URL**, and **Privacy Policy URL** live (`HTTP 200`, HTTPS, no auth wall) and matching [APP_STORE_METADATA.md](APP_STORE_METADATA.md) + [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
-8. [ ] **Unit tests (`EarprintTests`, 21+ tests) + Release build + physical iPhone smoke test** passing on the exact release commit.
+```sh
+earprint_app='/path/to/Earprint.xcarchive/Products/Applications/Earprint.app'
+earprint_plist="$earprint_app/Info.plist"
+plutil -extract CFBundleShortVersionString raw -o - "$earprint_plist"
+plutil -extract CFBundleVersion raw -o - "$earprint_plist"
+plutil -p "$earprint_plist" | grep -E 'NSHealth|ITSAppUsesNonExemptEncryption'
 
----
+# Run both tools successfully and confirm the searches show zero HealthKit write matches.
+xcrun nm -u "$earprint_app/Earprint" | xcrun swift-demangle \
+  | grep -iE '(HKHealthStore|HealthKit).*(save|delete|write)'
+xcrun otool -v -s __TEXT __objc_methname "$earprint_app/Earprint" \
+  | grep -E '(^|[[:space:]])(saveObjects?|deleteObjects?(OfType)?):'
 
-## 4. Deep Dive: Blockers & Compliance Reference
+# Expect no paths.
+find "$earprint_app" \( -iname '*.storekit' -o -iname 'l10n-*.json' \) -print
+```
 
-### (a) Apple Trademark & Trade-Dress Risk Assessment (`docs/ASSETS.md`)
+## Compliance and device verification
 
-#### Assets at Risk
-1. **3D USDZ Models (`Earprint/Resources/Models/`):** `AirPods4.usdz`, `AirPodsMax.usdz`, `AirPodsPro.usdz`, `HeadphoneGeneric.usdz`.
-2. **2D Card Renders & Icon Cutouts (`Earprint/Assets.xcassets/`):** `CardRenderAirPods4` (cropped/masked from Falah3D's render), `CardRenderAirPodsMax`, `CardRenderAirPodsOpen`, `CardRenderAirPodsPro`, `CardRenderAirPodsProCase`, `CardRenderBeatsFit*`, and the 10 `IconCutout*` silhouettes used in `AppIcon` + 39 alternate `AppIcon*` sets (`project.yml`).
-3. **Strings & Identifiers (`HeadphoneModelCatalog.swift`, `AppIconPickerView.swift`):** `AirPods`, `AirPods Pro`, `AirPods Max`, `Beats`, `Powerbeats`, `Apple Health`.
+### Trademark and asset review
 
-#### Legal / App Review Nuance (from `docs/ASSETS.md`)
-- Sketchfab's **CC-BY 4.0** license grants copyright permission for the 3D creators' geometry and textures, **not** trademark or industrial design / trade-dress rights owned by **Apple Inc.**
-- **App Review Guidelines involved:**
-  - **Guideline 5.2.1 (Generally / Intellectual Property):** Apps may not use protected third-party trademarks, product silhouettes, or hardware imagery in ways that imply Apple endorsement or misappropriate Apple trade dress—**especially in the primary App Icon and App Title**.
-  - **Guideline 4.1 (Copycats):** Apps must not mimic Apple system apps or official Apple hardware branding.
-  - **Guideline 2.3.8 (Metadata):** App name, subtitle, and icon must accurately reflect an independent utility rather than posing as an official Apple accessory app.
+- Use the original Earprint Rings Emblem on the storefront. Keep brand references to supported hardware and the data source in the Full Description, with the non-affiliation and non-medical notice at the bottom. Verify the same notices in **Settings → Credits & Attributions** and on the support and privacy pages.
+- The CC-BY 4.0 license covers the creators' models and textures. Review third-party hardware marks and silhouettes separately for App Review. If a model must be removed, verify its procedural 3D fallback and review the corresponding 2D artwork and credits. [Asset inventory and provenance](../ASSETS.md)
 
-#### Concrete Mitigation Paths
-- **Mitigation 1 — Non-Affiliation Notice & Naming Hygiene (Required):**
-  - Keep `"AirPods"` / `"Apple"` out of the primary App Name (`Earprint`) and Subtitle (`3D Audio Cards & WHO Rings`).
-  - Include explicit non-affiliation text in `Settings → Credits`, the bottom of the App Store Description, and the Support/Privacy pages: *"Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc."*
-- **Mitigation 2 — Primary App Icon Review (Low-Effort Preventive):**
-  - The primary `AppIcon` (`IconCutoutMidnight` over auto dark/light background) depicts a recognizable AirPods Max silhouette. If Risk Tolerance is conservative, swap the primary `AppIcon` to an abstract **Earprint concentric ring / holo card emblem** before initial submission, keeping stylized generic headphone shapes or alternate icons optional inside Settings.
-- **Mitigation 3 — Turnkey Fallback if Rejected under Guideline 4.1 / 5.2.1:**
-  - `Earprint/ThreeD/HeadphoneModel.swift` already implements `ProceduralHeadphones` (`overEar`, `earbuds` with/without case), documented in source as: *"Original, trademark-safe headphone models built from code. Used until (or instead of) USDZ assets."*
-  - If Apple Review rejects specific bundled `.usdz` files or `CardRender*` PNGs:
-    1. **Immediate 3D switch:** Remove the flagged `.usdz` file(s) from `Earprint/Resources/Models/`. `HeadphoneModel.load(...)` automatically detects `Bundle.main.url(forResource:withExtension: "usdz") == nil` and falls back to `ProceduralHeadphones.make(...)` with zero code breakage.
-    2. **Immediate 2D switch:** Replace `CardRender*` / `IconCutout*` assets in `HeadphoneModelKey.collectibleArtwork` / `collectionArtwork` (`Earprint/Data/HeadphoneModelCatalog.swift`) with abstract procedural silhouettes or SF Symbols (`airpodspro` / `headphones` / stylized vector cards) and swap `AppIcon*` to abstract Earprint ring icons.
-    3. **Longer-term upgrade:** Commission bespoke stylized low-poly / wireframe / geometric 3D headphone sculptures with distinct visual language while retaining the real Apple Bluetooth PID lookup (`0x2002`–`0x2036`) for accurate device naming.
+### In-app CC-BY 4.0 credits
 
----
-
-### (b) Required CC-BY 4.0 In-App Credits / Attributions Screen
-
-Under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) Section 3(a), distributed applications must provide reasonable attribution (creator name, title, URI/URL, license link, and indication of modifications). Currently, `Earprint/Resources/AirPods4Credits.txt` covers only `AirPods4.usdz`, and `SettingsView` (`Earprint/Design/AppIconPickerView.swift`) has no Credits destination.
-
-Add **`Credits & Attributions`** (`版权声明与致谢`) to `SettingsView` displaying all four bundled models verified against `docs/ASSETS.md`:
+Verify that **Settings → Credits & Attributions** identifies each distributed CC-BY 4.0 model, its creator and source, the license, and any modifications. Keep credits aligned with the assets in the archive.
 
 | Asset | Source Title | Author | Source URL | License & Notes |
 | --- | --- | --- | --- | --- |
@@ -103,82 +82,34 @@ Add **`Credits & Attributions`** (`版权声明与致谢`) to `SettingsView` dis
 | `AirPodsPro.usdz` | *Airpods Pro With Magsafe Charging Case Ios15* | **polyman Studio (`Polyman_3D`)** (`https://sketchfab.com/Polyman_3D`) | `https://sketchfab.com/3d-models/airpods-pro-with-magsafe-charging-case-ios15-52e5f28b37f94f05b6c0768773137689` | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modified: removed internal occlusion shell, decimated (96,992 → 47,975 tris), joined meshes (48 → 14), normalized, baked `metallicFactor = 0`, dropped emissive maps, JPEG-compressed textures, converted to USDZ. |
 | `HeadphoneGeneric.usdz` | *Studio Headphones* | **crow (`crow.bite`)** (`https://sketchfab.com/crow.bite`) | `https://sketchfab.com/3d-models/studio-headphones-2f04830fbf884632a89445db0d170ba8` | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modified: decimated (64,544 → 51,995 tris), joined 6 parts into 1 mesh, normalized, baked roughness map, downscaled to 2048 px JPEG, converted to USDZ. |
 
-> **Tip:** If any `.usdz` is later removed under §4a Mitigation 3, remove its corresponding attribution row from Credits as well (keeping credits accurate to what actually ships).
+### HealthKit and clean-device regression
 
----
+- Verify that the permission sheet lists read access to **Headphone Audio Levels** only. The app has no write permission toggle. Release purpose strings in `Info.plist` describe read-only access, including the update purpose string used for App Store Connect validation.
+- Check both no-sample and denied-permission paths. Use a physical iPhone with real headphone playback to verify the first HealthKit sync, per-device history, and widget snapshot. Review the app's HealthKit handling and disclosure against the published privacy policy before submission. [Privacy policy](PRIVACY_POLICY.md)
 
-### (c) HealthKit Guideline 5.1.3 Compliance & Empty/Denied UX
+### Seven-day TestFlight device checklist
 
-1. **Read-Only `Info.plist` & Entitlements Verification:**
-   - `Earprint/Info.plist`, `project.yml`, and `InfoPlist.xcstrings` define `NSHealthShareUsageDescription`:
-     > `"Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone."`
-   - Because Apple's App Store Connect static analyzer (`ITMS-90683`) rejects binaries linking `HKHealthStore.requestAuthorization(toShare:read:)` without `NSHealthUpdateUsageDescription` (even with `toShare: []`), `project.yml` & `InfoPlist.xcstrings` also include a truthful read-only `NSHealthUpdateUsageDescription` explaining that Earprint never writes data to Apple Health, while `Earprint/Data/HealthKitSeeder.swift` remains wrapped in `#if DEBUG`.
-   - **Required pre-submit shell check** on the built Release `.app` inside the `.xcarchive`:
-     ```sh
-     plutil -p Earprint.app/Info.plist | grep -E "NSHealth|ITSAppUsesNonExemptEncryption"
-     nm -u Earprint.app/Earprint | grep -iE "Health|HK.*save|HK.*delete|HK.*write"
-     ```
-     Confirm both `NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription` + `ITSAppUsesNonExemptEncryption => 0` are present, and `nm -u` links zero HealthKit write/save/delete APIs.
-2. **Guideline 5.1.3 HealthKit Policy Checks:**
-   - Never share HealthKit data with third parties, advertisers, or data brokers (verified: zero network calls, zero analytics SDKs).
-   - Never store HealthKit data in iCloud or unencrypted backups without user consent (verified: `<Application Support>/listening-aggregate.json` uses `.completeFileProtectionUntilFirstUserAuthentication`).
-   - Clearly frame Earprint as informational/wellness visualization (WHO/ITU H.870 80 dB(A) 40h/week reference), **not** a medical device.
-3. **Empty / Denied HealthKit UX Audit (Current Code Findings):**
-   - **Issue 1 (`HeadphoneLibrary.swift` lines 63–79):** In `#else` (Release), `cards` returns `[]` when `snapshot == nil`, while `homeSummary` still falls back to `SampleData.summary` (`188h 22m`, `"🧸's AirPods Pro"`). A clean device or denied permission therefore sees an empty Collection tab alongside a populated Rings tab showing `SampleDataBanner`.
-     - **Fix:** In Release builds, show a cohesive empty/onboarding state on **both** Collection and Rings when `snapshot == nil || snapshot.isEmpty`—with a clear `"Sync Apple Health"` CTA, recovery instructions (`Settings › Health › Data Access › Earprint`), and (optionally) an explicit `"Load Demo Preview"` button so fake data never appears unexpectedly.
-   - **Issue 2 (`CollectionView.swift` line 106 & `DeviceDossierView.swift` line 31):** Ensure `CollectionView` constructs and passes a real `DeviceDossier` hydrated from HealthKit `WearSession` history instead of defaulting to `DeviceDossier.sample(for: card)`.
-   - **Issue 3 (`EarprintWidgets`):** Verify `WidgetSnapshot` writes an authentic zero-data state when `snapshot == nil` in Release rather than calling `WidgetPublisher.publishSample()`.
+For external testing, complete **TestFlight → Beta App Information** with the beta description, feedback email, privacy URL, and clean-device review notes. Submit for Beta App Review when App Store Connect requests it. [Device acceptance tracking](https://github.com/Popcornnnnnnnn/earprint/issues/2)
 
----
+Run these checks on an iPhone with iOS 18 or later and real headphone hardware.
 
-### (d) Version Bump, App Store Connect Nutrition Label & URL Hosting
-
-1. **Version Bump in `project.yml`:**
-   - Update `MARKETING_VERSION: "0.1.0"` → `"1.0.0"` (line 12 of `project.yml`).
-   - Increment `CURRENT_PROJECT_VERSION` (`"1"` → `"2"` or current TestFlight build number, line 13 of `project.yml`).
-   - Add under `targets.Earprint.info.properties` (or `settings.base`):
-     `ITSAppUsesNonExemptEncryption: false`
-   - Run `xcodegen generate`, run `EarprintTests` + Release build, commit with empty `git status --porcelain`, and tag the release candidate commit.
-2. **App Store Connect Privacy Nutrition Label:**
-   - Under **App Store Connect → App Privacy**, answer **"No, we do not collect data from this app"** → displays **Data Not Collected**.
-   - Re-verify before every future release: if crash reporting, telemetry, or server-backed ActivityKit push tokens are ever added, the Nutrition Label and `PRIVACY_POLICY.md` must be updated first.
-3. **Support URL & Privacy Policy URL Hosting:**
-   - Both URLs are mandatory in App Store Connect (Privacy Policy URL is also required for HealthKit TestFlight External Beta Review).
-   - **Zero-cost hosting option:** Enable GitHub Pages on `Popcornnnnnnnn/earprint` serving clean static HTML pages generated from [PRIVACY_POLICY.md](PRIVACY_POLICY.md) and a bilingual Support page (`support.html` covering Health permission instructions, why silent ANC wear without audio playback isn't logged by iOS, supported headphones, and contact email).
-   - Verify both URLs return `HTTP 200`, work cleanly in Safari on iOS without login walls, and match the App Store Connect listing languages (`en-US` and `zh-Hans`).
-
----
-
-### (e) TestFlight External Beta Review & 1-Week Real-Device Daily-Drive Checklist
-
-Follows `README.md` Stage 1 #4 and [GitHub Issue #2](https://github.com/Popcornnnnnnnn/earprint/issues/2).
-
-#### TestFlight External Beta Setup
-- [ ] Upload Release archive (`scheme: Earprint`, configuration `Release`) via Xcode Organizer / `xcodebuild -exportArchive`.
-- [ ] Verify build clears Export Compliance automatically (`ITSAppUsesNonExemptEncryption = NO`).
-- [ ] Fill out **TestFlight → Beta App Information**: Beta App Description (EN + ZH-Hans), Feedback Email, Privacy Policy URL, and Beta Review Notes (same clean-device explanation as [APP_STORE_METADATA.md](APP_STORE_METADATA.md#4-app-review-notes-copy-into-app-store-connect--app-review-information)).
-- [ ] Pass Apple's initial TestFlight Beta App Review (typically required once per `1.0.0` minor train before external testers can install).
-
-#### 1-Week Physical Device Daily-Drive Matrix (7 Consecutive Days)
-Run on primary iPhone (`iOS 18+`) + real AirPods / Beats / third-party Bluetooth headphones:
-
-- [ ] **Day 1 — Cold Install & HealthKit Ingestion:**
+- [ ] **Day 1 — Cold Install & HealthKit Ingestion**
   - Fresh install from TestFlight (no prior cache). Confirm HealthKit permission sheet lists **read-only** `Headphone Audio Levels` (zero write toggles).
   - Verify initial multi-year `HKAnchoredObjectQueryDescriptor` paged sync completes without UI freeze or excessive memory spike; check `<Application Support>/listening-aggregate.json` persists across force-quit and cold relaunches.
-- [ ] **Day 2 — Device Identity & PID Accuracy:**
+- [ ] **Day 2 — Device Identity & PID Accuracy**
   - Pair at least 2 headphones (e.g., AirPods Pro + AirPods Max or Beats/third-party). Confirm `HeadphoneModelCatalog` resolves exact marketing names and no unexpected `0x20XX` unknown hex IDs appear for current Apple/Beats hardware.
   - Test Bluetooth rename in iOS Settings → Bluetooth: confirm `localIdentifier` merges old + new nicknames cleanly without splitting cards (`otherNames` preserved).
-- [ ] **Day 3 — Accuracy Cross-Check vs Apple Health:**
+- [ ] **Day 3 — Accuracy Cross-Check vs Apple Health**
   - Compare Earprint's daily/weekly listening minutes and `Leq` dB(A) against **Apple Health → Hearing → Headphone Audio Levels** across 3 consecutive days (including a midnight-crossing session if possible).
   - Confirm `HKObserverQuery` updates listening totals automatically after taking headphones off and reopening the app.
-- [ ] **Day 4 — Real Dossier & Export Stress Test:**
+- [ ] **Day 4 — Real Dossier & Export Stress Test**
   - Open `DeviceDossierView` for your top card: verify `Week / Month / Year / All` switching, 30-day scrub chart haptics, 24h `DayClock`, `HabitsBento`, `EarGrade` penalties, and `CertificateLabel` metadata match real `HKDevice` / `HKSource` values.
-  - Export **Simple (1-page)** and **Long (4-page)** PNG posters via `DossierShareSheet` (`1200 × 1680 px` each) and share a 9:16 `ShareCardView` image; verify crisp rendering in Photos / Rednote / WeChat.
-- [ ] **Day 5 — 3D Thermal, Gesture & Accessibility Check:**
+  - Export **Simple (1-page)** and **Long (4-page)** PNG posters via `DossierShareSheet` and share a 9:16 `ShareCardView` image; verify crisp rendering in Photos / Rednote / WeChat.
+- [ ] **Day 5 — 3D Thermal, Gesture & Accessibility Check**
   - Spin, pinch-zoom, long-press twirl, flip, and switch colors (AirPods Max / Beats) on `CardDetail` for 2–3 minutes; confirm smooth frame rate, no thermal throttling, and tilt motion pauses cleanly when Reduce Motion is enabled or sheets are open.
-- [ ] **Day 6 — Widgets, Deep Links & Custom Icons:**
+- [ ] **Day 6 — Widgets, Deep Links & Custom Icons**
   - Place **Small Today** (tap interactive `NextCardIntent`), **Medium Card Shelf** (tap a card to test `earprint://card/<id>` cold-start deep link), **Large Earprint Ring**, and Lock Screen **Budget Gauge** + **Today Summary**.
   - Test switching App Icons in `Settings → App Icon` (`Auto / Light / Dark / Holo` × AirPods Max finishes) and verify no icon-change failures.
-- [ ] **Day 7 — Bilingual Localization & Clean-Device Regression:**
-  - Switch `Settings → Language` between **English** and **简体中文**; inspect every tab, `CardTiersView`, `ModelGalleryView`, `SettingsView`, `Credits`, `Dossier`, and `ShareSheet` for clipped labels or untranslated keys.
+- [ ] **Day 7 — Bilingual Localization & Clean-Device Regression**
+  - Switch `Settings → Language` between **English** and **Simplified Chinese**; inspect every tab, `CardTiersView`, `ModelGalleryView`, `SettingsView`, `Credits`, `Dossier`, and `ShareSheet` for clipped labels or untranslated keys.
   - Test on a **clean secondary device** (or after denying HealthKit permission) to confirm zero crashes, zero misleading sample data, and clear recovery instructions before pressing **Submit for Review**.
