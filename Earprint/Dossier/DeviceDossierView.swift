@@ -54,6 +54,7 @@ struct DeviceDossierView: View {
     @State private var showStickyIdentity = false
     @State private var demoStarted = false
     @State private var showShare = false
+    @State private var showSlabStudio = false
 
     init(card: HeadphoneCard, dossier: DeviceDossier? = nil, isSampleData: Bool = false, onClose: (() -> Void)? = nil) {
         self.card = card
@@ -69,7 +70,7 @@ struct DeviceDossierView: View {
 
     private var stats: PeriodStats { dossier.stats(period) }
     private var rarity: Rarity { card.rarity }
-    private var tiltActive: Bool { !showShare }
+    private var tiltActive: Bool { !showShare && !showSlabStudio }
     private var demoOverrideTilt: CGSize? { demoTilt == .zero ? nil : demoTilt }
 
     var body: some View {
@@ -107,6 +108,9 @@ struct DeviceDossierView: View {
                 color: colorStore?.selectedColor(for: card),
                 isSampleData: isSampleData
             )
+        }
+        .sheet(isPresented: $showSlabStudio) {
+            CustomizeSlabSheet(card: card, dossier: dossier)
         }
         .onChange(of: period) {
             selectedDate = nil
@@ -302,7 +306,7 @@ struct DeviceDossierView: View {
                     dossier: dossier,
                     tilt: slabTilt,
                     flipped: !exporting && slabFlipped,
-                    animateSeal: !exporting && !showShare && !showStickyIdentity
+                    animateSeal: !exporting && tiltActive && !showStickyIdentity
                 )
                     .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
                     .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
@@ -323,6 +327,14 @@ struct DeviceDossierView: View {
                         .font(.caption)
                 }
                 .foregroundStyle(DossierPalette.dim)
+
+                Button {
+                    showSlabStudio = true
+                } label: {
+                    Label("Customize Slab", systemImage: "wand.and.stars")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
             }
 
             lifetimeQuickStrip

@@ -34,6 +34,11 @@ enum DossierShareRenderer {
     /// Exact 3:4 portrait aspect ratio for RedNote and Douyin posts.
     static let pageSize = CGSize(width: 420, height: 560)
 
+    static func originalModelName(for card: HeadphoneCard, locale: Locale) -> String {
+        let language = AppLanguage.systemResolved(preferredLanguages: [locale.identifier])
+        return language.text(card.kind == .overEar ? "Over-ear headphones" : "Earbuds")
+    }
+
     static func renderPages(
         card: HeadphoneCard,
         dossier: DeviceDossier,
@@ -46,6 +51,18 @@ enum DossierShareRenderer {
         locale: Locale = .current,
         scale: CGFloat = 3
     ) -> [DossierShareImage] {
+        var card = card
+        var dossier = dossier
+        if options.usesOriginalArtwork {
+            let model = originalModelName(for: card, locale: locale)
+            card.model = model
+            card.nickname = model
+            card.symbol = "headphones"
+            dossier.hardware.manufacturer = "—"
+            dossier.hardware.modelName = model
+            dossier.hardware.sourceName = "—"
+            dossier.hardware.sourceBundleID = "—"
+        }
         let sanitizedModel = card.model
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "/", with: "-")
@@ -53,7 +70,7 @@ enum DossierShareRenderer {
             card: card,
             dossier: dossier,
             period: period,
-            color: color,
+            color: options.usesOriginalArtwork ? nil : color,
             isSampleData: isSampleData,
             options: options,
             posterScheme: scheme
@@ -67,7 +84,7 @@ enum DossierShareRenderer {
                 fileStem: "Earprint-\(sanitizedModel)-Summary",
                 scheme: scheme,
                 locale: locale,
-                scale: scale,
+                scale: options.is4K ? options.scale : scale,
                 content: canvas.simpleOnePagePoster
             ) else {
                 return []
@@ -85,7 +102,7 @@ enum DossierShareRenderer {
                     fileStem: stem,
                     scheme: scheme,
                     locale: locale,
-                    scale: scale,
+                    scale: options.is4K ? options.scale : scale,
                     content: canvas.longPageView(for: page, index: index, total: total)
                 )
             }
@@ -125,6 +142,7 @@ struct DossierShareSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var envColorScheme
+    @Environment(\.proAccess) private var proAccess
     @Namespace private var switcherNamespace
     @State private var format: DossierShareFormat = .simple
     @State private var posterScheme: ColorScheme? = nil
@@ -158,8 +176,7 @@ struct DossierShareSheet: View {
         let format: DossierShareFormat
         let scheme: ColorScheme
         let localeID: String
-        let simple: DossierShareOptions.Simple
-        let long: DossierShareOptions.Long
+        let options: DossierShareOptions
     }
 
     private var renderKey: RenderKey {
@@ -167,9 +184,16 @@ struct DossierShareSheet: View {
             format: format,
             scheme: activePosterScheme,
             localeID: locale.identifier,
-            simple: options.simple,
-            long: options.long
+            options: effectiveOptions
         )
+    }
+
+    private var effectiveOptions: DossierShareOptions {
+        guard !proAccess.isUnlocked(.export4K) else { return options }
+        var effective = options
+        effective.is4K = false
+        effective.isWatermarkHidden = false
+        return effective
     }
 
     var body: some View {
@@ -425,7 +449,9 @@ struct DossierShareSheet: View {
                 ? "Share \(activePages.count) images"
                 : "Share image"
             ShareLink(items: activePages) { page in
-                SharePreview("\(card.model) · \(page.id + 1)/\(activePages.count)", image: page.image)
+                let model = effectiveOptions.usesOriginalArtwork
+                    ? DossierShareRenderer.originalModelName(for: card, locale: locale) : card.model
+                return SharePreview("\(model) · \(page.id + 1)/\(activePages.count)", image: page.image)
             } label: {
                 Label(label, systemImage: "square.and.arrow.up")
                     .font(.headline)
@@ -468,10 +494,9 @@ struct DossierShareSheet: View {
             color: color,
             isSampleData: isSampleData,
             format: key.format,
-            options: options,
+            options: key.options,
             scheme: key.scheme,
-            locale: locale,
-            scale: 3
+            locale: locale
         )
         guard !Task.isCancelled else { return }
 
@@ -494,9 +519,11 @@ private struct DossierShareCustomizeSheet: View {
     @Binding var options: DossierShareOptions
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.proAccess) private var proAccess
 
     private var isCurrentDefault: Bool {
-        format == .simple ? options.simple.isDefault : options.long.isDefault
+        let contentIsDefault = format == .simple ? options.simple.isDefault : options.long.isDefault
+        return contentIsDefault && !options.is4K && !options.isWatermarkHidden
     }
 
     var body: some View {
@@ -507,6 +534,10 @@ private struct DossierShareCustomizeSheet: View {
                 } else {
                     longSections
                 }
+                Section("Export quality") {
+                    Toggle("4K (2100 × 2800)", isOn: proOption(\.is4K))
+                    Toggle("Watermark-Free", isOn: proOption(\.isWatermarkHidden))
+                }
             }
             .navigationTitle("Customize share image")
             .navigationBarTitleDisplayMode(.inline)
@@ -514,6 +545,8 @@ private struct DossierShareCustomizeSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Reset to defaults") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        options.is4K = false
+                        options.isWatermarkHidden = false
                         switch format {
                         case .simple: options.simple.reset()
                         case .long: options.long.reset()
@@ -524,6 +557,18 @@ private struct DossierShareCustomizeSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+
+    private func proOption(_ option: WritableKeyPath<DossierShareOptions, Bool>) -> Binding<Bool> {
+        Binding {
+            proAccess.isUnlocked(.export4K) && options[keyPath: option]
+        } set: { enabled in
+            if enabled && !proAccess.isUnlocked(.export4K) {
+                ProPaywallRequester.request(feature: .export4K)
+            } else {
+                options[keyPath: option] = enabled
             }
         }
     }
@@ -687,16 +732,18 @@ private struct DossierSharePosterCanvas {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             HStack {
-                HStack(spacing: 5) {
-                    Image(systemName: "ear.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(card.rarity.accent)
-                    Text("Earprint")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                    Text("· \(card.model)")
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(DossierPalette.dim)
-                        .lineLimit(1)
+                if !options.isWatermarkHidden {
+                    HStack(spacing: 5) {
+                        Image(systemName: "ear.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(card.rarity.accent)
+                        Text("Earprint")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                        Text("· \(card.model)")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 8)
                 if isSampleData {
@@ -777,8 +824,15 @@ private struct DossierSharePosterCanvas {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: true)
-                        .frame(width: 132, height: 132)
+                    Group {
+                        if options.usesOriginalArtwork {
+                            WrappedHeadphoneMark(overEar: card.kind == .overEar)
+                                .foregroundStyle(rarity.ink)
+                        } else {
+                            HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: true)
+                        }
+                    }
+                    .frame(width: 132, height: 132)
                 }
                 .foregroundStyle(rarity.ink)
                 .padding(16)
@@ -1004,7 +1058,8 @@ private struct DossierSharePosterCanvas {
                     animateSeal: false,
                     showsGrade: l.showGrade,
                     showsHardwareID: l.showHardwareID,
-                    showsFirstWear: l.showFirstWear
+                    showsFirstWear: l.showFirstWear,
+                    usesOriginalArtwork: options.usesOriginalArtwork
                 )
                 .scaleEffect(0.73)
                 .frame(width: SlabMetrics.width * 0.73, height: SlabMetrics.height * 0.73)
@@ -1197,7 +1252,8 @@ private struct DossierSharePosterCanvas {
                         showsHardwareDetails: l.showHardwareID,
                         showsSourceMetadata: l.showSourceMetadata,
                         showsFirstWear: l.showFirstWear,
-                        compact: true
+                        compact: true,
+                        showsHealthProvenance: !options.usesOriginalArtwork
                     )
 
                     compactMilestonesSection(Array(dossier.milestones.suffix(3)))
@@ -1212,7 +1268,8 @@ private struct DossierSharePosterCanvas {
                             showsHardwareDetails: l.showHardwareID,
                             showsSourceMetadata: l.showSourceMetadata,
                             showsFirstWear: l.showFirstWear,
-                            compact: false
+                            compact: false,
+                            showsHealthProvenance: !options.usesOriginalArtwork
                         )
                         CertificateLabel(
                             card: card,
@@ -1223,7 +1280,8 @@ private struct DossierSharePosterCanvas {
                             showsHardwareDetails: l.showHardwareID,
                             showsSourceMetadata: l.showSourceMetadata,
                             showsFirstWear: l.showFirstWear,
-                            compact: true
+                            compact: true,
+                            showsHealthProvenance: !options.usesOriginalArtwork
                         )
                     }
                 } else if showMilestones {

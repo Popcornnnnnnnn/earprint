@@ -206,3 +206,100 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
         }
     }
 }
+
+/// Optional collector finishes. The earned rarity stays independent of the selected finish.
+enum ProFoilStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case goldBullion, obsidianPrism, sakuraPearl, rawTitanium
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .goldBullion: "GOLD BULLION"
+        case .obsidianPrism: "OBSIDIAN PRISM"
+        case .sakuraPearl: "SAKURA PEARL"
+        case .rawTitanium: "RAW TITANIUM"
+        }
+    }
+
+    var shortName: String {
+        switch self {
+        case .goldBullion: "Gold Bullion"
+        case .obsidianPrism: "Obsidian Prism"
+        case .sakuraPearl: "Sakura Pearl"
+        case .rawTitanium: "Raw Titanium"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .goldBullion: "Brushed metallic gold"
+        case .obsidianPrism: "Dark carbon with a prism flare"
+        case .sakuraPearl: "Warm rose-pearl satin"
+        case .rawTitanium: "Aerospace matte titanium"
+        }
+    }
+
+    var material: FoilMaterial {
+        switch self {
+        case .goldBullion: .brushed
+        case .obsidianPrism: .carbon
+        case .sakuraPearl: .satin
+        case .rawTitanium: .matteGrain
+        }
+    }
+
+    var baseColors: [Color] {
+        switch self {
+        case .goldBullion:
+            [Self.color(0x9A621F), Self.color(0xFFE29B), Self.color(0xBF8634), Self.color(0x714617)]
+        case .obsidianPrism:
+            [Self.color(0x0C101C), Self.color(0x35354E), Self.color(0x141B30), Self.color(0x060810)]
+        case .sakuraPearl:
+            [Self.color(0xEAA9BA), Self.color(0xFFF4E9), Self.color(0xE1ADCB), Self.color(0xB981A9)]
+        case .rawTitanium:
+            [Self.color(0x545D65), Self.color(0x888F94), Self.color(0x48545D), Self.color(0x29323B)]
+        }
+    }
+
+    var ink: Color {
+        switch self {
+        case .goldBullion: Self.color(0x241204)
+        case .sakuraPearl: Self.color(0x351C30)
+        case .obsidianPrism, .rawTitanium: .white
+        }
+    }
+
+    var glow: Color {
+        switch self {
+        case .goldBullion: Self.color(0xE8A539)
+        case .obsidianPrism: Self.color(0x958CFF)
+        case .sakuraPearl: Self.color(0xF3A1BD)
+        case .rawTitanium: Self.color(0x91A8B7)
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .goldBullion: Self.color(0xBD8229)
+        case .obsidianPrism: Self.color(0x8B79CF)
+        case .sakuraPearl: Self.color(0xC56E9A)
+        case .rawTitanium: Self.color(0x758998)
+        }
+    }
+
+    var sheenOpacity: Double {
+        switch self {
+        case .goldBullion: 0.85
+        case .obsidianPrism: 0.72
+        case .sakuraPearl: 0.66
+        case .rawTitanium: 0.24
+        }
+    }
+
+    private static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 255) / 255,
+              green: Double((hex >> 8) & 255) / 255,
+              blue: Double(hex & 255) / 255)
+    }
+}
