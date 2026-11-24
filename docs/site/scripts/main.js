@@ -173,6 +173,21 @@ function initAccessibleTabs() {
     const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
     if (!tabs.length) continue;
 
+    if (!CSS.supports('animation-timeline', 'scroll()') && tabs.length > 1) {
+      const firstTab = tabs[0];
+      const lastTab = tabs[tabs.length - 1];
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const { target, intersectionRatio } of entries) {
+            tablist.classList.toggle(target === firstTab ? 'more-start' : 'more-end', intersectionRatio < 1);
+          }
+        },
+        { root: tablist, threshold: 1, rootMargin: '1px' }
+      );
+      observer.observe(firstTab);
+      observer.observe(lastTab);
+    }
+
     const syncRoving = () => {
       const selected = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0];
       tabs.forEach((t) => {

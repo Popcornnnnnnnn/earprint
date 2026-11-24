@@ -2,6 +2,18 @@
  * Respects tokens.css variables, dual Dark/Light color-schemes, and prefers-reduced-motion.
  */
 
+  @property --fade-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  @property --fade-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
   /* --------------------------------------------------------------------------
      0. Ambient Acoustic Field Canvas
      -------------------------------------------------------------------------- */
@@ -831,12 +843,44 @@
     display: flex;
     flex-wrap: nowrap;
     flex: 1 1 100%;
-    gap: 0.25rem;
+    gap: 0.2rem;
     max-inline-size: 100%;
     min-inline-size: 0;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-snap-type: inline proximity;
+    scroll-padding-inline: var(--fade-size);
+    --fade-size: 2rem;
+    --fade-dir: right;
+    --fade-start-pos: 0;
+    --fade-end-pos: 100%;
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to var(--fade-dir), black, transparent) var(--fade-start-pos) 0 / var(--fade-start) 100% no-repeat no-clip,
+      linear-gradient(to var(--fade-dir), transparent, black) var(--fade-end-pos) 0 / var(--fade-end) 100% no-repeat no-clip;
+    animation: hero-tab-reveal-start linear both, hero-tab-hide-end linear both;
+    animation-timeline: scroll(self inline);
+    animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+  }
+
+  .hero-lab-controls [role="tablist"].more-start {
+    --fade-start: var(--fade-size);
+  }
+
+  .hero-lab-controls [role="tablist"].more-end {
+    --fade-end: var(--fade-size);
+  }
+
+  @keyframes hero-tab-reveal-start {
+    to {
+      --fade-start: var(--fade-size);
+    }
+  }
+
+  @keyframes hero-tab-hide-end {
+    from {
+      --fade-end: var(--fade-size);
+    }
   }
 
   .hero-lab-controls [role="tablist"]::-webkit-scrollbar {
@@ -845,6 +889,8 @@
 
   .hero-lab-controls [role="tab"] {
     flex: none;
+    padding: 0.44rem 0.62rem;
+    font-size: 0.78rem;
     scroll-snap-align: start;
   }
 
