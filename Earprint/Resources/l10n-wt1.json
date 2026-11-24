@@ -1,0 +1,74 @@
+{
+  "strings": {
+    "Ends the current Earprint listening session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束当前的 Earprint 聆听会话。"
+          }
+        }
+      }
+    },
+    "Headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耳机"
+          }
+        }
+      }
+    },
+    "Reset Listening Rest Timer": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置聆听休息计时器"
+          }
+        }
+      }
+    },
+    "Restarts the break countdown for the current Earprint listening session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新开始当前 Earprint 聆听会话的休息倒计时。"
+          }
+        }
+      }
+    },
+    "Start Listening Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始聆听会话"
+          }
+        }
+      }
+    },
+    "Starts an Earprint listening session on the Lock Screen and Dynamic Island.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在锁定屏幕和灵动岛上开始 Earprint 聆听会话。"
+          }
+        }
+      }
+    },
+    "Stop Listening Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束聆听会话"
+          }
+        }
+      }
+    }
+  }
+}
