@@ -9,23 +9,37 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     hero
 
-                    VStack(spacing: 5) {
+                    VStack(spacing: 2) {
                         ForEach(ProFeature.allCases) { feature in
                             featureRow(feature)
                         }
                     }
                     .card()
 
-                    primaryAction
                     ProStoreFeedback(store: store)
+                }
+                .frame(maxWidth: 520)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 10) {
+                    primaryAction
                     secondaryActions
                 }
                 .frame(maxWidth: 520)
-                .padding(20)
+                .padding(.horizontal, 18)
+                .padding(.top, 10)
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity)
+                .background(.ultraThinMaterial)
+                .overlay(alignment: .top) {
+                    Divider().opacity(0.35)
+                }
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -57,7 +71,7 @@ struct PaywallView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(Theme.primaryText)
-        .padding(22)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 26)
@@ -125,6 +139,10 @@ struct PaywallView: View {
                 .frame(maxWidth: .infinity)
                 .padding(14)
                 .background(Theme.quietColor.opacity(0.17), in: RoundedRectangle(cornerRadius: 20))
+        } else if !store.hasResolvedEntitlements {
+            ProgressView("Checking eligibility…")
+                .frame(maxWidth: .infinity)
+                .padding(12)
         } else if let product = store.proProduct {
             Button {
                 Task { await store.purchasePro() }

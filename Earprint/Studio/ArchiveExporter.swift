@@ -109,8 +109,14 @@ enum ArchiveExporter {
         }
     }
 
-    private static func csvRow(_ fields: [String]) -> String {
-        fields.map { value in
+    private static func csvRow(_ fields: [String], literalTextIndices: Set<Int> = [0, 1, 2, 3]) -> String {
+        fields.enumerated().map { index, raw in
+            var value = raw
+            if literalTextIndices.contains(index),
+               let first = value.first,
+               first == "=" || first == "+" || first == "-" || first == "@" || first == "\t" || first == "\r" {
+                value = "'" + value
+            }
             guard value.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else { return value }
             return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
         }.joined(separator: ",") + "\r\n"

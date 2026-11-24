@@ -47,6 +47,26 @@ final class ProEntitlementTests: XCTestCase {
     }
 
     @MainActor
+    func testPurchaseProDefersAndHonorsGrandfatheringWhenEntitlementsUnresolved() async {
+        let client = MockProStoreClient()
+        let info = AppTransactionInfo(environment: .production, originalAppVersion: "2")
+        let store = ProEntitlementStore(
+            storeClient: client,
+            appTransactionProvider: FixedAppTransactionProvider(info: info),
+            autoStart: false
+        )
+
+        XCTAssertFalse(store.hasResolvedEntitlements)
+        let unlocked = await store.purchasePro()
+        XCTAssertTrue(unlocked)
+        XCTAssertTrue(store.hasResolvedEntitlements)
+        XCTAssertTrue(store.isGrandfathered)
+        XCTAssertTrue(store.hasPro)
+        XCTAssertFalse(store.hasProPurchased)
+        XCTAssertEqual(client.purchaseCallCount, 0)
+    }
+
+    @MainActor
     func testLifetimePurchaseUnlocksProAndRefundRevokesIt() async {
         let client = MockProStoreClient()
         let store = makeSandboxStore(client: client)
@@ -246,6 +266,7 @@ private final class MockProStoreClient: ProStoreClient {
 
     var hasRestorablePro = false
     var purchaseOutcome: ProPurchaseOutcome = .purchased(revoked: false)
+    private(set) var purchaseCallCount = 0
 
     func fetchProducts(ids: [String]) async throws -> [StoreProductItem] {
         products.filter { ids.contains($0.id) }
@@ -254,6 +275,7 @@ private final class MockProStoreClient: ProStoreClient {
     func currentProEntitled() async -> Bool { hasPro }
 
     func purchase(productID: String) async -> ProPurchaseOutcome {
+        purchaseCallCount += 1
         if productID == EarprintProductID.proLifetime.rawValue, case .purchased(let revoked) = purchaseOutcome {
             hasPro = !revoked
         }

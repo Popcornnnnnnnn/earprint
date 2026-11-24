@@ -18,7 +18,7 @@ enum ProFeature: String, CaseIterable, Identifiable, Sendable {
         case .wrappedVideo: "2026 Wrapped 3D Video"
         case .foilShaders: "4 Procedural Foil Finishes"
         case .slabEngraving: "Custom Slab Engraving"
-        case .export4K: "Watermark-Free 4K Posters"
+        case .export4K: "Watermark-Free High-Res Posters"
         case .archiveExport: "Multi-Year CSV & JSON Archive"
         case .liveActivity: "Dynamic Island Session"
         }

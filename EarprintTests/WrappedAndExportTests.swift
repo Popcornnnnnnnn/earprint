@@ -43,7 +43,8 @@ final class WrappedAndExportTests: XCTestCase {
         XCTAssertEqual(wrapped.peakMonthMinutes, 210, accuracy: 0.01)
         XCTAssertEqual(wrapped.longestStreakDays, 3)
         XCTAssertEqual(wrapped.averageDecibels, 70, accuracy: 0.01)
-        XCTAssertEqual(wrapped.whoSafeWeeksCount, 2)
+        // Jan 1–3 sits in the 2025-12-29..2026-01-04 cross-year week; only the full July week counts.
+        XCTAssertEqual(wrapped.whoSafeWeeksCount, 1)
         XCTAssertFalse(wrapped.isThinData)
     }
 
@@ -90,6 +91,41 @@ final class WrappedAndExportTests: XCTestCase {
         XCTAssertEqual(decoded.devices.first?.cardID, card.id)
         XCTAssertEqual(decoded.devices.first?.daily, [20250104: 1080, 20260212: 2100])
         XCTAssertEqual(decoded.devices.first?.sessions.count, 2)
+    }
+
+    func testArchiveCSVPrefixesSpreadsheetFormulas() throws {
+        var aggregate = ListeningAggregate()
+        aggregate.ingest([sample(date(2026, 2, 12), minutes: 15)], now: date(2026, 2, 14), calendar: calendar)
+        var card = SampleCards.all[0]
+        card.aliasIDs = [ListeningAggregate.unattributedKey]
+        card.nickname = "=SUM(A1:A2)"
+        card.model = "@MODEL"
+
+        let csv = try XCTUnwrap(String(data: ArchiveExporter.csv(aggregate: aggregate, cards: [card]), encoding: .utf8))
+        XCTAssertFalse(csv.contains(",=SUM(A1:A2),"))
+        XCTAssertFalse(csv.contains(",@MODEL,"))
+        XCTAssertTrue(csv.contains("'=SUM(A1:A2)"))
+        XCTAssertTrue(csv.contains("'@MODEL"))
+    }
+
+    func testWrappedHandlesNonGregorianCalendarAndPartialBoundaryWeeks() {
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = TimeZone(secondsFromGMT: 0)!
+        buddhist.firstWeekday = 2
+
+        var aggregate = ListeningAggregate()
+        // 2026-01-01 is a Thursday (partial first week of 2026), 2026-01-05 is Monday (full week)
+        aggregate.ingest([
+            sample(date(2026, 1, 1), minutes: 30, decibels: 70),
+            sample(date(2026, 1, 5), minutes: 60, decibels: 70)
+        ], now: date(2026, 2, 1), calendar: calendar)
+
+        let wrapped = WrappedAggregator.summarize(aggregate: aggregate, cards: [], year: 2026, calendar: buddhist)
+        XCTAssertEqual(wrapped.year, 2026)
+        XCTAssertEqual(wrapped.totalMinutes, 90, accuracy: 0.01)
+        XCTAssertEqual(wrapped.activeDays, 2)
+        // Only the full week starting 2026-01-05 (not the partial Dec 29..Jan 4 boundary week) qualifies.
+        XCTAssertEqual(wrapped.whoSafeWeeksCount, 1)
     }
 
     @MainActor

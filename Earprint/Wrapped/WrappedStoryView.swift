@@ -9,6 +9,7 @@ struct WrappedStoryView: View {
     let summary: WrappedSummary
     var aggregate: ListeningAggregate? = nil
     var cards: [HeadphoneCard] = []
+    var isLoading: Bool = false
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
@@ -185,7 +186,16 @@ struct WrappedStoryView: View {
 
     @ViewBuilder
     private func slide(_ index: Int) -> some View {
-        if summary.isThinData {
+        if isLoading {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .tint(wrappedMint)
+                Text("Loading Wrapped…")
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .padding(.vertical, 60)
+        } else if summary.isThinData {
             if index == 0 {
                 VStack(spacing: 14) {
                     WrappedHeadphoneMark(overEar: summary.topDeviceKey.kind == .overEar)

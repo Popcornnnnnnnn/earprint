@@ -57,6 +57,26 @@ final class LiveActivityAndFallbackTests: XCTestCase {
     }
 
     @MainActor
+    func testActiveRoutePrefersExactMatchOverSubstringAndRejectsAmbiguousSubstring() {
+        var first = SampleCards.all[0]
+        var second = SampleCards.all[1]
+        first.nickname = "AirPods Pro"
+        first.model = "Model A"
+        second.nickname = "AirPods"
+        second.model = "Model B"
+
+        var output = ["AirPods"]
+        let monitor = ActiveAudioRouteMonitor(readOutputNames: { output })
+        XCTAssertEqual(monitor.activeMatchedCard(in: [first, second])?.id, second.id)
+
+        first.nickname = "Studio Pro"
+        second.nickname = "Studio Mini"
+        output = ["Studio"]
+        monitor.refresh()
+        XCTAssertNil(monitor.activeMatchedCard(in: [first, second]))
+    }
+
+    @MainActor
     func testRestIntervalClampsAndPersists() throws {
         let suite = "earprint.tests.liveActivity.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

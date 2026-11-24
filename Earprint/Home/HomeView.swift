@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var space = LayoutSpace()
     @State private var showWrapped = false
     @State private var wrappedContent: WrappedContent?
+    @State private var isLoadingWrapped = false
 
     private struct WrappedContent: Sendable {
         let summary: WrappedSummary
@@ -156,7 +157,8 @@ struct HomeView: View {
         .sheet(isPresented: $showWrapped) {
             WrappedStoryView(summary: wrappedSummary,
                              aggregate: (isSampleData || isEmptyState) ? nil : wrappedContent?.aggregate,
-                             cards: wrappedContent?.cards ?? [])
+                             cards: wrappedContent?.cards ?? [],
+                             isLoading: !isSampleData && !isEmptyState && isLoadingWrapped && wrappedContent == nil)
         }
         .onAppear {
             if router?.pendingWrapped == true {
@@ -172,9 +174,11 @@ struct HomeView: View {
         }
         .task(id: wrappedInput) {
             guard wrappedInput.active, !wrappedInput.sample, !wrappedInput.empty else {
+                isLoadingWrapped = false
                 if wrappedInput.empty { wrappedContent = nil }
                 return
             }
+            isLoadingWrapped = true
             let cards = cards
             let content = await Task.detached(priority: .utility) {
                 let aggregate = AggregateCache().load()?.aggregate
@@ -182,6 +186,7 @@ struct HomeView: View {
                 return summary.map { WrappedContent(summary: $0, aggregate: aggregate, cards: cards) }
             }.value
             guard !Task.isCancelled else { return }
+            isLoadingWrapped = false
             wrappedContent = content
         }
     }

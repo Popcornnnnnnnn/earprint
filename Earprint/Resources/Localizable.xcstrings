@@ -1251,6 +1251,22 @@
         }
       }
     },
+    "Checking eligibility…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证资格…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking eligibility…"
+          }
+        }
+      }
+    },
     "Classic Finishes": {
       "localizations": {
         "zh-Hans": {
@@ -1961,6 +1977,22 @@
         }
       }
     },
+    "Earprint Pro is required to start a Live Listening Session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要 Earprint Pro 才能开启实时聆听状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint Pro is required to start a Live Listening Session."
+          }
+        }
+      }
+    },
     "Earprint Rings": {
       "localizations": {
         "zh-Hans": {
@@ -2551,6 +2583,22 @@
         }
       }
     },
+    "High-Res (2100 × 2800)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高清（2100 × 2800）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High-Res (2100 × 2800)"
+          }
+        }
+      }
+    },
     "Holo": {
       "localizations": {
         "zh-Hans": {
@@ -2857,6 +2905,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "实时聆听状态"
+          }
+        }
+      }
+    },
+    "Loading Wrapped…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载年度回顾…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading Wrapped…"
           }
         }
       }
@@ -3907,6 +3971,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "读取 Apple 健康中的耳机音量记录。数据保留在此 iPhone。"
+          }
+        }
+      }
+    },
+    "Recent Health": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近健康记录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Health"
           }
         }
       }
@@ -4991,6 +5071,22 @@
         }
       }
     },
+    "Unable to start Live Activity.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法启动实时活动。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to start Live Activity."
+          }
+        }
+      }
+    },
     "Unknown headphones": {
       "localizations": {
         "zh-Hans": {
@@ -5197,6 +5293,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "无水印 4K 海报"
+          }
+        }
+      }
+    },
+    "Watermark-Free High-Res Posters": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无水印高清海报"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watermark-Free High-Res Posters"
           }
         }
       }

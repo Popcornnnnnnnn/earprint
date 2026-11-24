@@ -3,18 +3,62 @@ import Foundation
 
 @available(iOS 18.0, *)
 struct StartListeningSessionIntent: LiveActivityIntent {
+    enum SessionError: LocalizedError {
+        case proRequired
+        case startFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .proRequired:
+                return String(localized: "Earprint Pro is required to start a Live Listening Session.")
+            case .startFailed(let message):
+                return message
+            }
+        }
+    }
+
     static var title: LocalizedStringResource = "Start Listening Session"
     static var description = IntentDescription("Starts an Earprint listening session on the Lock Screen and Dynamic Island.")
     static var openAppWhenRun = false
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        let card = WidgetSnapshotStore.load()?.topCard
-        LiveActivityController.shared.start(
-            deviceName: card?.nickname ?? String(localized: "Headphones"),
-            symbol: card?.symbol ?? "headphones",
-            cardID: card?.id ?? "unknown"
+        let store = ProEntitlementStore(autoStart: false)
+        await store.refreshEntitlements()
+        guard store.isUnlocked(.liveActivity) else {
+            throw SessionError.proRequired
+        }
+
+        let snapshot = WidgetSnapshotStore.load()
+        let monitor = ActiveAudioRouteMonitor()
+        let activeName = monitor.activeOutputNames.first
+
+        let matchedCard: WidgetSnapshot.Card? = if let activeName, let cards = snapshot?.cards {
+            cards.first {
+                ActiveAudioRouteMonitor.matches(
+                    cardNickname: $0.nickname,
+                    cardModel: $0.model,
+                    activeOutputNames: [activeName]
+                )
+            }
+        } else {
+            nil
+        }
+
+        let deviceName = matchedCard?.nickname ?? activeName ?? String(localized: "Headphones")
+        let symbol = matchedCard?.symbol ?? "headphones"
+        let cardID = matchedCard?.id ?? "headphones"
+
+        let started = LiveActivityController.shared.start(
+            deviceName: deviceName,
+            symbol: symbol,
+            cardID: cardID,
+            decibels: 0
         )
+        if !started {
+            let reason = LiveActivityController.shared.lastError ?? String(localized: "Unable to start Live Activity.")
+            throw SessionError.startFailed(reason)
+        }
         return .result()
     }
 }
@@ -40,7 +84,7 @@ struct StopListeningSessionIntent: LiveActivityIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        await LiveActivityController.shared.stopAndWait()
+        await LiveActivityController.shared.stopAndWait(manual: true)
         return .result()
     }
 }

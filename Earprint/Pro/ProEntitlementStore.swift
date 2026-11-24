@@ -128,6 +128,7 @@ actor LiveProStoreClient: ProStoreClient {
 final class ProEntitlementStore: ProEntitlementProviding {
     private(set) var hasProPurchased = false
     private(set) var isGrandfathered = false
+    private(set) var hasResolvedEntitlements = false
     private(set) var proProduct: StoreProductItem?
     private(set) var tipProducts: [StoreProductItem] = []
     private(set) var isLoadingProducts = false
@@ -240,10 +241,15 @@ final class ProEntitlementStore: ProEntitlementProviding {
         let grandfathered = Self.shouldGrandfather(await appTransaction)
         guard generation == refreshGeneration, !Task.isCancelled else { return }
         isGrandfathered = grandfathered
+        hasResolvedEntitlements = true
     }
 
     @discardableResult
     func purchasePro() async -> Bool {
+        if !hasResolvedEntitlements {
+            await refreshEntitlements()
+        }
+        if hasPro { return true }
         guard let proProduct else { return false }
         return await purchase(proProduct)
     }
@@ -251,6 +257,12 @@ final class ProEntitlementStore: ProEntitlementProviding {
     @discardableResult
     func purchase(_ product: StoreProductItem) async -> Bool {
         guard !isPurchasing, let productID = EarprintProductID(rawValue: product.id) else { return false }
+        if productID == .proLifetime {
+            if !hasResolvedEntitlements {
+                await refreshEntitlements()
+            }
+            if hasPro { return true }
+        }
         isPurchasing = true
         statusMessage = nil
         errorMessage = nil

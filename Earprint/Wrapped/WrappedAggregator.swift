@@ -58,20 +58,42 @@ enum WrappedAggregator {
         var measuredSeconds = 0.0
         var hours = Array(repeating: 0.0, count: 24)
         var weekEnergy: [Date: Double] = [:]
+        if let start, let end {
+            for device in aggregate.devices.values {
+                for span in device.sessions.spans where span.duration > 0 && span.energy > 0 {
+                    var cursor = Date(timeIntervalSince1970: span.start)
+                    let stop = Date(timeIntervalSince1970: span.end)
+                    while cursor < stop, let week = calendar.dateInterval(of: .weekOfYear, for: cursor) {
+                        let next = min(stop, week.end)
+                        let fraction = next.timeIntervalSince(cursor) / span.duration
+                        if week.start >= start && week.end <= end {
+                            weekEnergy[week.start, default: 0] += span.energy * fraction
+                        }
+                        cursor = next
+                    }
+                }
+            }
+        }
 
         for key in groupedDevices.keys.sorted() {
             guard let devices = groupedDevices[key], let firstDevice = devices.first else { continue }
             var groupSeconds = 0.0
             var spans: [SessionSet.Span] = []
+            var groupHasSpans = false
             for device in devices {
-                for (day, seconds) in device.daily.sorted(by: { $0.key < $1.key })
-                where day / 10_000 == year && seconds > 0 && seconds.isFinite {
-                    daily[day, default: 0] += seconds
-                    groupSeconds += seconds
-                }
+                if !device.sessions.spans.isEmpty { groupHasSpans = true }
                 spans.append(contentsOf: device.sessions.spans)
             }
-            if groupSeconds > topSeconds {
+            if !groupHasSpans {
+                for device in devices {
+                    for (day, seconds) in device.daily.sorted(by: { $0.key < $1.key })
+                    where day / 10_000 == year && seconds > 0 && seconds.isFinite {
+                        daily[day, default: 0] += seconds
+                        groupSeconds += seconds
+                    }
+                }
+            }
+            if groupSeconds > topSeconds, !groupHasSpans {
                 topCard = cardsByID.first { $0.id == key }
                 topDevice = devices.max { $0.descriptorDate < $1.descriptorDate } ?? firstDevice
                 topSeconds = groupSeconds
@@ -85,24 +107,36 @@ enum WrappedAggregator {
                 let share = (upper - lower) / span.duration
                 sessions.insert(start: lower, end: upper, gap: ListeningAggregate.sessionGap,
                                 listeningSeconds: span.effectiveSeconds * share, energy: span.energy * share)
-                // The cache retains full-year energy at session resolution. Apportion it by
-                // time for sessions crossing a year or week boundary.
-                var cursor = Date(timeIntervalSince1970: lower)
+                // Derive Gregorian daily buckets from session timestamps so non-Gregorian
+                // system calendars never lose year keys.
+                var dayCursor = Date(timeIntervalSince1970: lower)
                 let stop = Date(timeIntervalSince1970: upper)
+                while dayCursor < stop, let dayInterval = calendar.dateInterval(of: .day, for: dayCursor) {
+                    let next = min(stop, dayInterval.end)
+                    let fraction = next.timeIntervalSince(dayCursor) / span.duration
+                    let pieceSeconds = span.effectiveSeconds * fraction
+                    let comps = calendar.dateComponents([.year, .month, .day], from: dayInterval.start)
+                    let dayKey = (comps.year ?? 0) * 10_000 + (comps.month ?? 0) * 100 + (comps.day ?? 0)
+                    daily[dayKey, default: 0] += pieceSeconds
+                    groupSeconds += pieceSeconds
+                    dayCursor = next
+                }
+                var cursor = Date(timeIntervalSince1970: lower)
                 while cursor < stop, let hour = calendar.dateInterval(of: .hour, for: cursor) {
                     let next = min(stop, hour.end)
                     let fraction = next.timeIntervalSince(cursor) / span.duration
                     hours[calendar.component(.hour, from: cursor)] += span.effectiveSeconds * fraction
-                    if span.energy > 0,
-                       let week = calendar.dateInterval(of: .weekOfYear, for: cursor) {
-                        weekEnergy[week.start, default: 0] += span.energy * fraction
-                    }
                     cursor = next
                 }
                 if span.energy > 0 {
                     energy += span.energy * share
                     measuredSeconds += span.effectiveSeconds * share
                 }
+            }
+            if groupHasSpans, groupSeconds > topSeconds {
+                topCard = cardsByID.first { $0.id == key }
+                topDevice = devices.max { $0.descriptorDate < $1.descriptorDate } ?? firstDevice
+                topSeconds = groupSeconds
             }
             sessionCount += sessions.count
         }

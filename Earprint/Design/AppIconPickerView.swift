@@ -373,6 +373,7 @@ struct SettingsView: View {
     @State private var path: [Destination]
     @State private var paywallRequest: PaywallRequest?
     @State private var archiveFile: ArchiveExportFile?
+    @State private var archiveTempDirectory: URL?
     @State private var archiveError: LocalizedStringKey?
     @State private var isExportingArchive = false
 
@@ -558,6 +559,11 @@ struct SettingsView: View {
             }
         }
         .interactiveDismissDisabled(iconManager.isUpdating)
+        .onDisappear {
+            if archiveFile == nil {
+                clearArchiveFile()
+            }
+        }
         .sheet(item: $paywallRequest) { request in
             if let proStore {
                 PaywallView(store: proStore, highlightedFeature: request.feature)
@@ -587,7 +593,7 @@ struct SettingsView: View {
 
     private func toggleLiveSession() {
         if liveController.isRunning {
-            liveController.stop()
+            liveController.stop(manual: true)
             return
         }
         guard proAccess.isUnlocked(.liveActivity) else {
@@ -595,9 +601,9 @@ struct SettingsView: View {
             return
         }
         if let active = routeMonitor?.activeMatchedCard(in: ownedCards) ?? ownedCards.first {
-            liveController.start(card: active)
+            liveController.start(card: active, decibels: 0)
         } else {
-            liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones")
+            liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones", decibels: 0)
         }
     }
 
@@ -623,6 +629,8 @@ struct SettingsView: View {
                 let file = try await Task.detached(priority: .userInitiated) {
                     try ArchiveExporter.export(format, aggregate: aggregate, cards: cards)
                 }.value
+                clearArchiveFile()
+                archiveTempDirectory = file.url.deletingLastPathComponent()
                 archiveFile = file
             } catch {
                 archiveError = "Export failed"
@@ -631,8 +639,9 @@ struct SettingsView: View {
     }
 
     private func clearArchiveFile() {
-        if let archiveFile {
-            try? FileManager.default.removeItem(at: archiveFile.url.deletingLastPathComponent())
+        if let dir = archiveTempDirectory {
+            try? FileManager.default.removeItem(at: dir)
+            archiveTempDirectory = nil
         }
         archiveFile = nil
     }

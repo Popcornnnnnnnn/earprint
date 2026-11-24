@@ -144,11 +144,15 @@ struct EarprintApp: App {
             }
             .onChange(of: library.snapshot?.generatedAt) { _, _ in
                 publishWidgets()
+                syncLiveActivity()
             }
             .onChange(of: library.cards.map(\.id)) { _, _ in
                 syncLiveActivity()
             }
             .onChange(of: proStore.hasPro) { _, _ in
+                syncLiveActivity()
+            }
+            .onChange(of: proStore.hasResolvedEntitlements) { _, _ in
                 syncLiveActivity()
             }
             .onChange(of: scenePhase) { _, phase in
@@ -163,13 +167,29 @@ struct EarprintApp: App {
     }
 
     private func syncLiveActivity() {
-        let weekDB = library.homeSummary.weekDecibels
+        let now = Date()
         LiveActivityController.shared.syncWithActiveRoute(
             cards: library.cards,
             routeMonitor: routeMonitor,
-            decibels: weekDB > 0 ? weekDB : 63,
-            proUnlocked: proStore.isUnlocked(.liveActivity)
+            decibelsForCard: { card in
+                recentDecibels(for: card, now: now)
+            },
+            proUnlocked: proStore.isUnlocked(.liveActivity),
+            proResolved: proStore.hasResolvedEntitlements
         )
+    }
+
+    private func recentDecibels(for card: HeadphoneCard, now: Date) -> Double {
+        guard let device = library.snapshot?.devices
+            .filter({ card.matches(id: $0.id) })
+            .max(by: { ($0.last ?? .distantPast) < ($1.last ?? .distantPast) }),
+              let last = device.last,
+              now.timeIntervalSince(last) <= 30 * 60,
+              let avg = device.averageDecibels,
+              avg > 0 else {
+            return 0
+        }
+        return avg
     }
 
     private func publishWidgets() {

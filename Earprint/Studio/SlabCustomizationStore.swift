@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-struct CardCustomization: Codable, Equatable, Sendable {
+struct CardCustomization: Codable, Equatable, Hashable, Sendable {
     var proFoil: ProFoilStyle? = nil
     var engravedTitle = ""
     var customSerial = ""

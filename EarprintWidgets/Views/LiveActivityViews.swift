@@ -9,7 +9,8 @@ struct LiveActivityLockScreenView: View {
     var staticProgress: Double? = nil
 
     var body: some View {
-        let color = Theme.levelColor(db: state.decibels)
+        let hasReading = state.decibels > 0
+        let color = hasReading ? Theme.levelColor(db: state.decibels) : Theme.quietColor
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
                 ListeningBadge(symbol: attributes.deviceSymbol, color: color, size: 46)
@@ -60,17 +61,24 @@ struct DecibelReadout: View {
     var big = false
 
     var body: some View {
-        let color = Theme.levelColor(db: decibels)
+        let hasReading = decibels > 0
+        let color = hasReading ? Theme.levelColor(db: decibels) : WidgetPalette.secondary
         VStack(alignment: .trailing, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text("\(Int(decibels.rounded()))")
-                    .font(.system(size: big ? 28 : 22, weight: .heavy, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: decibels))
-                Text("dB").font(.system(size: big ? 12 : 10, weight: .bold))
+                if hasReading {
+                    Text("\(Int(decibels.rounded()))")
+                        .font(.system(size: big ? 28 : 22, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText(value: decibels))
+                    Text("dB").font(.system(size: big ? 12 : 10, weight: .bold))
+                } else {
+                    Text("—")
+                        .font(.system(size: big ? 28 : 22, weight: .heavy, design: .rounded))
+                    Text("dB").font(.system(size: big ? 12 : 10, weight: .bold))
+                }
             }
             .foregroundStyle(color)
-            Text(LevelBand(decibels: decibels).title)
+            Text(hasReading ? LevelBand(decibels: decibels).title : String(localized: "Recent Health"))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(WidgetPalette.secondary)
         }
@@ -84,7 +92,7 @@ struct RestCountdown: View {
     var staticProgress: Double? = nil
 
     var body: some View {
-        let color = Theme.levelColor(db: state.decibels)
+        let color = state.decibels > 0 ? Theme.levelColor(db: state.decibels) : Theme.quietColor
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 4) {
                 Image(systemName: "cup.and.saucer.fill")

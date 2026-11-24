@@ -47,6 +47,7 @@ enum DossierShareRenderer {
         isSampleData: Bool,
         format: DossierShareFormat,
         options: DossierShareOptions = .default,
+        customization: CardCustomization? = nil,
         scheme: ColorScheme,
         locale: Locale = .current,
         scale: CGFloat = 3
@@ -73,6 +74,7 @@ enum DossierShareRenderer {
             color: options.usesOriginalArtwork ? nil : color,
             isSampleData: isSampleData,
             options: options,
+            customization: customization?.sanitized,
             posterScheme: scheme
         )
 
@@ -143,6 +145,7 @@ struct DossierShareSheet: View {
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var envColorScheme
     @Environment(\.proAccess) private var proAccess
+    @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
     @Namespace private var switcherNamespace
     @State private var format: DossierShareFormat = .simple
     @State private var posterScheme: ColorScheme? = nil
@@ -177,6 +180,16 @@ struct DossierShareSheet: View {
         let scheme: ColorScheme
         let localeID: String
         let options: DossierShareOptions
+        let customization: CardCustomization
+    }
+
+    private var effectiveCustomization: CardCustomization {
+        let saved = (customizationStore ?? .shared).customization(for: card.id)
+        return CardCustomization(
+            proFoil: proAccess.isUnlocked(.foilShaders) ? saved.proFoil : nil,
+            engravedTitle: proAccess.isUnlocked(.slabEngraving) ? saved.engravedTitle : "",
+            customSerial: proAccess.isUnlocked(.slabEngraving) ? saved.customSerial : ""
+        ).sanitized
     }
 
     private var renderKey: RenderKey {
@@ -184,7 +197,8 @@ struct DossierShareSheet: View {
             format: format,
             scheme: activePosterScheme,
             localeID: locale.identifier,
-            options: effectiveOptions
+            options: effectiveOptions,
+            customization: effectiveCustomization
         )
     }
 
@@ -495,6 +509,7 @@ struct DossierShareSheet: View {
             isSampleData: isSampleData,
             format: key.format,
             options: key.options,
+            customization: key.customization,
             scheme: key.scheme,
             locale: locale
         )
@@ -539,7 +554,7 @@ private struct DossierShareCustomizeSheet: View {
                     longSections
                 }
                 Section("Export quality") {
-                    Toggle("4K (2100 × 2800)", isOn: proOption(\.is4K))
+                    Toggle("High-Res (2100 × 2800)", isOn: proOption(\.is4K))
                     Toggle("Watermark-Free", isOn: proOption(\.isWatermarkHidden))
                 }
             }
@@ -706,6 +721,7 @@ private struct DossierSharePosterCanvas {
     let color: DeviceColorOption?
     let isSampleData: Bool
     let options: DossierShareOptions
+    var customization: CardCustomization? = nil
     let posterScheme: ColorScheme
 
     private struct MetricTileItem: Identifiable {
@@ -1074,6 +1090,10 @@ private struct DossierSharePosterCanvas {
                     showsGrade: l.showGrade,
                     showsHardwareID: l.showHardwareID,
                     showsFirstWear: l.showFirstWear,
+                    proFoil: customization?.proFoil,
+                    engravedSubtitle: customization?.engravedTitle,
+                    customSerialTag: customization?.customSerial,
+                    usesSavedCustomization: false,
                     usesOriginalArtwork: options.usesOriginalArtwork
                 )
                 .scaleEffect(0.73)
