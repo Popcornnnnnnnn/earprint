@@ -411,7 +411,8 @@ enum ModelGalleryCatalog {
         }
 
         var hasDedicated3DModel: Bool {
-            card.modelAssetName != nil
+            guard let asset = card.modelAssetName, !asset.isEmpty else { return false }
+            return asset != "HeadphoneGeneric"
         }
 
         static func == (lhs: Entry, rhs: Entry) -> Bool { lhs.id == rhs.id }

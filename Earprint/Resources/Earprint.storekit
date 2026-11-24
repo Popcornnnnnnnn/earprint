@@ -1,0 +1,97 @@
+{
+  "identifier" : "16D2D965",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "9340084211",
+      "localizations" : [
+        {
+          "description" : "Unlock collector tools and exports for life.",
+          "displayName" : "Earprint Pro",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "永久解锁收藏工具和导出选项。",
+          "displayName" : "Earprint Pro",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "com.popcornnn.earprint.pro.lifetime",
+      "referenceName" : "Earprint Pro",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "9340084212",
+      "localizations" : [
+        {
+          "description" : "Leave a small tip to support Earprint.",
+          "displayName" : "Coffee",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "请开发者喝杯咖啡，支持 Earprint。",
+          "displayName" : "请喝咖啡",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "com.popcornnn.earprint.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "9340084213",
+      "localizations" : [
+        {
+          "description" : "Leave a medium tip to support Earprint.",
+          "displayName" : "Collector Booster",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "为 Earprint 的持续开发送上一份支持。",
+          "displayName" : "收藏家助力",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "com.popcornnn.earprint.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "9340084214",
+      "localizations" : [
+        {
+          "description" : "Leave a large tip to support Earprint.",
+          "displayName" : "Studio Patron",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "为 Earprint 的独立开发提供更多支持。",
+          "displayName" : "工作室赞助",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "com.popcornnn.earprint.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

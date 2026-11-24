@@ -124,6 +124,7 @@ enum EarprintLink {
         case card(String)
         case collection
         case rings
+        case wrapped
         case probe
     }
 
@@ -136,6 +137,7 @@ enum EarprintLink {
     }
     static let collection = URL(string: "\(scheme)://collection")!
     static let rings = URL(string: "\(scheme)://rings")!
+    static let wrapped = URL(string: "\(scheme)://wrapped")!
     static let probe = URL(string: "\(scheme)://probe")!
 
     static func route(for url: URL) -> Route? {
@@ -151,6 +153,7 @@ enum EarprintLink {
             return pathID.isEmpty ? .collection : .card(pathID)
         case "collection": return .collection
         case "rings": return .rings
+        case "wrapped": return .wrapped
         case "probe": return .probe
         default: return nil
         }

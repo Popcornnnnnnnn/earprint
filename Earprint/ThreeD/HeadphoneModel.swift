@@ -323,7 +323,7 @@ enum HeadphoneModelLoader {
         switch modelKey {
         case .airpodsMax:
             recolorAirPodsMax(entity, finish: finish)
-        case .beatsOverEar:
+        case .beatsOverEar, .overEarGeneric:
             recolorGenericOverEar(entity, finish: finish)
         default:
             break

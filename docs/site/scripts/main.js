@@ -173,6 +173,21 @@ function initAccessibleTabs() {
     const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
     if (!tabs.length) continue;
 
+    if (!CSS.supports('animation-timeline', 'scroll()') && tabs.length > 1) {
+      const firstTab = tabs[0];
+      const lastTab = tabs[tabs.length - 1];
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const { target, intersectionRatio } of entries) {
+            tablist.classList.toggle(target === firstTab ? 'more-start' : 'more-end', intersectionRatio < 1);
+          }
+        },
+        { root: tablist, threshold: 1, rootMargin: '1px' }
+      );
+      observer.observe(firstTab);
+      observer.observe(lastTab);
+    }
+
     const syncRoving = () => {
       const selected = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0];
       tabs.forEach((t) => {
@@ -219,7 +234,6 @@ function initVideoControls() {
 
   const updateToggleButtons = () => {
     for (const btn of document.querySelectorAll('[data-video-toggle]')) {
-      btn.setAttribute('aria-pressed', String(userPaused));
       const key = userPaused ? 'showcase.playVideos' : 'showcase.pauseVideos';
       btn.setAttribute('data-i18n', key);
       btn.textContent = t(key);
@@ -229,22 +243,11 @@ function initVideoControls() {
   const applyMotionState = (paused) => {
     userPaused = paused;
     for (const video of videos) {
-      if (paused) {
-        video.removeAttribute('autoplay');
-        video.pause();
-      } else if (!REDUCED_MOTION_MQ.matches) {
-        video.setAttribute('autoplay', '');
-        video.play().catch(() => {});
-      }
+      if (paused) video.pause();
+      else if (!video.querySelector('source[data-src]')) video.play().catch(() => {});
     }
     updateToggleButtons();
   };
-
-  if (REDUCED_MOTION_MQ.matches) {
-    applyMotionState(true);
-  } else {
-    updateToggleButtons();
-  }
 
   REDUCED_MOTION_MQ.addEventListener('change', (event) => {
     applyMotionState(event.matches);
@@ -280,7 +283,7 @@ function initVideoControls() {
               delete source.dataset.src;
             }
             video.load();
-            if (!userPaused && !REDUCED_MOTION_MQ.matches) {
+            if (!userPaused) {
               video.play().catch(() => {});
             }
             observer.unobserve(video);
@@ -306,6 +309,7 @@ function initVideoControls() {
       }
     }
   }
+  applyMotionState(userPaused);
 }
 
 /* Section 04 PSA Ear Grade 4-Factor Simulator (matches DeviceDossier.swift) */
@@ -502,7 +506,7 @@ function initScrollRevealFallback() {
         }
       }
     },
-    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    { threshold: 0 }
   );
 
   for (const target of targets) {

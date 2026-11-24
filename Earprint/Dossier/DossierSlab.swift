@@ -19,16 +19,36 @@ struct GradingSlab: View {
     var showsGrade = true
     var showsHardwareID = true
     var showsFirstWear = true
+    var proFoil: ProFoilStyle? = nil
+    var engravedSubtitle: String? = nil
+    var customSerialTag: String? = nil
+    var usesSavedCustomization = true
+    var usesOriginalArtwork = false
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.proAccess) private var proAccess
+    @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
+
+    private var customization: CardCustomization {
+        let foilUnlocked = usesSavedCustomization && proAccess.isUnlocked(.foilShaders)
+        let engravingUnlocked = usesSavedCustomization && proAccess.isUnlocked(.slabEngraving)
+        let saved = foilUnlocked || engravingUnlocked
+            ? (customizationStore ?? .shared).customization(for: card.id) : CardCustomization()
+        return CardCustomization(
+            proFoil: proFoil ?? (foilUnlocked ? saved.proFoil : nil),
+            engravedTitle: engravedSubtitle ?? (engravingUnlocked ? saved.engravedTitle : ""),
+            customSerial: customSerialTag ?? (engravingUnlocked ? saved.customSerial : "")
+        ).sanitized
+    }
 
     var body: some View {
         let grade = dossier.grade
         let rarity = card.rarity
+        let customization = customization
         VStack(spacing: 10) {
-            label(grade: grade, rarity: rarity)
+            label(grade: grade, rarity: rarity, customization: customization)
                 .frame(height: SlabMetrics.labelHeight)
-            cardWell
+            cardWell(foil: customization.proFoil)
             footer(rarity: rarity)
                 .frame(height: 26)
         }
@@ -39,26 +59,36 @@ struct GradingSlab: View {
         .background { acrylic(rarity: rarity) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(card.model), graded \(grade.scoreText), \(grade.label). \(dossier.hardware.manufacturer), product ID \(dossier.hardware.productID).")
+        .accessibilityValue(Text([customization.engravedTitle, customization.customSerial]
+            .filter { !$0.isEmpty }.joined(separator: " · ")))
     }
 
-    private func label(grade: EarGrade, rarity: Rarity) -> some View {
-        HStack(spacing: 10) {
+    private func label(grade: EarGrade, rarity: Rarity, customization: CardCustomization) -> some View {
+        let accent = customization.proFoil?.accent ?? rarity.accent
+        return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("EARPRINT · AUTHENTICATED")
                     .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                     .tracking(1.0)
-                    .foregroundStyle(rarity.accent)
+                    .foregroundStyle(accent)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 Text(card.model)
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                if showsHardwareID {
+                if !customization.engravedTitle.isEmpty {
+                    Text(customization.engravedTitle)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(DossierPalette.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
+                }
+                if showsHardwareID || !customization.customSerial.isEmpty {
                     HStack(spacing: 5) {
                         DossierBarcode(seed: card.serial * 7 + 3, color: DossierPalette.primaryText.opacity(0.75))
                             .frame(width: 44, height: 11)
-                        Text(certNumber)
+                        Text(customization.customSerial.isEmpty ? certNumber : customization.customSerial)
                             .font(.system(size: 8, weight: .semibold, design: .monospaced))
                             .foregroundStyle(DossierPalette.dim)
                             .lineLimit(1)
@@ -82,7 +112,7 @@ struct GradingSlab: View {
                     Text(LocalizedStringKey(grade.label))
                         .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                         .tracking(1)
-                        .foregroundStyle(rarity.accent)
+                        .foregroundStyle(accent)
                 }
                 .frame(width: 74)
             }
@@ -99,13 +129,15 @@ struct GradingSlab: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(LinearGradient(colors: rarity.baseColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
+                .strokeBorder(LinearGradient(colors: customization.proFoil?.baseColors ?? rarity.baseColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
         }
     }
 
-    private var cardWell: some View {
+    private func cardWell(foil: ProFoilStyle?) -> some View {
         ZStack {
-            CardFront(card: card, tilt: tilt, showsFirstMet: showsFirstWear)
+            CardFront(card: card, tilt: tilt, showsFirstMet: showsFirstWear,
+                      proFoil: foil, usesOriginalArtwork: usesOriginalArtwork)
+                .environment(\.proAccess, .free)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
             CardBack(card: card)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0, isBack: true))
@@ -189,6 +221,7 @@ struct CertificateLabel: View {
     var showsSourceMetadata = true
     var showsFirstWear = true
     var compact = false
+    var showsHealthProvenance = true
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -293,7 +326,7 @@ struct CertificateLabel: View {
                     }
                 }
 
-                if showsSourceMetadata && !compact {
+                if showsSourceMetadata && !compact && showsHealthProvenance {
                     Text("Collection numbers follow the order of first listening dates in Apple Health.")
                         .font(.caption2)
                         .foregroundStyle(DossierPalette.dim)

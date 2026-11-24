@@ -6,6 +6,8 @@
  * - Collector Binder (#tier-binder-mount) & Section 04 PSA Slab (#psa-slab) flip/tilt
  */
 
+import { t } from './i18n.js';
+
 const TIERS = [
   {
     id: 'bronze',
@@ -203,6 +205,26 @@ const DEVICES = {
     altZh: 'Beats Fit Pro 真无线耳机立体模型',
     density: 0.5,
     seed: 912n,
+  },
+  generic: {
+    id: 'generic',
+    model: 'Studio Headphones',
+    pid: 'BT·OVER-EAR',
+    serial: 5,
+    defaultHours: 48,
+    sessions: 64,
+    longestMin: 130,
+    avgDb: 65,
+    weeklyDose: 0.075,
+    loudShare: 0.04,
+    nightShare: 0.14,
+    activeMonths: 8,
+    since: '2026.02.18',
+    cutout: './assets/cutouts/headphone-generic.webp',
+    altEn: 'Generic studio over-ear headphones 3D fallback model',
+    altZh: '通用蓝牙头戴式耳机 3D 回退模型',
+    density: 0.48,
+    seed: 135n,
   },
 };
 
@@ -649,10 +671,18 @@ export function initFoilCard() {
   const heroStage = document.getElementById('hero-card-stage');
   const heroFront = document.getElementById('hero-card-front');
   const heroBack = document.getElementById('hero-card-back');
+  const devicePanel = document.getElementById('hero-device-panel');
   const flipBtn = document.getElementById('hero-flip-btn');
   const hoursRange = document.getElementById('hero-hours-range');
   const deviceBtns = Array.from(document.querySelectorAll('[data-hero-device]'));
   const tierBtns = Array.from(document.querySelectorAll('[data-hero-tier]'));
+  const foilBtns = Array.from(document.querySelectorAll('.hero-foil-options [data-pro-foil]'));
+  const customTitle = document.getElementById('hero-custom-title');
+  const customSerial = document.getElementById('hero-custom-serial');
+  const modelEl = document.getElementById('hero-card-model');
+  const frontSerialEl = heroFront?.querySelector('.slab-serial-chip');
+  const backSerialEl = document.getElementById('hero-back-serial');
+  const tierBadgeEl = document.getElementById('hero-card-tier-badge');
 
   const binderCards = Array.from(document.querySelectorAll('[data-tier-card]'));
   const spotlightEl = document.getElementById('tier-spotlight');
@@ -667,6 +697,7 @@ export function initFoilCard() {
       ? defaultDeviceHours
       : rawInitialHours;
   let isHeroFlipped = heroStage?.dataset.face === 'back';
+  let activeProFoil = 'none';
   let activeBinderTierId = TIERS[2].id;
   let isPsaFlipped = psaSlab?.dataset.face === 'back';
 
@@ -745,6 +776,25 @@ export function initFoilCard() {
     attachSpring3D(spotlightEl, { maxHoverX: 4, maxHoverY: 6 });
   }
 
+  function syncEngraving() {
+    const dev = DEVICES[activeDeviceKey];
+    const serial = customSerial?.value.trim() || `#${String(dev.serial).padStart(4, '0')} · ${dev.pid}`;
+    if (modelEl) modelEl.textContent = customTitle?.value.trim().toUpperCase() || dev.model;
+    if (frontSerialEl) frontSerialEl.textContent = serial;
+    if (backSerialEl) backSerialEl.textContent = serial;
+  }
+
+  function syncHeroFoil(tier, lang) {
+    if (heroStage) heroStage.dataset.proFoil = activeProFoil;
+    if (tierBadgeEl) {
+      const tierTitle = lang === 'zh-Hans' ? tier.titleZh : tier.titleEn;
+      tierBadgeEl.textContent = activeProFoil === 'none' ? tierTitle : t(`hero.foil.${activeProFoil}`);
+    }
+    for (const btn of foilBtns) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.proFoil === activeProFoil));
+    }
+  }
+
   function syncHeroUI() {
     const lang = getLang();
     const isLight = getResolvedTheme() === 'light';
@@ -768,24 +818,16 @@ export function initFoilCard() {
       heroStage.style.setProperty('--tier-ink-local', tier.ink);
     }
 
-    const tierBadgeEl = document.getElementById('hero-card-tier-badge');
-    const frontSerialEl = heroFront?.querySelector('.slab-serial-chip');
     const artworkEl = document.getElementById('hero-card-artwork');
-    const modelEl = document.getElementById('hero-card-model');
     const hoursEl = document.getElementById('hero-card-hours');
     const metaEl = document.getElementById('hero-card-meta');
 
-    if (tierBadgeEl) {
-      tierBadgeEl.textContent = lang === 'zh-Hans' ? tier.titleZh : tier.titleEn;
-    }
-    if (frontSerialEl) {
-      frontSerialEl.textContent = `#${String(dev.serial).padStart(4, '0')} · ${dev.pid}`;
-    }
-    if (artworkEl && artworkEl.getAttribute('src') !== dev.cutout) {
-      artworkEl.setAttribute('src', dev.cutout);
+    syncHeroFoil(tier, lang);
+    syncEngraving();
+    if (artworkEl) {
+      if (artworkEl.getAttribute('src') !== dev.cutout) artworkEl.setAttribute('src', dev.cutout);
       artworkEl.setAttribute('alt', lang === 'zh-Hans' ? dev.altZh : dev.altEn);
     }
-    if (modelEl) modelEl.textContent = dev.model;
     if (hoursEl) hoursEl.textContent = formatHoursMinutes(activeHours, lang);
 
     const scale = dev.defaultHours > 0 ? Math.max(0.2, activeHours / dev.defaultHours) : 1;
@@ -798,7 +840,6 @@ export function initFoilCard() {
 
     // PSA Rear Provenance Slab placeholders
     const grade = computeEarGrade(dev);
-    const serialEl = document.getElementById('hero-back-serial');
     const gradeEl = document.getElementById('hero-back-grade');
     const avgDbEl = document.getElementById('hero-back-avg-db') || document.getElementById('hero-back-db');
     const longestEl = document.getElementById('hero-back-longest');
@@ -807,7 +848,6 @@ export function initFoilCard() {
     const progressEl = document.getElementById('hero-back-progress');
     const glyphEl = document.getElementById('hero-back-glyph');
 
-    if (serialEl) serialEl.textContent = `#${String(dev.serial).padStart(4, '0')} · ${dev.pid}`;
     if (gradeEl) gradeEl.textContent = `${grade.score} ${grade.label}`;
     if (avgDbEl) avgDbEl.textContent = `${dev.avgDb} dB(A)`;
     if (longestEl) longestEl.textContent = formatMinutesCompact(dev.longestMin, lang);
@@ -848,6 +888,7 @@ export function initFoilCard() {
     deviceBtns.forEach((btn) => {
       const selected = btn.dataset.heroDevice === activeDeviceKey;
       btn.setAttribute('aria-selected', String(selected));
+      if (selected) devicePanel?.setAttribute('aria-labelledby', btn.id);
     });
 
     tierBtns.forEach((btn) => {
@@ -920,6 +961,15 @@ export function initFoilCard() {
   // Event bindings
   flipBtn?.addEventListener('click', toggleHeroFlip);
   slabFlipBtn?.addEventListener('click', togglePsaFlip);
+  customTitle?.addEventListener('input', syncEngraving);
+  customSerial?.addEventListener('input', syncEngraving);
+
+  for (const btn of foilBtns) {
+    btn.addEventListener('click', () => {
+      activeProFoil = btn.dataset.proFoil;
+      syncHeroFoil(tierForHours(activeHours), getLang());
+    });
+  }
 
   hoursRange?.addEventListener('input', () => {
     const maxVal = Number(hoursRange.max) || 2500;
@@ -927,13 +977,15 @@ export function initFoilCard() {
     syncHeroUI();
   });
 
-  deviceBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.heroDevice;
+  deviceBtns.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const key = tab.dataset.heroDevice;
       if (!key || !DEVICES[key]) return;
+      const changed = activeDeviceKey !== key;
       activeDeviceKey = key;
       activeHours = DEVICES[key].defaultHours;
       syncHeroUI();
+      if (changed) tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
   });
 

@@ -14,6 +14,7 @@ struct DeviceSummary: Identifiable, Sendable {
     var sampleCount: Int
     var lifetimeSeconds: Double
     var averageDecibels: Double?
+    var recentSessionDecibels: Double? = nil
     var sessionCount: Int
     var longestSession: TimeInterval
     var averageSession: TimeInterval
@@ -114,6 +115,15 @@ struct LibrarySnapshot: Sendable {
                 isEstimated: false
             )
         }
+        let recentSessionDecibels: Double?
+        if let latestSpan = sessions.spans.max(by: { $0.end < $1.end }),
+           now.timeIntervalSince(Date(timeIntervalSince1970: latestSpan.end)) <= 30 * 60,
+           let spanDB = latestSpan.averageDecibels,
+           spanDB > 0 {
+            recentSessionDecibels = spanDB
+        } else {
+            recentSessionDecibels = nil
+        }
         return DeviceSummary(
             id: acc.key,
             aliasIDs: aliasIDs,
@@ -125,6 +135,7 @@ struct LibrarySnapshot: Sendable {
             sampleCount: acc.sampleCount,
             lifetimeSeconds: acc.seconds,
             averageDecibels: acc.averageDecibels,
+            recentSessionDecibels: recentSessionDecibels,
             sessionCount: sessions.count,
             longestSession: sessions.longest,
             averageSession: sessions.count > 0 ? sessions.totalSpan / Double(sessions.count) : 0,
@@ -296,9 +307,9 @@ private extension DeviceAccumulator {
 extension LibrarySnapshot {
     func cards(now: Date = Date(), calendar: Calendar = .current) -> [HeadphoneCard] {
         // Keep the first accessory's existing serial after merging its aliases.
-        return devices.compactMap { d in
-            guard d.model.key.collectibleArtwork != nil else { return nil }
-            return HeadphoneCard(
+        // Unattributed samples remain in listening totals without minting a collectible card.
+        devices.filter { !$0.isUnattributed }.map { d in
+            HeadphoneCard(
                 id: d.id,
                 nickname: d.nickname,
                 model: d.model.marketingName,

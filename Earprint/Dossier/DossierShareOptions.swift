@@ -206,6 +206,11 @@ struct DossierShareOptions: Equatable, Hashable {
 
     var simple = Simple()
     var long = Long()
+    var is4K = false
+    var isWatermarkHidden = false
+
+    var scale: CGFloat { is4K ? 5 : 3 }
+    var usesOriginalArtwork: Bool { is4K || isWatermarkHidden }
 
     static let `default` = DossierShareOptions()
 }

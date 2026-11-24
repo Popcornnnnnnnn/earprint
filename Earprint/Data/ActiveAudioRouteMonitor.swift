@@ -7,12 +7,19 @@ import Foundation
 @Observable
 final class ActiveAudioRouteMonitor {
     private(set) var activeOutputNames: [String] = []
+    @ObservationIgnored var onRouteChange: (([String]) -> Void)?
     @ObservationIgnored nonisolated(unsafe) private var observer: NSObjectProtocol?
+    private let readOutputNames: () -> [String]
 
     /// Debug-only override (`-activeCard <id>`) so Simulator previews can demonstrate the active indicator.
     private let debugActiveCardID: String?
 
-    init() {
+    convenience init() {
+        self.init(readOutputNames: Self.currentHeadphoneOutputNames)
+    }
+
+    init(readOutputNames: @escaping () -> [String]) {
+        self.readOutputNames = readOutputNames
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if let idx = args.firstIndex(of: "-activeCard"), idx + 1 < args.count {
@@ -43,16 +50,34 @@ final class ActiveAudioRouteMonitor {
     }
 
     func refresh() {
+        let names = readOutputNames()
+        guard activeOutputNames != names else { return }
+        activeOutputNames = names
+        onRouteChange?(names)
+    }
+
+    private static func currentHeadphoneOutputNames() -> [String] {
         let headphonePorts: Set<AVAudioSession.Port> = [
             .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones, .usbAudio
         ]
-        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
-        let names = outputs
+        return AVAudioSession.sharedInstance().currentRoute.outputs
             .filter { headphonePorts.contains($0.portType) }
             .map(\.portName)
-        if activeOutputNames != names {
-            activeOutputNames = names
+    }
+
+    func activeMatchedCard(in cards: [HeadphoneCard]) -> HeadphoneCard? {
+        if let debugActiveCardID, let debugCard = cards.first(where: { $0.id == debugActiveCardID }) {
+            return debugCard
         }
+        guard let index = Self.bestMatchIndex(
+            in: cards,
+            nickname: \.nickname,
+            model: \.model,
+            activeOutputNames: activeOutputNames
+        ) else {
+            return nil
+        }
+        return cards[index]
     }
 
     func isCurrentlyWorn(_ card: HeadphoneCard) -> Bool {
@@ -60,6 +85,36 @@ final class ActiveAudioRouteMonitor {
             return true
         }
         return Self.matches(cardNickname: card.nickname, cardModel: card.model, activeOutputNames: activeOutputNames)
+    }
+
+    nonisolated static func bestMatchIndex<T>(
+        in items: [T],
+        nickname: (T) -> String,
+        model: (T) -> String,
+        activeOutputNames: [String]
+    ) -> Int? {
+        guard !activeOutputNames.isEmpty else { return nil }
+        let outputs = activeOutputNames.map(normalize).filter { !$0.isEmpty }
+        guard !outputs.isEmpty else { return nil }
+
+        // 1. Prefer exact normalized nickname or model match before any substring heuristic.
+        if let exactIndex = items.firstIndex(where: { item in
+            let nick = normalize(nickname(item))
+            let modelName = normalize(model(item))
+            return outputs.contains { output in
+                (!nick.isEmpty && output == nick) || (!modelName.isEmpty && output == modelName)
+            }
+        }) {
+            return exactIndex
+        }
+
+        // 2. Use substring matching only when a single item matches unambiguously.
+        let partialIndices = items.indices.filter { index in
+            let nick = normalize(nickname(items[index]))
+            guard !nick.isEmpty else { return false }
+            return outputs.contains { $0.contains(nick) || nick.contains($0) }
+        }
+        return partialIndices.count == 1 ? partialIndices.first : nil
     }
 
     nonisolated static func matches(cardNickname: String, cardModel: String, activeOutputNames: [String]) -> Bool {

@@ -157,7 +157,7 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertNil(cache.load())
     }
 
-    func testCollectiblesRequireMatchingArtworkAndKeepDifferentlyNamedDevices() {
+    func testCollectiblesIncludeFallbacksAndKeepDifferentlyNamedDevices() {
         let now = Date(timeIntervalSince1970: 1_795_000_000)
         let models = [
             DeviceDescriptor(name: "AirPods Pro", manufacturer: "Apple Inc.", model: "0x2027", localIdentifier: "one"),
@@ -176,10 +176,17 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(snapshot.devices.count, 5)
         XCTAssertFalse(HeadphoneModelCatalog.resolve(models[2]).isApple)
         XCTAssertEqual(snapshot.lifetimeSeconds, 3000, accuracy: 0.001)
-        XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five"]))
+        XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:three", "lid:four", "lid:five"]))
         XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelKey.collectibleArtwork, "CardRenderAirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelAssetName, "AirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
+        XCTAssertEqual(cards.first { $0.id == "lid:two" }?.modelAssetName, "AirPodsPro")
+        for id in ["lid:three", "lid:four"] {
+            let card = cards.first { $0.id == id }
+            XCTAssertEqual(card?.modelKey, .earbudsGeneric)
+            XCTAssertNil(card?.modelKey.collectibleArtwork)
+            XCTAssertEqual(card?.modelAssetName, "")
+        }
 
         guard let summary = snapshot.homeSummary(now: now, calendar: utcCalendar) else {
             return XCTFail("Real listening should still produce a summary")
@@ -268,10 +275,11 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(snap.invalidSamples, 0)
 
         let cards = snap.cards(now: now, calendar: utcCalendar)
-        XCTAssertEqual(cards.count, 2)
+        XCTAssertEqual(cards.count, 3)
         XCTAssertEqual(cards.first?.model, "AirPods Pro 2 · USB-C")
         XCTAssertEqual(cards.first?.modelKey, .airpodsPro)
         XCTAssertEqual(cards.first?.kind, .earbuds)
+        XCTAssertEqual(cards.first { $0.modelKey == .beatsEarbuds }?.modelAssetName, "")
         // Earlier nickname merged into otherNames via localIdentifier
         XCTAssertEqual(snap.devices.first?.otherNames, ["AirPods Pro"])
 

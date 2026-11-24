@@ -1,223 +1,374 @@
-# App Store Connect Metadata — Earprint (v1.0.0)
+# App Store Connect Metadata for Earprint v1.1.0 (build 10)
 
-Ready-to-paste bilingual (**English `en-US`** + **Simplified Chinese `zh-Hans`**) App Store Connect metadata, Review Notes, and 6-frame Screenshot Storyboard grounded in the current `Earprint` codebase (`com.popcornnn.earprint`).
+Copy the fenced text into the matching App Store Connect locale and field. Counts use Python `len(s.strip())`, including line breaks inside multiline fields.
 
-> **Note on character limits:** Apple App Store Connect enforces strict per-field character limits (`30` for Name/Subtitle, `170` for Promotional Text, `100` for Keywords, `4,000` for Description). Every field below is verified under limit.
+## App Store Connect URLs & Contact
 
-### App Store Connect URLs & Contact
-- **Privacy Policy URL:** `https://popcornnnnnnnn.github.io/earprint/privacy.html`
-- **Support URL:** `https://popcornnnnnnnn.github.io/earprint/support.html`
-- **Marketing URL:** `https://popcornnnnnnnn.github.io/earprint/`
-- **App Privacy (Nutrition Label):** `Data Not Collected`
-- **Contact Email:** `wmax43906@gmail.com` (`Weizhi Wang`)
+| Field | Canonical URL | GitHub Pages fallback |
+| --- | --- | --- |
+| Marketing URL | https://earprint.popcornnn.xyz/ | https://popcornnnnnnnn.github.io/earprint/ |
+| Support URL | https://earprint.popcornnn.xyz/support.html | https://popcornnnnnnnn.github.io/earprint/support.html |
+| Privacy Policy URL | https://earprint.popcornnn.xyz/privacy.html | https://popcornnnnnnnn.github.io/earprint/privacy.html |
 
----
+- App Privacy label is **Data Not Collected**.
+- App Review contact is Weizhi Wang (`wmax43906@gmail.com`).
 
-## 1. Naming & Trademark Positioning ("Earprint")
+## Naming & Trademark Positioning
 
-- **Primary recommendation — Keep the App Name clean:** Use **`Earprint`** (`8 / 30`) in English (or **`Earprint · 耳机听歌图鉴`**, `17 / 30`, in Simplified Chinese) and keep `"AirPods"` / `"Apple Health"` **out** of the App Name and Subtitle.
-- **Why:** Apple App Review routinely flags titles or subtitles containing Apple trademarks (`AirPods`, `Apple Health`, `Beats`) under **Guideline 5.2.1** (Intellectual Property / false affiliation) or **Guideline 4.1** / **2.3.8**.
-- **Nominative reference rule:** Mention AirPods and Beats strictly as compatible logged hardware inside the Full Description alongside the non-affiliation disclaimer at the bottom.
-- **Default Icon:** Primary App Icon uses the original concentric **Earprint Rings Emblem** (`AppIcon`), with alternate headphone icons optional in Settings.
+- Use Earprint as the app brand. Keep AirPods, Apple, Beats, Sony, Bose, and their localized forms out of App Name and Subtitle.
+- Both keyword sets use generic search terms. In the listing copy, mention third-party marks only in the Full Description for compatibility, data source attribution, and the non-affiliation notice.
+- Use the original Earprint Rings Emblem as the primary App Icon.
 
----
+## App Store Locales
 
-## 2. English (`en-US`) Metadata
+### English (`en-US`)
 
-### App Name (`<= 30 chars`)
+#### App Name
+
 ```text
 Earprint
 ```
-- Character count: **`8 / 30`**
 
-### Subtitle (`<= 30 chars`)
+`8 / 30` characters.
+
+#### Subtitle
+
 ```text
-3D Audio Cards & WHO Rings
+3D Cards & Listening Stats
 ```
-- Character count: **`26 / 30`**
 
-### Promotional Text (`<= 170 chars`)
-*Editable in App Store Connect without submitting a new binary.*
+`26 / 30` characters.
+
+#### Promotional Text
+
 ```text
-Turn headphone history from Apple Health into 6-tier 3D foil cards, a PSA-style Device Dossier, 28-day acoustic rings, and widgets — 100% private on iPhone.
+Turn your headphone history into 3D collectible cards. Revisit your year with 2026 Earprint Wrapped and export a spinning card reel on your iPhone, completely free.
 ```
-- Character count: **`156 / 170`**
 
-### Keywords (`<= 100 chars`, comma-separated, no spaces)
-*Does not duplicate `Earprint`, `3d`, `audio`, `cards`, `who`, `rings` from Name/Subtitle.*
-- **Standard set:**
-  ```text
-  airpods,headphone,listening,tracker,decibel,hearing,health,widget,collectible,stats,music,foil,psa
-  ```
-  - Character count: **`98 / 100`**
-- **Trademark-safe fallback (without `"airpods"`):**
-  ```text
-  headphone,earbuds,listening,tracker,decibel,hearing,health,widget,collectible,stats,music,foil,db
-  ```
-  - Character count: **`97 / 100`**
+`164 / 170` characters.
 
-### Full Description (`<= 4,000 chars`)
+#### Keywords
+
 ```text
-Every hour in your headphones has a story. Earprint turns your Apple Health Headphone Audio Levels into interactive 3D collectible trading cards, a collector-grade Device Dossier, 28-day acoustic Earprint Rings, and native widgets — processed 100% on your iPhone.
-
-INTERACTIVE 3D COLLECTIBLE CARDS
-• Real-time 3D RealityKit models float above custom foil surfaces: drag to spin with momentum, pinch to zoom, long-press to twirl with haptics, and tilt your iPhone for prismatic foil shimmer and parallax.
-• Tap or swipe to flip any card for lifetime hours, sessions, average loudness (dB(A)), and tier progress.
-• Automatic Bluetooth product ID matching for Apple and Beats hardware, retail finish customization for AirPods Max and Beats models, Light/Dark/System themes, and custom App Icons in Settings.
-
-6 COLLECTOR RARITY TIERS (0H → 2,000H)
-Your cards evolve automatically as your lifetime listening hours grow, with a clean multi-device Collector Binder showing when each tier unlocked:
-• 0h+ — BRONZE SLATE (Matte Anodized Foil)
-• 25h+ — SILVER ALUMINUM (Brushed Alloy)
-• 120h+ — FJORD TEAL (Brushed Slate)
-• 400h+ — DEEP PURPLE (Satin Glaze)
-• 1,000h+ — MIDNIGHT CARBON (Machined Carbon Weave)
-• 2,000h+ — LIQUID HOLO (Prismatic Alloy)
-
-PSA-STYLE DEVICE DOSSIER & SHARE POSTERS
-• Flip any card and open its Device Dossier — styled as an acrylic grading slab with a transparent Ear Grade (1.0–10.0) scored from loudness, weekly WHO dose, loud-session share, and late-night listening.
-• Explore Week / Month / Year / All views, a scrubbable 30-day trend chart, a 24-hour radial Day Clock, a Habits & Hearing bento, monthly career ledger, milestone timeline with ETA, and a guilloché hardware provenance certificate.
-• Export high-res Light or Dark PNG posters via Share Dossier in Simple (1-page) or Long (4-page carousel) 3:4 feed layouts, plus 3:4 and 9:16 Earprint Rings share posters.
-
-28-DAY EARPRINT RINGS & WHO HEARING BUDGET
-• See the last 28 days × 24 hours plotted as a concentric acoustic dial colored by energy-averaged loudness (Leq), alongside your listening persona (Night Owl, Commute Soundtracker, Early Bird, or All-Day Listener).
-• Compare all pairs together or filter by individual headphones, and track your weekly safe-listening budget based on WHO / ITU H.870 guidelines (80 dB(A) for 40 hours/week, halving every +3 dB).
-
-HOME & LOCK SCREEN WIDGETS
-• Home Screen widgets: Today (interactive card cycler), Card Shelf (up to 3 cards with deep links), and Large Earprint Ring + 28-day heatmap + WHO budget.
-• Lock Screen gauges: Circular WHO Budget, Rectangular Today Summary, and Inline status.
-
-100% PRIVATE ON YOUR IPHONE
-• Read-only Apple Health access (Headphone Audio Levels only).
-• Zero accounts, zero backend servers, zero analytics or ad SDKs. All processing stays encrypted on your device.
-
-Note: Earprint is an independent app and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, AirPods Pro, AirPods Max, and Beats are trademarks of Apple Inc. Earprint is for informational and entertainment purposes only and is not a medical device.
+headphones,earbuds,tracker,decibel,hearing,volume,widget,collectible,foil,wrapped,music,sound
 ```
-- Character count: **`3,118 / 4,000`**
 
----
+`93 / 100` characters.
 
-## 3. Simplified Chinese (`zh-Hans`) Metadata
+#### Keywords (Trademark-Safe Fallback)
 
-### App Name (`<= 30 chars`)
+```text
+headphones,earbuds,audio,decibel,history,hearing,archive,poster,widget,yearly,recap,exposure
+```
+
+`92 / 100` characters.
+
+#### What's New in 1.1.0
+
+```text
+• 3D cards for all headphones in your listening history. When a model has no matching 3D asset, Earprint shows a generic over-ear or earbud model.
+• 2026 Earprint Wrapped is your year in listening. Export a six-second spinning card reel offline as a 1080p MP4 or 540p GIF.
+• Make your collection your own with four custom foil finishes and slab engraving. Set the title, serial tag, and rim color.
+• Export watermark-free 2100×2800 Dossier posters or save multi-year daily and session listening summaries as CSV or JSON.
+• Follow a Live Listening Session on the Lock Screen and Dynamic Island; tap to open the device card. Start or stop in Settings, or use Shortcuts to start, stop, or reset the rest timer.
+• Everything in v1.1.0 is 100% free with no ads, subscriptions, or paywalls.
+```
+
+`784 / 4,000` characters.
+
+#### Full Description
+
+```text
+Earprint turns the headphone listening history in Apple Health into a collection of 3D cards you can spin and flip. See how long and how loudly you listen, pair by pair. Your history is processed on your iPhone.
+
+3D headphone cards
+Drag to spin a headphone model, pinch to zoom, and tilt your iPhone to see the foil catch the light. Flip the card for listening hours, sessions, and average loudness. AirPods and Beats models can be matched when identified in Apple Health. Other headphones with logged listening data get a generic over-ear or earbud model. Cards progress through six foil tiers as you listen, from Bronze Slate at 0 hours to Liquid Holo at 2,000.
+
+Your listening, by device or by day
+Open a Device Dossier to browse trends, milestones, and a 24-hour listening clock. Earprint Rings plots 28 days of listening by hour and shows your weekly sound exposure against WHO/ITU safe-listening guidance. Share Rings or Dossier posters and see your listening stats in Home and Lock Screen widgets.
+
+2026 Earprint Wrapped
+Revisit the headphones, hours, and habits that shaped your year. Make a six-second spinning 3D card reel on your iPhone, fully offline. Export it as a 1080p MP4 or a 540p GIF.
+
+Custom Foil Studio & Live Sessions
+Choose Gold Bullion, Obsidian Prism, Sakura Pearl, or Raw Titanium for your card. Customize the title, serial tag, and rim color of its display slab. Export watermark-free 2100×2800 Dossier posters or save multi-year daily and session summaries as CSV or JSON. Run a Live Listening Session from Settings to view recent loudness and a rest countdown on the Lock Screen and, on supported iPhones, Dynamic Island; tap the activity to open that device card, or use Shortcuts to start, stop, or reset its rest timer.
+
+Every feature is free with no ads, accounts, or subscriptions. Earprint reads Headphone Audio Levels from Apple Health with your permission. There are no accounts, servers, ad SDKs, or analytics SDKs.
+
+Earprint is independently developed and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, and Beats are trademarks of Apple Inc. Earprint is for personal information and entertainment and is not a medical device or a tool for diagnosis.
+```
+
+`2,235 / 4,000` characters.
+
+### Simplified Chinese (`zh-Hans`)
+
+#### App Name
+
 ```text
 Earprint · 耳机听歌图鉴
 ```
-- Character count: **`17 / 30`**
 
-### Subtitle (`<= 30 chars`)
-```text
-3D 收藏闪卡与声学聆听环
-```
-- Character count: **`13 / 30`**
+`17 / 30` characters.
 
-### Promotional Text (`<= 170 chars`)
-```text
-把 Apple 健康里的耳机听歌记录变成 6 阶 3D 立体闪卡、PSA 级设备档案与 28 天声学聆听环。支持浅色/深色外观、3:4 海报导出与桌面小组件，100% 本地隐私。
-```
-- Character count: **`89 / 170`**
-
-### Keywords (`<= 100 chars`, comma-separated, no spaces)
-- **Standard set:**
-  ```text
-  AirPods,Apple健康,音量,分贝,听力保护,护耳,听歌时长,小组件,档案,统计,蓝牙,稀有度,年报,音频,噪音,音乐,健康数据,耳机时长,周报,深色模式
-  ```
-  - Character count: **`81 / 100`**
-- **Trademark-safe fallback (without `"AirPods"` / `"Apple"`):**
-  ```text
-  耳机,健康,音量,分贝,听力保护,护耳,听歌时长,小组件,设备档案,统计,蓝牙,稀有度,年报,音频,噪音,音乐,健康数据,周报,深色模式,卡片
-  ```
-  - Character count: **`71 / 100`**
-
-### Full Description (`<= 4,000 chars`)
-```text
-戴上耳机的每一小时，都值得被收藏。Earprint 读取你在 Apple“健康”中的耳机音量曝光记录，将日常听歌时间铸成可交互的 3D 立体闪卡、PSA 级设备档案、28 天声学聆听环与原生桌面小组件——全部计算 100% 在 iPhone 本地完成。
-
-可交互 3D 耳机收藏闪卡
-• 实时 RealityKit 3D 模型悬浮于金属卡面之上：拖动自由旋转并带惯性回弹、双指缩放、长按触发触感飞旋；倾斜手机即可欣赏随角度流动的棱镜光泽与视差层次。
-• 轻点即可翻转卡片，查看该副耳机的累计聆听时长、佩戴次数、能量平均响度（Leq / dB(A)）与升级进度；左右滑动流畅切换卡片。
-• 自动识别 Apple 与 Beats 蓝牙产品型号 ID；支持为 AirPods Max 及 Beats 系列切换硬件配色，支持全局浅色/深色外观、多款 App 图标与中英双语切换。
-
-6 阶稀有度进化体系（0 小时 → 2,000 小时）
-随着耳机陪伴时间累积，卡片会自动解锁更高工艺卡面，并在「收藏图鉴册」记录多副设备的真实达成月份：
-• 0 小时起 — 青铜岩板（哑光阳极青铜，BRONZE SLATE）
-• 25 小时起 — 银铝（微珠喷砂铝合金，SILVER ALUMINUM）
-• 120 小时起 — 峡湾青（拉丝石青绿，FJORD TEAL）
-• 400 小时起 — 深紫釉（缎面深紫釉，DEEP PURPLE）
-• 1,000 小时起 — 午夜碳纤（精雕碳纤维纹，MIDNIGHT CARBON）
-• 2,000 小时起 — 液态全息（流光全息幻彩，LIQUID HOLO）
-
-PSA 级设备档案（Device Dossier）与海报导出
-• 翻转卡片即可进入真实健康数据驱动的设备档案：以透明亚克力评级封装壳呈现，依据日常平均音量、WHO 每周安全预算占比、≥80 分贝高音量比例与深夜聆听占比，计算出 1.0–10.0 分的「聆听评分（EAR GRADE）」。
-• 支持按 周 / 月 / 年 / 全部 切换查看：可跟手滑动的 30 天趋势柱状图、24 小时放射状时间钟盘、习惯与听力看板、月度生涯账本、带达成时间预测的里程碑时间线，以及扭索纹硬件溯源证书。
-• 支持浅色/深色高清 PNG 导出：极简 1 页总览与 4 页 3:4 档案轮播海报，以及 3:4 / 9:16 声纹环分享长卡，适配小红书等社交平台分享。
-
-28 天声学聆听环与 WHO 听力预算
-• 将最近 28 天 × 24 小时的声音足迹刻画为同心圆精密表盘，按能量平均响度着色，并生成专属听歌画像（夜猫子、通勤声景师、早起鸟或全天候听众）。
-• 基于世界卫生组织（WHO / ITU H.870）安全聆听标准（80 dB(A) 下每周 40 小时为 100%，每升高 3 dB 允许时长减半），实时追踪本周听力安全预算。
-
-桌面与锁屏小组件
-• 主屏幕小组件：小号「今日聆听」（支持点击切换卡片）、中号「卡片陈列架」（最多展示 3 张卡片并支持点击直达）、大号「28 天聆听环与热力图 + WHO 预算」。
-• 锁屏组件：环形安全预算表盘、矩形今日摘要与行内状态组件。
-
-100% 本地处理 · 零数据上传
-• 仅以严格只读方式访问 Apple“健康”中的「耳机音量」数据。
-• 无账号注册、无后台服务器、无任何第三方统计或广告 SDK，所有记录均加密保留在你的 iPhone 上。
-
-声明：Earprint 为独立开发者作品，与 Apple Inc. 无任何关联、赞助或官方背书关系。Apple、Apple Health、AirPods、AirPods Pro、AirPods Max 与 Beats 均为 Apple Inc. 的注册商标。本应用仅供个人信息记录与展示参考，不构成医疗器械或临床听力诊断。
-```
-- Character count: **`1,594 / 4,000`**
-
----
-
-## 4. App Review Notes (Copy into App Store Connect → App Review Information)
+#### Subtitle
 
 ```text
-Thank you for reviewing Earprint.
-
-1. HEALTHKIT ACCESS & PRIVACY (READ-ONLY)
-- Earprint requests read-only HealthKit access for a single data type: HKQuantityType(.headphoneAudioExposure) ("Headphone Audio Levels").
-- Release builds request strictly read-only HealthKit access (toShare: []) and never write to Apple Health (HealthKitSeeder is compiled out in Release; NSHealthUpdateUsageDescription is included in Info.plist solely to satisfy App Store Connect static validation ITMS-90683).
-- No account or sign-in is required. All HealthKit aggregation stays 100% on-device inside Application Support and the private App Group container (group.com.popcornnn.earprint) for widgets. Zero servers or third-party analytics SDKs are used.
-
-2. TESTING ON A CLEAN REVIEW DEVICE (ZERO SAMPLES / PERMISSION DENIED)
-- On first launch, Earprint presents a pre-permission Welcome screen explaining why it reads Headphone Audio Levels, followed by the system Apple Health permission prompt.
-- Because Apple Health treats denied read access identically to having 0 samples, a clean test iPhone with no prior headphone exposure samples shows a consistent zero-data state across both tabs:
-  - Collection tab: shows a clean empty state ("No supported headphones yet") with a "Sync Apple Health" action and permission path guidance (Settings > Health > Data Access > Earprint).
-  - Rings tab: shows a clean empty state ("No listening data yet") explaining that iOS logs headphone audio levels while audio is playing (not silent ANC) with a "Sync Apple Health" button — zero placeholder sample metrics appear in Release builds.
-  - Settings (gear icon in Collection): reviewers can browse Appearance (System/Light/Dark), Model Gallery (supported headphone hardware catalog), Card Tiers (all 6 tiers from Bronze Slate to Liquid Holo), App Icon Studio, Language (System / English / Simplified Chinese), Apple Health Privacy, and Credits & Attributions (CC-BY 4.0 3D asset credits + non-affiliation notice).
-
-3. GENERATING REAL HEALTHKIT SAMPLES ON A TEST DEVICE
-- Note: Manually adding entries inside Apple Health attributes samples to the host iPhone (HKDevice.local()), which Earprint intentionally excludes so phone speakers never appear as headphones.
-- To test card and Dossier generation with live hardware: connect AirPods or Bluetooth headphones to the test iPhone, play audio for 1–2 minutes until iOS writes a Headphone Audio Levels sample, then tap "Sync Apple Health" in Earprint.
-- Because a clean review device may have 0 headphone samples, the empty states and Settings screens (Model Gallery, 6-tier Card Tiers, App Icon Studio, Language, Credits & Attributions) are all directly browsable without Health data.
-
-4. NON-AFFILIATION & NON-MEDICAL DISCLAIMER
-- Earprint is an independent app by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc.
-- Earprint visualizes Apple Health listening hours and WHO/ITU H.870 safe-listening budgets for informational purposes only and is not a medical device.
+3D 收藏卡与 28 天聆听环
 ```
 
----
+`15 / 30` characters.
 
-## 5. 6-Frame App Store Screenshot Storyboard
+#### Promotional Text
 
-### Target Display Sizes (App Store Connect)
-| Display Slot | Required Resolution (Portrait) | Primary Capture Device |
-| --- | --- | --- |
-| **iPhone 6.9" Display** (Required) | `1320 × 2868 px` (or `1290 × 2796 px`) | iPhone 17 Pro Max simulator or physical 6.9" Pro Max |
-| **iPhone 6.5" Display** (Optional / Scaled) | `1284 × 2778 px` | iPhone 14 Plus / iPhone XS Max simulator, or crisp downscale from 6.9" |
+```text
+把耳机听歌记录做成可以旋转、翻面的 3D 收藏卡。打开 2026 Earprint Wrapped 回顾这一年，并可在 iPhone 上免费离线导出旋转卡片短片。
+```
 
-### Capture Hygiene Rules
-- **No Debug-only chrome:** Do not capture `"Sample data · Simulator"` banners in App Store screenshots.
-- **Status bar:** Use `xcrun simctl status_bar <UDID> override --time "9:41" --batteryState charged --batteryLevel 100 --cellularMode active --wifiBars 3`.
+`81 / 170` characters.
 
-### Frame-by-Frame Plan
+#### Keywords
 
-| Frame | Screen & Capture State | EN Headline & Subhead | ZH-Hans Headline & Subhead |
-| --- | --- | --- | --- |
-| **1. Hero 3D Collectible Card** | `CardDetail` open on a `FJORD TEAL` / `LIQUID HOLO` AirPods Pro 3D card (Dark Mode) | **Headline:** Your Listening History, in 3D<br>**Subhead:** Interactive foil cards forged from Apple Health hours | **主标题：** 把听歌记录铸成 3D 闪卡<br>**副标题：** 连接 Apple 健康，解锁专属立体耳机收藏卡 |
-| **2. 6-Tier Collector Binder** | `CardTiersView` showing the 2×3 binder with multi-pair unlock dates (Light Mode showcase!) | **Headline:** 6 Foil Tiers to 2,000 Hours<br>**Subhead:** Clean multi-device binder tracking every milestone | **主标题：** 6 阶稀有度进化图鉴<br>**副标题：** 自动记录每副耳机的解锁月份与进阶历程 |
-| **3. PSA-Style Device Dossier** | `DeviceDossierView` acrylic grading slab (`EAR GRADE` `GEM MINT`) + `DayClock` | **Headline:** Collector-Grade Device Dossier<br>**Subhead:** Acrylic grading slab, Ear Grade &amp; 30-day trends | **主标题：** PSA 级设备档案与聆听评分<br>**副标题：** 亚克力封装评级、30 天趋势与 24 小时钟盘 |
-| **4. 28-Day Earprint Rings & WHO** | `HomeView` (`Rings` tab) chronometer dial + WHO weekly budget + pair switcher | **Headline:** 28-Day Earprint &amp; WHO Budget<br>**Subhead:** Spot late-night habits within 80 dB(A) safe limits | **主标题：** 28 天声纹环与安全预算<br>**副标题：** 清晰掌握昼夜听歌节律与 WHO 护耳余量 |
-| **5. Light/Dark & 3:4 Share Posters** | `ShareSheet` 3:4 poster preview alongside Light/Dark App Appearance &amp; finish swatches | **Headline:** Light, Dark &amp; 3:4 Share Posters<br>**Subhead:** Built for seamless sharing and everyday comfort | **主标题：** 浅色/深色外观与 3:4 海报<br>**副标题：** 一键生成高清分享卡片，优雅适配每日视觉 |
-| **6. Widgets & 100% On-Device** | Home Screen &amp; Lock Screen widgets + **100% On-Device** privacy callout | **Headline:** Live Widgets, 100% On-Device<br>**Subhead:** Home &amp; Lock Screen trackers with zero servers | **主标题：** 原生小组件 · 100% 本地隐私<br>**副标题：** 主屏与锁屏实时陪伴，数据绝不离开 iPhone |
+```text
+音量,分贝,耳塞,音频,听力,统计,小组件,年报,音乐,档案,海报,时长,金属箔
+```
+
+`40 / 100` characters.
+
+#### Keywords (Trademark-Safe Fallback)
+
+```text
+头戴式,入耳式,分贝,听力,音量记录,设备档案,年度回顾,小组件,热力图
+```
+
+`36 / 100` characters.
+
+#### What's New in 1.1.0
+
+```text
+• 有聆听记录的耳机都能生成 3D 卡片。没有专属模型时，会显示通用的头戴式或入耳式耳机模型。
+• 2026 Earprint Wrapped 带你回顾一年的听歌记录，并可在 iPhone 上离线导出 6 秒旋转卡片短片，支持 1080p MP4 和 540p GIF。
+• 新增四款金属箔面效果，支持为收藏封装自定义铭文、编号和边框颜色。
+• 支持导出 2100×2800 无水印设备档案海报，或将多年的聆听记录保存为 CSV 或 JSON。
+• 可在锁屏和灵动岛上显示实时聆听活动，通过「快捷指令」开始或结束聆听，或重置休息倒计时。
+• 全部功能免费使用，无广告、无订阅、无付费墙。
+```
+
+`293 / 4,000` characters.
+
+#### Full Description
+
+```text
+Earprint 读取 Apple「健康」中的耳机音量记录，为每副耳机生成一张可以旋转、翻面的 3D 收藏卡。听了多久、声音有多大，都能在 iPhone 上查看。数据处理在设备本地完成。
+
+给每副耳机一张 3D 收藏卡
+拖动旋转、双指缩放，倾斜手机还能看到箔面随角度变换光泽。翻到背面即可查看累计时长、聆听次数和平均音量。可识别的 AirPods 和 Beats 型号会匹配对应模型。其他有聆听记录的耳机也能用通用头戴式或入耳式模型生成卡片。随着时间累积，从青铜岩板到液态全息，一共可解锁六阶箔面。
+
+设备档案与 28 天聆听环
+打开设备档案，查看音量趋势、里程碑和 24 小时聆听钟盘。聆听环按小时呈现近 28 天的记录，并参考 WHO/ITU 指南显示每周声音暴露量。你还可以分享档案或聆听环海报，并在主屏幕和锁屏小组件上查看统计。
+
+2026 Earprint Wrapped
+回顾这一年常用的耳机、聆听时长和习惯。在 iPhone 上离线生成 6 秒旋转卡片短片，可导出为 1080p MP4 或 540p GIF。
+
+定制卡面与实时聆听会话
+为卡片换上金锭、黑曜棱镜、樱花珠光或原色钛箔面，自定义收藏封装的标题铭文、编号和边框颜色。支持导出 2100×2800 无水印设备档案海报，或将多年的聆听记录保存为 CSV 或 JSON。开启实时聆听活动后，可在锁屏和支持机型的灵动岛查看近期音量和休息倒计时，也能用「快捷指令」开始、结束或重置休息计时。
+
+全部功能均免费开放，无广告、无需账号、无订阅。经你授权，Earprint 只读访问 Apple「健康」中的耳机音量数据，不使用服务器、广告或统计 SDK。
+
+Earprint 由独立开发者制作，与 Apple Inc. 无隶属关系，亦未获得其赞助或背书。Apple、Apple Health、AirPods 和 Beats 是 Apple Inc. 的商标。Earprint 仅供个人记录、参考与娱乐，不是医疗器械，也不用于诊断。
+```
+
+`845 / 4,000` characters.
+
+### Japanese (`ja`)
+
+#### App Name
+
+```text
+Earprint・イヤホンのリスニング記録
+```
+
+`21 / 30` characters.
+
+#### Subtitle
+
+```text
+3Dコレクションカードと音量グラフ
+```
+
+`17 / 30` characters.
+
+#### Promotional Text
+
+```text
+イヤホンやヘッドホンで聴いた時間を、くるくる回せる3Dカードに。2026 Earprint Wrappedで一年を振り返り、カードが回るショート動画をiPhoneだけで無料作成できます。
+```
+
+`93 / 170` characters.
+
+#### Keywords
+
+```text
+ヘッドホン,聴取時間,再生履歴,デシベル,聴覚,年間まとめ,音楽,箔
+```
+
+`34 / 100` characters.
+
+#### Keywords (Trademark-Safe Fallback)
+
+```text
+ヘッドフォン,騒音,音声,聴力,アーカイブ,ポスター,統計,年次レポート
+```
+
+`36 / 100` characters.
+
+#### What's New in 1.1.0
+
+```text
+• リスニング履歴にあるすべてのイヤホンやヘッドホンを3Dカードに。専用モデルがない機種には、汎用のヘッドホンまたはイヤホンのモデルを表示します。
+• 2026 Earprint Wrappedで一年のリスニングを振り返れます。カードが回転する6秒の動画を、オフラインで1080pのMP4または540pのGIFに書き出せます。
+• 4種類の箔仕上げが登場。カードのケースに好きなタイトルとシリアル番号を刻み、縁の色も選べます。
+• 透かしのない2100×2800のデバイスレポートをポスターにしたり、複数年の聴取履歴をCSVやJSONで保存したりできます。
+• ライブリスニングセッションをロック画面とDynamic Islandに表示できます。「ショートカット」からセッションの開始・終了や休憩タイマーのリセットができます。
+• すべての機能を無料・広告なし・サブスクリプションなしでお使いいただけます。
+```
+
+`403 / 4,000` characters.
+
+#### Full Description
+
+```text
+Earprintは、「ヘルスケア」に記録されたヘッドフォン音量のデータから、回したり裏返したりできる3Dカードを作ります。イヤホンやヘッドホンごとに、聴いた時間と音量を確認できます。データの処理はiPhone上で完結します。
+
+集めて楽しむ3Dカード
+ドラッグで回転、ピンチで拡大。iPhoneを傾けるとカードの箔が光を受けて表情を変えます。裏面では累計時間、セッション数、平均音量を確認できます。機種を識別できるAirPodsやBeatsには対応するモデルを表示し、専用モデルのない機器には汎用の3Dモデルを使います。聴いた時間に応じてカードが成長し、6段階の箔仕上げが順に解放されます。
+
+機器ごとのデバイスレポートと28日間のリスニングリング
+機器ごとのレポートで、音量の推移や節目、24時間のリスニングパターンを確認できます。リスニングリングには過去28日分のデータを1時間ごとに表示。WHO/ITUの安全なリスニングに関する指針を目安に、週ごとの音への曝露量も確認できます。レポートやリングは画像で共有でき、ホーム画面とロック画面のウィジェットにはリスニングの統計が表示されます。
+
+2026 Earprint Wrapped
+よく使った機器や聴いた時間、その年ならではの傾向を振り返れます。3Dカードが回転する6秒の動画をiPhone上で作成し、オフラインで1080pのMP4または540pのGIFに書き出せます。
+
+カスタム箔仕上げとライブリスニングセッション
+4種類の箔仕上げを選び、カードのケースにタイトルやシリアル番号を刻んで、縁の色を変えられます。透かしのない2100×2800のデバイスレポートをポスターにしたり、複数年の聴取履歴をCSVやJSONで保存したりできます。ライブリスニングセッションでは、直近の音量と休憩までの残り時間をロック画面や対応機種のDynamic Islandで確認できます。「ショートカット」から開始・終了や休憩タイマーのリセットもできます。
+
+すべての機能を完全無料・広告なしでお使いいただけます。Earprintは許可を得た場合にのみ「ヘルスケア」のヘッドフォン音量データを読み取ります。アカウントは不要で、サーバーや広告・分析用SDKは使用しません。
+
+Earprintは独立して開発されたアプリです。Apple Inc.との提携関係はなく、同社による支援や推奨も受けていません。Apple、Apple Health、AirPods、BeatsはApple Inc.の商標です。本アプリは個人の記録や娯楽を目的としたもので、医療機器ではなく、診断には使用できません。
+```
+
+`1,111 / 4,000` characters.
+
+### Korean (`ko`)
+
+#### App Name
+
+```text
+Earprint · 헤드폰 청취 기록
+```
+
+`20 / 30` characters.
+
+#### Subtitle
+
+```text
+3D 컬렉션 카드와 28일 청취 링
+```
+
+`19 / 30` characters.
+
+#### Promotional Text
+
+```text
+헤드폰과 이어폰으로 들은 시간을 돌려 보고 뒤집어 보는 3D 카드로 모아 보세요. 2026 Earprint Wrapped로 한 해를 돌아보고 회전하는 카드 영상을 iPhone에서 무료로 내보낼 수 있어요.
+```
+
+`114 / 170` characters.
+
+#### Keywords
+
+```text
+이어폰,듣기,음량,데시벨,청력,위젯,음악,연말결산,통계,재생시간
+```
+
+`35 / 100` characters.
+
+#### Keywords (Trademark-Safe Fallback)
+
+```text
+무선이어폰,음악감상,볼륨,소음,듣는시간,연간리포트,포스터,아카이브
+```
+
+`36 / 100` characters.
+
+#### What's New in 1.1.0
+
+```text
+• 청취 기록에 있는 모든 헤드폰과 이어폰을 3D 카드로 만나 보세요. 전용 모델이 없으면 기본 헤드폰 또는 이어폰 모델이 표시됩니다.
+• 2026 Earprint Wrapped에서 한 해의 청취 기록을 돌아보세요. 카드가 회전하는 6초 영상을 1080p MP4 또는 540p GIF로 오프라인에서 내보낼 수 있습니다.
+• 네 가지 커스텀 포일 마감이 추가됐습니다. 카드 케이스에 제목과 일련번호를 새기고 테두리 색을 바꿀 수 있습니다.
+• 워터마크 없는 2100×2800 기기 리포트 포스터를 만들거나, 여러 해의 청취 기록을 CSV 또는 JSON으로 저장할 수 있습니다.
+• 실시간 청취 세션을 잠금 화면과 Dynamic Island에서 확인하세요. 단축어로 세션을 시작하거나 종료하고 휴식 타이머를 재설정할 수 있습니다.
+• 모든 기능을 광고, 구독, 추가 결제 없이 무료로 이용할 수 있습니다.
+```
+
+`448 / 4,000` characters.
+
+#### Full Description
+
+```text
+Earprint는 Apple 건강 앱에 저장된 헤드폰 오디오 레벨을 바탕으로 돌려 보고 뒤집어 볼 수 있는 3D 카드를 만듭니다. 헤드폰이나 이어폰마다 얼마나 오래, 얼마나 크게 들었는지 확인할 수 있습니다. 데이터는 iPhone에서 처리됩니다.
+
+모으는 재미가 있는 3D 카드
+카드를 드래그하면 모델이 돌고, 두 손가락을 벌리면 확대됩니다. iPhone을 기울이면 포일의 빛이 각도에 따라 달라집니다. 카드를 뒤집어 누적 청취 시간과 세션 수, 평균 음량을 확인하세요. 기종을 식별할 수 있는 AirPods 및 Beats 모델은 실제 모양으로 표시하고, 전용 모델이 없는 기기에는 기본 3D 모델을 표시합니다. 누적 청취 시간에 따라 여섯 단계의 포일 마감이 차례로 열립니다.
+
+기기 리포트와 28일 청취 링
+기기 리포트에서 음량 추이와 기록 달성 시점, 하루 중 주로 듣는 시간을 살펴보세요. 청취 링은 최근 28일의 기록을 시간대별로 보여 주고, WHO/ITU의 안전 청취 지침을 기준으로 주간 소리 노출량을 표시합니다. 리포트와 링은 포스터로 공유할 수 있고, 홈 화면과 잠금 화면 위젯에서도 통계를 볼 수 있습니다.
+
+2026 Earprint Wrapped
+한 해 동안 가장 자주 쓴 기기와 청취 시간, 듣는 습관을 돌아보세요. 3D 카드가 회전하는 6초 영상을 iPhone에서 만들고, 1080p MP4 또는 540p GIF로 오프라인에서 내보낼 수 있습니다.
+
+커스텀 포일 스튜디오와 실시간 세션
+네 가지 커스텀 포일 마감 중 하나를 고르고, 카드 케이스에 제목과 일련번호를 새기거나 테두리 색을 바꿔 보세요. 워터마크 없는 2100×2800 기기 리포트 포스터를 만들고, 여러 해의 청취 기록을 CSV 또는 JSON으로 저장할 수 있습니다. 실시간 청취 세션을 시작하면 잠금 화면과 지원 기기의 Dynamic Island에 최근 음량과 휴식까지 남은 시간이 표시됩니다. 단축어에서 세션을 시작하거나 종료하고 휴식 타이머를 재설정할 수 있습니다.
+
+모든 기능을 광고나 구독, 추가 결제 없이 무료로 사용할 수 있습니다. 사용자가 허용하면 Apple 건강 앱의 헤드폰 오디오 레벨만 읽으며, 계정이나 서버, 광고 및 분석 SDK를 사용하지 않습니다.
+
+Earprint는 독립적으로 개발되었으며 Apple Inc.와 제휴 관계가 없고, Apple Inc.의 후원이나 보증을 받지 않습니다. Apple, Apple Health, AirPods 및 Beats는 Apple Inc.의 상표입니다. Earprint는 개인 기록, 정보 제공 및 오락을 위한 앱이며 의료기기나 진단 도구가 아닙니다.
+```
+
+`1,286 / 4,000` characters.
+
+## App Review Notes (v1.1.0)
+
+Paste into **App Store Connect → App Review Information → Notes**.
+
+```text
+Earprint v1.1.0 (build 10)
+
+1. Read-only HealthKit access
+Earprint reads one data type, Headphone Audio Levels (HKQuantityType(.headphoneAudioExposure)), using toShare: []. The Release build excludes the DEBUG-only HealthKit seeder. The Release binary check (nm -u) requires zero HealthKit write, save, or delete symbols. NSHealthUpdateUsageDescription is included for validation and describes the app’s read-only behavior. Processing stays on the iPhone. No account or sign-in is required.
+
+2. Clean-device and denied-permission testing
+The first-run welcome screen explains Health access. With zero readable samples, Collection and Rings show empty states with a Sync Apple Health action and no fabricated metrics. Reviewers can browse Settings, Model Gallery, Card Tiers, and Credits & Attributions without Health data. To populate a card, play audio through headphones until iOS records a Headphone Audio Levels sample in Health, then tap Sync Apple Health. Manually added entries attributed to the iPhone itself are excluded.
+
+3. Free availability (zero IAP)
+All features in v1.1.0 — including 2026 Wrapped 3D Video/GIF export, custom foil finishes, slab engraving, watermark-free 2100×2800 posters, multi-year CSV/JSON export (Settings → Session & Archive → Export Archive), and Live Listening Session — are 100% free with no In-App Purchases or paywalls.
+
+4. Live Listening Session and Shortcuts
+Go to Settings → Session & Archive → Live Listening Session to start manually. The same control becomes Stop Listening Session while active. The session displays a rest countdown and available loudness information on the Lock Screen and on Dynamic Island on supported iPhones. In Shortcuts, add the Earprint AppIntents actions Start Listening Session, Reset Listening Rest Timer, and Stop Listening Session to test those controls. Reset restarts the break countdown for the current session.
+
+5. Disclaimers
+Earprint is independently developed by Weizhi Wang and is not affiliated with, sponsored by, or endorsed by Apple Inc. Listening summaries and WHO/ITU exposure references are for personal information only. Earprint is not a medical device or a diagnostic tool.
+```
+
+## 6-Frame App Store Screenshot Storyboard
+
+Capture portrait artwork for the 6.9-inch iPhone slot at `1320 × 2868 px`. Use English or Simplified Chinese UI as available in the release build, with localized headlines for all four listings. Hide debug banners and use a consistent status bar across frames.
+
+| Frame | Capture | English | Simplified Chinese | Japanese | Korean |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Collection card with a generic 3D model | Every Pair Gets a 3D Card | 每副耳机都有一张 3D 卡 | いつものイヤホンを3Dカードに | 내 이어폰을 3D 카드로 |
+| 2 | Collector Binder with six rarity tiers | Six Tiers to Collect | 六阶卡面，随聆听解锁 | 聴くほど育つ、6段階のカード | 들을수록 열리는 6단계 카드 |
+| 3 | Engraved Dossier slab with custom foil and high-res poster preview | Make the Dossier Yours | 为设备档案刻上专属铭文 | 自分だけの刻印を入れよう | 나만의 문구를 새긴 기기 리포트 |
+| 4 | 28-day Rings dial and weekly exposure budget | 28 Days of Listening at a Glance | 一眼看懂 28 天聆听节律 | 聴いた28日間をひと目で | 28일의 청취 기록을 한눈에 |
+| 5 | Wrapped finale and reel export sheet | 2026, Wrapped in 3D | 把 2026 年做成 3D 回忆 | 2026年のリスニングを3Dで | 2026년 청취 기록을 3D로 |
+| 6 | Live Listening Session on Dynamic Island and Lock Screen | Follow Your Session Live | 在灵动岛查看聆听进度 | ロック画面で聴取状況を確認 | 잠금 화면에서 실시간 청취 확인 |

@@ -2,10 +2,18 @@ import SwiftUI
 
 @main
 struct EarprintApp: App {
+    private struct PaywallPrompt: Identifiable {
+        let id = UUID()
+        let feature: ProFeature?
+    }
+
     @StateObject private var library = HeadphoneLibrary()
     @State private var router = DeepLinkRouter()
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
+    @State private var proStore = ProEntitlementStore(autoStart: EarprintReleasePolicy.monetizationEnabled)
+    @State private var customizationStore = SlabCustomizationStore()
+    @State private var paywallPrompt: PaywallPrompt?
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @Environment(\.scenePhase) private var scenePhase
@@ -75,6 +83,9 @@ struct EarprintApp: App {
             .environment(router)
             .environment(colorStore)
             .environment(routeMonitor)
+            .environment(proStore)
+            .environment(customizationStore)
+            .environment(\.proAccess, EarprintReleasePolicy.monetizationEnabled ? proStore.accessSnapshot : .allUnlocked)
             .environment(\.locale, resolvedLocale)
             .preferredColorScheme(resolvedColorScheme)
             .sheet(isPresented: $library.needsHealthOnboarding) {
@@ -85,6 +96,11 @@ struct EarprintApp: App {
                 .environment(\.locale, resolvedLocale)
                 .preferredColorScheme(resolvedColorScheme)
             }
+            .sheet(item: $paywallPrompt) { prompt in
+                PaywallView(store: proStore, highlightedFeature: prompt.feature)
+                    .environment(\.locale, resolvedLocale)
+                    .preferredColorScheme(resolvedColorScheme)
+            }
             #if DEBUG
             .sheet(item: $router.developerScreen) { screen in
                 DeveloperToolsView(library: library, openProbe: screen == .probe)
@@ -92,10 +108,18 @@ struct EarprintApp: App {
                     .preferredColorScheme(resolvedColorScheme)
             }
             #endif
-            // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, ...
+            // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, earprint://wrapped, ...
             .onOpenURL { router.handle($0) }
+            .onReceive(NotificationCenter.default.publisher(for: .earprintRequestPaywall)) { note in
+                guard EarprintReleasePolicy.monetizationEnabled else { return }
+                let feature = note.object as? ProFeature ?? note.userInfo?["feature"] as? ProFeature
+                paywallPrompt = PaywallPrompt(feature: feature)
+            }
             .task {
                 applyLaunchTab()
+                routeMonitor.onRouteChange = { _ in
+                    syncLiveActivity()
+                }
                 routeMonitor.refresh()
                 let beforeStart = library.snapshot?.generatedAt
                 await library.start()
@@ -103,6 +127,7 @@ struct EarprintApp: App {
                 if library.snapshot?.generatedAt == beforeStart {
                     publishWidgets()
                 }
+                syncLiveActivity()
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-startLiveActivity"),
                    let card = library.cards.first {
@@ -120,15 +145,52 @@ struct EarprintApp: App {
             }
             .onChange(of: library.snapshot?.generatedAt) { _, _ in
                 publishWidgets()
+                syncLiveActivity()
+            }
+            .onChange(of: library.cards.map(\.id)) { _, _ in
+                syncLiveActivity()
+            }
+            .onChange(of: proStore.hasPro) { _, _ in
+                syncLiveActivity()
+            }
+            .onChange(of: proStore.hasResolvedEntitlements) { _, _ in
+                syncLiveActivity()
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     routeMonitor.refresh()
                     library.refreshDerivedCacheIfNeeded()
+                    syncLiveActivity()
                 }
                 if phase == .background { publishWidgets() }
             }
         }
+    }
+
+    private func syncLiveActivity() {
+        let now = Date()
+        LiveActivityController.shared.syncWithActiveRoute(
+            cards: library.cards,
+            routeMonitor: routeMonitor,
+            decibelsForCard: { card in
+                recentDecibels(for: card, now: now)
+            },
+            proUnlocked: !EarprintReleasePolicy.monetizationEnabled || proStore.isUnlocked(.liveActivity),
+            proResolved: !EarprintReleasePolicy.monetizationEnabled || proStore.hasResolvedEntitlements
+        )
+    }
+
+    private func recentDecibels(for card: HeadphoneCard, now: Date) -> Double {
+        guard let device = library.snapshot?.devices
+            .filter({ card.matches(id: $0.id) })
+            .max(by: { ($0.last ?? .distantPast) < ($1.last ?? .distantPast) }),
+              let last = device.last,
+              now.timeIntervalSince(last) <= 30 * 60,
+              let recent = device.recentSessionDecibels,
+              recent > 0 else {
+            return 0
+        }
+        return recent
     }
 
     private func publishWidgets() {
@@ -160,8 +222,14 @@ struct EarprintApp: App {
             }
             return
         }
-        if args.contains("-rings") || args.contains("-showShare") {
+        if args.contains("-wrapped") {
             router.tab = .rings
+            router.pendingWrapped = true
+        } else if args.contains("-rings") || args.contains("-showShare") {
+            router.tab = .rings
+        }
+        if EarprintReleasePolicy.monetizationEnabled, args.contains("-paywall") {
+            paywallPrompt = PaywallPrompt(feature: nil)
         }
     }
 }

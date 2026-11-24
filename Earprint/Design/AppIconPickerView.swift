@@ -346,8 +346,14 @@ struct SettingsView: View {
         case appIcon
         case modelGallery
         case cardTiers
+        case tipJar
         case privacy
         case credits
+    }
+
+    private struct PaywallRequest: Identifiable {
+        let id = UUID()
+        let feature: ProFeature?
     }
 
     let ownedCards: [HeadphoneCard]
@@ -355,10 +361,22 @@ struct SettingsView: View {
     var onPreviewFirstLaunch: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.proAccess) private var proAccess
+    @Environment(ProEntitlementStore.self) private var proStore: ProEntitlementStore?
+    @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @State private var iconManager = AppIconManager()
+    @State private var liveController = LiveActivityController.shared
     @State private var path: [Destination]
+    @State private var paywallRequest: PaywallRequest?
+    @State private var archiveFile: ArchiveExportFile?
+    @State private var archiveTempDirectory: URL?
+    @State private var archiveExportTask: Task<Void, Never>?
+    @State private var archiveError: LocalizedStringKey?
+    @State private var isExportingArchive = false
 
     init(
         ownedCards: [HeadphoneCard] = [],
@@ -428,6 +446,61 @@ struct SettingsView: View {
                     }
                 }
 
+                Section(EarprintReleasePolicy.monetizationEnabled ? "Earprint Pro" : "Session & Archive") {
+                    if EarprintReleasePolicy.monetizationEnabled, proStore != nil {
+                        Button {
+                            paywallRequest = PaywallRequest(feature: nil)
+                        } label: {
+                            HStack {
+                                Label("Earprint Pro", systemImage: "sparkles")
+                                Spacer()
+                                Text(proAccess.hasPro ? "Unlocked" : "Collector Edition")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        NavigationLink(value: Destination.tipJar) {
+                            Label("Tip Jar", systemImage: "heart")
+                        }
+                    }
+
+                    Picker(selection: $liveController.restIntervalMinutes) {
+                        ForEach([15, 30, 45, 60, 90, 120], id: \.self) { minutes in
+                            Text("\(minutes) min").tag(minutes)
+                        }
+                    } label: {
+                        Label("Rest Reminder", systemImage: "timer")
+                    }
+
+                    Button {
+                        toggleLiveSession()
+                    } label: {
+                        Label(
+                            liveController.isRunning ? "Stop Listening Session" : "Live Listening Session",
+                            systemImage: liveController.isRunning ? "stop.circle" : "dot.radiowaves.left.and.right"
+                        )
+                    }
+
+                    Menu {
+                        Button("Export CSV") { exportArchive(.csv) }
+                        Button("Export JSON") { exportArchive(.json) }
+                    } label: {
+                        Label("Export Archive", systemImage: "archivebox")
+                    }
+                    .disabled(isExportingArchive)
+
+                    if let archiveError {
+                        Text(archiveError)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let liveError = liveController.lastError {
+                        Text(liveError)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     NavigationLink(value: Destination.privacy) {
                         Label("Apple Health Privacy", systemImage: "hand.raised.fill")
@@ -475,6 +548,10 @@ struct SettingsView: View {
                     ModelGalleryView(ownedCards: ownedCards)
                 case .cardTiers:
                     CardTiersView(ownedCards: ownedCards)
+                case .tipJar:
+                    if let proStore {
+                        TipJarView(store: proStore)
+                    }
                 case .privacy:
                     PrivacyPolicyView()
                 case .credits:
@@ -483,6 +560,104 @@ struct SettingsView: View {
             }
         }
         .interactiveDismissDisabled(iconManager.isUpdating)
+        .onDisappear {
+            archiveExportTask?.cancel()
+            archiveExportTask = nil
+            if archiveFile == nil {
+                clearArchiveFile()
+            }
+        }
+        .sheet(item: $paywallRequest) { request in
+            if let proStore {
+                PaywallView(store: proStore, highlightedFeature: request.feature)
+                    .environment(\.locale, locale)
+                    .preferredColorScheme(colorScheme)
+            }
+        }
+        .sheet(item: $archiveFile, onDismiss: clearArchiveFile) { file in
+            NavigationStack {
+                ShareLink(item: file, preview: SharePreview("Listening archive")) {
+                    Label("Share archive", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.borderedProminent)
+                .navigationTitle("Listening archive")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { archiveFile = nil }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+            .environment(\.locale, locale)
+            .preferredColorScheme(colorScheme)
+        }
+    }
+
+    private func toggleLiveSession() {
+        if liveController.isRunning {
+            liveController.stop(manual: true)
+            return
+        }
+        guard proAccess.isUnlocked(.liveActivity) else {
+            paywallRequest = PaywallRequest(feature: .liveActivity)
+            return
+        }
+        if let active = routeMonitor?.activeMatchedCard(in: ownedCards) ?? ownedCards.first {
+            liveController.start(card: active, decibels: 0, manual: true)
+        } else {
+            liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones", decibels: 0, manual: true)
+        }
+    }
+
+    private func exportArchive(_ format: ArchiveExporter.Format) {
+        guard proAccess.isUnlocked(.archiveExport) else {
+            paywallRequest = PaywallRequest(feature: .archiveExport)
+            return
+        }
+        guard !isExportingArchive else { return }
+        archiveExportTask?.cancel()
+        archiveError = nil
+        isExportingArchive = true
+        let cards = ownedCards
+        archiveExportTask = Task {
+            defer {
+                isExportingArchive = false
+                archiveExportTask = nil
+            }
+            let cached = await Task.detached(priority: .userInitiated) {
+                AggregateCache().load()?.aggregate
+            }.value
+            guard !Task.isCancelled else { return }
+            guard let aggregate = cached, !aggregate.isEmpty else {
+                archiveError = "No Apple Health listening history cached yet."
+                return
+            }
+            do {
+                let file = try await Task.detached(priority: .userInitiated) {
+                    try ArchiveExporter.export(format, aggregate: aggregate, cards: cards)
+                }.value
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent())
+                    return
+                }
+                clearArchiveFile()
+                archiveTempDirectory = file.url.deletingLastPathComponent()
+                archiveFile = file
+            } catch {
+                if !Task.isCancelled {
+                    archiveError = "Export failed"
+                }
+            }
+        }
+    }
+
+    private func clearArchiveFile() {
+        if let dir = archiveTempDirectory {
+            try? FileManager.default.removeItem(at: dir)
+            archiveTempDirectory = nil
+        }
+        archiveFile = nil
     }
 }
 
