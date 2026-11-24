@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+enum EarprintReleasePolicy {
+    /// All v1.1 capabilities ship 100% free while growing the initial user base.
+    /// Flip to `true` in a future release to re-enable StoreKit Pro and Tip Jar paywall UI.
+    static let monetizationEnabled = false
+}
+
 /// Original software-only Pro capabilities introduced in Earprint v1.1.0.
 /// Strictly excludes third-party hardware trademarks or existing v1.0 core viewing.
 enum ProFeature: String, CaseIterable, Identifiable, Sendable {
@@ -68,6 +74,7 @@ struct ProAccessSnapshot: Equatable, Sendable {
     var isGrandfathered: Bool
 
     static let free = ProAccessSnapshot(hasPro: false, isGrandfathered: false)
+    static let allUnlocked = ProAccessSnapshot(hasPro: true, isGrandfathered: true)
 
     func isUnlocked(_ feature: ProFeature) -> Bool {
         hasPro || isGrandfathered

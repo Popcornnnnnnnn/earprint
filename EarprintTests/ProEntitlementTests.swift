@@ -262,6 +262,13 @@ final class ProEntitlementTests: XCTestCase {
         XCTAssertTrue(store.hasProPurchased)
     }
 
+    func testReleasePolicyUnlocksV11FeaturesByDefault() {
+        XCTAssertFalse(EarprintReleasePolicy.monetizationEnabled)
+        for feature in ProFeature.allCases {
+            XCTAssertTrue(ProAccessSnapshot.allUnlocked.isUnlocked(feature))
+        }
+    }
+
     private var sourceRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

@@ -4387,6 +4387,16 @@
         }
       }
     },
+    "Session & Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会话与导出"
+          }
+        }
+      }
+    },
     "Sessions": {
       "localizations": {
         "zh-Hans": {

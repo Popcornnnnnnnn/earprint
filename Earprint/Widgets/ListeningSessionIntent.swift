@@ -23,10 +23,12 @@ struct StartListeningSessionIntent: LiveActivityIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        let store = ProEntitlementStore(autoStart: false)
-        await store.refreshEntitlements()
-        guard store.isUnlocked(.liveActivity) else {
-            throw SessionError.proRequired
+        if EarprintReleasePolicy.monetizationEnabled {
+            let store = ProEntitlementStore(autoStart: false)
+            await store.refreshEntitlements()
+            guard store.isUnlocked(.liveActivity) else {
+                throw SessionError.proRequired
+            }
         }
 
         let snapshot = WidgetSnapshotStore.load()

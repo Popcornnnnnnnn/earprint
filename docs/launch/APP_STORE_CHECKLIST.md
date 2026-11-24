@@ -2,40 +2,30 @@
 
 App `com.popcornnn.earprint` · widget extension `com.popcornnn.earprint.widgets` · App Group `group.com.popcornnn.earprint`.
 
+Earprint v1.1.0 ships **100% free with zero In-App Purchases** so early collectors can unlock every feature immediately without friction.
+
 ## v1.1.0 (build 10) release gates
 
 ### App Store Connect
 
-- [ ] Confirm the **Paid Apps Agreement** is active and the required tax and banking information is complete.
-- [ ] Create or verify all four In-App Purchase records with the exact product types and IDs below. Add the display name and description for **`en-US`, `zh-Hans`, `ja`, and `ko`** to each record. Set pricing and availability, upload the required review screenshots, and attach the four products to the version submission. [Localized IAP copy](APP_STORE_METADATA.md#app-store-locales)
-
-  | Product ID | Type |
-  | --- | --- |
-  | `com.popcornnn.earprint.pro.lifetime` | Non-Consumable |
-  | `com.popcornnn.earprint.tip.small` | Consumable |
-  | `com.popcornnn.earprint.tip.medium` | Consumable |
-  | `com.popcornnn.earprint.tip.large` | Consumable |
-
-- [ ] Add the four localized listings and screenshots. Keep App Name, Subtitle, and every IAP display name and description free of third-party headphone brands. Use the Earprint Rings Emblem as the primary icon. [Listing copy and screenshot storyboard](APP_STORE_METADATA.md)
+- [ ] Confirm Earprint v1.1.0 pricing is set to **Free** with **zero attached In-App Purchases**.
+- [ ] Add the four localized listings and screenshots (`en-US`, `zh-Hans`, `ja`, and `ko`). Keep App Name and Subtitle free of third-party headphone brands. Use the Earprint Rings Emblem as the primary icon. [Listing copy and screenshot storyboard](APP_STORE_METADATA.md)
 - [ ] Set the canonical marketing, support, and privacy URLs. Verify HTTPS and public access to all three pages from an iPhone. Use the documented GitHub Pages URLs if the canonical host is unavailable. Reconfirm the **Data Not Collected** label and the published privacy policy. [URLs](APP_STORE_METADATA.md#app-store-connect-urls--contact) · [Privacy policy](PRIVACY_POLICY.md)
 - [ ] Paste the v1.1.0 App Review Notes and attach a real-device demo if needed to show HealthKit ingestion, cards, and the device features on a phone with listening history. [App Review Notes](APP_STORE_METADATA.md#app-review-notes-v110)
 
-### StoreKit 2 sandbox and TestFlight
+### Clean-device & feature smoke tests
 
-- [ ] Start without Pro in Xcode StoreKit testing, then repeat on the uploaded build 10 in TestFlight using a fresh test account. In **Settings → Earprint Pro**, verify the product loads, the purchase sheet shows the localized product name, and a one-time purchase unlocks Pro features. Relaunch and confirm the entitlement persists.
-- [ ] With the same test account, reinstall or use a second device. Tap **Restore Purchases** and verify that Pro is available after sync. If StoreKit restores the entitlement on launch, confirm that the explicit restore action succeeds and keeps access.
-- [ ] In **Settings → Tip Jar**, verify all three consumables load. Purchase each tier in sandbox and smoke-test the Tip Jar on TestFlight with an account without Pro. Confirm a tip can be purchased again, grants no Pro access, and is excluded from Restore Purchases.
-- [ ] Confirm early-collector access is off in Xcode, sandbox, and TestFlight before purchase. On the release commit, run `ProEntitlementTests.testGrandfatheringRequiresProductionAndAnEarlyIntegerBuild` to exercise the verified `.production` `AppTransaction` rule. An integer original build below `10` qualifies. Build `10` or later, a missing or non-integer build, and any other environment do not qualify.
 - [ ] On a clean install with no readable HealthKit data, confirm Collection, Rings, and widgets show zero-data states. Confirm the **Sync Apple Health** path works and Settings remains accessible. With a real logged headphone pair that has no dedicated model, verify that the generic 3D card renders and flips to the pair's own stats.
+- [ ] Confirm **Wrapped 3D Video / GIF export**, **4 Custom Foils**, **Slab Engraving**, **Watermark-Free 2100×2800 Posters**, **Multi-Year Archive Export**, and **Live Listening Session** are all immediately unlocked with no paywall or StoreKit prompt.
 
 ### Physical iPhone feature smoke tests
 
-- [ ] On a Dynamic Island iPhone with Live Activities enabled and Pro unlocked, start **Settings → Earprint Pro → Live Listening Session**. Check the Lock Screen and Dynamic Island presentation, including the rest countdown. Stop the session from Settings.
+- [ ] On a Dynamic Island iPhone with Live Activities enabled, start **Settings → Session & Archive → Live Listening Session**. Check the Lock Screen and Dynamic Island presentation, including the rest countdown. Stop the session from Settings.
 - [ ] Add the Earprint actions in Shortcuts. Run **Start Listening Session**, **Reset Listening Rest Timer**, and **Stop Listening Session** in order. Verify one activity starts, reset restarts the countdown on that activity, and stop ends it.
-- [ ] With 2026 listening data and Pro unlocked, open **2026 Earprint Wrapped** in Rings. Go offline and export the card reel as 1080p MP4 (`1080 × 1920 px`) and 540p GIF (`540 × 960 px`). Open both saved files and confirm they animate.
-- [ ] In a Device Dossier, try the four Pro foil finishes and customize the slab engraving. In the share sheet, enable High-Res and hide the watermark. Open the exported PNG and verify `2100 × 2800 px` and no footer watermark.
-- [ ] From **Settings → Export Archive**, export both CSV and JSON with listening data spanning at least two years. Open the saved files and confirm devices, dates, and listening totals agree with the source history.
-- [ ] With no Pro entitlement, confirm the 3D cards, Device Dossier, Rings, widgets, and Wrapped recap are still accessible.
+- [ ] With 2026 listening data, open **2026 Earprint Wrapped** in Rings. Go offline and export the card reel as 1080p MP4 (`1080 × 1920 px`) and 540p GIF (`540 × 960 px`). Open both saved files and confirm they animate.
+- [ ] In a Device Dossier, try the four custom foil finishes and customize the slab engraving. In the share sheet, enable High-Res and hide the watermark. Open the exported PNG and verify `2100 × 2800 px` and no footer watermark.
+- [ ] From **Settings → Session & Archive → Export Archive**, export both CSV and JSON with listening data spanning at least two years. Open the saved files and confirm devices, dates, and listening totals agree with the source history.
+- [ ] Confirm the 3D cards, Device Dossier, Rings, widgets, and Wrapped recap are all accessible.
 
 ### Final Release archive
 

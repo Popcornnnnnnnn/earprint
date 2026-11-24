@@ -446,8 +446,8 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Earprint Pro") {
-                    if proStore != nil {
+                Section(EarprintReleasePolicy.monetizationEnabled ? "Earprint Pro" : "Session & Archive") {
+                    if EarprintReleasePolicy.monetizationEnabled, proStore != nil {
                         Button {
                             paywallRequest = PaywallRequest(feature: nil)
                         } label: {

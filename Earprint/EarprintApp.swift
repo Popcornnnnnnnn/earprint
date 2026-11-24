@@ -11,7 +11,7 @@ struct EarprintApp: App {
     @State private var router = DeepLinkRouter()
     @State private var colorStore = DeviceColorStore()
     @State private var routeMonitor = ActiveAudioRouteMonitor()
-    @State private var proStore = ProEntitlementStore()
+    @State private var proStore = ProEntitlementStore(autoStart: EarprintReleasePolicy.monetizationEnabled)
     @State private var customizationStore = SlabCustomizationStore()
     @State private var paywallPrompt: PaywallPrompt?
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
@@ -85,7 +85,7 @@ struct EarprintApp: App {
             .environment(routeMonitor)
             .environment(proStore)
             .environment(customizationStore)
-            .environment(\.proAccess, proStore.accessSnapshot)
+            .environment(\.proAccess, EarprintReleasePolicy.monetizationEnabled ? proStore.accessSnapshot : .allUnlocked)
             .environment(\.locale, resolvedLocale)
             .preferredColorScheme(resolvedColorScheme)
             .sheet(isPresented: $library.needsHealthOnboarding) {
@@ -111,6 +111,7 @@ struct EarprintApp: App {
             // Widgets and the Live Activity open earprint://card/<id>, earprint://rings, earprint://wrapped, ...
             .onOpenURL { router.handle($0) }
             .onReceive(NotificationCenter.default.publisher(for: .earprintRequestPaywall)) { note in
+                guard EarprintReleasePolicy.monetizationEnabled else { return }
                 let feature = note.object as? ProFeature ?? note.userInfo?["feature"] as? ProFeature
                 paywallPrompt = PaywallPrompt(feature: feature)
             }
@@ -174,8 +175,8 @@ struct EarprintApp: App {
             decibelsForCard: { card in
                 recentDecibels(for: card, now: now)
             },
-            proUnlocked: proStore.isUnlocked(.liveActivity),
-            proResolved: proStore.hasResolvedEntitlements
+            proUnlocked: !EarprintReleasePolicy.monetizationEnabled || proStore.isUnlocked(.liveActivity),
+            proResolved: !EarprintReleasePolicy.monetizationEnabled || proStore.hasResolvedEntitlements
         )
     }
 
@@ -227,7 +228,7 @@ struct EarprintApp: App {
         } else if args.contains("-rings") || args.contains("-showShare") {
             router.tab = .rings
         }
-        if args.contains("-paywall") {
+        if EarprintReleasePolicy.monetizationEnabled, args.contains("-paywall") {
             paywallPrompt = PaywallPrompt(feature: nil)
         }
     }

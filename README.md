@@ -11,7 +11,7 @@
   </p>
 
   <p>
-    <a href="https://apps.apple.com/app/id6837883616"><img src="https://img.shields.io/badge/App%20Store-Free%20Core%20%2B%20Pro-007AFF?style=flat-square&logo=apple&logoColor=white" alt="Download on the App Store"></a>
+    <a href="https://apps.apple.com/app/id6837883616"><img src="https://img.shields.io/badge/App%20Store-Free-007AFF?style=flat-square&logo=apple&logoColor=white" alt="Download on the App Store"></a>
     <img src="https://img.shields.io/badge/iOS-18%2B-0A84FF?style=flat-square&logo=apple&logoColor=white" alt="iOS 18+">
     <img src="https://img.shields.io/badge/SwiftUI%20%2B%20RealityKit-3D%20Foil%20Cards-149F8A?style=flat-square" alt="SwiftUI + RealityKit">
     <img src="https://img.shields.io/badge/HealthKit-100%25%20On--Device-34C759?style=flat-square" alt="100% On-Device">
