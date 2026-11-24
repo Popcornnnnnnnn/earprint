@@ -9,8 +9,8 @@ settings:
     DEVELOPMENT_TEAM: R26X7B8XDT
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.0.1"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "10"
 targets:
   Earprint:
     type: application
@@ -19,6 +19,8 @@ targets:
       - path: Earprint
         excludes:
           - Resources/Models/**
+          - Resources/l10n-*.json
+          - Resources/Earprint.storekit
       - path: Earprint/Resources/Models
         buildPhase: resources
       # Shared with the widget extension: snapshot model, App Group store, Live Activity attributes.
@@ -42,6 +44,7 @@ targets:
         NSHealthShareUsageDescription: Earprint reads your headphone audio levels from Apple Health to show how long and how loudly you listen. Data stays on your iPhone.
         NSHealthUpdateUsageDescription: Earprint reads your headphone audio levels from Apple Health to build your listening archive and never writes data to Apple Health.
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLName: com.popcornnn.earprint
             CFBundleURLSchemes:
@@ -131,8 +134,10 @@ schemes:
         EarprintWidgetRenders: [test]
     run:
       config: Debug
+      storeKitConfiguration: Earprint/Resources/Earprint.storekit
     test:
       config: Debug
+      storeKitConfiguration: Earprint/Resources/Earprint.storekit
       targets:
         - EarprintTests
     archive:

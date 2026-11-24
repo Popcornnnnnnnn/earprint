@@ -519,7 +519,11 @@ private struct DossierShareCustomizeSheet: View {
     @Binding var options: DossierShareOptions
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.proAccess) private var proAccess
+    @Environment(ProEntitlementStore.self) private var proStore: ProEntitlementStore?
+    @State private var paywallFeature: ProFeature?
 
     private var isCurrentDefault: Bool {
         let contentIsDefault = format == .simple ? options.simple.isDefault : options.long.isDefault
@@ -558,6 +562,13 @@ private struct DossierShareCustomizeSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .sheet(item: $paywallFeature) { feature in
+                if let proStore {
+                    PaywallView(store: proStore, highlightedFeature: feature)
+                        .environment(\.locale, locale)
+                        .preferredColorScheme(colorScheme)
+                }
+            }
         }
     }
 
@@ -566,7 +577,11 @@ private struct DossierShareCustomizeSheet: View {
             proAccess.isUnlocked(.export4K) && options[keyPath: option]
         } set: { enabled in
             if enabled && !proAccess.isUnlocked(.export4K) {
-                ProPaywallRequester.request(feature: .export4K)
+                if proStore != nil {
+                    paywallFeature = .export4K
+                } else {
+                    ProPaywallRequester.request(feature: .export4K)
+                }
             } else {
                 options[keyPath: option] = enabled
             }

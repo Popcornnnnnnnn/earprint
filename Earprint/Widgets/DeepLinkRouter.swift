@@ -18,6 +18,8 @@ final class DeepLinkRouter {
     var tab: Tab = .collection
     /// Card to open in the Collection tab. The Collection view clears it after opening.
     var pendingCardID: String?
+    /// Opens the 2026 Wrapped story when requested by `earprint://wrapped`.
+    var pendingWrapped = false
 
     func handle(_ url: URL) {
         guard let route = EarprintLink.route(for: url) else { return }
@@ -27,6 +29,9 @@ final class DeepLinkRouter {
             pendingCardID = id
         case .collection: tab = .collection
         case .rings: tab = .rings
+        case .wrapped:
+            tab = .rings
+            pendingWrapped = true
         case .probe:
             #if DEBUG
             developerScreen = .probe

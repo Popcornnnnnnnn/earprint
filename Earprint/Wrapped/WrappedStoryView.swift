@@ -12,7 +12,9 @@ struct WrappedStoryView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.proAccess) private var proAccess
+    @Environment(ProEntitlementStore.self) private var proStore: ProEntitlementStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var page = 0
     @State private var exportProgress = 0.0
@@ -21,6 +23,7 @@ struct WrappedStoryView: View {
     @State private var shareItem: ShareItem?
     @State private var showShare = false
     @State private var exportFailed = false
+    @State private var paywallFeature: ProFeature?
 
     private enum ShareItem {
         case video(URL)
@@ -165,6 +168,13 @@ struct WrappedStoryView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Please try again.")
+        }
+        .sheet(item: $paywallFeature) { feature in
+            if let proStore {
+                PaywallView(store: proStore, highlightedFeature: feature)
+                    .environment(\.locale, locale)
+                    .preferredColorScheme(colorScheme)
+            }
         }
         .onDisappear {
             exportTask?.cancel()
@@ -337,7 +347,11 @@ struct WrappedStoryView: View {
 
     private func exportVideo(_ format: CardVideoExporter.Format) {
         guard proAccess.isUnlocked(.wrappedVideo) else {
-            ProPaywallRequester.request(feature: .wrappedVideo)
+            if proStore != nil {
+                paywallFeature = .wrappedVideo
+            } else {
+                ProPaywallRequester.request(feature: .wrappedVideo)
+            }
             return
         }
         guard exportTask == nil, archiveTask == nil else { return }
@@ -360,7 +374,11 @@ struct WrappedStoryView: View {
 
     private func exportArchive(_ format: ArchiveExporter.Format, aggregate: ListeningAggregate) {
         guard proAccess.isUnlocked(.archiveExport) else {
-            ProPaywallRequester.request(feature: .archiveExport)
+            if proStore != nil {
+                paywallFeature = .archiveExport
+            } else {
+                ProPaywallRequester.request(feature: .archiveExport)
+            }
             return
         }
         guard archiveTask == nil, exportTask == nil else { return }

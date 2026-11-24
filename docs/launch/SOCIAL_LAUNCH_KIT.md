@@ -1,6 +1,6 @@
-# Earprint Multi-Platform Launch Kit (`v1.0.0`)
+# Earprint Multi-Platform Launch Kit (`v1.1.0`)
 
-Complete, platform-tailored launch playbook for **`Earprint - Headphone Archive`** (`v1.0.0`, iOS 18+):
+Complete, platform-tailored launch playbook for **`Earprint - Headphone Archive`** (`v1.1.0`, iOS 18+):
 
 - **App Store Name:** `Earprint - Headphone Archive` (search keyword: `Earprint` · `ID: 6837883616`)
 - **App Store URL (LIVE — v1.0.0 approved 2026-11-23):** `https://apps.apple.com/app/id6837883616`
@@ -8,7 +8,7 @@ Complete, platform-tailored launch playbook for **`Earprint - Headphone Archive`
 - **Support FAQ:** `https://popcornnnnnnnn.github.io/earprint/support.html`
 - **Privacy Policy:** `https://popcornnnnnnnn.github.io/earprint/privacy.html`
 - **Public GitHub Repo (Open Source):** `https://github.com/Popcornnnnnnnn/earprint`
-- **Price / Business Model:** Free (`$0`), zero accounts, zero servers, zero analytics/ads (`Data Not Collected`)
+- **Price / Business Model:** Free core forever · Optional one-time Earprint Pro unlock (no subscription), zero accounts, zero servers, zero analytics/ads (`Data Not Collected`)
 
 ---
 
@@ -164,7 +164,7 @@ Cards evolve automatically as lifetime HealthKit hours accumulate, and the `2×3
   ```text
   之前突然发现，只要 iPhone 开着「耳机音量」记录，Apple 健康其实默默攒了好几年的 AirPods 听歌数据——只是原生的柱状图太枯燥了，很少有人点进去看。
 
-  花了几周用 SwiftUI + RealityKit 写了一个完全免费、开源、不联网的小工具，叫 **Earprint**，今天正式上架 App Store 了：
+  花了几周用 SwiftUI + RealityKit 写了一个核心功能永久免费、不联网的小工具，叫 **Earprint**（提供可选一次性 Pro 解锁、无订阅）：
 
   🔸 **实时 3D 耳机收藏卡**：自动读取本机健康里的历史（不用从零攒起），每副 AirPods / Beats 都会生成带首次佩戴日期与编号的立体卡片。拖动旋转、双指放大、长按飞旋、倾斜手机看镭射反光，轻点翻面查看近 4 周听歌环形图。
   🔸 **6 阶稀有度收藏图鉴（0h → 2,000h）**：0h 青铜岩 → 25h 银铝 → 120h 峡湾青 → 400h 深紫 → 1,000h 午夜碳纤 → 2,000h 液态全息，记录每副耳机达成高阶的月份。
@@ -174,7 +174,7 @@ Cards evolve automatically as lifetime HealthKit hours accumulate, and the `2×3
 
   **最重要的是：** 零登录、零服务器、零广告和统计 SDK，所有健康计算加密留在你的 iPhone 上，源码也已在 GitHub 公开（同名搜 `Popcornnnnnnnn/earprint`）欢迎检查。
 
-  App Store 直接搜英文名 **`Earprint`** 就能免费下载（iOS 18+，支持中英文随系统切换）。快去看看你的主力耳机攒了多少小时、拿了几分 Ear Grade，评论区蹲一波最高段位 👀
+  App Store 直接搜英文名 **`Earprint`** 就能免费下载体验核心功能（iOS 18+，支持中英文随系统切换；可选一次性买断 Earprint Pro，无订阅）。快去看看你的主力耳机攒了多少小时、拿了几分 Ear Grade，评论区蹲一波最高段位 👀
 
   （注：独立开发者个人作品，与 Apple Inc. 无任何关联；不构成医疗诊断设备。）
   ```
@@ -291,7 +291,7 @@ All open source: https://github.com/Popcornnnnnnnn/earprint
   - **Light / Dark / System** themes, **41** app icons, and **English + 简体中文**.
 
   **Privacy & Cost:**
-  - **100% free**, no IAPs, no subscriptions, no ads, no accounts.
+  - **Free core forever** · Optional one-time Earprint Pro unlock (no subscriptions), no ads, no accounts.
   - **100% offline & open source:** Zero network code, read-only HealthKit access (`toShare: []`), excludes `HKDevice.local()` iPhone speakers.
 
   - App Store: https://apps.apple.com/app/id6837883616
@@ -319,7 +319,7 @@ All open source: https://github.com/Popcornnnnnnnn/earprint
 - **Name:** `Earprint - Headphone Archive`
 - **Tagline (`49 / 60 chars`):** `Turn Apple Health headphone history into 3D cards`
 - **Topics:** `iPhone`, `Health & Fitness`, `Open Source`, `Audio`, `Design Tools`
-- **Pricing:** `Free` (`Open Source`)
+- **Pricing:** `Freemium` (`Free core forever · Optional one-time Pro unlock`)
 - **Gallery Order (`5` slides + Video):**
   1. `earprint-reel-en-9x16.mp4` (or YouTube mirror of `earprint-raw-en.mp4`)
   2. `00-hero-banner-16x9.png` — *"6-Tier 3D Foil Cards, PSA Device Dossier & 28-Day Rings"*
@@ -337,7 +337,7 @@ All open source: https://github.com/Popcornnnnnnnn/earprint
   • **6 Evolving Tiers (0h → 2,000h)** tracked in a multi-device Collector Binder
   • **PSA-Style Device Dossier** with an Ear Grade (1.0–10.0), 30-day scrub charts, 24h Day Clock, WHO/ITU H.870 safe-listening score, and customizable 1-to-4-page 3:4 PNG share posters
   • **28-Day Earprint Rings + Native Home & Lock Screen Widgets**
-  • **Free, 100% offline & Open Source** — zero accounts, zero servers, zero tracking SDKs (`toShare: []` read-only HealthKit).
+  • **Free core forever · Optional one-time Earprint Pro unlock** (zero subscriptions, zero accounts, zero servers, zero tracking SDKs, `toShare: []` read-only HealthKit).
 
   Source code & architecture docs: https://github.com/Popcornnnnnnnn/earprint
   App Store (iOS 18+, EN & 简体中文): https://apps.apple.com/app/id6837883616

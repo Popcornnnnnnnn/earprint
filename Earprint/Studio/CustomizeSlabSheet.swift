@@ -5,10 +5,14 @@ struct CustomizeSlabSheet: View {
     let dossier: DeviceDossier
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.proAccess) private var proAccess
+    @Environment(ProEntitlementStore.self) private var proStore: ProEntitlementStore?
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
     @State private var draft = CardCustomization()
     @State private var original: CardCustomization?
+    @State private var paywallFeature: ProFeature?
 
     private var store: SlabCustomizationStore { customizationStore ?? .shared }
 
@@ -64,6 +68,13 @@ struct CustomizeSlabSheet: View {
                 original = stored
                 draft = stored
             }
+            .sheet(item: $paywallFeature) { feature in
+                if let proStore {
+                    PaywallView(store: proStore, highlightedFeature: feature)
+                        .environment(\.locale, locale)
+                        .preferredColorScheme(colorScheme)
+                }
+            }
         }
     }
 
@@ -109,7 +120,12 @@ struct CustomizeSlabSheet: View {
             || (!value.customSerial.isEmpty && value.customSerial != original.customSerial)
         if (changesFoil && !proAccess.isUnlocked(.foilShaders))
             || (changesEngraving && !proAccess.isUnlocked(.slabEngraving)) {
-            ProPaywallRequester.request(feature: .foilShaders)
+            let feature: ProFeature = (changesFoil && !proAccess.isUnlocked(.foilShaders)) ? .foilShaders : .slabEngraving
+            if proStore != nil {
+                paywallFeature = feature
+            } else {
+                ProPaywallRequester.request(feature: feature)
+            }
             return
         }
         store.update(cardID: card.id, customization: value)

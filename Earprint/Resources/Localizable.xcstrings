@@ -1,12 +1,32 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ First Card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 首张卡片"
+          }
+        }
+      }
+    },
     "%@ a day": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "每天 %@"
+          }
+        }
+      }
+    },
+    "%@ listened in 2026": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2026 年已听 %@"
           }
         }
       }
@@ -77,6 +97,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 天前"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟"
           }
         }
       }
@@ -371,6 +401,36 @@
         }
       }
     },
+    "2026 Earprint Wrapped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2026 Earprint 年度回顾"
+          }
+        }
+      }
+    },
+    "2026 First Card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2026 首张卡片"
+          }
+        }
+      }
+    },
+    "2026 Wrapped 3D Video": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2026 年度回顾 3D 视频"
+          }
+        }
+      }
+    },
     "24-hour clock": {
       "localizations": {
         "zh-Hans": {
@@ -431,6 +491,16 @@
         }
       }
     },
+    "4 Procedural Foil Finishes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 款程序生成的箔面效果"
+          }
+        }
+      }
+    },
     "4 pages": {
       "localizations": {
         "zh-Hans": {
@@ -457,6 +527,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 周 Earprint 圆环"
+          }
+        }
+      }
+    },
+    "4K (2100 × 2800)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4K（2100 × 2800）"
           }
         }
       }
@@ -557,6 +637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "活跃天数"
+          }
+        }
+      }
+    },
+    "Aerospace matte titanium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "航空级哑光钛质感"
           }
         }
       }
@@ -771,6 +861,16 @@
         }
       }
     },
+    "Average listening level": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均聆听音量"
+          }
+        }
+      }
+    },
     "Average volume": {
       "localizations": {
         "zh-Hans": {
@@ -861,6 +961,16 @@
         }
       }
     },
+    "Back up your complete multi-year listening history locally.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在本地备份完整的历年聆听记录。"
+          }
+        }
+      }
+    },
     "Background": {
       "localizations": {
         "zh-Hans": {
@@ -937,6 +1047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "拉丝冰钛金属大师卡面"
+          }
+        }
+      }
+    },
+    "Brushed metallic gold": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉丝金属质感"
           }
         }
       }
@@ -1027,6 +1147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前等级"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
           }
         }
       }
@@ -1171,6 +1301,16 @@
         }
       }
     },
+    "Coffee": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请喝咖啡"
+          }
+        }
+      }
+    },
     "Collection": {
       "localizations": {
         "zh-Hans": {
@@ -1197,6 +1337,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏编号按 Apple 健康中记录的首次聆听日期排序。"
+          }
+        }
+      }
+    },
+    "Collector Booster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏家助力"
+          }
+        }
+      }
+    },
+    "Collector Edition": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏家版"
           }
         }
       }
@@ -1341,6 +1501,26 @@
         }
       }
     },
+    "Custom Slab Engraving": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义卡壳铭刻"
+          }
+        }
+      }
+    },
+    "Customize Slab": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义卡砖"
+          }
+        }
+      }
+    },
     "Customize details": {
       "localizations": {
         "zh-Hans": {
@@ -1441,6 +1621,16 @@
         }
       }
     },
+    "Dark carbon with a prism flare": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色碳纹与棱镜光泽"
+          }
+        }
+      }
+    },
     "Dark poster": {
       "localizations": {
         "zh-Hans": {
@@ -1517,6 +1707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认图标"
+          }
+        }
+      }
+    },
+    "Default Tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认品阶"
           }
         }
       }
@@ -1711,6 +1911,16 @@
         }
       }
     },
+    "Earbuds": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耳塞式耳机"
+          }
+        }
+      }
+    },
     "Early Bird": {
       "localizations": {
         "zh-Hans": {
@@ -1731,6 +1941,26 @@
         }
       }
     },
+    "Earprint Pro": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint Pro"
+          }
+        }
+      }
+    },
+    "Earprint Pro Unlocked": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁 Earprint Pro"
+          }
+        }
+      }
+    },
     "Earprint Rings": {
       "localizations": {
         "zh-Hans": {
@@ -1747,6 +1977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 经典钛灰"
+          }
+        }
+      }
+    },
+    "Earprint Wrapped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 年度回顾"
           }
         }
       }
@@ -1781,6 +2021,26 @@
         }
       }
     },
+    "Ends the current Earprint listening session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束当前的 Earprint 聆听会话。"
+          }
+        }
+      }
+    },
+    "Engraved title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刻字标题"
+          }
+        }
+      }
+    },
     "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).": {
       "localizations": {
         "zh-Hans": {
@@ -1797,6 +2057,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "每副耳机首次聆听即铸造为青铜卡，累计满 2,000 小时升级为全息传说卡。"
+          }
+        }
+      }
+    },
+    "Export 3D Reel (MP4)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 3D 短片（MP4）"
+          }
+        }
+      }
+    },
+    "Export Animated GIF": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 GIF 动图"
+          }
+        }
+      }
+    },
+    "Export Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出档案"
+          }
+        }
+      }
+    },
+    "Export CSV": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 CSV"
+          }
+        }
+      }
+    },
+    "Export JSON": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 JSON"
+          }
+        }
+      }
+    },
+    "Export a 6-second 1080p spinning 3D card reel or animated GIF.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出 6 秒 1080p 的 3D 卡片旋转短片或 GIF 动图。"
+          }
+        }
+      }
+    },
+    "Export failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出失败"
+          }
+        }
+      }
+    },
+    "Export quality": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出画质"
           }
         }
       }
@@ -1841,6 +2181,16 @@
         }
       }
     },
+    "First Card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首张卡片"
+          }
+        }
+      }
+    },
     "First listen (0h+)": {
       "localizations": {
         "zh-Hans": {
@@ -1881,6 +2231,16 @@
         }
       }
     },
+    "Foil finish": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "箔面质感"
+          }
+        }
+      }
+    },
     "Footer": {
       "localizations": {
         "zh-Hans": {
@@ -1917,6 +2277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "金卡"
+          }
+        }
+      }
+    },
+    "GOLD BULLION": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金锭"
           }
         }
       }
@@ -1991,6 +2361,26 @@
         }
       }
     },
+    "Gold Bullion": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金锭"
+          }
+        }
+      }
+    },
+    "Gold Bullion, Obsidian Prism, Sakura Pearl, and Raw Titanium slabs.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为收藏卡壳选用金锭、黑曜石棱镜、樱花珍珠或原钛质感。"
+          }
+        }
+      }
+    },
     "Grade breakdown": {
       "localizations": {
         "zh-Hans": {
@@ -2007,6 +2397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "评级证书"
+          }
+        }
+      }
+    },
+    "Grandfathered Early Collector": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "早期收藏家 · 已解锁"
           }
         }
       }
@@ -2181,6 +2581,16 @@
         }
       }
     },
+    "How you listened": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的聆听习惯"
+          }
+        }
+      }
+    },
     "INDIGO": {
       "localizations": {
         "zh-Hans": {
@@ -2301,6 +2711,16 @@
         }
       }
     },
+    "Leave a one-time tip to support Earprint's development.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过一次性打赏支持 Earprint 的开发。"
+          }
+        }
+      }
+    },
     "Library pipeline": {
       "localizations": {
         "zh-Hans": {
@@ -2347,6 +2767,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用任一支持的耳机聆听，即可将其加入你的收藏。"
+          }
+        }
+      }
+    },
+    "Listen with headphones to start your first card.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戴上耳机开始聆听，即可开启你的首张卡片。"
           }
         }
       }
@@ -2421,6 +2851,26 @@
         }
       }
     },
+    "Live Listening Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实时聆听状态"
+          }
+        }
+      }
+    },
+    "Loading store…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载商店…"
+          }
+        }
+      }
+    },
     "Long": {
       "localizations": {
         "zh-Hans": {
@@ -2447,6 +2897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "最长单次时长"
+          }
+        }
+      }
+    },
+    "Longest streak in days": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长连续聆听天数"
           }
         }
       }
@@ -2631,6 +3091,16 @@
         }
       }
     },
+    "Mini-Snapshot": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听小结"
+          }
+        }
+      }
+    },
     "Minted": {
       "localizations": {
         "zh-Hans": {
@@ -2721,6 +3191,16 @@
         }
       }
     },
+    "Multi-Year CSV & JSON Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跨年 CSV 和 JSON 档案"
+          }
+        }
+      }
+    },
     "Muted anodized indigo with subtle bevel highlights": {
       "localizations": {
         "zh-Hans": {
@@ -2791,6 +3271,16 @@
         }
       }
     },
+    "Next": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一页"
+          }
+        }
+      }
+    },
     "Next card": {
       "localizations": {
         "zh-Hans": {
@@ -2817,6 +3307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "夜猫子"
+          }
+        }
+      }
+    },
+    "No Apple Health listening history cached yet.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未缓存 Apple 健康聆听历史。"
           }
         }
       }
@@ -2881,6 +3381,16 @@
         }
       }
     },
+    "No previous Pro purchase was found.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 Earprint Pro 的购买记录。"
+          }
+        }
+      }
+    },
     "No supported headphones yet": {
       "localizations": {
         "zh-Hans": {
@@ -2921,6 +3431,16 @@
         }
       }
     },
+    "OBSIDIAN PRISM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑曜棱镜"
+          }
+        }
+      }
+    },
     "OBSIDIAN · PRESTIGE": {
       "localizations": {
         "zh-Hans": {
@@ -2931,12 +3451,42 @@
         }
       }
     },
+    "OK": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "好"
+          }
+        }
+      }
+    },
+    "Obsidian Prism": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑曜棱镜"
+          }
+        }
+      }
+    },
     "One ring per day, newest on the outside. Midnight is at the top.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "一圈代表一天，最近一天在最外圈，顶部为午夜。"
+          }
+        }
+      }
+    },
+    "One-time purchase · No subscription · Core stays free": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次购买 · 无需订阅 · 核心功能继续免费"
           }
         }
       }
@@ -2967,6 +3517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "橙色"
+          }
+        }
+      }
+    },
+    "Over-ear headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头戴式耳机"
           }
         }
       }
@@ -3011,6 +3571,16 @@
         }
       }
     },
+    "Peak month": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "听得最多的月份"
+          }
+        }
+      }
+    },
     "Period summary": {
       "localizations": {
         "zh-Hans": {
@@ -3021,12 +3591,32 @@
         }
       }
     },
+    "Personalize your collector slab title, serial tag, and accent rim.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义收藏卡壳的标题、编号标签和装饰边框。"
+          }
+        }
+      }
+    },
     "Pink": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "粉色"
+          }
+        }
+      }
+    },
+    "Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重试。"
           }
         }
       }
@@ -3057,6 +3647,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在预览示例数据。连接 Apple 健康后即可查看你的耳机。"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一页"
           }
         }
       }
@@ -3101,6 +3701,36 @@
         }
       }
     },
+    "Processing purchase…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在处理购买…"
+          }
+        }
+      }
+    },
+    "Purchases could not be restored. Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法恢复购买，请重试。"
+          }
+        }
+      }
+    },
+    "Purchases restored.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢复购买。"
+          }
+        }
+      }
+    },
     "Purple": {
       "localizations": {
         "zh-Hans": {
@@ -3127,6 +3757,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "较轻"
+          }
+        }
+      }
+    },
+    "RAW TITANIUM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原色钛"
           }
         }
       }
@@ -3167,6 +3807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "健康记录诊断"
+          }
+        }
+      }
+    },
+    "Raw Titanium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原色钛"
           }
         }
       }
@@ -3261,6 +3911,16 @@
         }
       }
     },
+    "Render ultra-crisp 2100×2800 Dossier posters without footer marks.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成 2100×2800 的高清档案海报，去除页脚标记。"
+          }
+        }
+      }
+    },
     "Rendering preview…": {
       "localizations": {
         "zh-Hans": {
@@ -3271,12 +3931,32 @@
         }
       }
     },
+    "Rendering your reel": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在渲染动态卡片"
+          }
+        }
+      }
+    },
     "Reset": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "重置"
+          }
+        }
+      }
+    },
+    "Reset Listening Rest Timer": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置聆听休息计时器"
           }
         }
       }
@@ -3297,6 +3977,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "恢复默认"
+          }
+        }
+      }
+    },
+    "Rest Reminder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息提醒"
+          }
+        }
+      }
+    },
+    "Restarts the break countdown for the current Earprint listening session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新开始当前 Earprint 聆听会话的休息倒计时。"
+          }
+        }
+      }
+    },
+    "Restore Purchases": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复购买"
+          }
+        }
+      }
+    },
+    "Retry loading store": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新加载商店"
           }
         }
       }
@@ -3337,6 +4057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "雾霭鼠尾草"
+          }
+        }
+      }
+    },
+    "SAKURA PEARL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "樱花珠光"
           }
         }
       }
@@ -3441,6 +4171,16 @@
         }
       }
     },
+    "Sakura Pearl": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "樱花珠光"
+          }
+        }
+      }
+    },
     "Sample data": {
       "localizations": {
         "zh-Hans": {
@@ -3491,6 +4231,26 @@
         }
       }
     },
+    "Save": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "See live loudness and rest countdowns at a glance.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一眼查看实时音量和休息倒计时。"
+          }
+        }
+      }
+    },
     "Seed simulator Health data": {
       "localizations": {
         "zh-Hans": {
@@ -3521,6 +4281,16 @@
         }
       }
     },
+    "Serial tag": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义编号"
+          }
+        }
+      }
+    },
     "Sessions": {
       "localizations": {
         "zh-Hans": {
@@ -3547,6 +4317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "分享 %lld 张图片"
+          }
+        }
+      }
+    },
+    "Share archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享档案"
           }
         }
       }
@@ -3651,6 +4431,26 @@
         }
       }
     },
+    "Slab engraving": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡砖刻字"
+          }
+        }
+      }
+    },
+    "Slide %lld of %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 页，共 %lld 页"
+          }
+        }
+      }
+    },
     "Smoked Dusk": {
       "localizations": {
         "zh-Hans": {
@@ -3711,12 +4511,32 @@
         }
       }
     },
+    "Start Listening Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始聆听会话"
+          }
+        }
+      }
+    },
     "Start at 10.0": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "初始分 10.0"
+          }
+        }
+      }
+    },
+    "Starts an Earprint listening session on the Lock Screen and Dynamic Island.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在锁定屏幕和灵动岛上开始 Earprint 聆听会话。"
           }
         }
       }
@@ -3737,6 +4557,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "深邃碳黑极光臻享卡面"
+          }
+        }
+      }
+    },
+    "Stop Listening Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束聆听会话"
+          }
+        }
+      }
+    },
+    "Studio Headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录音室耳机"
+          }
+        }
+      }
+    },
+    "Studio Patron": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作室赞助"
           }
         }
       }
@@ -3961,6 +4811,16 @@
         }
       }
     },
+    "Thank you for supporting Earprint.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感谢你支持 Earprint。"
+          }
+        }
+      }
+    },
     "The 2,000-hour full-spectrum holographic crown": {
       "localizations": {
         "zh-Hans": {
@@ -3981,6 +4841,36 @@
         }
       }
     },
+    "The purchase could not be completed. Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法完成购买，请重试。"
+          }
+        }
+      }
+    },
+    "The store is unavailable right now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "商店暂时无法使用。"
+          }
+        }
+      }
+    },
+    "This purchase could not be verified.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法验证这笔购买。"
+          }
+        }
+      }
+    },
     "Tier & hearing summary": {
       "localizations": {
         "zh-Hans": {
@@ -3991,12 +4881,62 @@
         }
       }
     },
+    "Time in peak month": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该月聆听时长"
+          }
+        }
+      }
+    },
+    "Time listened": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "Time with this pair": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这副耳机的聆听时长"
+          }
+        }
+      }
+    },
+    "Tip Jar": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打赏"
+          }
+        }
+      }
+    },
     "Today": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "今天"
+          }
+        }
+      }
+    },
+    "Top headphones": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最常用的耳机"
           }
         }
       }
@@ -4061,12 +5001,32 @@
         }
       }
     },
+    "Unlock Earprint Pro · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁 Earprint Pro · %@"
+          }
+        }
+      }
+    },
     "Unlocked": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "已解锁"
+          }
+        }
+      }
+    },
+    "Up to 24 characters for the title and 16 for the serial tag.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题最多 24 个字符，编号最多 16 个字符。"
           }
         }
       }
@@ -4201,12 +5161,42 @@
         }
       }
     },
+    "Warm rose-pearl satin": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暖粉珠光缎面"
+          }
+        }
+      }
+    },
     "Warmed up and entering your rotation": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "渐入佳境，成为常用主力耳机"
+          }
+        }
+      }
+    },
+    "Watermark-Free": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无水印"
+          }
+        }
+      }
+    },
+    "Watermark-Free 4K Posters": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无水印 4K 海报"
           }
         }
       }
@@ -4247,6 +5237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "每周声音暴露"
+          }
+        }
+      }
+    },
+    "Weeks within the WHO listening budget": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "符合世卫组织安全聆听额度的周数"
           }
         }
       }
@@ -4317,6 +5317,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的耳机声音档案"
+          }
+        }
+      }
+    },
+    "Your Wrapped card": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的年度卡片"
+          }
+        }
+      }
+    },
+    "Your listening rhythm": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的聆听节奏"
+          }
+        }
+      }
+    },
+    "Your listening year": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的年度聆听记录"
+          }
+        }
+      }
+    },
+    "Your listening year is taking shape.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的年度聆听记录正在成形。"
+          }
+        }
+      }
+    },
+    "Your purchase is pending.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的购买正在等待确认。"
           }
         }
       }

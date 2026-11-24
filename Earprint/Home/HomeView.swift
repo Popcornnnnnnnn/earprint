@@ -158,6 +158,18 @@ struct HomeView: View {
                              aggregate: (isSampleData || isEmptyState) ? nil : wrappedContent?.aggregate,
                              cards: wrappedContent?.cards ?? [])
         }
+        .onAppear {
+            if router?.pendingWrapped == true {
+                router?.pendingWrapped = false
+                showWrapped = true
+            }
+        }
+        .onChange(of: router?.pendingWrapped) { _, shouldOpen in
+            if shouldOpen == true {
+                router?.pendingWrapped = false
+                showWrapped = true
+            }
+        }
         .task(id: wrappedInput) {
             guard wrappedInput.active, !wrappedInput.sample, !wrappedInput.empty else {
                 if wrappedInput.empty { wrappedContent = nil }
