@@ -22,7 +22,7 @@
     } catch (e) {}
   </script>
   <title>Privacy Policy · 隐私政策 — Earprint</title>
-  <meta name="description" content="Earprint Privacy Policy (EN &amp; 简体中文): 100% on-device read-only Apple HealthKit Headphone Audio Levels, zero servers, Data Not Collected.">
+  <meta name="description" content="Earprint Privacy Policy (EN &amp; 简体中文): Read-only Apple Health access, on-device exports, StoreKit 2 purchases, and zero developer servers.">
   <link rel="canonical" href="https://earprint.popcornnn.xyz/privacy.html">
   <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
@@ -41,13 +41,14 @@
           <img class="brand-icon theme-img-dark" src="./assets/app-icon-dark.webp" alt="" width="256" height="256">
           <img class="brand-icon theme-img-light" src="./assets/app-icon-light.webp" alt="" width="256" height="256">
           <span>Earprint</span>
-          <span class="brand-version">v1.0</span>
+          <span class="brand-version">v1.1</span>
         </a>
 
         <nav class="primary-nav" aria-label="Primary">
           <a href="./index.html#showcase" data-i18n="nav.cards">3D Cards</a>
           <a href="./index.html#rings-lab" data-i18n="nav.rings">Rings Lab</a>
           <a href="./index.html#dossier" data-i18n="nav.dossier">Dossier</a>
+          <a href="./index.html#v11-pro" data-i18n="nav.pro">Pro &amp; Wrapped</a>
           <a href="./support.html" data-i18n="nav.support">Support</a>
           <a href="./privacy.html" aria-current="page" data-i18n="nav.privacy">Privacy</a>
         </nav>
@@ -79,15 +80,15 @@
         <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>APPLE HEALTHKIT · DATA NOT COLLECTED</span>
         <h1 id="main-content" tabindex="-1">Privacy Policy · 隐私政策</h1>
         <p class="subpage-meta">
-          Effective Date / 生效日期: 2026-11-21 &middot; App: Earprint (<code>com.popcornnn.earprint</code>) &middot;
+          Effective Date / 生效日期: <time datetime="2026-11-24">2026-11-24</time> &middot; App: Earprint (<code>com.popcornnn.earprint</code>) &middot;
           Contact / 联系方式: <a href="mailto:wmax43906@gmail.com">wmax43906@gmail.com</a> (Weizhi Wang)
         </p>
         <div class="summary-callout">
           <p>
-            <strong>Plain-language summary:</strong> Earprint works <strong>100% on your iPhone</strong>. It reads your Apple Health Headphone Audio Levels in read-only mode to render your 3D headphone cards, Device Dossier, 28-day Earprint Rings, and Home/Lock Screen widgets. Earprint has no accounts, no servers, no analytics or advertising SDKs, and never sends your listening or Health data off your device.
+            <strong>Plain-language summary:</strong> Earprint uses read-only access to Apple Health Headphone Audio Levels to build your 3D cards, Device Dossier, 28-day Earprint Rings, and widgets on your iPhone. Earprint has no accounts, servers, analytics, or advertising SDKs. Your listening data stays on your device unless you choose to share an export.
           </p>
           <p lang="zh-Hans">
-            <strong>一句话说明：</strong> Earprint <strong>100% 在你的 iPhone 本地运行</strong>。App 仅以只读方式读取 Apple“健康”中的耳机音量数据，用于生成 3D 耳机卡片、设备档案、28 天声纹环与小组件。我们不设账号、无后台服务器、不含第三方统计或广告 SDK，不会上传或离开你的设备。
+            <strong>简要说明：</strong> Earprint 以只读方式读取 Apple「健康」中的耳机音量数据，并在你的 iPhone 上生成 3D 耳机卡片、设备档案、28 天声纹环与小组件。Earprint 无需账号，不使用后台服务器、统计或广告 SDK。除非你主动分享导出文件，聆听数据会保留在本机。
           </p>
         </div>
         <div class="jump-pills">
@@ -115,7 +116,8 @@
         <ul>
           <li><strong>Local Cache:</strong> Compact derived totals and an incremental sync anchor are stored locally inside Application Support (<code>listening-aggregate.json</code>) under iOS file protection (<code>NSFileProtectionCompleteUntilFirstUserAuthentication</code>).</li>
           <li><strong>App Group for Widgets:</strong> Derived summaries are written to the private local App Group container (<code>group.com.popcornnn.earprint</code>) solely to power Earprint Home Screen and Lock Screen widgets on your iPhone.</li>
-          <li><strong>User-Initiated Exports:</strong> Shared poster PNGs are rendered on-device and leave your phone only when you choose a destination via the iOS Share Sheet.</li>
+          <li><strong>User-Initiated Exports:</strong> Poster PNGs, CSV and JSON archives, and MP4 and GIF reels are created on your device. They stay there unless you choose to share them.</li>
+          <li><strong>In-App Purchases:</strong> App Store purchases, including Collector Edition and tips, are handled exclusively by Apple StoreKit 2. The developer operates no servers or receipt databases.</li>
         </ul>
 
         <h3>4. Zero Servers, Zero Tracking, HealthKit Compliance</h3>
@@ -147,7 +149,8 @@
         <ul>
           <li><strong>本地加密缓存：</strong> 所有采样在设备本地聚合后保存于应用沙盒 <code>Application Support</code>（<code>listening-aggregate.json</code>），受 iOS 系统文件加密保护。</li>
           <li><strong>桌面与锁屏小组件共享容器：</strong> 仅将汇总展示数据本地写入 <code>group.com.popcornnn.earprint</code> 容器，仅供主应用与内置小组件扩展使用，绝不离开本机。</li>
-          <li><strong>主动导出图片：</strong> 生成的分享海报在本地渲染，仅在你主动通过系统分享面板发送时才分享给你选择的目标。</li>
+          <li><strong>主动导出：</strong> PNG 海报、CSV 和 JSON 档案，以及 MP4 和 GIF 短片均在设备上生成。除非你主动分享，这些文件会保留在本机。</li>
+          <li><strong>App 内购买：</strong> 珍藏版与打赏等 App Store 内购均由 Apple StoreKit 2 处理。开发者不运营服务器，也不保存收据数据库。</li>
         </ul>
 
         <h3>四、零服务器、零追踪与合规承诺</h3>

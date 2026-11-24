@@ -272,6 +272,7 @@
   .primary-nav a {
     display: inline-flex;
     align-items: center;
+    flex: none;
     min-block-size: 34px;
     padding: 0.3rem 0.68rem;
     border-radius: var(--radius-pill);
@@ -384,17 +385,19 @@
     opacity: 0;
   }
 
-  @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
-    @keyframes earprint-scroll-progress {
-      from { transform: scaleX(0); }
-      to { transform: scaleX(1); }
-    }
+  @media (prefers-reduced-motion: no-preference) {
+    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+      @keyframes earprint-scroll-progress {
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
+      }
 
-    .scroll-progress {
-      opacity: 0.9;
-      animation: earprint-scroll-progress linear both;
-      animation-timeline: scroll(root block);
-      animation-range: 0% 100%;
+      .scroll-progress {
+        opacity: 0.9;
+        animation: earprint-scroll-progress linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 0% 100%;
+      }
     }
   }
 
@@ -849,7 +852,27 @@
     padding-block-start: 1.5rem;
   }
 
-  /* Range inputs */
+  /* Form controls follow the root light/dark color scheme, including theme overrides. */
+  :root {
+    --form-accent: #246E7D;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-resolved-theme]) {
+      --form-accent: #6CF5E8;
+    }
+  }
+
+  :root[data-resolved-theme="dark"] {
+    --form-accent: #6CF5E8;
+  }
+
+  input[type="range"],
+  .hero-engraving-fields input {
+    color-scheme: inherit;
+    accent-color: var(--form-accent);
+  }
+
   .range-field {
     display: flex;
     flex-direction: column;
@@ -874,8 +897,46 @@
 
   input[type="range"] {
     inline-size: 100%;
+    min-block-size: 24px;
     cursor: pointer;
-    accent-color: var(--tier-accent, var(--leq-quiet));
+  }
+
+  @supports not (accent-color: auto) {
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      block-size: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--text-secondary);
+    }
+
+    input[type="range"]::-moz-range-track {
+      block-size: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--text-secondary);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      inline-size: 18px;
+      block-size: 18px;
+      margin-block-start: -6px;
+      border: 1px solid var(--bg-card);
+      border-radius: 50%;
+      background: var(--form-accent);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      inline-size: 16px;
+      block-size: 16px;
+      border: 1px solid var(--bg-card);
+      border-radius: 50%;
+      background: var(--form-accent);
+    }
   }
 
   /* Tier quick pills */
@@ -1503,7 +1564,50 @@
     flex-shrink: 0;
   }
 
-  /* 06 PRIVACY VAULT, FAQ ACCORDION & CREDITS */
+  /* 06 WRAPPED & COLLECTOR EDITION */
+  .pro-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.15rem;
+  }
+
+  .pro-offer {
+    padding-inline-start: 1rem;
+    border-inline-start: 2px solid var(--form-accent);
+  }
+
+  .pro-offer strong {
+    font-size: 1.125rem;
+  }
+
+  .pro-offer .section-lead {
+    margin-block-start: 0.25rem;
+  }
+
+  .pro-tips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem 1.25rem;
+    margin-block-start: 1.5rem;
+    padding-block-start: 1.25rem;
+    border-block-start: 1px solid var(--border-hairline);
+  }
+
+  .pro-tips h3 {
+    font-size: 1rem;
+  }
+
+  .pro-tips ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1.6rem;
+    padding-inline-start: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* 07 PRIVACY VAULT, FAQ ACCORDION & CREDITS */
   .audit-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1721,8 +1825,8 @@
   @media (prefers-reduced-motion: no-preference) {
     @supports ((animation-timeline: view()) and (animation-range: 0% 100%)) {
       @keyframes earprint-reveal {
-        from { opacity: 0.15; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { transform: translateY(12px); }
+        to { transform: translateY(0); }
       }
 
       .reveal {
@@ -1733,13 +1837,11 @@
     }
 
     html.has-scroll-fallback .reveal {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.55s ease, transform 0.55s ease;
+      transform: translateY(12px);
+      transition: transform 0.55s ease;
     }
 
     html.has-scroll-fallback .reveal.is-visible {
-      opacity: 1;
       transform: translateY(0);
     }
   }
@@ -1795,6 +1897,10 @@
 
   /* Responsive Breakpoints */
   @media (max-width: 1024px) {
+    .pro-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .hero-grid,
     .section-head,
     .binder-mount,
@@ -1838,6 +1944,7 @@
     }
 
     .audit-grid,
+    .pro-grid,
     .gallery-strip,
     .widgets-bottom-grid {
       grid-template-columns: minmax(0, 1fr);
