@@ -158,4 +158,24 @@ final class LiveActivityAndFallbackTests: XCTestCase {
         let stale = LibrarySnapshot(aggregate: aggregate, now: now.addingTimeInterval(35 * 60), calendar: utc)
         XCTAssertNil(stale.devices.first { !$0.isUnattributed }?.recentSessionDecibels)
     }
+
+    @MainActor
+    func testManualActivityFlagRestoresForMatchingActivityAndClearsWhenGone() throws {
+        let suite = "earprint.tests.manualActivity.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        LiveActivityController.persistManualState(true, activeActivityID: "act-123", defaults: defaults)
+        XCTAssertTrue(LiveActivityController.restoreManualState(activeActivityID: "act-123", defaults: defaults))
+        XCTAssertTrue(LiveActivityController.restoreManualState(activeActivityID: "act-123", defaults: defaults))
+
+        // Different surviving activity clears stale manual flag.
+        XCTAssertFalse(LiveActivityController.restoreManualState(activeActivityID: "act-other", defaults: defaults))
+        XCTAssertFalse(LiveActivityController.restoreManualState(activeActivityID: "act-123", defaults: defaults))
+
+        // Missing activity clears persisted manual flag.
+        LiveActivityController.persistManualState(true, activeActivityID: "act-456", defaults: defaults)
+        XCTAssertFalse(LiveActivityController.restoreManualState(activeActivityID: nil, defaults: defaults))
+        XCTAssertFalse(LiveActivityController.restoreManualState(activeActivityID: "act-456", defaults: defaults))
+    }
 }

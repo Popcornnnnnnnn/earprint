@@ -7,6 +7,7 @@ import Foundation
 final class LiveActivityController {
     static let shared = LiveActivityController()
     private static let restIntervalKey = "earprint.liveActivity.restIntervalMinutes"
+    private static let manualActivityIDKey = "earprint.liveActivity.manualActivityID"
     private static let restIntervalRange = 15...180
 
     /// Rest reminder after this much continuous listening.
@@ -52,6 +53,36 @@ final class LiveActivityController {
         // Re-attach to an activity that survived an app relaunch.
         activity = Activity<ListeningActivityAttributes>.activities.first
         isRunning = activity != nil
+        startedManually = Self.restoreManualState(activeActivityID: activity?.id, defaults: defaults)
+    }
+
+    static func persistManualState(_ value: Bool, activeActivityID: String?, defaults: UserDefaults) {
+        if value, let activeActivityID {
+            defaults.set(activeActivityID, forKey: manualActivityIDKey)
+        } else if defaults.object(forKey: manualActivityIDKey) != nil {
+            defaults.removeObject(forKey: manualActivityIDKey)
+        }
+    }
+
+    static func restoreManualState(activeActivityID: String?, defaults: UserDefaults) -> Bool {
+        guard let activeActivityID else {
+            if defaults.object(forKey: manualActivityIDKey) != nil {
+                defaults.removeObject(forKey: manualActivityIDKey)
+            }
+            return false
+        }
+        if defaults.string(forKey: manualActivityIDKey) == activeActivityID {
+            return true
+        }
+        if defaults.object(forKey: manualActivityIDKey) != nil {
+            defaults.removeObject(forKey: manualActivityIDKey)
+        }
+        return false
+    }
+
+    private func setStartedManually(_ value: Bool, activityID: String?) {
+        startedManually = value
+        Self.persistManualState(value, activeActivityID: activityID, defaults: defaults)
     }
 
     private static func clampRestInterval(_ minutes: Int) -> Int {
@@ -123,8 +154,8 @@ final class LiveActivityController {
         manuallyStoppedCardID = nil
         pendingRouteStart?.cancel()
         pendingRouteStart = nil
-        if activity != nil {
-            if manual { startedManually = true }
+        if let current = activity {
+            if manual { setStartedManually(true, activityID: current.id) }
             return true
         }
         guard areActivitiesEnabled else {
@@ -135,10 +166,11 @@ final class LiveActivityController {
         let state = ListeningActivityAttributes.ContentState(startedAt: startedAt, decibels: max(0, decibels),
                                                              restAt: startedAt.addingTimeInterval(restInterval))
         do {
-            activity = try Activity.request(attributes: attributes,
-                                            content: ActivityContent(state: state, staleDate: state.restAt.addingTimeInterval(30 * 60)),
-                                            pushType: nil)
-            startedManually = manual
+            let requested = try Activity.request(attributes: attributes,
+                                                 content: ActivityContent(state: state, staleDate: state.restAt.addingTimeInterval(30 * 60)),
+                                                 pushType: nil)
+            activity = requested
+            setStartedManually(manual, activityID: requested.id)
             isRunning = true
             lastError = nil
             return true
@@ -171,7 +203,7 @@ final class LiveActivityController {
     func stop(manual: Bool = false) {
         pendingRouteStart?.cancel()
         pendingRouteStart = nil
-        startedManually = false
+        setStartedManually(false, activityID: nil)
         if manual {
             manuallyStoppedCardID = activity?.attributes.cardID ?? Activity<ListeningActivityAttributes>.activities.first?.attributes.cardID
         }
