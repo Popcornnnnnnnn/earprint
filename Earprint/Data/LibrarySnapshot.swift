@@ -296,9 +296,8 @@ private extension DeviceAccumulator {
 extension LibrarySnapshot {
     func cards(now: Date = Date(), calendar: Calendar = .current) -> [HeadphoneCard] {
         // Keep the first accessory's existing serial after merging its aliases.
-        return devices.compactMap { d in
-            guard d.model.key.collectibleArtwork != nil else { return nil }
-            return HeadphoneCard(
+        devices.map { d in
+            HeadphoneCard(
                 id: d.id,
                 nickname: d.nickname,
                 model: d.model.marketingName,

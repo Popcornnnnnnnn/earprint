@@ -7,12 +7,19 @@ import Foundation
 @Observable
 final class ActiveAudioRouteMonitor {
     private(set) var activeOutputNames: [String] = []
+    @ObservationIgnored var onRouteChange: (([String]) -> Void)?
     @ObservationIgnored nonisolated(unsafe) private var observer: NSObjectProtocol?
+    private let readOutputNames: () -> [String]
 
     /// Debug-only override (`-activeCard <id>`) so Simulator previews can demonstrate the active indicator.
     private let debugActiveCardID: String?
 
-    init() {
+    convenience init() {
+        self.init(readOutputNames: Self.currentHeadphoneOutputNames)
+    }
+
+    init(readOutputNames: @escaping () -> [String]) {
+        self.readOutputNames = readOutputNames
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if let idx = args.firstIndex(of: "-activeCard"), idx + 1 < args.count {
@@ -43,16 +50,23 @@ final class ActiveAudioRouteMonitor {
     }
 
     func refresh() {
+        let names = readOutputNames()
+        guard activeOutputNames != names else { return }
+        activeOutputNames = names
+        onRouteChange?(names)
+    }
+
+    private static func currentHeadphoneOutputNames() -> [String] {
         let headphonePorts: Set<AVAudioSession.Port> = [
             .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones, .usbAudio
         ]
-        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
-        let names = outputs
+        return AVAudioSession.sharedInstance().currentRoute.outputs
             .filter { headphonePorts.contains($0.portType) }
             .map(\.portName)
-        if activeOutputNames != names {
-            activeOutputNames = names
-        }
+    }
+
+    func activeMatchedCard(in cards: [HeadphoneCard]) -> HeadphoneCard? {
+        cards.first { isCurrentlyWorn($0) }
     }
 
     func isCurrentlyWorn(_ card: HeadphoneCard) -> Bool {
