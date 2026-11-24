@@ -23,6 +23,39 @@ struct HomeView: View {
     @State private var selectedCardID: String? = nil
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
     @State private var space = LayoutSpace()
+    @State private var showWrapped = false
+    @State private var wrappedContent: WrappedContent?
+
+    private struct WrappedContent: Sendable {
+        let summary: WrappedSummary
+        let aggregate: ListeningAggregate?
+        let cards: [HeadphoneCard]
+    }
+
+    private struct WrappedInput: Equatable {
+        let sample: Bool
+        let empty: Bool
+        let active: Bool
+        let cacheModification: Date?
+        let cardMetadata: [[String]]
+    }
+
+    private static let emptyWrapped = WrappedAggregator.summarize(aggregate: ListeningAggregate(), cards: [])
+
+    private var wrappedInput: WrappedInput {
+        let modification: Date? = if !isSampleData && !isEmptyState && isActiveTab {
+            try? AggregateCache().url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+        } else {
+            nil
+        }
+        return WrappedInput(sample: isSampleData, empty: isEmptyState, active: isActiveTab, cacheModification: modification,
+                            cardMetadata: cards.map { [$0.id, $0.nickname, $0.model] + $0.aliasIDs })
+    }
+
+    private var wrappedSummary: WrappedSummary {
+        if isSampleData { return .sample() }
+        return isEmptyState ? Self.emptyWrapped : wrappedContent?.summary ?? Self.emptyWrapped
+    }
 
     private var selectedCard: HeadphoneCard? {
         if let selectedCardID, let matched = cards.first(where: { $0.matches(id: selectedCardID) }) {
@@ -50,7 +83,8 @@ struct HomeView: View {
         }
         let isWorn = currentCard.map { routeMonitor?.isCurrentlyWorn($0) ?? false } ?? false
         let showingAllPairs = currentCard == nil && cards.count > 1
-        let tiltActive = isActiveTab && !showShare
+        let tiltActive = isActiveTab && !showShare && !showWrapped
+        let wrappedInput = wrappedInput
 
         ZStack {
             backdrop(rarity: currentRarity)
@@ -72,6 +106,7 @@ struct HomeView: View {
                                     .accessibilityAddTraits(.isHeader)
                                 Spacer()
                             }
+                            wrappedEntry
                             emptyRingsState(summary: currentSummary)
                         }
                         .padding(.horizontal, space.isWide ? 24 : 18)
@@ -80,6 +115,7 @@ struct HomeView: View {
                         HStack(alignment: .top, spacing: split.gap) {
                             VStack(alignment: .leading, spacing: 16) {
                                 header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
+                                wrappedEntry
                                 healthStatus
                                 WeeklyRhythmCard(summary: currentSummary, rarity: currentRarity)
                                 HearingBudgetCard(summary: currentSummary, showingAllPairs: showingAllPairs)
@@ -95,6 +131,7 @@ struct HomeView: View {
                     } else {
                         VStack(alignment: .leading, spacing: 16) {
                             header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
+                            wrappedEntry
                             healthStatus
                             RingsHeroCard(summary: currentSummary, rarity: currentRarity, tiltActive: tiltActive)
                             WeeklyRhythmCard(summary: currentSummary, rarity: currentRarity)
@@ -116,6 +153,70 @@ struct HomeView: View {
         .sheet(isPresented: $showShare) {
             ShareSheet(summary: currentSummary, primaryCard: currentCard, colorOption: currentColor)
         }
+        .sheet(isPresented: $showWrapped) {
+            WrappedStoryView(summary: wrappedSummary,
+                             aggregate: (isSampleData || isEmptyState) ? nil : wrappedContent?.aggregate,
+                             cards: wrappedContent?.cards ?? [])
+        }
+        .task(id: wrappedInput) {
+            guard wrappedInput.active, !wrappedInput.sample, !wrappedInput.empty else {
+                if wrappedInput.empty { wrappedContent = nil }
+                return
+            }
+            let cards = cards
+            let content = await Task.detached(priority: .utility) {
+                let aggregate = AggregateCache().load()?.aggregate
+                let summary = aggregate.map { WrappedAggregator.summarize(aggregate: $0, cards: cards) }
+                return summary.map { WrappedContent(summary: $0, aggregate: aggregate, cards: cards) }
+            }.value
+            guard !Task.isCancelled else { return }
+            wrappedContent = content
+        }
+    }
+
+    private var wrappedEntry: some View {
+        let summary = wrappedSummary
+        let mint = Color(red: 0.68, green: 0.97, blue: 0.87)
+        return Button {
+            showWrapped = true
+        } label: {
+            HStack(spacing: 14) {
+                WrappedHeadphoneMark(overEar: summary.topDeviceKey.kind == .overEar)
+                    .fill(mint)
+                    .frame(width: 43, height: 43)
+                    .padding(6)
+                    .background(mint.opacity(0.13), in: .rect(cornerRadius: 13))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("2026 Earprint Wrapped")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(.white)
+                    if summary.totalMinutes < 300 {
+                        Text("2026 First Card")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(mint)
+                    } else {
+                        Text("\(summary.totalMinutes.minutesText) listened in 2026")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(mint)
+                    }
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(mint)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                FoilSurface(rarity: .obsidian, tilt: CGSize(width: -0.4, height: 0.15), proFoil: .obsidianPrism)
+                    .clipShape(.rect(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(mint.opacity(0.32), lineWidth: 1))
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Atmospheric Backdrop

@@ -101,8 +101,20 @@ private struct FoilTexturePattern: View, Equatable {
 struct FoilSurface: View {
     let rarity: Rarity
     var tilt: CGSize = .zero
+    var proFoil: ProFoilStyle? = nil
 
     var body: some View {
+        Group {
+            if let proFoil {
+                proSurface(proFoil)
+            } else {
+                tierSurface
+            }
+        }
+        .compositingGroup()
+    }
+
+    private var tierSurface: some View {
         let colors = rarity.baseColors
         let mid = colors.indices.contains(0) ? colors[0] : rarity.glow
         let hi = colors.indices.contains(1) ? colors[1] : mid
@@ -111,7 +123,7 @@ struct FoilSurface: View {
         let tx = tilt.width
         let ty = tilt.height
 
-        ZStack {
+        return ZStack {
             // 1. Pinch-free base coat tailored to each tier's material physics.
             baseLayer(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
 
@@ -122,7 +134,59 @@ struct FoilSurface: View {
             // 3. Per-material natural light shape & specular behavior (no shared template!).
             lightingOverlay(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
         }
-        .compositingGroup()
+    }
+
+    private func proSurface(_ style: ProFoilStyle) -> some View {
+        let colors = style.baseColors
+        let x = tilt.width
+        let y = tilt.height
+        return ZStack {
+            LinearGradient(colors: [colors[3], colors[0], colors[1], colors[2], colors[3]],
+                           startPoint: UnitPoint(x: 0.05 + x * 0.12, y: 0),
+                           endPoint: UnitPoint(x: 0.9 + x * 0.12, y: 1))
+            FoilTexturePattern(material: style.material)
+                .equatable()
+            switch style {
+            case .goldBullion:
+                LinearGradient(stops: [.init(color: .clear, location: 0.24),
+                                       .init(color: colors[1], location: 0.49),
+                                       .init(color: .white, location: 0.53),
+                                       .init(color: .clear, location: 0.72)],
+                               startPoint: UnitPoint(x: 0, y: -0.25 + y * 0.44),
+                               endPoint: UnitPoint(x: 0.4, y: 1 + y * 0.44))
+                    .blendMode(.softLight)
+                    .opacity(style.sheenOpacity)
+            case .obsidianPrism:
+                RadialGradient(colors: [style.glow.opacity(0.5), .clear],
+                               center: UnitPoint(x: 0.76 + x * 0.25, y: 0.13 + y * 0.28),
+                               startRadius: 2, endRadius: 240)
+                LinearGradient(stops: [.init(color: .clear, location: 0.28),
+                                       .init(color: .cyan.opacity(0.55), location: 0.43),
+                                       .init(color: style.glow, location: 0.49),
+                                       .init(color: .pink.opacity(0.65), location: 0.55),
+                                       .init(color: .clear, location: 0.68)],
+                               startPoint: UnitPoint(x: -0.45 + x * 0.52, y: 0.08),
+                               endPoint: UnitPoint(x: 1.04 + x * 0.52, y: 0.75))
+                    .blendMode(.screen)
+                    .opacity(style.sheenOpacity)
+            case .sakuraPearl:
+                RadialGradient(colors: [.white, colors[1].opacity(0.58), .clear],
+                               center: UnitPoint(x: 0.26 + x * 0.32, y: 0.14 + y * 0.32),
+                               startRadius: 4, endRadius: 260)
+                    .blendMode(.screen)
+                    .opacity(style.sheenOpacity)
+                RadialGradient(colors: [Color(red: 0.68, green: 0.55, blue: 0.88).opacity(0.32), .clear],
+                               center: UnitPoint(x: 0.86 - x * 0.33, y: 0.7), startRadius: 3, endRadius: 190)
+                    .blendMode(.softLight)
+            case .rawTitanium:
+                RadialGradient(colors: [colors[1], .clear],
+                               center: UnitPoint(x: 0.5 + x * 0.14, y: 0.05 + y * 0.1),
+                               startRadius: 12, endRadius: 260)
+                    .blendMode(.screen)
+                    .opacity(style.sheenOpacity)
+                LinearGradient(colors: [.clear, .black.opacity(0.36)], startPoint: .center, endPoint: .bottomTrailing)
+            }
+        }
     }
 
     @ViewBuilder
@@ -369,9 +433,15 @@ struct CardHorizontalFront: View {
     var tilt: CGSize = .zero
     var colorOption: DeviceColorOption? = nil
     var isCurrentlyWorn: Bool = false
+    var proFoil: ProFoilStyle? = nil
+
+    @Environment(\.proAccess) private var proAccess
+    @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
 
     var body: some View {
-        let ink = card.rarity.ink
+        let foil = proFoil ?? (proAccess.isUnlocked(.foilShaders)
+            ? (customizationStore ?? .shared).customization(for: card.id).proFoil : nil)
+        let ink = foil?.ink ?? card.rarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(LocalizedStringKey(card.rarity.title))
@@ -426,7 +496,7 @@ struct CardHorizontalFront: View {
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
         .frame(height: 188)
-        .background(FoilSurface(rarity: card.rarity, tilt: tilt))
+        .background(FoilSurface(rarity: card.rarity, tilt: tilt, proFoil: foil))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -435,7 +505,7 @@ struct CardHorizontalFront: View {
                         colors: [
                             Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.68)),
                             Color.adaptive(light: UIColor.black.withAlphaComponent(0.05), dark: UIColor.white.withAlphaComponent(0.18)),
-                            card.rarity.glow.opacity(0.45),
+                            (foil?.glow ?? card.rarity.glow).opacity(0.45),
                             Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.50))
                         ],
                         startPoint: UnitPoint(x: 0.2 + tilt.width * 0.5, y: 0.0 + tilt.height * 0.4),
@@ -462,10 +532,17 @@ struct CardFront: View {
     var surfaceRarityOverride: Rarity? = nil
     var badgeOverride: LocalizedStringKey? = nil
     var catalogDetail: String? = nil
+    var proFoil: ProFoilStyle? = nil
+    var usesOriginalArtwork = false
+
+    @Environment(\.proAccess) private var proAccess
+    @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
 
     var body: some View {
         let surfaceRarity = surfaceRarityOverride ?? card.rarity
-        let ink = surfaceRarity.ink
+        let foil = proFoil ?? (surfaceRarityOverride == nil && proAccess.isUnlocked(.foilShaders)
+            ? (customizationStore ?? .shared).customization(for: card.id).proFoil : nil)
+        let ink = foil?.ink ?? surfaceRarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(badgeOverride ?? LocalizedStringKey(surfaceRarity.title))
@@ -482,12 +559,20 @@ struct CardFront: View {
 
             Spacer()
 
-            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
-                             usesProductArtwork: usesProductArtwork)
-                .frame(height: showsChargingCase ? 186 : 165)
-                .opacity(showSymbol ? 1 : 0)
-                .offset(x: tilt.width * -8, y: tilt.height * -8)
-                .frame(maxWidth: .infinity)
+            Group {
+                if usesOriginalArtwork {
+                    WrappedHeadphoneMark(overEar: card.kind == .overEar)
+                        .fill(ink)
+                        .frame(width: 152, height: 152)
+                } else {
+                    HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
+                                     usesProductArtwork: usesProductArtwork)
+                }
+            }
+            .frame(height: showsChargingCase ? 186 : 165)
+            .opacity(showSymbol ? 1 : 0)
+            .offset(x: tilt.width * -8, y: tilt.height * -8)
+            .frame(maxWidth: .infinity)
 
             Spacer()
 
@@ -531,7 +616,7 @@ struct CardFront: View {
         .foregroundStyle(ink)
         .padding(22)
         .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
-        .background(FoilSurface(rarity: surfaceRarity, tilt: tilt))
+        .background(FoilSurface(rarity: surfaceRarity, tilt: tilt, proFoil: foil))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
             .strokeBorder(Color.adaptive(light: UIColor.black.withAlphaComponent(0.13), dark: UIColor.white.withAlphaComponent(0.45)), lineWidth: 1.5))
