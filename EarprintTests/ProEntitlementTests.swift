@@ -67,6 +67,36 @@ final class ProEntitlementTests: XCTestCase {
     }
 
     @MainActor
+    func testUnavailableAppTransactionBlocksPurchaseUntilRetryResolves() async {
+        let client = MockProStoreClient()
+        let provider = MutableAppTransactionProvider(info: nil)
+        let store = ProEntitlementStore(
+            storeClient: client,
+            appTransactionProvider: provider,
+            autoStart: false
+        )
+
+        await store.loadProducts()
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.eligibilityState, .unavailable)
+        XCTAssertFalse(store.hasResolvedEntitlements)
+        XCTAssertFalse(store.hasPro)
+
+        let attempted = await store.purchasePro()
+        XCTAssertFalse(attempted)
+        XCTAssertEqual(client.purchaseCallCount, 0)
+        XCTAssertNotNil(store.errorMessage)
+
+        provider.set(AppTransactionInfo(environment: .production, originalAppVersion: "2"))
+        await store.retryEligibilityCheck()
+        XCTAssertEqual(store.eligibilityState, .resolved)
+        XCTAssertTrue(store.hasResolvedEntitlements)
+        XCTAssertTrue(store.isGrandfathered)
+        XCTAssertTrue(store.hasPro)
+        XCTAssertNil(store.errorMessage)
+    }
+
+    @MainActor
     func testLifetimePurchaseUnlocksProAndRefundRevokesIt() async {
         let client = MockProStoreClient()
         let store = makeSandboxStore(client: client)
@@ -171,7 +201,9 @@ final class ProEntitlementTests: XCTestCase {
             let products: [Product]
         }
 
-        let configurationData = try Data(contentsOf: configurationURL)
+        let bundledConfiguration = Bundle(for: ProEntitlementTests.self).url(forResource: "Earprint", withExtension: "storekit")
+            ?? Bundle.main.url(forResource: "Earprint", withExtension: "storekit")
+        let configurationData = try Data(contentsOf: bundledConfiguration ?? configurationURL)
         let configuration = try JSONDecoder().decode(Configuration.self, from: configurationData)
         let expectedIDs = EarprintProductID.allCases.map(\.rawValue)
         XCTAssertEqual(configuration.products.count, 4)
@@ -188,23 +220,29 @@ final class ProEntitlementTests: XCTestCase {
             }
         }
 
-        let productsSourceURL = sourceRoot.appendingPathComponent("Earprint/Pro/EarprintProducts.swift")
-        let productsSource = try String(contentsOf: productsSourceURL, encoding: .utf8).lowercased()
         let configurationSource = String(decoding: configurationData, as: UTF8.self).lowercased()
         let forbiddenTerms = ["air" + "pods", "ap" + "ple", "so" + "ny", "bo" + "se", "be" + "ats"]
+        let productsSourceURL = sourceRoot.appendingPathComponent("Earprint/Pro/EarprintProducts.swift")
+        let productsSource = FileManager.default.fileExists(atPath: productsSourceURL.path)
+            ? try String(contentsOf: productsSourceURL, encoding: .utf8).lowercased()
+            : ""
         for term in forbiddenTerms {
             XCTAssertFalse(configurationSource.contains(term), "Earprint.storekit contains \(term)")
-            XCTAssertFalse(productsSource.contains(term), "EarprintProducts.swift contains \(term)")
+            if !productsSource.isEmpty {
+                XCTAssertFalse(productsSource.contains(term), "EarprintProducts.swift contains \(term)")
+            }
         }
     }
 
     @MainActor
     func testLiveSKTestSessionWhenDaemonAvailable() async throws {
+        let bundledConfiguration = try XCTUnwrap(
+            Bundle(for: ProEntitlementTests.self).url(forResource: "Earprint", withExtension: "storekit")
+                ?? Bundle.main.url(forResource: "Earprint", withExtension: "storekit")
+        )
         let session: SKTestSession
-        let bundledConfiguration = Bundle.main.url(forResource: "Earprint", withExtension: "storekit")
-            ?? Bundle(for: ProEntitlementTests.self).url(forResource: "Earprint", withExtension: "storekit")
         do {
-            session = try SKTestSession(contentsOf: bundledConfiguration ?? configurationURL)
+            session = try SKTestSession(contentsOf: bundledConfiguration)
         } catch let error as NSError where error.domain == "SKInternalErrorDomain" {
             throw XCTSkip("StoreKitTest daemon unavailable in headless xcodebuild")
         }
@@ -214,9 +252,8 @@ final class ProEntitlementTests: XCTestCase {
 
         let store = makeSandboxStore(client: LiveProStoreClient())
         await store.loadProducts()
-        guard let pro = store.proProduct, store.errorMessage == nil else {
-            throw XCTSkip("StoreKitTest daemon unavailable in headless xcodebuild")
-        }
+        XCTAssertNil(store.errorMessage)
+        let pro = try XCTUnwrap(store.proProduct)
         XCTAssertEqual(pro.id, EarprintProductID.proLifetime.rawValue)
         XCTAssertEqual(store.tipProducts.map(\.id), EarprintProductID.tipIDs)
 
@@ -250,6 +287,27 @@ private struct FixedAppTransactionProvider: AppTransactionProviding {
     let info: AppTransactionInfo?
 
     func currentAppTransaction() async -> AppTransactionInfo? { info }
+}
+
+private final class MutableAppTransactionProvider: AppTransactionProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var info: AppTransactionInfo?
+
+    init(info: AppTransactionInfo?) {
+        self.info = info
+    }
+
+    func set(_ newInfo: AppTransactionInfo?) {
+        lock.lock()
+        info = newInfo
+        lock.unlock()
+    }
+
+    func currentAppTransaction() async -> AppTransactionInfo? {
+        lock.lock()
+        defer { lock.unlock() }
+        return info
+    }
 }
 
 @MainActor

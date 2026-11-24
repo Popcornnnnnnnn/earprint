@@ -11,11 +11,26 @@ struct AppTransactionInfo: Equatable, Sendable {
 
 protocol AppTransactionProviding: Sendable {
     func currentAppTransaction() async -> AppTransactionInfo?
+    func refreshAppTransaction() async -> AppTransactionInfo?
+}
+
+extension AppTransactionProviding {
+    func refreshAppTransaction() async -> AppTransactionInfo? {
+        await currentAppTransaction()
+    }
 }
 
 struct StoreKitAppTransactionProvider: AppTransactionProviding {
     func currentAppTransaction() async -> AppTransactionInfo? {
-        guard case .verified(let appTx)? = try? await AppTransaction.shared else { return nil }
+        mapVerification(try? await AppTransaction.shared)
+    }
+
+    func refreshAppTransaction() async -> AppTransactionInfo? {
+        mapVerification(try? await AppTransaction.refresh())
+    }
+
+    private func mapVerification(_ result: VerificationResult<AppTransaction>?) -> AppTransactionInfo? {
+        guard case .verified(let appTx)? = result else { return nil }
 
         let environment: AppTransactionInfo.EnvironmentKind
         switch appTx.environment {
@@ -126,10 +141,18 @@ actor LiveProStoreClient: ProStoreClient {
 @MainActor
 @Observable
 final class ProEntitlementStore: ProEntitlementProviding {
+    enum EligibilityState: Equatable, Sendable {
+        case checking
+        case resolved
+        case unavailable
+    }
+
     private(set) var hasProPurchased = false
     private(set) var isGrandfathered = false
-    private(set) var hasResolvedEntitlements = false
+    private(set) var eligibilityState: EligibilityState = .checking
     private(set) var proProduct: StoreProductItem?
+
+    var hasResolvedEntitlements: Bool { eligibilityState == .resolved || hasPro }
     private(set) var tipProducts: [StoreProductItem] = []
     private(set) var isLoadingProducts = false
     private(set) var isPurchasing = false
@@ -220,13 +243,16 @@ final class ProEntitlementStore: ProEntitlementProviding {
     }
 
     func refreshEntitlements() async {
-        await refreshEntitlements(knownPurchased: nil)
+        await refreshEntitlements(knownPurchased: nil, forceAppTransactionRefresh: false)
     }
 
-    private func refreshEntitlements(knownPurchased: Bool?) async {
+    private func refreshEntitlements(knownPurchased: Bool?, forceAppTransactionRefresh: Bool = false) async {
         refreshGeneration += 1
         let generation = refreshGeneration
-        async let appTransaction = appTransactionProvider.currentAppTransaction()
+        let provider = appTransactionProvider
+        async let appTransaction: AppTransactionInfo? = forceAppTransactionRefresh
+            ? provider.refreshAppTransaction()
+            : provider.currentAppTransaction()
 
         let purchased: Bool
         if let knownPurchased {
@@ -238,18 +264,36 @@ final class ProEntitlementStore: ProEntitlementProviding {
         guard generation == refreshGeneration, !Task.isCancelled else { return }
         hasProPurchased = purchased
 
-        let grandfathered = Self.shouldGrandfather(await appTransaction)
+        let info = await appTransaction
         guard generation == refreshGeneration, !Task.isCancelled else { return }
-        isGrandfathered = grandfathered
-        hasResolvedEntitlements = true
+        if let info {
+            isGrandfathered = Self.shouldGrandfather(info)
+            eligibilityState = .resolved
+        } else {
+            isGrandfathered = false
+            eligibilityState = .unavailable
+        }
+    }
+
+    func retryEligibilityCheck() async {
+        errorMessage = nil
+        eligibilityState = .checking
+        await refreshEntitlements(knownPurchased: nil, forceAppTransactionRefresh: true)
+        if eligibilityState == .unavailable && !hasPro {
+            errorMessage = "Could not verify early collector eligibility. Please try again."
+        }
     }
 
     @discardableResult
     func purchasePro() async -> Bool {
         if !hasResolvedEntitlements {
-            await refreshEntitlements()
+            await refreshEntitlements(knownPurchased: nil, forceAppTransactionRefresh: eligibilityState == .unavailable)
         }
         if hasPro { return true }
+        guard hasResolvedEntitlements else {
+            errorMessage = "Could not verify early collector eligibility. Please try again."
+            return false
+        }
         guard let proProduct else { return false }
         return await purchase(proProduct)
     }
@@ -259,9 +303,13 @@ final class ProEntitlementStore: ProEntitlementProviding {
         guard !isPurchasing, let productID = EarprintProductID(rawValue: product.id) else { return false }
         if productID == .proLifetime {
             if !hasResolvedEntitlements {
-                await refreshEntitlements()
+                await refreshEntitlements(knownPurchased: nil, forceAppTransactionRefresh: eligibilityState == .unavailable)
             }
             if hasPro { return true }
+            guard hasResolvedEntitlements else {
+                errorMessage = "Could not verify early collector eligibility. Please try again."
+                return false
+            }
         }
         isPurchasing = true
         statusMessage = nil

@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var space = LayoutSpace()
     @State private var showWrapped = false
     @State private var wrappedContent: WrappedContent?
+    @State private var loadedWrappedRevision: WrappedRevision?
     @State private var isLoadingWrapped = false
 
     private struct WrappedContent: Sendable {
@@ -33,12 +34,16 @@ struct HomeView: View {
         let cards: [HeadphoneCard]
     }
 
-    private struct WrappedInput: Equatable {
+    private struct WrappedRevision: Equatable {
         let sample: Bool
         let empty: Bool
-        let active: Bool
         let cacheModification: Date?
         let cardMetadata: [[String]]
+    }
+
+    private struct WrappedInput: Equatable {
+        let active: Bool
+        let revision: WrappedRevision
     }
 
     private static let emptyWrapped = WrappedAggregator.summarize(aggregate: ListeningAggregate(), cards: [])
@@ -49,8 +54,13 @@ struct HomeView: View {
         } else {
             nil
         }
-        return WrappedInput(sample: isSampleData, empty: isEmptyState, active: isActiveTab, cacheModification: modification,
-                            cardMetadata: cards.map { [$0.id, $0.nickname, $0.model] + $0.aliasIDs })
+        let revision = WrappedRevision(
+            sample: isSampleData,
+            empty: isEmptyState,
+            cacheModification: modification,
+            cardMetadata: cards.map { [$0.id, $0.nickname, $0.model] + $0.aliasIDs }
+        )
+        return WrappedInput(active: isActiveTab, revision: revision)
     }
 
     private var wrappedSummary: WrappedSummary {
@@ -173,9 +183,17 @@ struct HomeView: View {
             }
         }
         .task(id: wrappedInput) {
-            guard wrappedInput.active, !wrappedInput.sample, !wrappedInput.empty else {
+            let revision = wrappedInput.revision
+            guard wrappedInput.active, !revision.sample, !revision.empty else {
                 isLoadingWrapped = false
-                if wrappedInput.empty { wrappedContent = nil }
+                if revision.empty {
+                    wrappedContent = nil
+                    loadedWrappedRevision = nil
+                }
+                return
+            }
+            if loadedWrappedRevision == revision && wrappedContent != nil {
+                isLoadingWrapped = false
                 return
             }
             isLoadingWrapped = true
@@ -188,6 +206,7 @@ struct HomeView: View {
             guard !Task.isCancelled else { return }
             isLoadingWrapped = false
             wrappedContent = content
+            loadedWrappedRevision = revision
         }
     }
 

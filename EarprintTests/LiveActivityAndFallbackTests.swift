@@ -113,4 +113,49 @@ final class LiveActivityAndFallbackTests: XCTestCase {
         XCTAssertFalse(controller.isRunning)
         XCTAssertNil(controller.lastError)
     }
+
+    func testUnattributedExcludedFromCardsAndRecentSessionDecibelsUsesLatestSpanOnly() throws {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let now = Date(timeIntervalSince1970: 1_795_000_000)
+        let thirdParty = DeviceDescriptor(name: "Studio Monitor", localIdentifier: "studio-1")
+        let samples = [
+            RawListeningSample(
+                start: now.addingTimeInterval(-3 * 3600),
+                end: now.addingTimeInterval(-2 * 3600),
+                decibels: 70,
+                device: nil
+            ),
+            RawListeningSample(
+                start: now.addingTimeInterval(-10 * 3600),
+                end: now.addingTimeInterval(-6 * 3600),
+                decibels: 85,
+                device: thirdParty
+            ),
+            RawListeningSample(
+                start: now.addingTimeInterval(-25 * 60),
+                end: now.addingTimeInterval(-10 * 60),
+                decibels: 62,
+                device: thirdParty
+            )
+        ]
+
+        var aggregate = ListeningAggregate()
+        aggregate.ingest(samples, now: now, calendar: utc)
+
+        let fresh = LibrarySnapshot(aggregate: aggregate, now: now, calendar: utc)
+        XCTAssertEqual(fresh.lifetimeSeconds, 315 * 60, accuracy: 0.1)
+        let cards = fresh.cards(now: now, calendar: utc)
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertEqual(cards.first?.nickname, "Studio Monitor")
+
+        let studio = fresh.devices.first { !$0.isUnattributed }
+        XCTAssertNotNil(studio)
+        XCTAssertGreaterThan(studio?.averageDecibels ?? 0, 80)
+        XCTAssertEqual(try XCTUnwrap(studio?.recentSessionDecibels), 62, accuracy: 0.1)
+
+        let stale = LibrarySnapshot(aggregate: aggregate, now: now.addingTimeInterval(35 * 60), calendar: utc)
+        XCTAssertNil(stale.devices.first { !$0.isUnattributed }?.recentSessionDecibels)
+    }
 }

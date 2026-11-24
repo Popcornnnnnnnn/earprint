@@ -33,14 +33,14 @@ struct StartListeningSessionIntent: LiveActivityIntent {
         let monitor = ActiveAudioRouteMonitor()
         let activeName = monitor.activeOutputNames.first
 
-        let matchedCard: WidgetSnapshot.Card? = if let activeName, let cards = snapshot?.cards {
-            cards.first {
-                ActiveAudioRouteMonitor.matches(
-                    cardNickname: $0.nickname,
-                    cardModel: $0.model,
-                    activeOutputNames: [activeName]
-                )
-            }
+        let matchedCard: WidgetSnapshot.Card? = if let cards = snapshot?.cards,
+            let index = ActiveAudioRouteMonitor.bestMatchIndex(
+                in: cards,
+                nickname: \.nickname,
+                model: \.model,
+                activeOutputNames: monitor.activeOutputNames
+            ) {
+            cards[index]
         } else {
             nil
         }
@@ -53,7 +53,8 @@ struct StartListeningSessionIntent: LiveActivityIntent {
             deviceName: deviceName,
             symbol: symbol,
             cardID: cardID,
-            decibels: 0
+            decibels: 0,
+            manual: true
         )
         if !started {
             let reason = LiveActivityController.shared.lastError ?? String(localized: "Unable to start Live Activity.")

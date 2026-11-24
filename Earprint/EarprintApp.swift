@@ -185,11 +185,11 @@ struct EarprintApp: App {
             .max(by: { ($0.last ?? .distantPast) < ($1.last ?? .distantPast) }),
               let last = device.last,
               now.timeIntervalSince(last) <= 30 * 60,
-              let avg = device.averageDecibels,
-              avg > 0 else {
+              let recent = device.recentSessionDecibels,
+              recent > 0 else {
             return 0
         }
-        return avg
+        return recent
     }
 
     private func publishWidgets() {

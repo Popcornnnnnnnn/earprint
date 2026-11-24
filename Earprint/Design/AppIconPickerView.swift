@@ -374,6 +374,7 @@ struct SettingsView: View {
     @State private var paywallRequest: PaywallRequest?
     @State private var archiveFile: ArchiveExportFile?
     @State private var archiveTempDirectory: URL?
+    @State private var archiveExportTask: Task<Void, Never>?
     @State private var archiveError: LocalizedStringKey?
     @State private var isExportingArchive = false
 
@@ -560,6 +561,8 @@ struct SettingsView: View {
         }
         .interactiveDismissDisabled(iconManager.isUpdating)
         .onDisappear {
+            archiveExportTask?.cancel()
+            archiveExportTask = nil
             if archiveFile == nil {
                 clearArchiveFile()
             }
@@ -601,9 +604,9 @@ struct SettingsView: View {
             return
         }
         if let active = routeMonitor?.activeMatchedCard(in: ownedCards) ?? ownedCards.first {
-            liveController.start(card: active, decibels: 0)
+            liveController.start(card: active, decibels: 0, manual: true)
         } else {
-            liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones", decibels: 0)
+            liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones", decibels: 0, manual: true)
         }
     }
 
@@ -613,14 +616,19 @@ struct SettingsView: View {
             return
         }
         guard !isExportingArchive else { return }
+        archiveExportTask?.cancel()
         archiveError = nil
         isExportingArchive = true
         let cards = ownedCards
-        Task {
-            defer { isExportingArchive = false }
+        archiveExportTask = Task {
+            defer {
+                isExportingArchive = false
+                archiveExportTask = nil
+            }
             let cached = await Task.detached(priority: .userInitiated) {
                 AggregateCache().load()?.aggregate
             }.value
+            guard !Task.isCancelled else { return }
             guard let aggregate = cached, !aggregate.isEmpty else {
                 archiveError = "No Apple Health listening history cached yet."
                 return
@@ -629,11 +637,17 @@ struct SettingsView: View {
                 let file = try await Task.detached(priority: .userInitiated) {
                     try ArchiveExporter.export(format, aggregate: aggregate, cards: cards)
                 }.value
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent())
+                    return
+                }
                 clearArchiveFile()
                 archiveTempDirectory = file.url.deletingLastPathComponent()
                 archiveFile = file
             } catch {
-                archiveError = "Export failed"
+                if !Task.isCancelled {
+                    archiveError = "Export failed"
+                }
             }
         }
     }

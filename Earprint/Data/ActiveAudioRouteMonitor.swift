@@ -69,28 +69,15 @@ final class ActiveAudioRouteMonitor {
         if let debugActiveCardID, let debugCard = cards.first(where: { $0.id == debugActiveCardID }) {
             return debugCard
         }
-        guard !activeOutputNames.isEmpty else { return nil }
-        let outputs = activeOutputNames.map(Self.normalize).filter { !$0.isEmpty }
-        guard !outputs.isEmpty else { return nil }
-
-        // 1. Prefer exact normalized nickname or model match before any substring heuristic.
-        if let exact = cards.first(where: { card in
-            let nick = Self.normalize(card.nickname)
-            let model = Self.normalize(card.model)
-            return outputs.contains { output in
-                (!nick.isEmpty && output == nick) || (!model.isEmpty && output == model)
-            }
-        }) {
-            return exact
+        guard let index = Self.bestMatchIndex(
+            in: cards,
+            nickname: \.nickname,
+            model: \.model,
+            activeOutputNames: activeOutputNames
+        ) else {
+            return nil
         }
-
-        // 2. Use substring matching only when a single card matches unambiguously.
-        let partial = cards.filter { card in
-            let nick = Self.normalize(card.nickname)
-            guard !nick.isEmpty else { return false }
-            return outputs.contains { $0.contains(nick) || nick.contains($0) }
-        }
-        return partial.count == 1 ? partial.first : nil
+        return cards[index]
     }
 
     func isCurrentlyWorn(_ card: HeadphoneCard) -> Bool {
@@ -98,6 +85,36 @@ final class ActiveAudioRouteMonitor {
             return true
         }
         return Self.matches(cardNickname: card.nickname, cardModel: card.model, activeOutputNames: activeOutputNames)
+    }
+
+    nonisolated static func bestMatchIndex<T>(
+        in items: [T],
+        nickname: (T) -> String,
+        model: (T) -> String,
+        activeOutputNames: [String]
+    ) -> Int? {
+        guard !activeOutputNames.isEmpty else { return nil }
+        let outputs = activeOutputNames.map(normalize).filter { !$0.isEmpty }
+        guard !outputs.isEmpty else { return nil }
+
+        // 1. Prefer exact normalized nickname or model match before any substring heuristic.
+        if let exactIndex = items.firstIndex(where: { item in
+            let nick = normalize(nickname(item))
+            let modelName = normalize(model(item))
+            return outputs.contains { output in
+                (!nick.isEmpty && output == nick) || (!modelName.isEmpty && output == modelName)
+            }
+        }) {
+            return exactIndex
+        }
+
+        // 2. Use substring matching only when a single item matches unambiguously.
+        let partialIndices = items.indices.filter { index in
+            let nick = normalize(nickname(items[index]))
+            guard !nick.isEmpty else { return false }
+            return outputs.contains { $0.contains(nick) || nick.contains($0) }
+        }
+        return partialIndices.count == 1 ? partialIndices.first : nil
     }
 
     nonisolated static func matches(cardNickname: String, cardModel: String, activeOutputNames: [String]) -> Bool {

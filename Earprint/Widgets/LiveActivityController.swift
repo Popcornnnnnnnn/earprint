@@ -36,6 +36,7 @@ final class LiveActivityController {
     private var storedRestIntervalMinutes: Int
     private var activity: Activity<ListeningActivityAttributes>?
     private var manuallyStoppedCardID: String?
+    private var startedManually = false
     @ObservationIgnored private var endingActivity: Task<Void, Never>?
     @ObservationIgnored private var pendingRouteStart: Task<Void, Never>?
 
@@ -58,8 +59,8 @@ final class LiveActivityController {
     }
 
     @discardableResult
-    func start(card: HeadphoneCard, startedAt: Date = Date(), decibels: Double = 0) -> Bool {
-        start(deviceName: card.nickname, symbol: card.symbol, cardID: card.id, startedAt: startedAt, decibels: decibels)
+    func start(card: HeadphoneCard, startedAt: Date = Date(), decibels: Double = 0, manual: Bool = false) -> Bool {
+        start(deviceName: card.nickname, symbol: card.symbol, cardID: card.id, startedAt: startedAt, decibels: decibels, manual: manual)
     }
 
     func syncWithActiveRoute(
@@ -79,11 +80,17 @@ final class LiveActivityController {
 
         guard let card = routeMonitor.activeMatchedCard(in: cards) else {
             manuallyStoppedCardID = nil
-            if isRunning || pendingRouteStart != nil { stop(manual: false) }
+            if !startedManually && (isRunning || pendingRouteStart != nil) {
+                stop(manual: false)
+            }
             return
         }
         if let stoppedID = manuallyStoppedCardID, stoppedID != card.id {
             manuallyStoppedCardID = nil
+        }
+
+        if startedManually && isRunning && activity?.attributes.cardID != card.id {
+            return
         }
 
         let resolvedDB = max(0, decibelsForCard?(card) ?? decibels)
@@ -112,11 +119,14 @@ final class LiveActivityController {
     }
 
     @discardableResult
-    func start(deviceName: String, symbol: String, cardID: String, startedAt: Date = Date(), decibels: Double = 0) -> Bool {
+    func start(deviceName: String, symbol: String, cardID: String, startedAt: Date = Date(), decibels: Double = 0, manual: Bool = false) -> Bool {
         manuallyStoppedCardID = nil
         pendingRouteStart?.cancel()
         pendingRouteStart = nil
-        guard activity == nil else { return true }
+        if activity != nil {
+            if manual { startedManually = true }
+            return true
+        }
         guard areActivitiesEnabled else {
             lastError = "Live Activities are turned off for Earprint in Settings."
             return false
@@ -128,6 +138,7 @@ final class LiveActivityController {
             activity = try Activity.request(attributes: attributes,
                                             content: ActivityContent(state: state, staleDate: state.restAt.addingTimeInterval(30 * 60)),
                                             pushType: nil)
+            startedManually = manual
             isRunning = true
             lastError = nil
             return true
@@ -160,6 +171,7 @@ final class LiveActivityController {
     func stop(manual: Bool = false) {
         pendingRouteStart?.cancel()
         pendingRouteStart = nil
+        startedManually = false
         if manual {
             manuallyStoppedCardID = activity?.attributes.cardID ?? Activity<ListeningActivityAttributes>.activities.first?.attributes.cardID
         }

@@ -1467,6 +1467,22 @@
         }
       }
     },
+    "Could not verify early collector eligibility. Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法验证早期收藏者资格，请稍后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not verify early collector eligibility. Please try again."
+          }
+        }
+      }
+    },
     "Couldn't read Apple Health: %@": {
       "localizations": {
         "zh-Hans": {
@@ -5143,6 +5159,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "满 300 小时的丝绒紫晶微光"
+          }
+        }
+      }
+    },
+    "Verify Eligibility": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证早鸟资格"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify Eligibility"
           }
         }
       }

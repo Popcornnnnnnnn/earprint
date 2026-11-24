@@ -139,10 +139,24 @@ struct PaywallView: View {
                 .frame(maxWidth: .infinity)
                 .padding(14)
                 .background(Theme.quietColor.opacity(0.17), in: RoundedRectangle(cornerRadius: 20))
-        } else if !store.hasResolvedEntitlements {
+        } else if store.eligibilityState == .checking {
             ProgressView("Checking eligibility…")
                 .frame(maxWidth: .infinity)
                 .padding(12)
+        } else if store.eligibilityState == .unavailable {
+            Button {
+                Task { await store.retryEligibilityCheck() }
+            } label: {
+                Text("Verify Eligibility")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(14)
+                    .foregroundStyle(Theme.invertedText)
+                    .background(Theme.invertedFill, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(store.isPurchasing)
         } else if let product = store.proProduct {
             Button {
                 Task { await store.purchasePro() }
