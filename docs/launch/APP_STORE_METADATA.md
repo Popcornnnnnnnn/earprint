@@ -69,12 +69,12 @@ headphones,earbuds,audio,decibel,history,hearing,archive,poster,widget,yearly,re
 • 3D cards for all headphones in your listening history. When a model has no matching 3D asset, Earprint shows a generic over-ear or earbud model.
 • 2026 Earprint Wrapped is your year in listening. With Pro, export a six-second spinning card reel offline as a 1080p MP4 or 540p GIF.
 • Make your collection your own with four Pro foil finishes and custom slab engraving. Set the title, serial tag, and rim color.
-• Export watermark-free 2100×2800 Dossier posters or save your multi-year listening archive as CSV or JSON with Pro.
-• Start a Pro Live Listening Session on the Lock Screen and Dynamic Island. Use Shortcuts to start, stop, or reset the rest timer.
+• Export watermark-free 2100×2800 Dossier posters or save multi-year daily and session listening summaries as CSV or JSON with Pro.
+• Follow a Pro Live Listening Session on the Lock Screen and Dynamic Island; tap to open the device card. Start or stop in Settings, or use Shortcuts to start, stop, or reset the rest timer.
 • The core stays free, including 3D cards, the Device Dossier, Earprint Rings, and widgets. Eligible early collectors get lifetime Pro at no charge. Everyone else can unlock it with a one-time purchase.
 ```
 
-`862 / 4,000` characters.
+`937 / 4,000` characters.
 
 #### Full Description
 
@@ -91,7 +91,7 @@ Open a Device Dossier to browse trends, milestones, and a 24-hour listening cloc
 Revisit the headphones, hours, and habits that shaped your year. With Earprint Pro, make a six-second spinning 3D card reel on your iPhone, fully offline. Export it as a 1080p MP4 or a 540p GIF.
 
 Earprint Pro
-Choose Gold Bullion, Obsidian Prism, Sakura Pearl, or Raw Titanium for your card. Customize the title, serial tag, and rim color of its display slab. Export watermark-free 2100×2800 Dossier posters or save a multi-year listening archive as CSV or JSON. Start a Live Listening Session to see recent loudness and a rest countdown on the Lock Screen and, on supported iPhones, Dynamic Island. Shortcuts can start or stop the session and reset its rest timer.
+Choose Gold Bullion, Obsidian Prism, Sakura Pearl, or Raw Titanium for your card. Customize the title, serial tag, and rim color of its display slab. Export watermark-free 2100×2800 Dossier posters or save multi-year daily and session summaries as CSV or JSON. Run a Live Listening Session from Settings to view recent loudness and a rest countdown on the Lock Screen and, on supported iPhones, Dynamic Island; tap the activity to open that device card, or use Shortcuts to start, stop, or reset its rest timer.
 
 The core stays free. 3D cards, the Device Dossier, Earprint Rings, widgets, and the Wrapped recap are free to view. Earprint Pro is a one-time purchase, and eligible early collectors receive lifetime Pro at no charge. Tips are optional and fund development.
 
@@ -100,7 +100,7 @@ Earprint reads Headphone Audio Levels from Apple Health with your permission. Th
 Earprint is independently developed and is not affiliated with, sponsored by, or endorsed by Apple Inc. Apple, Apple Health, AirPods, and Beats are trademarks of Apple Inc. Earprint is for personal information and entertainment and is not a medical device or a tool for diagnosis.
 ```
 
-`2,372 / 4,000` characters.
+`2,428 / 4,000` characters.
 
 #### In-App Purchases
 
