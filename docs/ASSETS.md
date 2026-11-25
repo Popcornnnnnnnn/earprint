@@ -14,7 +14,7 @@ Earprint bundles seven optimized `.usdz` models in `Earprint/Resources/Models/` 
 | Powerbeats earhook (Powerbeats Pro, Pro 2, Powerbeats, Powerbeats3) | Sport earbud artwork and finish choices | Original procedural Blender USDZ (`BeatsEarhook.usdz`) with per-zone PBR finish support |
 | Beats over-ear (Studio Pro, Solo 4, Studio3, Solo Pro, Solo3) | Custom closed-back over-ear artwork and finish choices | Original procedural Blender USDZ (`BeatsOverEar.usdz`) with per-zone PBR finish support |
 
-Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Other third-party devices use generic fallback geometry/previews (`HeadphoneGeneric.usdz` / `ProceduralHeadphones`) while staying in the listening history.
+Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. AirPods and Beats pairs mint Collection cards; third-party devices without dedicated artwork stay in Rings and listening history (with generic fallback geometry available in Model Gallery).
 
 ## Attribution Table (CC-BY 4.0)
 

@@ -237,7 +237,7 @@ struct CollectionView: View {
             }
             Text(isLoading ? "Reading Apple Health…" : "No supported headphones yet")
                 .font(.headline)
-            Text(statusMessage ?? "Collection makes cards for AirPods with matching artwork. Your other listening stays in Apple Health.")
+            Text(statusMessage ?? "Collection makes cards for AirPods and Beats. Your other listening stays in Rings and Apple Health.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)

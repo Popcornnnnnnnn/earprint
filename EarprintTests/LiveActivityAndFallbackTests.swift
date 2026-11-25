@@ -174,9 +174,9 @@ final class LiveActivityAndFallbackTests: XCTestCase {
 
         let fresh = LibrarySnapshot(aggregate: aggregate, now: now, calendar: utc)
         XCTAssertEqual(fresh.lifetimeSeconds, 315 * 60, accuracy: 0.1)
+        // Third-party generic devices stay in Rings stats & recent dB, without minting Collection cards.
         let cards = fresh.cards(now: now, calendar: utc)
-        XCTAssertEqual(cards.count, 1)
-        XCTAssertEqual(cards.first?.nickname, "Studio Monitor")
+        XCTAssertTrue(cards.isEmpty)
 
         let studio = fresh.devices.first { !$0.isUnattributed }
         XCTAssertNotNil(studio)

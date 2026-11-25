@@ -307,8 +307,8 @@ private extension DeviceAccumulator {
 extension LibrarySnapshot {
     func cards(now: Date = Date(), calendar: Calendar = .current) -> [HeadphoneCard] {
         // Keep the first accessory's existing serial after merging its aliases.
-        // Unattributed samples remain in listening totals without minting a collectible card.
-        devices.filter { !$0.isUnattributed }.map { d in
+        // Only supported AirPods & Beats pairs mint collectible cards; other devices stay in Rings stats.
+        devices.filter { !$0.isUnattributed && $0.model.key.collectibleArtwork != nil }.map { d in
             HeadphoneCard(
                 id: d.id,
                 nickname: d.nickname,

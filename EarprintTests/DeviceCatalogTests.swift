@@ -157,14 +157,15 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertNil(cache.load())
     }
 
-    func testCollectiblesIncludeFallbacksAndKeepDifferentlyNamedDevices() {
+    func testCollectiblesExcludeThirdPartyAndKeepThemInRingsStats() {
         let now = Date(timeIntervalSince1970: 1_795_000_000)
         let models = [
             DeviceDescriptor(name: "AirPods Pro", manufacturer: "Apple Inc.", model: "0x2027", localIdentifier: "one"),
             DeviceDescriptor(name: "Spare AirPods Pro", manufacturer: "0x004C", model: "0x2027", localIdentifier: "two"),
-            DeviceDescriptor(name: "AirPods Pro", manufacturer: "0x009E", model: "0x2027", localIdentifier: "three"),
+            DeviceDescriptor(name: "Bose QC Ultra", manufacturer: "0x009E", model: "0x2027", localIdentifier: "three"),
             DeviceDescriptor(name: "Redmi Buds", manufacturer: "0x0094", model: "0x04", localIdentifier: "four"),
             DeviceDescriptor(name: "AirPods 4", manufacturer: "Apple Inc.", model: "0x201B", localIdentifier: "five"),
+            DeviceDescriptor(name: "Gym Beats", manufacturer: "Apple Inc.", model: "0x2012", localIdentifier: "six"),
         ]
         var aggregate = ListeningAggregate()
         aggregate.ingest(models.map { device in
@@ -173,27 +174,28 @@ final class DeviceCatalogTests: XCTestCase {
         let snapshot = LibrarySnapshot(aggregate: aggregate, now: now, calendar: utcCalendar)
         let cards = snapshot.cards(now: now, calendar: utcCalendar)
 
-        XCTAssertEqual(snapshot.devices.count, 5)
-        XCTAssertFalse(HeadphoneModelCatalog.resolve(models[2]).isApple)
-        XCTAssertEqual(snapshot.lifetimeSeconds, 3000, accuracy: 0.001)
-        XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:three", "lid:four", "lid:five"]))
+        // All 6 devices remain in Rings/listening totals, but only AirPods & Beats mint Collection cards.
+        XCTAssertEqual(snapshot.devices.count, 6)
+        let resolvedBose = HeadphoneModelCatalog.resolve(models[2])
+        let resolvedRedmi = HeadphoneModelCatalog.resolve(models[3])
+        XCTAssertFalse(resolvedBose.isApple)
+        XCTAssertEqual(resolvedBose.marketingName, "Bose QC Ultra")
+        XCTAssertEqual(resolvedRedmi.marketingName, "Redmi Buds")
+        XCTAssertEqual(snapshot.lifetimeSeconds, 3600, accuracy: 0.001)
+        XCTAssertEqual(Set(cards.map(\.id)), Set(["lid:one", "lid:two", "lid:five", "lid:six"]))
         XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelKey.collectibleArtwork, "CardRenderAirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:five" }?.modelAssetName, "AirPods4")
         XCTAssertEqual(cards.first { $0.id == "lid:one" }?.modelAssetName, "AirPodsPro")
         XCTAssertEqual(cards.first { $0.id == "lid:two" }?.modelAssetName, "AirPodsPro")
-        for id in ["lid:three", "lid:four"] {
-            let card = cards.first { $0.id == id }
-            XCTAssertEqual(card?.modelKey, .earbudsGeneric)
-            XCTAssertNil(card?.modelKey.collectibleArtwork)
-            XCTAssertEqual(card?.modelAssetName, "")
-        }
+        XCTAssertEqual(cards.first { $0.id == "lid:six" }?.modelKey.collectibleArtwork, "CardRenderBeatsFit")
+        XCTAssertEqual(cards.first { $0.id == "lid:six" }?.modelAssetName, "BeatsBuds")
 
         guard let summary = snapshot.homeSummary(now: now, calendar: utcCalendar) else {
             return XCTFail("Real listening should still produce a summary")
         }
         let widget = WidgetSnapshot(summary: summary, cards: cards, isSample: false, listening: snapshot,
                                     now: now, calendar: utcCalendar)
-        XCTAssertEqual(widget.today.minutes, 50, accuracy: 0.001)
+        XCTAssertEqual(widget.today.minutes, 60, accuracy: 0.001)
         XCTAssertEqual(widget.today.decibels ?? 0, 62, accuracy: 0.001)
         XCTAssertEqual(Set(widget.cards.map(\.id)), Set(cards.map(\.id)))
     }

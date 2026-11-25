@@ -23,6 +23,8 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
         case .airpods4: "CardRenderAirPods4"
         case .airpodsPro: "CardRenderAirPodsProCase"
         case .airpodsMax: "CardRenderAirPodsMax"
+        case .beatsEarbuds, .beatsEarhook: "CardRenderBeatsFit"
+        case .beatsOverEar: "CardRenderBeatsOverEarBlack"
         default: nil
         }
     }
@@ -198,8 +200,20 @@ enum HeadphoneModelCatalog {
         // 3. Unknown: guess the shape from common over-ear words, else in-ear.
         let overEarWords = ["wh-", "headphone", "qc", "quietcomfort", "momentum", "studio", "solo", "max", "over-ear", "xm"]
         let overEar = overEarWords.contains { text.contains($0) } && !text.contains("wf-") && !text.contains("buds")
+        let cleanManufacturer = DeviceDescriptor.clean(device.manufacturer)
+        let isRawHexVendor = cleanManufacturer.map {
+            $0.range(of: #"^0x[0-9a-f]+$"#, options: [.regularExpression, .caseInsensitive]) != nil
+        } ?? false
+        let fallbackName: String
+        if let cleanManufacturer, !isRawHexVendor {
+            fallbackName = "\(cleanManufacturer) headphones"
+        } else if let cleanName = DeviceDescriptor.clean(device.name) {
+            fallbackName = cleanName
+        } else {
+            fallbackName = overEar ? "Headphones" : "Earbuds"
+        }
         return HeadphoneModelInfo(productID: nil,
-                                  marketingName: DeviceDescriptor.clean(device.manufacturer).map { "\($0) headphones" } ?? "Headphones",
+                                  marketingName: fallbackName,
                                   shortName: "Headphones",
                                   key: overEar ? .overEarGeneric : .earbudsGeneric,
                                   symbol: overEar ? "headphones" : "earbuds",
