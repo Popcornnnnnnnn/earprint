@@ -8,25 +8,44 @@ struct PeriodSwitcher: View {
     let rarity: Rarity
     let rangeText: String
     @Namespace private var thumb
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let isLight = colorScheme == .light
         VStack(spacing: 8) {
             HStack(spacing: 4) {
                 ForEach(DossierPeriod.allCases) { p in
+                    let selected = period == p
                     Button {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) { period = p }
                     } label: {
                         Text(LocalizedStringKey(p.title))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(period == p ? rarity.ink : DossierPalette.primaryText.opacity(0.72))
+                            .foregroundStyle(selected ? rarity.ink : DossierPalette.primaryText.opacity(0.72))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background {
-                                if period == p {
+                                if selected {
                                     Capsule()
                                         .fill(rarity.foil)
-                                        .overlay(Capsule().fill(LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)))
-                                        .shadow(color: rarity.glow.opacity(0.45), radius: 10, y: 2)
+                                        .overlay(
+                                            Capsule().fill(
+                                                LinearGradient(
+                                                    colors: [.white.opacity(rarity.ink == .white ? 0.22 : 0.42), .clear],
+                                                    startPoint: .top,
+                                                    endPoint: .center
+                                                )
+                                            )
+                                        )
+                                        .overlay(
+                                            Capsule().strokeBorder(
+                                                rarity == .obsidian && !isLight
+                                                    ? rarity.accent.opacity(0.55)
+                                                    : (isLight && rarity == .silver ? Color.black.opacity(0.14) : Color.clear),
+                                                lineWidth: 1
+                                            )
+                                        )
+                                        .shadow(color: rarity.glow.opacity(isLight ? 0.22 : 0.45), radius: 10, y: 2)
                                         .matchedGeometryEffect(id: "thumb", in: thumb)
                                 }
                             }
@@ -122,9 +141,16 @@ struct AirtimeHero: View {
             Text(text)
                 .font(.system(.headline, design: .rounded, weight: .bold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .contentTransition(.numericText(value: value))
-            Text(caption).font(.caption).foregroundStyle(DossierPalette.dim)
+            Text(caption)
+                .font(.caption)
+                .foregroundStyle(DossierPalette.dim)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
@@ -137,11 +163,18 @@ struct AirtimeHero: View {
                     Image(systemName: up ? "arrow.up.right" : "arrow.down.right").font(.caption.weight(.heavy))
                     Text("\(Int((abs(change) * 100).rounded()))%")
                         .font(.system(.headline, design: .rounded, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .contentTransition(.numericText(value: change))
                 }
                 .foregroundStyle(up ? Theme.quietColor : Theme.moderateColor)
-                Text(LocalizedStringKey(stats.period.previousLabel)).font(.caption).foregroundStyle(DossierPalette.dim)
+                Text(LocalizedStringKey(stats.period.previousLabel))
+                    .font(.caption)
+                    .foregroundStyle(DossierPalette.dim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
+            .padding(.horizontal, 6)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
         } else {
@@ -181,6 +214,13 @@ struct AirtimeHero: View {
 
     private var ring: some View {
         let isLight = colorScheme == .light
+        let ringColors: [Color] = if rarity == .obsidian && !isLight {
+            [rarity.accent, rarity.glow, rarity.accent]
+        } else if rarity == .silver && isLight {
+            [rarity.accent, Color(red: 0.45, green: 0.50, blue: 0.58), rarity.accent]
+        } else {
+            rarity.baseColors + [rarity.baseColors[0]]
+        }
         return ZStack {
             Circle()
                 .stroke(DossierPalette.surfaceFill, style: StrokeStyle(lineWidth: 16))
@@ -191,7 +231,7 @@ struct AirtimeHero: View {
                 .rotationEffect(.degrees(-90))
             Circle()
                 .trim(from: 0, to: max(0.002, stats.share))
-                .stroke(AngularGradient(colors: rarity.baseColors + [rarity.baseColors[0]], center: .center, angle: .degrees(-90)),
+                .stroke(AngularGradient(colors: ringColors, center: .center, angle: .degrees(-90)),
                         style: StrokeStyle(lineWidth: 16, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.7), radius: isLight ? 6 : 12)
@@ -311,36 +351,42 @@ struct HabitsBento: View {
     }
 
     private var volumeTile: some View {
-        let db = stats.averageDecibels
-        let color = Theme.levelColor(db: db, colorScheme: colorScheme)
-        let verdict = db < 60 ? "Comfortable" : (db < 72 ? "Moderate" : (db < 80 ? "Loud" : "Very loud"))
+        let hasAudio = stats.totalMinutes > 0 && stats.averageDecibels > 0
+        let db = hasAudio ? stats.averageDecibels : 0
+        let color = hasAudio ? Theme.levelColor(db: db, colorScheme: colorScheme) : DossierPalette.dim
+        let verdict = !hasAudio ? "No data" : (db < 60 ? "Comfortable" : (db < 72 ? "Moderate" : (db < 80 ? "Loud" : "Very loud")))
+        let dosePct = hasAudio ? Int((stats.weeklyDose * 100).rounded()) : 0
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 6) {
                     Eyebrow("Average volume")
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        value("\(Int(db.rounded()))", db)
-                        Text("dB(A)").font(.footnote.weight(.semibold)).foregroundStyle(DossierPalette.dim)
+                        value(hasAudio ? "\(Int(db.rounded()))" : "—", db)
+                        if hasAudio {
+                            Text("dB(A)").font(.footnote.weight(.semibold)).foregroundStyle(DossierPalette.dim)
+                        }
                     }
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    Label(LocalizedStringKey(verdict), systemImage: db < 72 ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(color)
-                    Text("peak \(Int(stats.peakDecibels.rounded())) dB")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(DossierPalette.dim)
+                if hasAudio {
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Label(LocalizedStringKey(verdict), systemImage: db < 72 ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(color)
+                        Text("peak \(Int(stats.peakDecibels.rounded())) dB")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(DossierPalette.dim)
+                    }
                 }
             }
-            LoudnessMeter(db: db)
+            LoudnessMeter(db: hasAudio ? db : 40)
                 .frame(height: 30)
             HStack {
                 Text("Weekly hearing dose")
                     .font(.caption)
                     .foregroundStyle(DossierPalette.dim)
                 Spacer()
-                Text("\(max(1, Int((stats.weeklyDose * 100).rounded())))% of WHO limit")
+                Text("\(dosePct)% of WHO limit")
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(stats.weeklyDose < 0.5 ? Theme.quietColor : (stats.weeklyDose < 1 ? Theme.moderateColor : Theme.loudColor))
                     .contentTransition(.numericText(value: stats.weeklyDose))
@@ -388,6 +434,7 @@ struct TallyMarks: View {
         Canvas { context, size in
             let groupWidth: CGFloat = 22
             let groups = min(Int(size.width / groupWidth), max(1, Int(ceil(Double(count) / 5))))
+            guard groups > 0 else { return }
             let perGroupValue = max(1, Double(count) / Double(groups * 5))
             var drawn = 0
             var verticals = Path()
@@ -467,12 +514,13 @@ struct LoudnessMeter: View {
                     .fill(LinearGradient(colors: [Theme.quietColor, Theme.quietColor, Theme.moderateColor, Theme.loudColor], startPoint: .leading, endPoint: .trailing))
                     .frame(height: 6)
                     .opacity(0.85)
+                let pointerX = min(max(0, geo.size.width * t - 7), max(0, geo.size.width - 14))
                 Circle()
                     .fill(.white)
                     .frame(width: 14, height: 14)
                     .overlay(Circle().strokeBorder(levelColor.opacity(0.55), lineWidth: 1.5))
                     .shadow(color: levelColor.opacity(0.55), radius: 5)
-                    .offset(x: geo.size.width * t - 7, y: -4)
+                    .offset(x: pointerX, y: -4)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7), value: db)
                 ForEach([40, 60, 80, 100], id: \.self) { mark in
                     Text("\(mark)")

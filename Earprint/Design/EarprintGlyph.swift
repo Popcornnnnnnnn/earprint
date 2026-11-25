@@ -137,16 +137,17 @@ struct EarprintGlyph: View, Equatable {
         let outerRingColor = isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.10)
         let tickColor = isLight ? Color.black.opacity(0.22) : Color.white.opacity(0.18)
         let dotZeroColor = isLight ? Color.black.opacity(0.75) : Color.white.opacity(0.90)
-        let dotMinorColor = isLight ? Color.black.opacity(0.38) : Color.white.opacity(0.55)
-        let labelZeroColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.84) : Color.white.opacity(0.82)
-        let labelMinorColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.54) : Color.white.opacity(0.55)
+        let dotMinorColor = isLight ? Color.black.opacity(0.48) : Color.white.opacity(0.55)
+        let labelZeroColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.88) : Color.white.opacity(0.84)
+        let labelMinorColor = isLight ? Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.66) : Color.white.opacity(0.58)
         let glowAlpha: Double = isLight ? 0.28 : 0.76
         let minArcAlpha: Double = isLight ? 0.45 : 0.32
 
         Canvas { context, size in
             let side = min(size.width, size.height)
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = side / 2 * (showHourLabels ? 0.80 : 0.94)
+            let outerRatio: CGFloat = showHourLabels ? (side <= 190 ? 0.76 : 0.80) : 0.94
+            let outer = side / 2 * outerRatio
             let inner = outer * 0.46
             let dayCount = grid.days
             let step = (outer - inner) / CGFloat(max(dayCount, 1))

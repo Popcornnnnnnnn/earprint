@@ -212,7 +212,7 @@ struct AppIconThumbnail: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(.white.opacity(background == .light ? 0.25 : 0.14), lineWidth: 1)
+                .strokeBorder(background == .light ? Color.black.opacity(0.14) : .white.opacity(0.14), lineWidth: 1)
         )
     }
 
@@ -416,9 +416,26 @@ struct SettingsView: View {
                         Label("Appearance", systemImage: "circle.lefthalf.filled")
                     }
                     .pickerStyle(.menu)
+                    .tint(Theme.secondaryText)
 
                     NavigationLink(value: Destination.appIcon) {
-                        Label("App Icon", systemImage: "app")
+                        HStack(spacing: 12) {
+                            Label("App Icon", systemImage: "app")
+                            Spacer()
+                            Group {
+                                if iconManager.current == .ringsEmblem {
+                                    Image("AppIconDefaultPreview")
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 26, height: 26)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 0.75))
+                                } else {
+                                    AppIconThumbnail(choice: iconManager.current, size: 26)
+                                }
+                            }
+                            .accessibilityHidden(true)
+                        }
                     }
 
                     Picker(selection: $language) {
@@ -430,6 +447,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.navigationLink)
                 }
+                .listRowBackground(Theme.card)
 
                 Section {
                     NavigationLink(value: Destination.modelGallery) {
@@ -438,13 +456,14 @@ struct SettingsView: View {
                             Spacer()
                             Text("\(unlockedCount)/\(totalCatalogModels)")
                                 .font(.footnote.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.secondaryText)
                         }
                     }
                     NavigationLink(value: Destination.cardTiers) {
                         Label("Card Tiers", systemImage: "trophy")
                     }
                 }
+                .listRowBackground(Theme.card)
 
                 Section(EarprintReleasePolicy.monetizationEnabled ? "Earprint Pro" : "Session & Archive") {
                     if EarprintReleasePolicy.monetizationEnabled, proStore != nil {
@@ -456,7 +475,7 @@ struct SettingsView: View {
                                 Spacer()
                                 Text(proAccess.hasPro ? "Unlocked" : "Collector Edition")
                                     .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.secondaryText)
                             }
                         }
 
@@ -472,34 +491,54 @@ struct SettingsView: View {
                     } label: {
                         Label("Rest Reminder", systemImage: "timer")
                     }
+                    .tint(Theme.secondaryText)
 
                     Button {
                         toggleLiveSession()
                     } label: {
-                        Label(
-                            liveController.isRunning ? "Stop Listening Session" : "Live Listening Session",
-                            systemImage: liveController.isRunning ? "stop.circle" : "dot.radiowaves.left.and.right"
-                        )
+                        HStack {
+                            Label(
+                                liveController.isRunning ? "Stop Listening Session" : "Live Listening Session",
+                                systemImage: liveController.isRunning ? "stop.circle" : "dot.radiowaves.left.and.right"
+                            )
+                            Spacer()
+                            if liveController.isRunning {
+                                Circle()
+                                    .fill(Theme.quietColor)
+                                    .frame(width: 8, height: 8)
+                            }
+                        }
+                        .foregroundStyle(Theme.primaryText)
                     }
 
                     Menu {
                         Button("Export CSV") { exportArchive(.csv) }
                         Button("Export JSON") { exportArchive(.json) }
                     } label: {
-                        Label("Export Archive", systemImage: "archivebox")
+                        HStack {
+                            Label("Export Archive", systemImage: "archivebox")
+                            Spacer()
+                            if isExportingArchive {
+                                ProgressView()
+                                    .tint(Theme.primaryText)
+                            }
+                        }
+                        .foregroundStyle(Theme.primaryText)
                     }
                     .disabled(isExportingArchive)
 
                     if let archiveError {
                         Text(archiveError)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if let liveError = liveController.lastError {
+                            .foregroundStyle(Theme.loudColor)
+                    }
+                    if let liveError = liveController.lastError {
                         Text(liveError)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.secondaryText)
                     }
                 }
+                .listRowBackground(Theme.card)
 
                 Section {
                     NavigationLink(value: Destination.privacy) {
@@ -514,6 +553,7 @@ struct SettingsView: View {
                             onConnectHealth()
                         } label: {
                             Label("Sync Apple Health", systemImage: "arrow.trianglehead.2.clockwise")
+                                .foregroundStyle(Theme.primaryText)
                         }
                     }
                     if let onPreviewFirstLaunch {
@@ -522,6 +562,7 @@ struct SettingsView: View {
                             onPreviewFirstLaunch()
                         } label: {
                             Label("Preview First Launch", systemImage: "sparkles.rectangle.stack")
+                                .foregroundStyle(Theme.primaryText)
                         }
                     }
                     HStack {
@@ -529,10 +570,14 @@ struct SettingsView: View {
                         Spacer()
                         Text(appVersion)
                             .font(.footnote.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.secondaryText)
                     }
                 }
+                .listRowBackground(Theme.card)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.canvas.ignoresSafeArea())
+            .foregroundStyle(Theme.primaryText)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -575,22 +620,7 @@ struct SettingsView: View {
             }
         }
         .sheet(item: $archiveFile, onDismiss: clearArchiveFile) { file in
-            NavigationStack {
-                ShareLink(item: file, preview: SharePreview("Listening archive")) {
-                    Label("Share archive", systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(.borderedProminent)
-                .navigationTitle("Listening archive")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { archiveFile = nil }
-                    }
-                }
-            }
-            .presentationDetents([.medium])
-            .environment(\.locale, locale)
-            .preferredColorScheme(colorScheme)
+            SettingsArchiveActivitySheet(url: file.url)
         }
     }
 
@@ -604,7 +634,8 @@ struct SettingsView: View {
             return
         }
         if let active = routeMonitor?.activeMatchedCard(in: ownedCards) ?? ownedCards.first {
-            liveController.start(card: active, decibels: 0, manual: true)
+            let db = active.averageDecibels > 0 ? active.averageDecibels : 0
+            liveController.start(card: active, decibels: db, manual: true)
         } else {
             liveController.start(deviceName: String(localized: "Headphones"), symbol: "headphones", cardID: "headphones", decibels: 0, manual: true)
         }
@@ -681,7 +712,7 @@ struct PrivacyPolicyView: View {
                     icon: "square.and.arrow.up",
                     tint: Theme.moderateColor,
                     title: "You control sharing",
-                    detail: "Only exported poster images leave the app when you tap Share. Manage Health permission anytime in iOS Settings › Health."
+                    detail: "Only exported posters, Wrapped reels, and listening archives leave the app when you tap Share. Manage Health permission anytime in iOS Settings › Health."
                 )
             }
             .padding(16)
@@ -793,9 +824,35 @@ struct CreditsView: View {
                                 .font(.caption2.weight(.semibold))
                         }
 
-                        HStack(spacing: 12) {
-                            Link(model.author, destination: model.authorURL)
-                            Link("Source on Sketchfab", destination: model.modelURL)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 14) {
+                                Link(destination: model.authorURL) {
+                                    HStack(spacing: 3) {
+                                        Text(model.author)
+                                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+                                    }
+                                }
+                                Link(destination: model.modelURL) {
+                                    HStack(spacing: 3) {
+                                        Text("Source on Sketchfab")
+                                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+                                    }
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Link(destination: model.authorURL) {
+                                    HStack(spacing: 3) {
+                                        Text(model.author)
+                                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+                                    }
+                                }
+                                Link(destination: model.modelURL) {
+                                    HStack(spacing: 3) {
+                                        Text("Source on Sketchfab")
+                                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+                                    }
+                                }
+                            }
                         }
                         .font(.caption.weight(.medium))
 
@@ -830,67 +887,81 @@ struct HealthOnboardingView: View {
     let onSkip: () -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer(minLength: 16)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 10)
 
-            VStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Theme.quietColor.opacity(0.15))
-                        .frame(width: 84, height: 84)
-                    Image(systemName: "headphones.circle.fill")
-                        .font(.system(size: 52))
-                        .foregroundStyle(Theme.quietColor)
+                    VStack(spacing: 14) {
+                        ZStack {
+                            EarprintGlyph(grid: SampleData.summary.grid, showHourLabels: false)
+                                .equatable()
+                                .frame(width: 112, height: 112)
+                                .opacity(0.65)
+                            Circle()
+                                .fill(Theme.card)
+                                .frame(width: 58, height: 58)
+                                .shadow(color: Theme.cardShadow, radius: 8, y: 3)
+                            HeadphoneArtwork(card: SampleCards.all[0], showsChargingCase: false, showsShadow: false)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityHidden(true)
+
+                        Text("Your Headphone Archive")
+                            .font(.system(.title, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.primaryText)
+                            .multilineTextAlignment(.center)
+
+                        Text("Turn your listening history into collector cards and 28-day Earprint rings.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                    }
+
+                    VStack(spacing: 12) {
+                        bullet(icon: "waveform.path.ecg", tint: Theme.quietColor,
+                               title: "Read-only Health data",
+                               subtitle: "Uses Apple Health headphone audio exposure minutes and dB levels.")
+                        bullet(icon: "lock.shield.fill", tint: Theme.moderateColor,
+                               title: "Private by design",
+                               subtitle: "Processed on your iPhone with no account, cloud servers, or tracking.")
+                        bullet(icon: "sparkles", tint: Theme.loudColor,
+                               title: "6 metallic card tiers",
+                               subtitle: "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).")
+                    }
+                    .padding(16)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.cardStroke, lineWidth: 1))
+                    .shadow(color: Theme.cardShadow, radius: 12, y: 4)
+
+                    Spacer(minLength: 8)
+
+                    VStack(spacing: 8) {
+                        Button(action: onConnect) {
+                            Label("Connect Apple Health", systemImage: "heart.fill")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .background(Theme.invertedFill, in: Capsule())
+                                .foregroundStyle(Theme.invertedText)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: onSkip) {
+                            Text("Not Now")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.secondaryText)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-
-                Text("Your Headphone Archive")
-                    .font(.system(.title, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.primaryText)
-                    .multilineTextAlignment(.center)
-
-                Text("Turn your listening history into collector cards and 28-day Earprint rings.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 12)
+                .padding(22)
+                .frame(minHeight: geo.size.height)
             }
-
-            VStack(spacing: 12) {
-                bullet(icon: "waveform.path.ecg", tint: Theme.quietColor,
-                       title: "Read-only Health data",
-                       subtitle: "Uses Apple Health headphone audio exposure minutes and dB levels.")
-                bullet(icon: "lock.shield.fill", tint: Theme.moderateColor,
-                       title: "Private by design",
-                       subtitle: "Processed on your iPhone with no account, cloud servers, or tracking.")
-                bullet(icon: "sparkles", tint: Theme.loudColor,
-                       title: "6 metallic card tiers",
-                       subtitle: "Every pair levels up from Bronze Slate (0h) to Liquid Holo (2,000h).")
-            }
-            .padding(16)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.cardStroke, lineWidth: 1))
-            .shadow(color: Theme.cardShadow, radius: 12, y: 4)
-
-            Spacer(minLength: 8)
-
-            VStack(spacing: 10) {
-                Button(action: onConnect) {
-                    Label("Connect Apple Health", systemImage: "heart.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(Theme.invertedFill, in: Capsule())
-                        .foregroundStyle(Theme.invertedText)
-                }
-                .buttonStyle(.plain)
-
-                Button("Not Now", action: onSkip)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.secondaryText)
-                    .padding(.vertical, 8)
-            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .padding(22)
         .background(Theme.canvas.ignoresSafeArea())
         .interactiveDismissDisabled()
     }
@@ -936,7 +1007,8 @@ struct AppIconPickerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 22) {
+                heroPreview
                 defaultSection
                 backgroundSection
                 finishSection
@@ -954,12 +1026,12 @@ struct AppIconPickerView: View {
         .navigationBarBackButtonHidden(manager.isUpdating)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Done") {
+                Button("Apply") {
                     Task {
                         if await manager.apply(draft) { dismiss() }
                     }
                 }
-                .disabled(manager.isUpdating)
+                .disabled(manager.isUpdating || draft == manager.current)
             }
         }
         .disabled(manager.isUpdating)
@@ -970,6 +1042,36 @@ struct AppIconPickerView: View {
             selectedFinish = manager.current.finish
             selectedBackground = manager.current.background
         }
+    }
+
+    private var heroPreview: some View {
+        VStack(spacing: 10) {
+            Group {
+                if draft == .ringsEmblem {
+                    Image("AppIconDefaultPreview")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 92, height: 92)
+                        .clipShape(RoundedRectangle(cornerRadius: 92 * 0.2237, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 92 * 0.2237, style: .continuous)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
+                        )
+                } else {
+                    AppIconThumbnail(choice: draft, size: 92)
+                }
+            }
+            .shadow(color: Theme.cardShadow, radius: 14, y: 6)
+
+            Text("Earprint")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.primaryText)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.cardStroke, lineWidth: 1))
+        .shadow(color: Theme.cardShadow, radius: 10, y: 4)
     }
 
     private var defaultSection: some View {
@@ -1033,6 +1135,7 @@ struct AppIconPickerView: View {
                             AppIconThumbnail(finish: selectedFinish, background: background, size: 42)
                             Text(LocalizedStringKey(background.title))
                                 .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.primaryText)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -1125,8 +1228,18 @@ struct AppIconPickerView: View {
             if let detail {
                 Text(detail)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Theme.tertiaryText)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
     }
+}
+
+private struct SettingsArchiveActivitySheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

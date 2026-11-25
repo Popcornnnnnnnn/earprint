@@ -450,7 +450,7 @@ struct CardHorizontalFront: View {
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                     .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(.black.opacity(0.28), in: Capsule())
+                    .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
                 if isCurrentlyWorn {
@@ -474,8 +474,10 @@ struct CardHorizontalFront: View {
 
                     HStack(spacing: 6) {
                         Text("\(card.sessions) sessions")
-                        Text("·")
-                        Text("since \(card.firstMet)")
+                        if !card.firstMet.isEmpty {
+                            Text("·")
+                            Text("since \(card.firstMet)")
+                        }
                     }
                     .font(.system(size: 11.5, weight: .semibold))
                     .opacity(0.68)
@@ -487,8 +489,8 @@ struct CardHorizontalFront: View {
                 .offset(x: tilt.width * 2.5, y: tilt.height * 1.8)
 
                 HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
-                    .frame(width: 128, height: 128)
-                    .offset(x: -tilt.width * 10, y: -tilt.height * 8)
+                    .frame(width: 120, height: 120)
+                    .offset(x: -tilt.width * 7, y: -tilt.height * 5)
             }
         }
         .foregroundStyle(ink)
@@ -503,10 +505,10 @@ struct CardHorizontalFront: View {
                 .strokeBorder(
                     LinearGradient(
                         colors: [
-                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.68)),
-                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.05), dark: UIColor.white.withAlphaComponent(0.18)),
+                            ink == .white ? Color.white.opacity(0.45) : Color.black.opacity(0.14),
+                            ink == .white ? Color.white.opacity(0.14) : Color.black.opacity(0.05),
                             (foil?.glow ?? card.rarity.glow).opacity(0.45),
-                            Color.adaptive(light: UIColor.black.withAlphaComponent(0.12), dark: UIColor.white.withAlphaComponent(0.50))
+                            ink == .white ? Color.white.opacity(0.32) : Color.black.opacity(0.14)
                         ],
                         startPoint: UnitPoint(x: 0.2 + tilt.width * 0.5, y: 0.0 + tilt.height * 0.4),
                         endPoint: UnitPoint(x: 0.8 + tilt.width * 0.5, y: 1.0 + tilt.height * 0.4)
@@ -533,7 +535,6 @@ struct CardFront: View {
     var badgeOverride: LocalizedStringKey? = nil
     var catalogDetail: String? = nil
     var proFoil: ProFoilStyle? = nil
-    var usesOriginalArtwork = false
 
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
@@ -548,8 +549,10 @@ struct CardFront: View {
                 Text(badgeOverride ?? LocalizedStringKey(surfaceRarity.title))
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.6)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                     .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(.black.opacity(0.28), in: Capsule())
+                    .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
                 if isCurrentlyWorn {
@@ -559,16 +562,8 @@ struct CardFront: View {
 
             Spacer()
 
-            Group {
-                if usesOriginalArtwork {
-                    WrappedHeadphoneMark(overEar: card.kind == .overEar)
-                        .fill(ink)
-                        .frame(width: 152, height: 152)
-                } else {
-                    HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
-                                     usesProductArtwork: usesProductArtwork)
-                }
-            }
+            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
+                             usesProductArtwork: usesProductArtwork)
             .frame(height: showsChargingCase ? 186 : 165)
             .opacity(showSymbol ? 1 : 0)
             .offset(x: tilt.width * -8, y: tilt.height * -8)
@@ -619,7 +614,7 @@ struct CardFront: View {
         .background(FoilSurface(rarity: surfaceRarity, tilt: tilt, proFoil: foil))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-            .strokeBorder(Color.adaptive(light: UIColor.black.withAlphaComponent(0.13), dark: UIColor.white.withAlphaComponent(0.45)), lineWidth: 1.5))
+            .strokeBorder(ink == .white ? Color.white.opacity(0.32) : Color.black.opacity(0.14), lineWidth: 1.5))
     }
 }
 
@@ -678,7 +673,11 @@ struct CardBack: View {
             HStack {
                 Text("STATS").font(.system(size: 11, weight: .heavy)).tracking(2).opacity(0.6)
                 Spacer()
-                Text(card.model).font(.system(size: 11, weight: .semibold)).opacity(0.6)
+                Text(card.model)
+                    .font(.system(size: 11, weight: .semibold))
+                    .opacity(0.6)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
 
             ZStack {
@@ -716,11 +715,13 @@ struct CardBack: View {
                 switch unit {
                 case .minutes: Text(value.minutesText)
                 case .count: Text("\(Int(value))")
-                case .decibels: Text("\(Int(value)) dB")
+                case .decibels: value > 0 ? Text("\(Int(value)) dB") : Text(verbatim: "—")
                 }
             }
             .font(.system(size: 20, weight: .bold, design: .rounded))
             .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.70)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -732,6 +733,8 @@ struct CardBack: View {
         if let openTiers {
             Button(action: openTiers) {
                 content
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityHint("View all card tiers")
@@ -746,7 +749,11 @@ struct CardBack: View {
             let remaining = max(1, Int(ceil(next - hours)))
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 4) {
-                    Text("\(remaining)h to next tier").font(.system(size: 11, weight: .semibold)).opacity(0.75)
+                    Text("\(remaining)h to next tier")
+                        .font(.system(size: 11, weight: .semibold))
+                        .opacity(0.75)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     if openTiers != nil {
                         Image(systemName: "info.circle")
                             .font(.system(size: 10))
@@ -758,7 +765,11 @@ struct CardBack: View {
             }
         } else {
             HStack(spacing: 5) {
-                Text("Max tier reached ✦").font(.system(size: 12, weight: .semibold)).foregroundStyle(card.rarity.accent)
+                Text("Max tier reached ✦")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(card.rarity.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 if openTiers != nil {
                     Image(systemName: "info.circle")
                         .font(.system(size: 10))

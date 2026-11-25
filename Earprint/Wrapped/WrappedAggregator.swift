@@ -175,12 +175,7 @@ enum WrappedAggregator {
     }
 
     static func sample(year: Int = 2026) -> WrappedSummary {
-        var card = SampleCards.all[0]
-        card.nickname = "Studio Headphones"
-        card.model = "Over-ear headphones"
-        card.symbol = "headphones"
-        card.modelKey = .overEarGeneric
-        card.kind = .overEar
+        let card = SampleCards.all[0]
         return WrappedSummary(
             year: year, totalMinutes: 14_870, totalSessions: 351, activeDays: 186,
             topDeviceName: card.nickname, topDeviceModel: card.model, topDeviceKey: card.modelKey,

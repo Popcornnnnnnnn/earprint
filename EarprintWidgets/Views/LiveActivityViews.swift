@@ -10,7 +10,7 @@ struct LiveActivityLockScreenView: View {
 
     var body: some View {
         let hasReading = state.decibels > 0
-        let color = hasReading ? Theme.levelColor(db: state.decibels) : Theme.quietColor
+        let color = hasReading ? Theme.levelColor(db: state.decibels) : Theme.quiet.color
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
                 ListeningBadge(symbol: attributes.deviceSymbol, color: color, size: 46)
@@ -92,15 +92,16 @@ struct RestCountdown: View {
     var staticProgress: Double? = nil
 
     var body: some View {
-        let color = state.decibels > 0 ? Theme.levelColor(db: state.decibels) : Theme.quietColor
+        let color = state.decibels > 0 ? Theme.levelColor(db: state.decibels) : Theme.quiet.color
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 4) {
                 Image(systemName: "cup.and.saucer.fill")
                 Text("Ear break in")
                 Text(timerInterval: Date()...max(Date(), state.restAt), countsDown: true)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .foregroundStyle(.white)
-                    .frame(maxWidth: 60, alignment: .leading)
                 Spacer(minLength: 0)
             }
             .font(.system(size: 11, weight: .semibold))
@@ -147,9 +148,10 @@ struct IslandCompactTrailing: View {
             .font(.system(size: 13, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .multilineTextAlignment(.trailing)
             .foregroundStyle(Theme.levelColor(db: state.decibels))
-            .frame(width: 56, alignment: .trailing)
+            .frame(minWidth: 44, maxWidth: 68, alignment: .trailing)
     }
 }
 

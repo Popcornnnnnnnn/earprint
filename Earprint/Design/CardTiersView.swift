@@ -167,7 +167,7 @@ struct CardTiersView: View {
                 ForEach(ownedCards) { item in
                     let isSelected = selectedCard?.id == item.id
                     filterChip(
-                        title: LocalizedStringKey(CardTierBinderSummary.shortModelName(item.model)),
+                        title: CardTierBinderSummary.shortModelName(item.model),
                         isSelected: isSelected
                     ) {
                         selectedCardID = item.id
@@ -179,17 +179,33 @@ struct CardTiersView: View {
     }
 
     private func filterChip(title: LocalizedStringKey, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        filterChipButton(isSelected: isSelected, action: action) {
+            Text(title)
+        }
+    }
+
+    private func filterChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        filterChipButton(isSelected: isSelected, action: action) {
+            Text(verbatim: title)
+        }
+    }
+
+    private func filterChipButton<LabelContent: View>(
+        isSelected: Bool,
+        action: @escaping () -> Void,
+        @ViewBuilder label: () -> LabelContent
+    ) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.snappy(duration: 0.22)) {
                 action()
             }
         } label: {
-            Text(title)
+            label()
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .frame(minHeight: 34)
                 .foregroundStyle(isSelected ? Theme.invertedText : Theme.primaryText)
                 .background(isSelected ? Theme.invertedFill : Theme.surfaceFill, in: Capsule())
                 .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: isSelected ? 0 : 1))
@@ -207,7 +223,7 @@ struct CardTiersView: View {
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         let ink = tier.ink
-        let badgeBg = Color.black.opacity(ink == .white ? 0.34 : 0.16)
+        let badgeBg = Color.black.opacity(ink == .white ? 0.36 : 0.76)
         let isLightCanvas = colorScheme == .light
 
         return VStack(alignment: .leading, spacing: 12) {
@@ -225,7 +241,7 @@ struct CardTiersView: View {
                 Spacer(minLength: 6)
 
                 HStack(spacing: 4) {
-                    Image(systemName: summary.isUnlocked ? "checkmark.circle.fill" : "lock.fill")
+                    Image(systemName: summary.isUnlocked ? "checkmark.circle.fill" : "clock")
                         .font(.system(size: 10.5, weight: .bold))
                     Text(summary.isUnlocked ? LocalizedStringKey("Unlocked") : LocalizedStringKey(hoursLabel(tier.minimumHours)))
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
@@ -287,6 +303,7 @@ struct CardTiersView: View {
             if let singleCard = selectedCard {
                 let currentTier = singleCard.rarity
                 let hours = singleCard.lifetimeMinutes / 60
+                let inspectingFutureTier = tier.minimumHours > currentTier.minimumHours && !summary.isUnlocked
                 HStack {
                     Text("\(CardTierBinderSummary.shortModelName(singleCard.model)) · \(singleCard.lifetimeMinutes.minutesText)")
                         .font(.caption.weight(.bold).monospacedDigit())
@@ -298,16 +315,24 @@ struct CardTiersView: View {
                             .opacity(0.78)
                     }
                 }
-                ProgressView(value: currentTier.progressToNextTier(minutes: singleCard.lifetimeMinutes))
-                    .tint(ink)
-                if let next = currentTier.nextTier {
-                    let remaining = max(1, Int(ceil(next.minimumHours - hours)))
-                    Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
+                if inspectingFutureTier {
+                    let progress = tier.minimumHours > 0 ? min(max(hours / tier.minimumHours, 0), 1) : 1
+                    let remaining = max(1, Int(ceil(tier.minimumHours - hours)))
+                    tierProgressBar(progress, ink: ink)
+                    Text("\(remaining)h to \(Text(LocalizedStringKey(tier.title)))")
                         .font(.caption2.weight(.semibold))
-                        .opacity(0.82)
+                        .opacity(0.86)
                 } else {
-                    Text("Max tier reached ✦")
-                        .font(.caption2.weight(.bold))
+                    tierProgressBar(currentTier.progressToNextTier(minutes: singleCard.lifetimeMinutes), ink: ink)
+                    if let next = currentTier.nextTier {
+                        let remaining = max(1, Int(ceil(next.minimumHours - hours)))
+                        Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
+                            .font(.caption2.weight(.semibold))
+                            .opacity(0.86)
+                    } else {
+                        Text("Max tier reached ✦")
+                            .font(.caption2.weight(.bold))
+                    }
                 }
             } else if summary.isUnlocked {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -342,14 +367,29 @@ struct CardTiersView: View {
                         .font(.caption2.weight(.semibold).monospacedDigit())
                         .opacity(0.82)
                 }
-                ProgressView(value: progress)
-                    .tint(ink)
+                tierProgressBar(progress, ink: ink)
             } else {
                 Text("Listen with supported headphones to unlock tiers.")
                     .font(.caption2.weight(.medium))
                     .opacity(0.82)
             }
         }
+    }
+
+    private func tierProgressBar(_ value: Double, ink: Color) -> some View {
+        let clamped = min(max(value, 0), 1)
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(ink.opacity(0.20))
+                if clamped > 0 {
+                    Capsule()
+                        .fill(ink)
+                        .frame(width: max(6, geo.size.width * clamped))
+                }
+            }
+        }
+        .frame(height: 5)
     }
 
     // MARK: - Minimal 2x3 Binder Tile
@@ -360,7 +400,7 @@ struct CardTiersView: View {
         let isSelected = selectedTier == tier
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         let ink = tier.ink
-        let chipBg = Color.black.opacity(ink == .white ? 0.34 : 0.16)
+        let chipBg = Color.black.opacity(ink == .white ? 0.36 : 0.76)
         let isLightCanvas = colorScheme == .light
         let attribution = summary.compactAttribution(isSingleDevice: selectedCard != nil, locale: locale)
 
@@ -389,13 +429,13 @@ struct CardTiersView: View {
                             .tracking(0.5)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2.5)
-                            .background(.white, in: Capsule())
-                            .foregroundStyle(.black)
+                            .background(ink, in: Capsule())
+                            .foregroundStyle(ink == .white ? .black : .white)
                     } else if unlocked {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.caption)
                     } else {
-                        Image(systemName: "lock.fill")
+                        Image(systemName: "clock")
                             .font(.caption2)
                             .opacity(0.75)
                     }
@@ -423,8 +463,8 @@ struct CardTiersView: View {
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             .background(FoilSurface(rarity: tier, tilt: .zero))
             .clipShape(shape)
-            .saturation(unlocked || isSelected ? 1.0 : 0.72)
-            .opacity(unlocked || isSelected ? 1.0 : (isLightCanvas ? 0.76 : 0.68))
+            .saturation(unlocked || isSelected ? 1.0 : 0.78)
+            .opacity(unlocked || isSelected ? 1.0 : (isLightCanvas ? 0.86 : 0.74))
             .overlay(
                 shape.strokeBorder(
                     isSelected

@@ -34,11 +34,6 @@ enum DossierShareRenderer {
     /// Exact 3:4 portrait aspect ratio for RedNote and Douyin posts.
     static let pageSize = CGSize(width: 420, height: 560)
 
-    static func originalModelName(for card: HeadphoneCard, locale: Locale) -> String {
-        let language = AppLanguage.systemResolved(preferredLanguages: [locale.identifier])
-        return language.text(card.kind == .overEar ? "Over-ear headphones" : "Earbuds")
-    }
-
     static func renderPages(
         card: HeadphoneCard,
         dossier: DeviceDossier,
@@ -52,18 +47,6 @@ enum DossierShareRenderer {
         locale: Locale = .current,
         scale: CGFloat = 3
     ) -> [DossierShareImage] {
-        var card = card
-        var dossier = dossier
-        if options.usesOriginalArtwork {
-            let model = originalModelName(for: card, locale: locale)
-            card.model = model
-            card.nickname = model
-            card.symbol = "headphones"
-            dossier.hardware.manufacturer = "—"
-            dossier.hardware.modelName = model
-            dossier.hardware.sourceName = "—"
-            dossier.hardware.sourceBundleID = "—"
-        }
         let sanitizedModel = card.model
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "/", with: "-")
@@ -71,7 +54,7 @@ enum DossierShareRenderer {
             card: card,
             dossier: dossier,
             period: period,
-            color: options.usesOriginalArtwork ? nil : color,
+            color: color,
             isSampleData: isSampleData,
             options: options,
             customization: customization?.sanitized,
@@ -140,6 +123,7 @@ struct DossierShareSheet: View {
     let period: DossierPeriod
     let color: DeviceColorOption?
     let isSampleData: Bool
+    let initialFormat: DossierShareFormat
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
@@ -147,7 +131,7 @@ struct DossierShareSheet: View {
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
     @Namespace private var switcherNamespace
-    @State private var format: DossierShareFormat = .simple
+    @State private var format: DossierShareFormat
     @State private var posterScheme: ColorScheme? = nil
     @State private var options = DossierShareOptions.default
     @State private var simplePages: [DossierShareImage] = []
@@ -157,6 +141,23 @@ struct DossierShareSheet: View {
     @State private var isRendering = false
     @State private var activePageIndex = 0
     @State private var showCustomize = false
+
+    init(
+        card: HeadphoneCard,
+        dossier: DeviceDossier,
+        period: DossierPeriod,
+        color: DeviceColorOption?,
+        isSampleData: Bool,
+        initialFormat: DossierShareFormat = .simple
+    ) {
+        self.card = card
+        self.dossier = dossier
+        self.period = period
+        self.color = color
+        self.isSampleData = isSampleData
+        self.initialFormat = initialFormat
+        _format = State(initialValue: initialFormat)
+    }
 
     private var activePosterScheme: ColorScheme {
         posterScheme ?? envColorScheme
@@ -172,7 +173,8 @@ struct DossierShareSheet: View {
     }
 
     private var isCurrentFormatCustomized: Bool {
-        format == .simple ? !options.simple.isDefault : !options.long.isDefault
+        let formatCustom = format == .simple ? !options.simple.isDefault : !options.long.isDefault
+        return formatCustom || options.is4K || options.isWatermarkHidden
     }
 
     private struct RenderKey: Hashable {
@@ -245,6 +247,7 @@ struct DossierShareSheet: View {
             DossierShareCustomizeSheet(format: format, options: $options)
                 .presentationDetents([.medium, .large])
                 .environment(\.locale, locale)
+                .preferredColorScheme(envColorScheme)
         }
         .onChange(of: options.long) { _, updated in
             let maxIndex = max(0, updated.effectivePages.count - 1)
@@ -308,6 +311,8 @@ struct DossierShareSheet: View {
     }
 
     private func resetCurrentFormat() {
+        options.is4K = false
+        options.isWatermarkHidden = false
         switch format {
         case .simple: options.simple.reset()
         case .long: options.long.reset()
@@ -346,11 +351,15 @@ struct DossierShareSheet: View {
                         format = option
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Text(option.title)
                             .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         Text(formatSubtitle(for: option))
                             .font(.caption2.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundStyle(selected ? Theme.invertedText.opacity(0.68) : Theme.secondaryText)
                     }
                     .frame(maxWidth: .infinity, minHeight: 38)
@@ -386,6 +395,8 @@ struct DossierShareSheet: View {
     // MARK: - Preview Stage
 
     @ViewBuilder private var previewStage: some View {
+        let previewGlow = activePosterScheme == .light ? Theme.cardShadow : card.rarity.glow.opacity(0.28)
+        let previewStroke = activePosterScheme == .light ? Color.black.opacity(0.10) : Color.white.opacity(0.12)
         if isRendering && activePages.isEmpty {
             VStack(spacing: 12) {
                 ProgressView()
@@ -403,9 +414,16 @@ struct DossierShareSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                            .strokeBorder(previewStroke, lineWidth: 1)
                     )
-                    .shadow(color: card.rarity.glow.opacity(0.28), radius: 22, y: 10)
+                    .overlay {
+                        if isRendering {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(.black.opacity(0.22))
+                                .overlay(ProgressView().tint(.white))
+                        }
+                    }
+                    .shadow(color: previewGlow, radius: 22, y: 10)
                     .frame(maxWidth: 420)
                     .accessibilityLabel("Dossier image preview")
             }
@@ -421,15 +439,22 @@ struct DossierShareSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .strokeBorder(Theme.hairline, lineWidth: 1)
+                                    .strokeBorder(previewStroke, lineWidth: 1)
                             )
-                            .shadow(color: card.rarity.glow.opacity(0.24), radius: 18, y: 8)
+                            .shadow(color: previewGlow, radius: 18, y: 8)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 4)
                             .tag(page.id)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .overlay {
+                    if isRendering {
+                        ProgressView()
+                            .padding(12)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                }
                 .accessibilityLabel("Dossier image preview")
 
                 HStack(spacing: 10) {
@@ -463,9 +488,7 @@ struct DossierShareSheet: View {
                 ? "Share \(activePages.count) images"
                 : "Share image"
             ShareLink(items: activePages) { page in
-                let model = effectiveOptions.usesOriginalArtwork
-                    ? DossierShareRenderer.originalModelName(for: card, locale: locale) : card.model
-                return SharePreview("\(model) · \(page.id + 1)/\(activePages.count)", image: page.image)
+                SharePreview("\(card.model) · \(page.id + 1)/\(activePages.count)", image: page.image)
             } label: {
                 Label(label, systemImage: "square.and.arrow.up")
                     .font(.headline)
@@ -812,6 +835,9 @@ private struct DossierSharePosterCanvas {
     var simpleOnePagePoster: some View {
         let s = options.simple
         let rarity = card.rarity
+        let foil = customization?.proFoil
+        let ink = foil?.ink ?? rarity.ink
+        let accent = foil?.accent ?? rarity.accent
         let hours = card.lifetimeMinutes / 60
         let visibleTiles = simpleVisibleTiles(s)
         return posterFrame(showsHardwareID: s.showHardwareID) {
@@ -828,7 +854,7 @@ private struct DossierSharePosterCanvas {
                                     .tracking(0.8)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
-                                    .background(.black.opacity(0.28), in: Capsule())
+                                    .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                                     .foregroundStyle(.white)
                             }
                         }
@@ -855,24 +881,17 @@ private struct DossierSharePosterCanvas {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Group {
-                        if options.usesOriginalArtwork {
-                            WrappedHeadphoneMark(overEar: card.kind == .overEar)
-                                .foregroundStyle(rarity.ink)
-                        } else {
-                            HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: true)
-                        }
-                    }
-                    .frame(width: 132, height: 132)
+                    HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: true)
+                        .frame(width: 132, height: 132)
                 }
-                .foregroundStyle(rarity.ink)
+                .foregroundStyle(ink)
                 .padding(16)
                 .frame(height: 176)
-                .background(FoilSurface(rarity: rarity, tilt: CGSize(width: 0.22, height: -0.15)))
+                .background(FoilSurface(rarity: rarity, tilt: CGSize(width: 0.22, height: -0.15), proFoil: foil))
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(.white.opacity(0.45), lineWidth: 1.4)
+                        .strokeBorder(ink == .white ? .white.opacity(0.35) : .black.opacity(0.14), lineWidth: 1.4)
                 )
 
                 if s.showRing || !visibleTiles.isEmpty {
@@ -891,12 +910,12 @@ private struct DossierSharePosterCanvas {
                             } else {
                                 Text("Max tier reached ✦")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(rarity.accent)
+                                    .foregroundStyle(accent)
                             }
                             Spacer()
                             Text("\(dossier.recordDays) record days")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(rarity.accent)
+                                .foregroundStyle(accent)
                         }
                         let tierProgress = min(max(rarity.progressToNextTier(minutes: card.lifetimeMinutes), 0), 1)
                         GeometryReader { geo in
@@ -976,7 +995,7 @@ private struct DossierSharePosterCanvas {
     private var simpleRingPanel: some View {
         VStack(spacing: 4) {
             ZStack {
-                EarprintGlyph(grid: card.grid, showHourLabels: false)
+                EarprintGlyph(grid: card.grid, showHourLabels: false, forcedColorScheme: posterScheme)
                 VStack(spacing: 0) {
                     Text("4 weeks")
                         .font(.system(size: 9.5, weight: .bold))
@@ -1094,11 +1113,10 @@ private struct DossierSharePosterCanvas {
                     engravedSubtitle: customization?.engravedTitle,
                     customSerialTag: customization?.customSerial,
                     usesSavedCustomization: false,
-                    usesOriginalArtwork: options.usesOriginalArtwork,
-                    colorOption: options.usesOriginalArtwork ? nil : color
+                    colorOption: color
                 )
-                .scaleEffect(0.73)
-                .frame(width: SlabMetrics.width * 0.73, height: SlabMetrics.height * 0.73)
+                .scaleEffect(0.67)
+                .frame(width: SlabMetrics.width * 0.67, height: SlabMetrics.height * 0.67)
 
                 if l.showCoverStats {
                     HStack(spacing: 0) {
@@ -1156,19 +1174,23 @@ private struct DossierSharePosterCanvas {
     private func longPageRhythm(index: Int, total: Int) -> some View {
         let l = options.long
         let stats = dossier.stats(period)
-        let nightPct = Int((dossier.nightShare * 100).rounded())
+        let lateNightMinutes = stats.hours
+            .filter { $0.hour >= 22 || $0.hour <= 3 }
+            .reduce(0.0) { $0 + $1.minutes }
+        let periodNightShare = stats.totalMinutes > 0 ? lateNightMinutes / stats.totalMinutes : 0
+        let nightPct = Int((periodNightShare * 100).rounded())
         let peakHour = stats.peakHour?.hour
         return longFrame(page: .rhythm, index: index, total: total) {
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 if l.showPeriodSummary {
                     HStack(spacing: 0) {
                         quickStatTile(LocalizedStringKey(period.title), stats.totalMinutes.minutesText, accent: card.rarity.accent)
-                        Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
+                        Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
                         quickStatTile("WEAR SHARE", "\(Int((stats.share * 100).rounded()))%")
-                        Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
+                        Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
                         quickStatTile("DAILY AVG", stats.dailyAverage.minutesText)
                     }
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
                     .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
                 }
@@ -1180,20 +1202,18 @@ private struct DossierSharePosterCanvas {
                         firstWear: dossier.firstWear,
                         selection: .constant(nil),
                         showsInteractionHint: false,
-                        showsMintedMarker: l.showFirstWear
+                        showsMintedMarker: l.showFirstWear,
+                        chartHeight: 132
                     )
-                    .scaleEffect(0.92, anchor: .top)
-                    .frame(height: 215, alignment: .top)
-                    .clipped()
                     .dossierTile(tint: card.rarity.accent)
                 }
 
                 if l.showDayClock {
                     HStack(spacing: 12) {
                         DayClock(stats: stats, rarity: card.rarity, selectedHour: .constant(nil))
-                            .frame(width: 138, height: 138)
+                            .frame(width: 134, height: 134)
 
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Eyebrow("24-hour clock")
                             Text("When you wear it")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
@@ -1225,43 +1245,43 @@ private struct DossierSharePosterCanvas {
         let loudPct = Int((stats.loudShare * 100).rounded())
         let longestMinutes = stats.longest?.minutes ?? card.longestMinutes
         return longFrame(page: .habits, index: index, total: total) {
-            VStack(spacing: 10) {
+            VStack(spacing: 7) {
                 if l.showWearHabits && l.showHearingHealth {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: card.rarity.accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
-                    .frame(height: 82)
+                    .frame(height: 62)
 
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels, colorScheme: posterScheme))
                         posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loudColor : Theme.quietColor)
                     }
-                    .frame(height: 82)
+                    .frame(height: 62)
 
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
                         posterMetricTile("Active days", "\(stats.activeDays) / \(max(1, stats.spanDays))")
                     }
-                    .frame(height: 82)
+                    .frame(height: 62)
                 } else if l.showWearHabits {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: card.rarity.accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
-                    .frame(height: 82)
+                    .frame(height: 68)
 
                     posterMetricTile("Active days", "\(stats.activeDays) / \(max(1, stats.spanDays))")
-                        .frame(height: 82)
+                        .frame(height: 68)
                 } else if l.showHearingHealth {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels, colorScheme: posterScheme))
                         posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loudColor : Theme.quietColor)
                     }
-                    .frame(height: 82)
+                    .frame(height: 68)
 
                     posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
-                        .frame(height: 82)
+                        .frame(height: 68)
                 }
 
                 if l.showGradeBreakdown {
@@ -1288,8 +1308,7 @@ private struct DossierSharePosterCanvas {
                         showsHardwareDetails: l.showHardwareID,
                         showsSourceMetadata: l.showSourceMetadata,
                         showsFirstWear: l.showFirstWear,
-                        compact: true,
-                        showsHealthProvenance: !options.usesOriginalArtwork
+                        compact: true
                     )
 
                     compactMilestonesSection(Array(dossier.milestones.suffix(3)))
@@ -1304,8 +1323,7 @@ private struct DossierSharePosterCanvas {
                             showsHardwareDetails: l.showHardwareID,
                             showsSourceMetadata: l.showSourceMetadata,
                             showsFirstWear: l.showFirstWear,
-                            compact: false,
-                            showsHealthProvenance: !options.usesOriginalArtwork
+                            compact: false
                         )
                         CertificateLabel(
                             card: card,
@@ -1316,8 +1334,7 @@ private struct DossierSharePosterCanvas {
                             showsHardwareDetails: l.showHardwareID,
                             showsSourceMetadata: l.showSourceMetadata,
                             showsFirstWear: l.showFirstWear,
-                            compact: true,
-                            showsHealthProvenance: !options.usesOriginalArtwork
+                            compact: true
                         )
                     }
                 } else if showMilestones {
@@ -1364,9 +1381,10 @@ private struct DossierSharePosterCanvas {
                             .lineLimit(1)
 
                         if let tier = item.tier, item.kind == .tier || item.kind == .minted {
-                            Text(LocalizedStringKey(tier.rawValue))
+                            Text(LocalizedStringKey(tier.shortName.uppercased()))
                                 .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                                 .tracking(0.6)
+                                .lineLimit(1)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1.5)
                                 .background(tier.accent.opacity(0.18), in: Capsule())

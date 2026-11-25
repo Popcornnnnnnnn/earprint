@@ -33,6 +33,7 @@ final class HeadphoneLibrary: ObservableObject {
     @Published var needsHealthOnboarding = false
 
     static let onboardingSeenKey = "onboarding.healthIntroSeen"
+    static let onboardingSkippedKey = "onboarding.healthIntroSkipped"
 
     #if DEBUG || EARPRINT_REPEAT_CARD_HINT
     nonisolated static var isFirstLaunchSimulation: Bool {
@@ -354,13 +355,14 @@ final class HeadphoneLibrary: ObservableObject {
         let authStatus = await ingestor.authorizationRequestStatus()
         if authStatus == .unnecessary || snapshot != nil {
             UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
+            UserDefaults.standard.set(false, forKey: Self.onboardingSkippedKey)
             await sync()
             await ensureObserving()
         } else {
             #if !targetEnvironment(simulator)
             if !UserDefaults.standard.bool(forKey: Self.onboardingSeenKey) {
                 needsHealthOnboarding = true
-            } else {
+            } else if !UserDefaults.standard.bool(forKey: Self.onboardingSkippedKey) {
                 await connectAndSync()
             }
             #endif
@@ -382,6 +384,7 @@ final class HeadphoneLibrary: ObservableObject {
 
     func completeOnboarding(connect: Bool) async {
         UserDefaults.standard.set(true, forKey: Self.onboardingSeenKey)
+        UserDefaults.standard.set(!connect, forKey: Self.onboardingSkippedKey)
         needsHealthOnboarding = false
         if connect {
             await connectAndSync()

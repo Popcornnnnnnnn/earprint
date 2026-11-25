@@ -54,6 +54,7 @@ struct DeviceDossierView: View {
     @State private var showStickyIdentity = false
     @State private var demoStarted = false
     @State private var showShare = false
+    @State private var shareInitialFormat: DossierShareFormat = .simple
     @State private var showSlabStudio = false
 
     init(card: HeadphoneCard, dossier: DeviceDossier? = nil, isSampleData: Bool = false, onClose: (() -> Void)? = nil) {
@@ -106,7 +107,8 @@ struct DeviceDossierView: View {
                 dossier: dossier,
                 period: period,
                 color: colorStore?.selectedColor(for: card),
-                isSampleData: isSampleData
+                isSampleData: isSampleData,
+                initialFormat: shareInitialFormat
             )
         }
         .sheet(isPresented: $showSlabStudio) {
@@ -200,9 +202,19 @@ struct DeviceDossierView: View {
                             Circle()
                                 .fill(rarity.foil)
                                 .frame(width: 28, height: 28)
-                            Image(systemName: card.symbol)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(rarity.ink)
+                            if card.modelKey.collectionArtwork != nil {
+                                HeadphoneArtwork(
+                                    card: card,
+                                    colorOption: colorStore?.selectedColor(for: card),
+                                    showsChargingCase: false,
+                                    showsShadow: false
+                                )
+                                .frame(width: 22, height: 22)
+                            } else {
+                                Image(systemName: card.symbol)
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(rarity.ink)
+                            }
                         }
                         VStack(alignment: .leading, spacing: 1) {
                             Text(card.model)
@@ -333,8 +345,14 @@ struct DeviceDossierView: View {
                 } label: {
                     Label("Customize Slab", systemImage: "wand.and.stars")
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(DossierPalette.primaryText)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 42)
+                        .background(DossierPalette.panel, in: Capsule())
+                        .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                        .shadow(color: Theme.cardShadow, radius: 8, y: 3)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
 
             lifetimeQuickStrip
@@ -363,16 +381,21 @@ struct DeviceDossierView: View {
                 Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
                     .font(.system(.caption2, design: .monospaced, weight: .semibold))
                     .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 if let fw = dossier.hardware.firmwareVersion {
                     Text("· FW \(fw)")
                         .font(.system(.caption2, design: .monospaced, weight: .medium))
                         .foregroundStyle(DossierPalette.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 4)
                 Text(dossier.hardware.sourceName)
                     .font(.system(.caption2, design: .monospaced, weight: .medium))
                     .foregroundStyle(DossierPalette.faint)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .padding(.horizontal, 6)
         }
@@ -388,13 +411,16 @@ struct DeviceDossierView: View {
                 .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                 .tracking(1.1)
                 .foregroundStyle(DossierPalette.faint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             Text(value)
                 .font(.system(.footnote, design: .rounded, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(accent)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.72)
         }
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
@@ -435,13 +461,18 @@ struct DeviceDossierView: View {
                             .font(.system(.headline, design: .rounded, weight: .bold))
                     }
                     Spacer()
-                    let nightPct = Int((dossier.nightShare * 100).rounded())
+                    let lateNightMinutes = stats.hours
+                        .filter { $0.hour >= 22 || $0.hour <= 3 }
+                        .reduce(0.0) { $0 + $1.minutes }
+                    let periodNightShare = stats.totalMinutes > 0 ? lateNightMinutes / stats.totalMinutes : 0
+                    let nightPct = Int((periodNightShare * 100).rounded())
                     let moonColor = Color.adaptive(
                         light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1),
                         dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)
                     )
                     Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .lineLimit(1)
                         .foregroundStyle(nightPct > 20 ? Theme.moderateColor : moonColor)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
@@ -549,6 +580,18 @@ struct DeviceDossierView: View {
             showSlabStudio = true
             return
         }
+        if args.contains("-dossierShareLong"), !showShare {
+            try? await Task.sleep(for: .milliseconds(500))
+            shareInitialFormat = .long
+            showShare = true
+            return
+        }
+        if args.contains("-dossierShare"), !showShare {
+            try? await Task.sleep(for: .milliseconds(500))
+            shareInitialFormat = .simple
+            showShare = true
+            return
+        }
         #endif
 
         guard args.contains("-dossierDemo"), !demoStarted else { return }
@@ -649,39 +692,49 @@ private struct LifetimeLedgerCard: View {
                 Rectangle().fill(DossierPalette.hairline).frame(height: 1)
 
                 VStack(spacing: 8) {
-                    HStack {
-                        Text("MONTH").frame(width: 64, alignment: .leading)
+                    HStack(spacing: 6) {
+                        Text("MONTH").frame(width: 58, alignment: .leading)
                         Text("TIME").frame(maxWidth: .infinity, alignment: .trailing)
-                        Text("WEARS").frame(width: 48, alignment: .trailing)
-                        Text("MAX").frame(width: 58, alignment: .trailing)
-                        Text("AVG").frame(width: 48, alignment: .trailing)
+                        Text("WEARS").frame(width: 44, alignment: .trailing)
+                        Text("MAX").frame(width: 52, alignment: .trailing)
+                        Text("AVG").frame(width: 46, alignment: .trailing)
                     }
                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                     .tracking(1.1)
                     .foregroundStyle(DossierPalette.faint)
 
                     ForEach(dossier.careerRows.prefix(6)) { row in
-                        HStack {
+                        HStack(spacing: 6) {
                             Text(row.label)
                                 .font(.system(.caption, design: .monospaced, weight: .bold))
                                 .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
-                                .frame(width: 64, alignment: .leading)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .frame(width: 58, alignment: .leading)
                             Text(row.minutes.minutesText)
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             Text("\(row.sessions)")
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundStyle(DossierPalette.dim)
-                                .frame(width: 48, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .frame(width: 44, alignment: .trailing)
                             Text(row.longest.minutesText)
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundStyle(DossierPalette.dim)
-                                .frame(width: 58, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .frame(width: 52, alignment: .trailing)
                             Text("\(Int(row.averageDecibels.rounded())) dB")
                                 .font(.system(.caption, design: .monospaced, weight: .semibold))
                                 .foregroundStyle(Theme.levelColor(db: row.averageDecibels, colorScheme: colorScheme))
-                                .frame(width: 48, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .frame(width: 46, alignment: .trailing)
                         }
                     }
                 }
@@ -758,9 +811,11 @@ struct MilestoneTimelineCard: View {
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.75) : DossierPalette.primaryText)
                             if let tier = item.tier, item.kind == .tier || item.kind == .minted {
-                                Text(LocalizedStringKey(tier.rawValue))
+                                Text(LocalizedStringKey(tier.shortName.uppercased()))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .tracking(0.8)
+                                    .lineLimit(1)
+                                    .fixedSize()
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(tier.accent.opacity(0.18), in: Capsule())
@@ -769,6 +824,8 @@ struct MilestoneTimelineCard: View {
                                 Text("NEXT")
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .tracking(0.8)
+                                    .lineLimit(1)
+                                    .fixedSize()
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(rarity.accent.opacity(0.18), in: Capsule())
@@ -778,6 +835,8 @@ struct MilestoneTimelineCard: View {
                             Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DossierFormat.dot(item.date))
                                 .font(.system(.caption2, design: .monospaced, weight: .semibold))
                                 .foregroundStyle(item.isFuture ? rarity.accent.opacity(0.8) : DossierPalette.dim)
+                                .lineLimit(1)
+                                .fixedSize()
                         }
                         Text(LocalizedStringKey(item.detail))
                             .font(.caption)

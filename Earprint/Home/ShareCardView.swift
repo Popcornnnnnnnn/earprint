@@ -87,17 +87,19 @@ struct ShareCardView: View {
                 .font(isCompact ? .caption : .subheadline)
                 .foregroundStyle(DossierPalette.dim)
 
-            HStack(spacing: 7) {
-                Text(summary.persona.emoji)
-                Text(LocalizedStringKey(summary.persona.title))
-                    .fontWeight(.semibold)
+            if summary.has28DayData {
+                HStack(spacing: 7) {
+                    Text(summary.persona.emoji)
+                    Text(LocalizedStringKey(summary.persona.title))
+                        .fontWeight(.semibold)
+                }
+                .font(isCompact ? .caption : .callout)
+                .padding(.horizontal, isCompact ? 10 : 12)
+                .padding(.vertical, isCompact ? 5 : 6)
+                .background(DossierPalette.surfaceFill, in: Capsule())
+                .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                .padding(.top, isCompact ? 8 : 14)
             }
-            .font(isCompact ? .caption : .callout)
-            .padding(.horizontal, isCompact ? 10 : 12)
-            .padding(.vertical, isCompact ? 5 : 6)
-            .background(DossierPalette.surfaceFill, in: Capsule())
-            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
-            .padding(.top, isCompact ? 8 : 14)
 
             HStack(spacing: 0) {
                 mini("\(summary.sessions)", "sessions", valueColor: fg)
@@ -122,7 +124,7 @@ struct ShareCardView: View {
 
             HStack(spacing: 10) {
                 if let primaryCard {
-                    HeadphoneArtwork(card: primaryCard, colorOption: resolvedColor, showsChargingCase: false)
+                    HeadphoneArtwork(card: primaryCard, colorOption: resolvedColor, showsChargingCase: false, showsShadow: false)
                         .frame(width: 26, height: 26)
                         .padding(3)
                         .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -137,6 +139,7 @@ struct ShareCardView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(fg.opacity(0.82))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Spacer(minLength: 8)
 
@@ -148,6 +151,7 @@ struct ShareCardView: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(fg.opacity(0.75))
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
         }
         .padding(isCompact ? 20 : 26)
@@ -201,6 +205,7 @@ struct ShareSheet: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var envColorScheme
+    @Environment(\.dismiss) private var dismiss
     @State private var aspect: ShareCardAspect = .portrait3x4
     @State private var posterScheme: ColorScheme? = nil
     @State private var renderedImage: Image?
@@ -267,6 +272,7 @@ struct ShareSheet: View {
         .background(DossierPalette.ink.ignoresSafeArea())
         .presentationDragIndicator(.visible)
         .task(id: renderKey) {
+            renderedImage = nil
             await Task.yield()
             renderedImage = renderImage()
         }
@@ -283,10 +289,11 @@ struct ShareSheet: View {
                     } label: {
                         Text(option.title)
                             .font(.caption.weight(.bold).monospacedDigit())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 34)
                             .foregroundStyle(selected ? Theme.invertedText : Theme.secondaryText)
                             .background(selected ? Theme.invertedFill : Color.clear, in: Capsule())
+                            .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -308,18 +315,34 @@ struct ShareSheet: View {
                     systemImage: activeScheme == .light ? "sun.max.fill" : "moon.fill"
                 )
                 .font(.caption.weight(.semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 38)
                 .foregroundStyle(Theme.primaryText)
                 .background(Theme.surfaceFill, in: Capsule())
                 .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.primaryText)
+                    .frame(width: 38, height: 38)
+                    .background(Theme.surfaceFill, in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Done")
         }
     }
 
     private func preview(maxScale: CGFloat) -> some View {
-        FittedDesign(designSize: aspect.size, maxScale: maxScale) {
+        let previewBorder = activeScheme == .light ? Color.black.opacity(0.09) : Color.white.opacity(0.12)
+        let previewShadow = activeScheme == .light ? Color.black.opacity(0.10) : Color.black.opacity(0.42)
+        return FittedDesign(designSize: aspect.size, maxScale: maxScale) {
             ShareCardView(
                 summary: summary,
                 primaryCard: primaryCard,
@@ -329,8 +352,8 @@ struct ShareSheet: View {
             )
             .environment(\.colorScheme, activeScheme)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
-            .shadow(color: Theme.cardShadow, radius: 18, y: 8)
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(previewBorder, lineWidth: 1))
+            .shadow(color: previewShadow, radius: 18, y: 8)
         }
     }
 

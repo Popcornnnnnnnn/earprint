@@ -70,12 +70,12 @@ enum Theme {
         dark: .white
     )
     static let secondaryText = Color.adaptive(
-        light: UIColor(red: 0.075, green: 0.080, blue: 0.110, alpha: 0.58),
-        dark: UIColor.white.withAlphaComponent(0.55)
+        light: UIColor(red: 0.075, green: 0.080, blue: 0.110, alpha: 0.64),
+        dark: UIColor.white.withAlphaComponent(0.58)
     )
     static let tertiaryText = Color.adaptive(
-        light: UIColor(red: 0.075, green: 0.080, blue: 0.110, alpha: 0.42),
-        dark: UIColor.white.withAlphaComponent(0.36)
+        light: UIColor(red: 0.075, green: 0.080, blue: 0.110, alpha: 0.52),
+        dark: UIColor.white.withAlphaComponent(0.46)
     )
     static let surfaceFill = Color.adaptive(
         light: UIColor.black.withAlphaComponent(0.05),
@@ -213,9 +213,10 @@ struct SampleDataBanner: View {
                                 .font(.caption.weight(.semibold))
                         }
                         .foregroundStyle(Theme.primaryText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                         .background(Theme.surfaceFillStrong, in: Capsule())
+                        .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .disabled(isLoading)

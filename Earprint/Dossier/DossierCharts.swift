@@ -9,6 +9,7 @@ struct DossierTrendChart: View {
     @Binding var selection: Date?
     var showsInteractionHint = true
     var showsMintedMarker = true
+    var chartHeight: CGFloat = 210
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -53,21 +54,26 @@ struct DossierTrendChart: View {
                         Text((selected?.minutes ?? average).minutesText)
                             .font(.system(.title, design: .rounded, weight: .heavy))
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                             .contentTransition(.numericText(value: selected?.minutes ?? average))
                         Text(selected == nil ? "avg / \(unitName)" : "")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
                     }
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 if let s = selected {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(s.minutes > 0 ? "\(Int(s.averageDecibels.rounded())) dB(A)" : "—")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(s.minutes > 0 ? Theme.levelColor(db: s.averageDecibels, colorScheme: colorScheme) : DossierPalette.dim)
+                            .lineLimit(1)
                         Text("\(s.sessions) wears")
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
                     }
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
                 } else if let best = stats.bestBucket {
@@ -75,9 +81,12 @@ struct DossierTrendChart: View {
                         Label("Best \(unitName)", systemImage: "crown.fill")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(rarity.accent)
+                            .lineLimit(1)
                         Text("\(best.minutes.minutesText) · \(shortLabel(best))")
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .transition(.opacity)
                 }
@@ -85,7 +94,7 @@ struct DossierTrendChart: View {
             .animation(.snappy, value: selected?.id)
 
             chart
-                .frame(height: 210)
+                .frame(height: chartHeight)
                 .padding(.top, 4)
 
             if showsInteractionHint {
@@ -149,7 +158,12 @@ struct DossierTrendChart: View {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(DossierPalette.hairline)
                 AxisValueLabel {
-                    if let h = value.as(Double.self) { Text("\(Int(h))h").foregroundStyle(DossierPalette.faint) }
+                    if let h = value.as(Double.self) {
+                        let axisText = (h > 0 && h < 1)
+                            ? "\(Int((h * 60).rounded()))m"
+                            : "\(Int(h.rounded()))h"
+                        Text(axisText).foregroundStyle(DossierPalette.faint)
+                    }
                 }
             }
         }
@@ -223,16 +237,20 @@ struct DayClock: View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            let compact = size < 190
+            let outer = size / 2 - (compact ? 22 : 33)
+            let innerRadius = max(20, outer * 0.49)
+            let labelDiameter = max(44, innerRadius * 1.72)
             ZStack {
-                dial(size: size)
-                centerLabel
-                    .frame(width: size * 0.5)
+                dial(size: size, outerRadius: outer, innerRadius: innerRadius)
+                centerLabel(diameter: labelDiameter, compact: compact)
+                    .frame(width: labelDiameter)
                 ForEach([(0, "moon.stars.fill"), (6, "sunrise.fill"), (12, "sun.max.fill"), (18, "sunset.fill")], id: \.0) { hour, icon in
                     let angle = (Double(hour) * 15 - 90) * .pi / 180
-                    let r = size / 2 - 11
-                    VStack(spacing: 1) {
-                        Image(systemName: icon).font(.system(size: 10, weight: .semibold))
-                        Text(String(format: "%02d", hour)).font(.system(size: 9, weight: .bold, design: .monospaced))
+                    let r = size / 2 - (compact ? 8 : 11)
+                    VStack(spacing: compact ? 0.5 : 1) {
+                        Image(systemName: icon).font(.system(size: compact ? 8 : 10, weight: .semibold))
+                        Text(String(format: "%02d", hour)).font(.system(size: compact ? 7.5 : 9, weight: .bold, design: .monospaced))
                     }
                     .foregroundStyle(hour == 0 ? nightAccent : (hour == 12 ? Theme.moderateColor : DossierPalette.dim))
                     .position(x: center.x + r * cos(angle), y: center.y + r * sin(angle))
@@ -276,42 +294,55 @@ struct DayClock: View {
         selectedHour = (toggle && selectedHour == hour) ? nil : hour
     }
 
-    @ViewBuilder private var centerLabel: some View {
+    @ViewBuilder private func centerLabel(diameter: CGFloat, compact: Bool) -> some View {
         let h = selectedHour ?? stats.peakHour?.hour
         if let h {
             let stat = stats.hours[h]
             let perDay = stat.minutes / Double(max(stats.spanDays, 1))
-            VStack(spacing: 2) {
-                Eyebrow(selectedHour == nil ? "Peak hour" : "Selected", color: rarity.accent)
+            let titleSize = compact ? max(12, diameter * 0.25) : min(28, max(18, diameter * 0.23))
+            let detailSize = compact ? max(7.5, diameter * 0.145) : 12
+            VStack(spacing: compact ? 1 : 2) {
+                if !compact {
+                    Eyebrow(selectedHour == nil ? "Peak hour" : "Selected", color: rarity.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
                 Text(String(format: "%02d:00", h))
-                    .font(.system(.title, design: .rounded, weight: .heavy))
+                    .font(.system(size: titleSize, weight: .heavy, design: .rounded))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
                     .contentTransition(.numericText(value: Double(h)))
                 Text("\(perDay.minutesText) a day")
-                    .font(.system(.footnote, design: .rounded, weight: .semibold))
+                    .font(.system(size: detailSize, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .contentTransition(.numericText(value: perDay))
-                if stat.minutes > 0 {
+                if stat.minutes > 0 && !compact {
                     Text("\(Int(stat.averageDecibels.rounded())) dB(A)")
                         .font(.system(.caption, design: .rounded, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(Theme.levelColor(db: stat.averageDecibels, colorScheme: colorScheme))
                 }
             }
             .multilineTextAlignment(.center)
             .animation(.snappy, value: h)
         } else {
-            Text("No listening yet").font(.footnote).foregroundStyle(DossierPalette.dim)
+            Text("No listening yet")
+                .font(.system(size: compact ? 9 : 12))
+                .foregroundStyle(DossierPalette.dim)
+                .multilineTextAlignment(.center)
         }
     }
 
-    private func dial(size: CGFloat) -> some View {
+    private func dial(size: CGFloat, outerRadius outer: CGFloat, innerRadius inner: CGFloat) -> some View {
         let isLight = colorScheme == .light
         let trackFill = isLight ? Color.black.opacity(0.05) : Color.white.opacity(0.035)
         let selectionStroke = isLight ? Color.black.opacity(0.75) : Color.white.opacity(0.9)
         let innerDiscFill = isLight ? Color.black.opacity(0.04) : Color.white.opacity(0.03)
         return Canvas { context, canvasSize in
             let c = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-            let outer = size / 2 - 33
-            let inner = outer * 0.49
             let maxMinutes = max(stats.hours.map(\.minutes).max() ?? 1, 1)
 
             func sector(_ hour: Int, from r0: CGFloat, to r1: CGFloat, gap: Double = 2.2) -> Path {

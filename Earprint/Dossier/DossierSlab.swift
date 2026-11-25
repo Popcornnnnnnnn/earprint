@@ -23,7 +23,6 @@ struct GradingSlab: View {
     var engravedSubtitle: String? = nil
     var customSerialTag: String? = nil
     var usesSavedCustomization = true
-    var usesOriginalArtwork = false
     var colorOption: DeviceColorOption? = nil
 
     @Environment(\.colorScheme) private var colorScheme
@@ -58,7 +57,7 @@ struct GradingSlab: View {
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
         .frame(width: SlabMetrics.width, height: SlabMetrics.height)
-        .background { acrylic(rarity: rarity) }
+        .background { acrylic(rarity: rarity, proFoil: customization.proFoil) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(card.model), graded \(grade.scoreText), \(grade.label). \(dossier.hardware.manufacturer), product ID \(dossier.hardware.productID).")
         .accessibilityValue(Text([customization.engravedTitle, customization.customSerial]
@@ -66,7 +65,9 @@ struct GradingSlab: View {
     }
 
     private func label(grade: EarGrade, rarity: Rarity, customization: CardCustomization) -> some View {
-        let accent = customization.proFoil?.accent ?? rarity.accent
+        let accent = DossierContrast.accentColor(rarity: rarity, proFoil: customization.proFoil, colorScheme: colorScheme)
+        let scoreStyle = DossierContrast.gradeScoreGradient(rarity: rarity, proFoil: customization.proFoil, colorScheme: colorScheme)
+        let borderColors = DossierContrast.borderColors(rarity: rarity, proFoil: customization.proFoil, colorScheme: colorScheme)
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("EARPRINT · AUTHENTICATED")
@@ -107,14 +108,17 @@ struct GradingSlab: View {
                         .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(DossierPalette.dim)
+                        .lineLimit(1)
                     Text(grade.scoreText)
                         .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundStyle(rarity.foil)
-                        .shadow(color: rarity.glow.opacity(colorScheme == .light ? 0.28 : 0.5), radius: 6)
+                        .foregroundStyle(scoreStyle)
+                        .shadow(color: (customization.proFoil?.glow ?? rarity.glow).opacity(colorScheme == .light ? 0.16 : 0.42), radius: 5)
                     Text(LocalizedStringKey(grade.label))
                         .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                         .tracking(1)
                         .foregroundStyle(accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
                 }
                 .frame(width: 74)
             }
@@ -131,14 +135,14 @@ struct GradingSlab: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(LinearGradient(colors: customization.proFoil?.baseColors ?? rarity.baseColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
+                .strokeBorder(LinearGradient(colors: borderColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
         }
     }
 
     private func cardWell(foil: ProFoilStyle?) -> some View {
         ZStack {
             CardFront(card: card, tilt: tilt, colorOption: colorOption ?? colorStore?.selectedColor(for: card),
-                      showsFirstMet: showsFirstWear, proFoil: foil, usesOriginalArtwork: usesOriginalArtwork)
+                      showsFirstMet: showsFirstWear, proFoil: foil)
                 .environment(\.proAccess, .free)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
             CardBack(card: card)
@@ -172,12 +176,13 @@ struct GradingSlab: View {
     }
 
     /// Clear plastic case: faint fill, double rim, moving reflection.
-    private func acrylic(rarity: Rarity) -> some View {
+    private func acrylic(rarity: Rarity, proFoil: ProFoilStyle?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         let isLight = colorScheme == .light
+        let glowColor = proFoil?.glow ?? rarity.glow
         return ZStack {
             shape.fill(isLight ? Color.white.opacity(0.82) : Color.black.opacity(0.65))
-                .shadow(color: isLight ? Theme.cardShadow : rarity.glow.opacity(0.35), radius: isLight ? 18 : 26, y: isLight ? 8 : 14)
+                .shadow(color: isLight ? Theme.cardShadow : glowColor.opacity(0.35), radius: isLight ? 18 : 26, y: isLight ? 8 : 14)
             shape.fill(LinearGradient(
                 colors: [Color.white.opacity(isLight ? 0.55 : 0.13), Color.white.opacity(0.04), Color.white.opacity(isLight ? 0.35 : 0.09)],
                 startPoint: .topLeading,
@@ -232,6 +237,8 @@ struct CertificateLabel: View {
         let grade = dossier.grade
         let rarity = card.rarity
         let isLight = colorScheme == .light
+        let scoreStyle = DossierContrast.gradeScoreGradient(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
+        let borderColors = DossierContrast.borderColors(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
         let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata || showsFirstWear
         let cardPadding: CGFloat = compact ? 11 : 18
         let perfPadding: CGFloat = compact ? 5 : 14
@@ -242,11 +249,15 @@ struct CertificateLabel: View {
                     .font(.system(size: compact ? 8 : 9, weight: .heavy, design: .rounded))
                     .tracking(compact ? 1.4 : 1.8)
                     .foregroundStyle(rarity.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Spacer()
                 if showsHardwareDetails {
                     Text(String(format: "CERT %04d-%@", card.serial, String(hw.productID.dropFirst(2))))
                         .font(.system(size: compact ? 8 : 9, weight: .semibold, design: .monospaced))
                         .foregroundStyle(DossierPalette.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
             }
             .padding(.bottom, compact ? 6 : 12)
@@ -261,6 +272,8 @@ struct CertificateLabel: View {
                         Text("\(hw.manufacturer) · \(hw.productID)")
                             .font(.system(compact ? .caption2 : .footnote, design: .monospaced, weight: .semibold))
                             .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
                 Spacer(minLength: 0)
@@ -269,18 +282,21 @@ struct CertificateLabel: View {
                         Text("EAR GRADE")
                             .font(.system(size: compact ? 7 : 8, weight: .heavy, design: .rounded)).tracking(1.1)
                             .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
                         Text(grade.scoreText)
                             .font(.system(size: compact ? 24 : 44, weight: .black, design: .rounded))
-                            .foregroundStyle(rarity.foil)
-                            .shadow(color: rarity.glow.opacity(isLight ? 0.25 : 0.45), radius: compact ? 4 : 8)
+                            .foregroundStyle(scoreStyle)
+                            .shadow(color: rarity.glow.opacity(isLight ? 0.14 : 0.36), radius: compact ? 3 : 6)
                         Text(LocalizedStringKey(grade.label))
                             .font(.system(size: compact ? 7.5 : 9, weight: .heavy, design: .rounded)).tracking(0.8)
                             .foregroundStyle(rarity.accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
                     }
                     .padding(.vertical, compact ? 4 : 8)
                     .frame(width: compact ? 80 : 104)
                     .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous).strokeBorder(rarity.foil, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous).strokeBorder(LinearGradient(colors: borderColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
                 }
             }
 
@@ -376,10 +392,10 @@ struct CertificateLabel: View {
                         .equatable()
                         .clipShape(RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous))
                 }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous)
-                .strokeBorder(LinearGradient(colors: rarity.baseColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
+                .overlay {
+                    RoundedRectangle(cornerRadius: compact ? 18 : 22, style: .continuous)
+                        .strokeBorder(LinearGradient(colors: borderColors, startPoint: UnitPoint(x: tilt.width * 0.5, y: 0), endPoint: UnitPoint(x: 1 + tilt.width * 0.5, y: 1)), lineWidth: 1.5)
+                }
         }
     }
 
@@ -459,16 +475,25 @@ struct GradeBreakdown: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text(LocalizedStringKey(factor.name)).font(.footnote.weight(.semibold))
+                            Text(LocalizedStringKey(factor.name))
+                                .font(.footnote.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             Spacer()
-                            Text(factor.value).font(.system(.footnote, design: .monospaced)).foregroundStyle(DossierPalette.dim)
+                            Text(factor.value)
+                                .font(.system(.footnote, design: .monospaced))
+                                .foregroundStyle(DossierPalette.dim)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(DossierPalette.surfaceFill)
-                                Capsule()
-                                    .fill(LinearGradient(colors: [Theme.quietColor, Theme.moderateColor, Theme.loudColor], startPoint: .leading, endPoint: .trailing))
-                                    .frame(width: max(6, geo.size.width * factor.severity))
+                                if factor.severity > 0 {
+                                    Capsule()
+                                        .fill(LinearGradient(colors: [Theme.quietColor, Theme.moderateColor, Theme.loudColor], startPoint: .leading, endPoint: .trailing))
+                                        .frame(width: max(6, geo.size.width * factor.severity))
+                                }
                             }
                         }
                         .frame(height: 4)
@@ -485,5 +510,67 @@ struct GradeBreakdown: View {
                 .foregroundStyle(DossierPalette.faint)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+/// Contrast-safe gradient & border helpers for slabs, dials, and certificates across Light and Dark themes.
+enum DossierContrast {
+    static func accentColor(rarity: Rarity, proFoil: ProFoilStyle?, colorScheme: ColorScheme) -> Color {
+        guard let proFoil else { return rarity.accent }
+        switch proFoil {
+        case .goldBullion:
+            return colorScheme == .light ? Color(red: 0.58, green: 0.36, blue: 0.05) : proFoil.accent
+        case .obsidianPrism:
+            return colorScheme == .light ? Color(red: 0.34, green: 0.27, blue: 0.66) : Color(red: 0.66, green: 0.60, blue: 0.96)
+        case .sakuraPearl:
+            return colorScheme == .light ? Color(red: 0.62, green: 0.21, blue: 0.44) : proFoil.accent
+        case .rawTitanium:
+            return colorScheme == .light ? Color(red: 0.28, green: 0.36, blue: 0.43) : Color(red: 0.62, green: 0.72, blue: 0.79)
+        }
+    }
+
+    static func gradeScoreGradient(rarity: Rarity, proFoil: ProFoilStyle?, colorScheme: ColorScheme) -> LinearGradient {
+        let accent = accentColor(rarity: rarity, proFoil: proFoil, colorScheme: colorScheme)
+        let darkInk = Color(red: 0.08, green: 0.09, blue: 0.14)
+        let colors: [Color]
+        if colorScheme == .light {
+            // Ensure strong contrast against the near-white grading label across all tiers & light foils.
+            if let proFoil {
+                colors = [accent, proFoil == .obsidianPrism ? darkInk : accent.opacity(0.85), darkInk]
+            } else if rarity == .silver || rarity == .holo {
+                colors = [accent, darkInk]
+            } else {
+                colors = [accent, rarity.baseColors.last ?? darkInk]
+            }
+        } else {
+            // Ensure dark-label scores always stay bright & crisp against #0D0D14 in Dark mode.
+            if let proFoil {
+                switch proFoil {
+                case .obsidianPrism, .rawTitanium:
+                    colors = [.white, accent]
+                case .goldBullion, .sakuraPearl:
+                    colors = Array(proFoil.baseColors.prefix(3))
+                }
+            } else {
+                switch rarity {
+                case .bronze, .sapphire, .platinum, .obsidian:
+                    colors = [Color(white: 0.96), accent]
+                case .silver, .holo:
+                    colors = Array(rarity.baseColors.prefix(4))
+                }
+            }
+        }
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    static func borderColors(rarity: Rarity, proFoil: ProFoilStyle?, colorScheme: ColorScheme) -> [Color] {
+        if colorScheme == .light && (proFoil == .sakuraPearl || (proFoil == nil && rarity == .silver)) {
+            return [Color.black.opacity(0.20), rarity.accent.opacity(0.40), Color.black.opacity(0.16)]
+        }
+        if colorScheme == .dark && (proFoil == .obsidianPrism || (proFoil == nil && rarity == .obsidian)) {
+            let accent = accentColor(rarity: rarity, proFoil: proFoil, colorScheme: colorScheme)
+            return [.white.opacity(0.32), accent.opacity(0.55), .white.opacity(0.16)]
+        }
+        return proFoil?.baseColors ?? rarity.baseColors
     }
 }

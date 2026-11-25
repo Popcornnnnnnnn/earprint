@@ -21,6 +21,7 @@ struct HomeView: View {
     @ScaledMetric(relativeTo: .headline) private var pillTitleSize: CGFloat = 15.5
 
     @State private var selectedCardID: String? = nil
+    @State private var showPairPicker = false
     @State private var showShare = ProcessInfo.processInfo.arguments.contains("-showShare")
     @State private var space = LayoutSpace()
     @State private var showWrapped = false
@@ -64,6 +65,20 @@ struct HomeView: View {
     }
 
     private var wrappedSummary: WrappedSummary {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-wrappedThin") {
+            return WrappedSummary(
+                year: 2026, totalMinutes: 145, totalSessions: 6, activeDays: 2,
+                topDeviceName: SampleCards.all[0].nickname,
+                topDeviceModel: SampleCards.all[0].model,
+                topDeviceKey: SampleCards.all[0].modelKey,
+                topDeviceSymbol: SampleCards.all[0].symbol,
+                topDeviceMinutes: 145, topCard: SampleCards.all[0],
+                peakMonth: 11, peakMonthMinutes: 145, longestStreakDays: 2,
+                averageDecibels: 61, persona: .allDay, whoSafeWeeksCount: 1
+            )
+        }
+        #endif
         if isSampleData { return .sample() }
         return isEmptyState ? Self.emptyWrapped : wrappedContent?.summary ?? Self.emptyWrapped
     }
@@ -94,7 +109,7 @@ struct HomeView: View {
         }
         let isWorn = currentCard.map { routeMonitor?.isCurrentlyWorn($0) ?? false } ?? false
         let showingAllPairs = currentCard == nil && cards.count > 1
-        let tiltActive = isActiveTab && !showShare && !showWrapped
+        let tiltActive = isActiveTab && !showShare && !showWrapped && !showPairPicker
         let wrappedInput = wrappedInput
 
         ZStack {
@@ -117,7 +132,9 @@ struct HomeView: View {
                                     .accessibilityAddTraits(.isHeader)
                                 Spacer()
                             }
-                            wrappedEntry
+                            if !isEmptyState {
+                                wrappedEntry
+                            }
                             emptyRingsState(summary: currentSummary)
                         }
                         .padding(.horizontal, space.isWide ? 24 : 18)
@@ -164,6 +181,33 @@ struct HomeView: View {
         .sheet(isPresented: $showShare) {
             ShareSheet(summary: currentSummary, primaryCard: currentCard, colorOption: currentColor)
         }
+        .sheet(isPresented: $showPairPicker) {
+            let allMinutes = cards.reduce(0.0) { $0 + $1.lifetimeMinutes }
+            let allRarity = Rarity(minutes: allMinutes)
+            RingsPairPickerSheet(
+                cards: cards,
+                selectedCard: currentCard,
+                allMinutes: allMinutes,
+                allRarity: allRarity,
+                isSampleData: isSampleData,
+                colorStore: colorStore,
+                routeMonitor: routeMonitor,
+                onSelectCardID: { id in
+                    selectedCardID = id
+                    showPairPicker = false
+                },
+                onOpen3DCard: currentCard.map { card in
+                    {
+                        showPairPicker = false
+                        router?.pendingCardID = card.id
+                        router?.tab = .collection
+                    }
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
+        }
         .sheet(isPresented: $showWrapped) {
             WrappedStoryView(summary: wrappedSummary,
                              aggregate: (isSampleData || isEmptyState) ? nil : wrappedContent?.aggregate,
@@ -175,6 +219,14 @@ struct HomeView: View {
                 router?.pendingWrapped = false
                 showWrapped = true
             }
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-pairPicker"), cards.count > 1, !showPairPicker {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    showPairPicker = true
+                }
+            }
+            #endif
         }
         .onChange(of: router?.pendingWrapped) { _, shouldOpen in
             if shouldOpen == true {
@@ -212,43 +264,84 @@ struct HomeView: View {
 
     private var wrappedEntry: some View {
         let summary = wrappedSummary
+        let isLight = colorScheme == .light
         let mint = Color(red: 0.68, green: 0.97, blue: 0.87)
+        let lightTeal = Color(red: 0.04, green: 0.56, blue: 0.50)
+        let cardForArt = summary.topCard ?? selectedCard ?? primaryCard ?? cards.first
+        let color = cardForArt.flatMap { c in
+            colorStore?.selectedColor(for: c) ?? DeviceColorOption.defaultOption(for: c.modelKey)
+        }
+        let yearText = summary.year.formatted(.number.grouping(.never))
+
         return Button {
             showWrapped = true
         } label: {
             HStack(spacing: 14) {
-                WrappedHeadphoneMark(overEar: summary.topDeviceKey.kind == .overEar)
-                    .fill(mint)
-                    .frame(width: 43, height: 43)
-                    .padding(6)
-                    .background(mint.opacity(0.13), in: .rect(cornerRadius: 13))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("2026 Earprint Wrapped")
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
-                    if summary.totalMinutes < 300 {
-                        Text("2026 First Card")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(mint)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(isLight ? lightTeal.opacity(0.10) : mint.opacity(0.13))
+                    if let cardForArt {
+                        WrappedHeroArtwork(
+                            card: cardForArt,
+                            colorOption: color,
+                            fallbackSymbol: summary.topDeviceSymbol
+                        )
+                        .frame(width: 40, height: 40)
                     } else {
-                        Text("\(summary.totalMinutes.minutesText) listened in 2026")
+                        Image(systemName: summary.topDeviceSymbol)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(isLight ? lightTeal : mint)
+                    }
+                }
+                .frame(width: 52, height: 52)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(yearText) Earprint Wrapped")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(isLight ? Theme.primaryText : .white)
+                    if summary.isThinData {
+                        Text("\(yearText) First Card")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(mint)
+                            .foregroundStyle(isLight ? lightTeal : mint)
+                    } else {
+                        Text("\(summary.totalMinutes.minutesText) listened in \(yearText)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isLight ? lightTeal : mint)
                     }
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(mint)
+                    .foregroundStyle(isLight ? lightTeal : mint)
                     .accessibilityHidden(true)
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                FoilSurface(rarity: .obsidian, tilt: CGSize(width: -0.4, height: 0.15), proFoil: .obsidianPrism)
-                    .clipShape(.rect(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(mint.opacity(0.32), lineWidth: 1))
+                if isLight {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Theme.card)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [mint.opacity(0.16), lightTeal.opacity(0.05), .clear],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(lightTeal.opacity(0.24), lineWidth: 1)
+                        )
+                        .shadow(color: Theme.cardShadow, radius: 10, y: 4)
+                } else {
+                    FoilSurface(rarity: .obsidian, tilt: CGSize(width: -0.4, height: 0.15), proFoil: .obsidianPrism)
+                        .clipShape(.rect(cornerRadius: 20))
+                        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(mint.opacity(0.32), lineWidth: 1))
+                }
             }
         }
         .buttonStyle(.plain)
@@ -352,46 +445,9 @@ struct HomeView: View {
             }
 
             if cards.count > 1 {
-                Menu {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        selectedCardID = nil
-                    } label: {
-                        HStack {
-                            Text("All Headphones")
-                            if card == nil {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    ForEach(cards) { item in
-                        let label = isSampleData ? item.model : item.nickname
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            selectedCardID = item.id
-                        } label: {
-                            HStack {
-                                Text("\(label) · \(item.lifetimeMinutes.minutesText)")
-                                if card?.id == item.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-
-                    if let card {
-                        Divider()
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            router?.pendingCardID = card.id
-                            router?.tab = .collection
-                        } label: {
-                            Label("Open 3D Card", systemImage: "rectangle.stack")
-                        }
-                    }
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showPairPicker = true
                 } label: {
                     activePairPill(
                         card: card,
@@ -571,7 +627,12 @@ struct HomeView: View {
                                 )
                         )
                 }
-                .overlay(Capsule().strokeBorder(.white.opacity(0.30), lineWidth: 0.75))
+                .overlay(
+                    Capsule().strokeBorder(
+                        rarity.ink == .white ? .white.opacity(0.30) : .black.opacity(0.16),
+                        lineWidth: 0.75
+                    )
+                )
 
                 if let trailingSymbol {
                     Image(systemName: trailingSymbol)
@@ -609,13 +670,15 @@ struct HomeView: View {
                 .clipShape(shape)
             }
             .overlay(alignment: .top) {
-                LinearGradient(
-                    colors: [.clear, isLight ? Theme.cardStroke : .white.opacity(0.22), rarity.accent.opacity(0.24), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 1)
-                .padding(.horizontal, 20)
+                if !isLight {
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.22), rarity.accent.opacity(0.24), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, 20)
+                }
             }
         }
         .overlay {
@@ -639,12 +702,13 @@ struct HomeView: View {
     }
 
     private func emptyRingsState(summary: ListeningSummary) -> some View {
-        VStack(spacing: 16) {
+        let isLight = colorScheme == .light
+        return VStack(spacing: 16) {
             ZStack {
                 EarprintGlyph(grid: summary.grid, showHourLabels: false)
                     .equatable()
                     .frame(width: 170, height: 170)
-                    .opacity(0.45)
+                    .opacity(isLight ? 0.74 : 0.48)
                 if isLoading {
                     ProgressView()
                         .tint(Theme.primaryText)
@@ -667,15 +731,27 @@ struct HomeView: View {
                 .padding(.horizontal, 8)
 
             if let onConnectHealth, !isLoading {
-                Button(action: onConnectHealth) {
-                    Label("Sync Apple Health", systemImage: "heart.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.invertedText)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 11)
-                        .background(Theme.invertedFill, in: Capsule())
+                VStack(spacing: 10) {
+                    Button(action: onConnectHealth) {
+                        Label("Sync Apple Health", systemImage: "heart.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.invertedText)
+                            .padding(.horizontal, 22)
+                            .frame(minHeight: 44)
+                            .background(Theme.invertedFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    if statusMessage != nil, let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        Link(destination: settingsURL) {
+                            Label("Open Settings", systemImage: "gearshape")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.secondaryText)
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 36)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
                 .padding(.top, 2)
             }
         }
@@ -781,6 +857,8 @@ private struct RingsHeroCard: View {
                         .frame(width: 6, height: 6)
                         .shadow(color: rarity.glow.opacity(isLight ? 0.35 : 0.85), radius: 4)
                     Eyebrow("28-DAY EARPRINT", color: Theme.primaryText.opacity(0.70))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 8)
                 if has28DayData {
@@ -791,6 +869,7 @@ private struct RingsHeroCard: View {
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(Theme.primaryText.opacity(0.92))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .padding(.horizontal, 11)
                     .padding(.vertical, 5.5)
@@ -811,7 +890,7 @@ private struct RingsHeroCard: View {
             // Proportional chronometer dial: center complication scales with the glyph so it never overlaps rings.
             GeometryReader { geo in
                 let side = min(geo.size.width, geo.size.height)
-                let wellSize = min(84, max(56, side * 0.345))
+                let wellSize = min(84, max(52, side * 0.335))
 
                 ZStack {
                     // Soft collector aura behind the chronometer dial
@@ -869,12 +948,16 @@ private struct RingsHeroCard: View {
                                 .minimumScaleFactor(0.6)
                                 .lineLimit(1)
                                 .foregroundStyle(
-                                    LinearGradient(colors: [Theme.primaryText, rarity.accent.opacity(0.94)], startPoint: .top, endPoint: .bottom)
+                                    isLight
+                                        ? AnyShapeStyle(Theme.primaryText)
+                                        : AnyShapeStyle(LinearGradient(colors: [Theme.primaryText, rarity.accent.opacity(0.94)], startPoint: .top, endPoint: .bottom))
                                 )
                             if weekMinutes > 0 {
                                 Text("\(Int(weekDB.rounded())) dB")
                                     .font(.system(size: max(8.5, wellSize * 0.112), weight: .bold, design: .rounded))
                                     .monospacedDigit()
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                                     .foregroundStyle(dbColor)
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 2)
@@ -959,7 +1042,9 @@ private struct RingsHeroCard: View {
                 .shadow(color: color.opacity(0.45), radius: 3)
             Text(label)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(Theme.primaryText.opacity(0.76))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(Theme.primaryText.opacity(0.82))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
@@ -1132,7 +1217,9 @@ private struct WeeklyRhythmCard: View {
                 Spacer(minLength: 8)
                 Text(summary.periodLabel)
                     .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(Theme.primaryText.opacity(0.66))
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
                     .background(Theme.surfaceFill, in: Capsule())
@@ -1167,7 +1254,7 @@ private struct WeeklyRhythmCard: View {
                         Text("AVG")
                             .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                             .tracking(0.6)
-                            .foregroundStyle(Theme.tertiaryText)
+                            .foregroundStyle(Theme.secondaryText)
                         Text(averageMinutes.minutesText)
                             .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
                             .foregroundStyle(Theme.secondaryText)
@@ -1175,16 +1262,17 @@ private struct WeeklyRhythmCard: View {
                     .accessibilityHidden(true)
                 }
 
-                ZStack(alignment: .bottom) {
+                ZStack(alignment: .top) {
                     if averageMinutes > 0 {
                         GeometryReader { geo in
-                            let lineY = geo.size.height * (1 - avgRatio)
+                            let lineY = 62 * (1 - avgRatio)
                             Path { path in
                                 path.move(to: CGPoint(x: 0, y: lineY))
                                 path.addLine(to: CGPoint(x: geo.size.width, y: lineY))
                             }
-                            .stroke(Theme.primaryText.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                            .stroke(Theme.primaryText.opacity(0.24), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
                         }
+                        .frame(height: 62)
                         .allowsHitTesting(false)
                     }
 
@@ -1202,53 +1290,69 @@ private struct WeeklyRhythmCard: View {
                                     selectedOffset = (selectedOffset == point.id) ? nil : point.id
                                 }
                             } label: {
-                                ZStack(alignment: .bottom) {
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .fill(
-                                            isSelected
-                                                ? rarity.accent.opacity(0.14)
-                                                : (point.isToday ? Theme.surfaceFillStrong : Theme.surfaceFill)
-                                        )
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                                .strokeBorder(
-                                                    isSelected
-                                                        ? rarity.accent.opacity(0.45)
-                                                        : Theme.hairline,
-                                                    lineWidth: isSelected ? 1 : 0.75
-                                                )
-                                        }
-
-                                    if point.minutes > 0 {
+                                VStack(spacing: 7) {
+                                    ZStack(alignment: .bottom) {
                                         RoundedRectangle(cornerRadius: 7, style: .continuous)
                                             .fill(
-                                                LinearGradient(
-                                                    colors: isHighlighted
-                                                        ? [barColor, barColor.opacity(0.75)]
-                                                        : [barColor.opacity(0.78), barColor.opacity(0.42)],
-                                                    startPoint: .top,
-                                                    endPoint: .bottom
-                                                )
+                                                isSelected
+                                                    ? rarity.accent.opacity(0.14)
+                                                    : (point.isToday ? Theme.surfaceFillStrong : Theme.surfaceFill)
                                             )
-                                            .frame(height: barHeight)
-                                            .overlay(alignment: .top) {
-                                                Capsule()
-                                                    .fill(.white.opacity(isHighlighted ? 0.78 : 0.30))
-                                                    .frame(height: 2)
-                                                    .padding(.horizontal, 5)
-                                                    .padding(.top, 2)
-                                            }
                                             .overlay {
-                                                if isHighlighted {
-                                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                                        .strokeBorder(colorScheme == .light ? Color.black.opacity(0.18) : .white.opacity(0.58), lineWidth: 1)
-                                                }
+                                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                    .strokeBorder(
+                                                        isSelected
+                                                            ? rarity.accent.opacity(0.45)
+                                                            : Theme.hairline,
+                                                        lineWidth: isSelected ? 1 : 0.75
+                                                    )
                                             }
-                                            .shadow(color: isHighlighted ? barColor.opacity(colorScheme == .light ? 0.25 : 0.45) : .clear, radius: 6, y: 2)
+
+                                        if point.minutes > 0 {
+                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: isHighlighted
+                                                            ? [barColor, barColor.opacity(0.75)]
+                                                            : [barColor.opacity(0.78), barColor.opacity(0.42)],
+                                                        startPoint: .top,
+                                                        endPoint: .bottom
+                                                    )
+                                                )
+                                                .frame(height: barHeight)
+                                                .overlay(alignment: .top) {
+                                                    Capsule()
+                                                        .fill(.white.opacity(isHighlighted ? 0.78 : 0.30))
+                                                        .frame(height: 2)
+                                                        .padding(.horizontal, 5)
+                                                        .padding(.top, 2)
+                                                }
+                                                .overlay {
+                                                    if isHighlighted {
+                                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                            .strokeBorder(colorScheme == .light ? Color.black.opacity(0.18) : .white.opacity(0.58), lineWidth: 1)
+                                                    }
+                                                }
+                                                .shadow(color: isHighlighted ? barColor.opacity(colorScheme == .light ? 0.25 : 0.45) : .clear, radius: 6, y: 2)
+                                        }
                                     }
+                                    .frame(height: 62)
+                                    .opacity(isDimmed ? 0.42 : 1.0)
+
+                                    VStack(spacing: 3) {
+                                        Text(verbatim: point.shortWeekday)
+                                            .font(.system(size: 10, weight: (point.isToday || isSelected) ? .bold : .medium, design: .rounded))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.75)
+                                            .foregroundStyle(
+                                                isSelected ? rarity.accent : (point.isToday ? Theme.primaryText : Theme.secondaryText)
+                                            )
+                                        Circle()
+                                            .fill(isSelected ? rarity.accent : (point.isToday ? rarity.accent.opacity(0.85) : .clear))
+                                            .frame(width: 3.5, height: 3.5)
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .frame(height: 62)
-                                .opacity(isDimmed ? 0.42 : 1.0)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -1256,26 +1360,6 @@ private struct WeeklyRhythmCard: View {
                             .accessibilityLabel(point.isToday ? Text("Today") : Text(verbatim: point.fullWeekday))
                             .accessibilityValue(Text(point.minutes.minutesText))
                         }
-                    }
-                }
-                .frame(height: 62)
-
-                HStack(spacing: 7) {
-                    ForEach(points) { point in
-                        let isSelected = selected?.id == point.id
-                        VStack(spacing: 3) {
-                            Text(verbatim: point.shortWeekday)
-                                .font(.system(size: 10, weight: (point.isToday || isSelected) ? .bold : .medium, design: .rounded))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .foregroundStyle(
-                                    isSelected ? rarity.accent : (point.isToday ? Theme.primaryText.opacity(0.92) : DossierPalette.faint)
-                                )
-                            Circle()
-                                .fill(isSelected ? rarity.accent : (point.isToday ? rarity.accent.opacity(0.85) : .clear))
-                                .frame(width: 3.5, height: 3.5)
-                        }
-                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -1386,6 +1470,8 @@ private struct HearingBudgetCard: View {
                 Spacer()
                 Text("\(displayPercent)% used")
                     .font(.caption.weight(.heavy).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .foregroundStyle(tint)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4.5)
@@ -1453,7 +1539,7 @@ private struct HearingBudgetCard: View {
                     Text(verbatim: "100%")
                 }
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Theme.tertiaryText)
+                .foregroundStyle(Theme.secondaryText)
             }
             .accessibilityHidden(true)
 
@@ -1497,7 +1583,9 @@ private struct AllTimeArchiveCard: View {
                 if summary.firstUse != "—" {
                     Text("Since \(summary.firstUse)")
                         .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                        .foregroundStyle(Theme.primaryText.opacity(0.64))
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4)
                         .background(Theme.surfaceFill, in: Capsule())
@@ -1563,7 +1651,7 @@ private struct AllTimeArchiveCard: View {
 
                 GeometryReader { geo in
                     let w = max(0, geo.size.width)
-                    let barW = w > 0 ? min(w, max(8, w * progress)) : 0
+                    let barW = (w > 0 && progress > 0) ? min(w, max(8, w * progress)) : 0
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Theme.surfaceFillStrong)
@@ -1668,4 +1756,252 @@ private struct AllTimeArchiveCard: View {
 
 #Preview {
     HomeView(summary: SampleData.summary, primaryCard: SampleCards.all.first, cards: SampleCards.all, isSampleData: true)
+}
+
+private struct RingsPairPickerSheet: View {
+    let cards: [HeadphoneCard]
+    let selectedCard: HeadphoneCard?
+    let allMinutes: Double
+    let allRarity: Rarity
+    let isSampleData: Bool
+    var colorStore: DeviceColorStore?
+    var routeMonitor: ActiveAudioRouteMonitor?
+    let onSelectCardID: (String?) -> Void
+    var onOpen3DCard: (() -> Void)? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .headline) private var rowTitleSize: CGFloat = 15.5
+
+    var body: some View {
+        let isLight = colorScheme == .light
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Headphones")
+                        .font(.system(.title3, design: .rounded, weight: .bold))
+                    Text("\(cards.count) pairs")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(Theme.primaryText)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.surfaceFill, in: Circle())
+                        .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Done")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    pickerRow(
+                        title: LocalizedStringKey("All Headphones"),
+                        subtitle: LocalizedStringKey("\(cards.count) pairs · \(allMinutes.minutesText)"),
+                        rarity: allRarity,
+                        card: nil,
+                        color: nil,
+                        isWorn: false,
+                        isSelected: selectedCard == nil,
+                        isLight: isLight
+                    ) {
+                        onSelectCardID(nil)
+                    }
+
+                    ForEach(cards) { item in
+                        let title = isSampleData ? item.model : item.nickname
+                        let subtitleKey: LocalizedStringKey = (!isSampleData && item.model != title)
+                            ? "\(item.model) · \(item.lifetimeMinutes.minutesText)"
+                            : "\(item.sessions) sessions · \(item.lifetimeMinutes.minutesText)"
+                        let color = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
+                        let worn = routeMonitor?.isCurrentlyWorn(item) ?? false
+
+                        pickerRow(
+                            title: LocalizedStringKey(title),
+                            subtitle: subtitleKey,
+                            rarity: item.rarity,
+                            card: item,
+                            color: color,
+                            isWorn: worn,
+                            isSelected: selectedCard?.id == item.id,
+                            isLight: isLight
+                        ) {
+                            onSelectCardID(item.id)
+                        }
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 2)
+                .padding(.bottom, 14)
+            }
+            .scrollIndicators(.hidden)
+
+            if let selectedCard, let onOpen3DCard {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onOpen3DCard()
+                } label: {
+                    Label("Open \(isSampleData ? selectedCard.model : selectedCard.nickname) 3D Card", systemImage: "rectangle.stack")
+                        .font(.subheadline.weight(.bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .foregroundStyle(Theme.invertedText)
+                        .background(Theme.invertedFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
+            }
+        }
+        .background(Theme.canvasElevated.ignoresSafeArea())
+        .foregroundStyle(Theme.primaryText)
+    }
+
+    private func pickerRow(
+        title: LocalizedStringKey,
+        subtitle: LocalizedStringKey,
+        rarity: Rarity,
+        card: HeadphoneCard?,
+        color: DeviceColorOption?,
+        isWorn: Bool,
+        isSelected: Bool,
+        isLight: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        let clampedTitle = min(max(rowTitleSize, 14.5), 20)
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    rarity.glow.opacity(isLight ? 0.22 : 0.34),
+                                    rarity.accent.opacity(isLight ? 0.08 : 0.14),
+                                    isLight ? Color.black.opacity(0.04) : Color(white: 0.12)
+                                ],
+                                center: .center,
+                                startRadius: 2,
+                                endRadius: 24
+                            )
+                        )
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [isLight ? Theme.cardStroke : .white.opacity(0.32), rarity.accent.opacity(0.55), Theme.hairline],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.1
+                        )
+                    if let card {
+                        HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: false, showsShadow: false)
+                            .padding(5)
+                    } else {
+                        Image(systemName: "headphones")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Theme.primaryText, rarity.accent],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2.5) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: clampedTitle, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
+                        if isWorn {
+                            ActiveWearDot()
+                        }
+                    }
+                    Text(subtitle)
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(LocalizedStringKey(rarity.shortName.uppercased()))
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(rarity.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(rarity.foil, in: Capsule())
+                    .overlay(
+                        Capsule().strokeBorder(
+                            rarity.ink == .white ? .white.opacity(0.28) : .black.opacity(0.16),
+                            lineWidth: 0.75
+                        )
+                    )
+                    .fixedSize(horizontal: true, vertical: false)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(isLight && rarity == .silver ? Theme.primaryText : rarity.accent)
+                } else {
+                    Circle()
+                        .strokeBorder(Theme.hairline, lineWidth: 1.4)
+                        .frame(width: 20, height: 20)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                shape.fill(Theme.card)
+                    .overlay {
+                        if isSelected {
+                            shape.fill(rarity.accent.opacity(isLight ? 0.06 : 0.10))
+                        }
+                    }
+                    .shadow(
+                        color: isSelected
+                            ? (isLight ? Theme.cardShadow : rarity.glow.opacity(0.18))
+                            : (isLight ? Theme.cardShadow.opacity(0.45) : .clear),
+                        radius: 10,
+                        y: 4
+                    )
+            }
+            .overlay {
+                shape.strokeBorder(
+                    isSelected ? rarity.accent.opacity(isLight ? 0.65 : 0.75) : Theme.hairline,
+                    lineWidth: isSelected ? 1.5 : 0.9
+                )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
 }

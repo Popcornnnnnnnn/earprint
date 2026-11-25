@@ -17,11 +17,13 @@ struct CollectionView: View {
     @State private var debugPreviewSelection: HeadphoneCard?
     @State private var debugPreviewColors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.debug-preview") ?? .standard)
     @State private var showCardTiers = ProcessInfo.processInfo.arguments.contains("-cardTiers")
+    @State private var showModelGallery = ProcessInfo.processInfo.arguments.contains("-modelGallery")
     private let openIconPicker = ProcessInfo.processInfo.arguments.contains("-iconPicker")
     @State private var showSettings = ProcessInfo.processInfo.arguments.contains("-iconPicker")
         || ProcessInfo.processInfo.arguments.contains("-settings")
     #else
     @State private var showCardTiers = false
+    @State private var showModelGallery = false
     private let openIconPicker = false
     @State private var showSettings = false
     #endif
@@ -35,11 +37,22 @@ struct CollectionView: View {
     @State private var space = LayoutSpace()
 
     private var listMotionActive: Bool {
-        isActiveTab && !reduceMotion && selected == nil && dossierCard == nil && !showSettings && !showCardTiers
+        #if DEBUG
+        let previewActive = debugPreviewSelection != nil
+        #else
+        let previewActive = false
+        #endif
+        return isActiveTab && !reduceMotion && selected == nil && dossierCard == nil
+            && !showSettings && !showCardTiers && !showModelGallery && !previewActive
     }
 
     var body: some View {
-        ZStack {
+        #if DEBUG
+        let hidesTabBar = selected != nil || debugPreviewSelection != nil
+        #else
+        let hidesTabBar = selected != nil
+        #endif
+        return ZStack {
             Theme.canvasElevated.ignoresSafeArea()
 
             ScrollView {
@@ -125,8 +138,8 @@ struct CollectionView: View {
             #endif
         }
         .foregroundStyle(Theme.primaryText)
-        .toolbar(selected == nil ? .visible : .hidden, for: .tabBar)
-        .animation(.easeInOut(duration: 0.22), value: selected != nil)
+        .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
+        .animation(.easeInOut(duration: 0.22), value: hidesTabBar)
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(
                 card: card,
@@ -139,6 +152,17 @@ struct CollectionView: View {
         .sheet(isPresented: $showCardTiers) {
             NavigationStack {
                 CardTiersView(ownedCards: cards, showsDoneButton: true)
+            }
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showModelGallery) {
+            NavigationStack {
+                ModelGalleryView(ownedCards: cards)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showModelGallery = false }
+                        }
+                    }
             }
             .presentationDragIndicator(.visible)
         }
@@ -243,23 +267,34 @@ struct CollectionView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
             if let onConnectHealth, !isLoading {
-                Button(action: onConnectHealth) {
-                    Text("Sync Apple Health")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.invertedText)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 10)
-                        .background(Theme.invertedFill, in: Capsule())
+                VStack(spacing: 10) {
+                    Button(action: onConnectHealth) {
+                        Label("Sync Apple Health", systemImage: "heart.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.invertedText)
+                            .padding(.horizontal, 22)
+                            .frame(minHeight: 44)
+                            .background(Theme.invertedFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    if statusMessage != nil, let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        Link(destination: settingsURL) {
+                            Label("Open Settings", systemImage: "gearshape")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.secondaryText)
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 36)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
                 .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 44)
+        .padding(.vertical, 40)
         .padding(.horizontal, 20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.surfaceFill))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+        .card()
     }
 
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
@@ -338,46 +373,76 @@ struct CollectionView: View {
     }
 
     private var lockedSlotHorizontal: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
-            .foregroundStyle(Theme.hairline)
-            .frame(height: 86)
-            .overlay {
-                HStack(spacing: 14) {
-                    Image(systemName: "lock.fill")
-                        .font(.title3)
-                        .frame(width: 40, height: 40)
-                        .background(Theme.surfaceFill, in: Circle())
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Next pair").font(.subheadline.weight(.semibold))
-                        Text("Listen with supported headphones to unlock a card")
-                            .font(.caption)
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showModelGallery = true
+        } label: {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Theme.card.opacity(0.60))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.4, dash: [6, 6]))
+                        .foregroundStyle(Theme.secondaryText.opacity(0.32))
+                )
+                .frame(height: 86)
+                .overlay {
+                    HStack(spacing: 14) {
+                        Image(systemName: "plus.viewfinder")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.primaryText.opacity(0.72))
+                            .frame(width: 40, height: 40)
+                            .background(Theme.surfaceFill, in: Circle())
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Next pair")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Theme.primaryText)
+                            Text("Listen with supported headphones to unlock a card")
+                                .font(.caption)
+                                .foregroundStyle(Theme.secondaryText)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
                             .foregroundStyle(Theme.secondaryText)
                     }
-                    Spacer()
+                    .padding(.horizontal, 18)
                 }
-                .padding(.horizontal, 18)
-                .foregroundStyle(Theme.secondaryText)
-            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var lockedSlotVertical: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
-            .foregroundStyle(Theme.hairline)
-            .aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
-            .overlay {
-                VStack(spacing: 6) {
-                    Image(systemName: "lock.fill").font(.title2)
-                    Text("Next pair").font(.footnote.weight(.semibold))
-                    Text("Listen with supported headphones\nto unlock a card")
-                        .font(.caption2)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.8)
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showModelGallery = true
+        } label: {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Theme.card.opacity(0.60))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.4, dash: [6, 6]))
+                        .foregroundStyle(Theme.secondaryText.opacity(0.32))
+                )
+                .aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
+                .overlay {
+                    VStack(spacing: 8) {
+                        Image(systemName: "plus.viewfinder")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(Theme.primaryText.opacity(0.72))
+                        Text("Next pair")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(Theme.primaryText)
+                        Text("Listen with supported headphones\nto unlock a card")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .padding(.horizontal, 12)
                 }
-                .padding(.horizontal, 12)
-                .foregroundStyle(Theme.tertiaryText)
-            }
+        }
+        .buttonStyle(.plain)
     }
 
     /// Launch arguments: `-dossier` / `-dossierDemo` open a card's dossier directly; `-demo` opens card detail.
@@ -574,6 +639,7 @@ enum ModelGalleryCatalog {
 struct ModelGalleryView: View {
     var ownedCards: [HeadphoneCard] = []
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var selection: HeadphoneCard?
     @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
 
@@ -627,51 +693,57 @@ struct ModelGalleryView: View {
                                 selection = entry.card
                             } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: entry.model.resolvedSymbol)
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundStyle(unlocked ? Theme.quietColor : .secondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(
-                                            (unlocked ? Theme.quietColor.opacity(0.14) : Theme.surfaceFill),
-                                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        )
-
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(entry.model.marketingName)
-                                            .font(.body)
-                                        HStack(spacing: 6) {
-                                            Text(LocalizedStringKey(entry.hasDedicated3DModel ? "3D model" : "Generic 3D preview"))
-                                            if let pids = entry.productIDSummary {
-                                                Text("·")
-                                                Text(pids).monospaced()
-                                            }
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(unlocked ? Theme.quietColor.opacity(0.14) : Theme.surfaceFill)
+                                        if entry.card.modelKey.collectionArtwork != nil {
+                                            HeadphoneArtwork(
+                                                card: entry.card,
+                                                colorOption: DeviceColorOption.defaultOption(for: entry.card.modelKey),
+                                                showsChargingCase: false,
+                                                showsShadow: false
+                                            )
+                                            .padding(4)
+                                        } else {
+                                            Image(systemName: entry.model.resolvedSymbol)
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundStyle(unlocked ? Theme.quietColor : Theme.secondaryText)
                                         }
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+                                    }
+                                    .frame(width: 40, height: 40)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.model.marketingName)
+                                            .font(.body.weight(.medium))
+                                        Text(LocalizedStringKey(entry.hasDedicated3DModel ? "3D Collectible" : "Generic 3D preview"))
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.secondaryText)
+                                            .lineLimit(1)
                                     }
 
                                     Spacer(minLength: 8)
 
-                                    if unlocked {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(Color.adaptive(
-                                                light: UIColor(red: 0.12, green: 0.65, blue: 0.36, alpha: 1),
-                                                dark: UIColor(red: 0.32, green: 0.86, blue: 0.56, alpha: 1)
-                                            ))
-                                            .accessibilityLabel("Unlocked")
-                                    } else {
+                                    HStack(spacing: 6) {
+                                        if unlocked {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.subheadline)
+                                                .foregroundStyle(Theme.quietColor)
+                                                .accessibilityLabel("Unlocked")
+                                        }
                                         Image(systemName: "chevron.right")
                                             .font(.caption.weight(.semibold))
-                                            .foregroundStyle(.tertiary)
+                                            .foregroundStyle(Theme.tertiaryText)
                                     }
                                 }
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Theme.primaryText)
                             }
+                            .listRowBackground(Theme.card)
                         }
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.canvas.ignoresSafeArea())
             .accessibilityHidden(selection != nil)
 
             if let selection {
@@ -690,6 +762,7 @@ struct ModelGalleryView: View {
             }
         }
         .navigationTitle("Model Gallery")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar(selection == nil ? .visible : .hidden, for: .navigationBar)
     }
 }
@@ -1290,10 +1363,12 @@ struct CardDetail: View {
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
                 .shadow(color: Theme.cardShadow, radius: 8, y: 4)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .padding(.top, 14)
-        .padding(.trailing, 18)
+        .padding(.top, 10)
+        .padding(.trailing, 14)
         .opacity(appeared ? 1 : 0)
         .accessibilityLabel("Close")
     }
@@ -1926,7 +2001,7 @@ struct CardDetail: View {
 
     @ViewBuilder
     private var colorControls: some View {
-        if deckHasColorChoices {
+        if deckHasColorChoices && !flipped {
             ZStack {
                 if availableColors.count > 1, let active = selectedColor {
                     colorToggleButton(active)
@@ -1940,9 +2015,10 @@ struct CardDetail: View {
                 if showColorBar && availableColors.count > 1 {
                     let stripOffset: CGFloat = mode == .sideBySide ? 56 : -62
                     let stripAnchor: UnitPoint = mode == .sideBySide ? .top : .bottom
-                    let stripMaxWidth = min(max(space.size.width - 48, 220), 330)
-                    deviceColorStrip
-                        .frame(width: stripMaxWidth)
+                    let maxAllowed = mode == .besideControls
+                        ? min(max(space.size.width * 0.42, 200), 300)
+                        : min(max(space.size.width - 48, 220), 330)
+                    deviceColorStrip(maxWidth: maxAllowed)
                         .offset(y: stripOffset)
                         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: stripAnchor)))
                 }
@@ -1980,40 +2056,50 @@ struct CardDetail: View {
         .accessibilityLabel("Change device color, currently \(Text(LocalizedStringKey(active.title)))")
     }
 
-    private var deviceColorStrip: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 10) {
-                ForEach(availableColors) { option in
-                    let isSelected = option == selectedColor
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        colorStore?.select(option, for: card)
-                    } label: {
-                        ZStack {
-                            if isSelected {
+    private func deviceColorStrip(maxWidth: CGFloat) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(availableColors) { option in
+                        let isSelected = option == selectedColor
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            colorStore?.select(option, for: card)
+                        } label: {
+                            ZStack {
+                                if isSelected {
+                                    Circle()
+                                        .strokeBorder(Theme.primaryText, lineWidth: 2)
+                                        .frame(width: 34, height: 34)
+                                }
                                 Circle()
-                                    .strokeBorder(Theme.primaryText, lineWidth: 2)
-                                    .frame(width: 34, height: 34)
+                                    .fill(LinearGradient(colors: [option.swatchTop, option.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .frame(width: 26, height: 26)
+                                    .overlay(Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.9))
                             }
-                            Circle()
-                                .fill(LinearGradient(colors: [option.swatchTop, option.swatchBottom], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(width: 26, height: 26)
-                                .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 0.9))
+                            .frame(width: 38, height: 38)
+                            .contentShape(Circle())
                         }
-                        .frame(width: 34, height: 34)
+                        .id(option.id)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text(LocalizedStringKey(option.title)))
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(LocalizedStringKey(option.title)))
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
+            .scrollIndicators(.hidden)
+            .fixedSize(horizontal: availableColors.count <= 6, vertical: true)
+            .frame(maxWidth: maxWidth)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+            .onAppear {
+                if let activeID = selectedColor?.id {
+                    proxy.scrollTo(activeID, anchor: .center)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
         }
-        .scrollIndicators(.hidden)
-        .frame(maxWidth: 330)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
     }
 
     private func flip(_ direction: CardFlipDirection = .left) {

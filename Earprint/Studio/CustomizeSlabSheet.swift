@@ -18,38 +18,98 @@ struct CustomizeSlabSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    let preview = draft.sanitized
-                    GradingSlab(card: card, dossier: dossier, animateSeal: false,
-                                proFoil: preview.proFoil, engravedSubtitle: preview.engravedTitle,
-                                customSerialTag: preview.customSerial, usesSavedCustomization: false)
-                        .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                let preview = draft.sanitized
+                VStack(spacing: 6) {
+                    GradingSlab(
+                        card: card,
+                        dossier: dossier,
+                        tilt: CGSize(width: 0.24, height: -0.16),
+                        animateSeal: false,
+                        proFoil: preview.proFoil,
+                        engravedSubtitle: preview.engravedTitle,
+                        customSerialTag: preview.customSerial,
+                        usesSavedCustomization: false
+                    )
+                    .scaleEffect(0.50)
+                    .frame(width: SlabMetrics.width * 0.50, height: SlabMetrics.height * 0.50)
+                    .rotation3DEffect(.degrees(4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                    .shadow(color: (preview.proFoil?.glow ?? card.rarity.glow).opacity(colorScheme == .light ? 0.14 : 0.26), radius: 14, y: 6)
+                }
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .background(DossierPalette.surfaceFill.opacity(0.6))
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                }
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Foil finish").font(.headline)
-                        swatch(nil)
-                        ForEach(ProFoilStyle.allCases) { style in
-                            swatch(style)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Foil finish").font(.headline)
+                                Spacer()
+                                if draft != CardCustomization() {
+                                    Button("Reset") {
+                                        withAnimation(.snappy(duration: 0.2)) {
+                                            draft = CardCustomization()
+                                        }
+                                    }
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(card.rarity.accent)
+                                }
+                            }
+                            swatch(nil)
+                            ForEach(ProFoilStyle.allCases) { style in
+                                swatch(style)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Slab engraving").font(.headline)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Title").font(.caption.weight(.semibold)).foregroundStyle(DossierPalette.dim)
+                                    Spacer()
+                                    Text("\(min(draft.engravedTitle.count, 24))/24")
+                                        .font(.caption2.monospacedDigit())
+                                        .foregroundStyle(DossierPalette.faint)
+                                }
+                                TextField("Engraved title", text: $draft.engravedTitle)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Serial tag").font(.caption.weight(.semibold)).foregroundStyle(DossierPalette.dim)
+                                    Spacer()
+                                    Text("\(min(draft.customSerial.count, 16))/16")
+                                        .font(.caption2.monospacedDigit())
+                                        .foregroundStyle(DossierPalette.faint)
+                                }
+                                TextField("Serial tag", text: $draft.customSerial)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                            }
+
+                            Text("Up to 24 characters for the title and 16 for the serial tag.")
+                                .font(.footnote)
+                                .foregroundStyle(DossierPalette.dim)
                         }
                     }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Slab engraving").font(.headline)
-                        TextField("Engraved title", text: $draft.engravedTitle)
-                            .textFieldStyle(.roundedBorder)
-                        TextField("Serial tag", text: $draft.customSerial)
-                            .textFieldStyle(.roundedBorder)
-                        Text("Up to 24 characters for the title and 16 for the serial tag.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+                    .padding()
+                    .frame(maxWidth: 540)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding()
-                .frame(maxWidth: 540)
-                .frame(maxWidth: .infinity)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
+            .foregroundStyle(DossierPalette.primaryText)
             .background(DossierPalette.ink.ignoresSafeArea())
             .navigationTitle("Customize Slab")
             .navigationBarTitleDisplayMode(.inline)
@@ -78,37 +138,56 @@ struct CustomizeSlabSheet: View {
     }
 
     private func swatch(_ style: ProFoilStyle?) -> some View {
-        Button {
+        let isSelected = draft.proFoil == style
+        let borderHighlight = style?.accent ?? card.rarity.accent
+        return Button {
             draft.proFoil = style
         } label: {
             HStack(spacing: 12) {
-                FoilSurface(rarity: card.rarity, proFoil: style)
+                FoilSurface(rarity: card.rarity, tilt: CGSize(width: 0.2, height: -0.1), proFoil: style)
                     .frame(width: 54, height: 38)
                     .clipShape(.rect(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+                    )
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     if let style {
                         Text(LocalizedStringKey(style.shortName)).fontWeight(.semibold)
                         Text(LocalizedStringKey(style.subtitle))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DossierPalette.dim)
                     } else {
                         Text("Default Tier").fontWeight(.semibold)
                         Text(LocalizedStringKey(card.rarity.title))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DossierPalette.dim)
                     }
                 }
                 Spacer()
-                if draft.proFoil == style {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Theme.quietColor)
+                } else {
+                    Circle()
+                        .strokeBorder(DossierPalette.hairline, lineWidth: 1.4)
+                        .frame(width: 20, height: 20)
                 }
             }
-            .padding(8)
-            .background(DossierPalette.surfaceFill, in: .rect(cornerRadius: 12))
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? DossierPalette.panel : DossierPalette.surfaceFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(isSelected ? borderHighlight.opacity(0.65) : DossierPalette.hairline, lineWidth: isSelected ? 1.4 : 0.9)
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(draft.proFoil == style ? .isSelected : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func save() {

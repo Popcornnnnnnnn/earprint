@@ -12,7 +12,7 @@ enum HeadphoneKind: String, Codable {
         switch self {
         case .overEar: "AirPodsMax"
         case .earbuds: "AirPodsPro"
-        case .sportBuds: "HeadphoneGeneric"
+        case .sportBuds: "BeatsBuds"
         }
     }
 }

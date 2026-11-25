@@ -33,15 +33,19 @@ struct CardVideoExporter {
     func export(
         _ format: Format,
         summary: WrappedSummary,
+        colorOption: DeviceColorOption? = nil,
+        proFoil: ProFoilStyle? = nil,
         locale: Locale = .current,
         directory: URL = FileManager.default.temporaryDirectory,
         progress: (Double) -> Void = { _ in }
     ) async throws -> URL {
-        let fallback = SwiftUICardVideoFallbackRenderer(summary: summary, locale: locale)
-        let renderer = AutomaticCardVideoRenderer(
-            primary: try? RealityCardVideoRenderer(summary: summary, locale: locale),
-            fallback: fallback
+        let fallback = SwiftUICardVideoFallbackRenderer(
+            summary: summary, colorOption: colorOption, proFoil: proFoil, locale: locale
         )
+        let primary = try? await RealityCardVideoRenderer.make(
+            summary: summary, colorOption: colorOption, proFoil: proFoil, locale: locale
+        )
+        let renderer = AutomaticCardVideoRenderer(primary: primary, fallback: fallback)
         return try await export(format, renderer: renderer, year: summary.year, directory: directory, progress: progress)
     }
 
@@ -236,22 +240,38 @@ private final class AutomaticCardVideoRenderer: CardVideoFrameRenderer {
 @MainActor
 struct SwiftUICardVideoFallbackRenderer: CardVideoFrameRenderer {
     let summary: WrappedSummary
+    var colorOption: DeviceColorOption? = nil
+    var proFoil: ProFoilStyle? = nil
     var locale: Locale = .current
 
     func frame(at progress: Double, size: CGSize) async throws -> CGImage {
-        try renderWrappedPoster(summary: summary, locale: locale, progress: progress, size: size, includesHeadphones: true)
+        try renderWrappedPoster(
+            summary: summary, colorOption: colorOption, proFoil: proFoil,
+            locale: locale, progress: progress, size: size, includesHeadphones: true
+        )
     }
 }
 
 @MainActor
 private func renderWrappedPoster(
-    summary: WrappedSummary, locale: Locale, progress: Double, size: CGSize, includesHeadphones: Bool
+    summary: WrappedSummary,
+    colorOption: DeviceColorOption?,
+    proFoil: ProFoilStyle?,
+    locale: Locale,
+    progress: Double,
+    size: CGSize,
+    includesHeadphones: Bool
 ) throws -> CGImage {
     try autoreleasepool {
-        let view = WrappedReelPoster(summary: summary, progress: progress, includesHeadphones: includesHeadphones)
-            .environment(\.locale, locale)
-            .environment(\.colorScheme, .dark)
-            .dynamicTypeSize(.medium)
+        let view = WrappedReelPoster(
+            summary: summary, progress: progress,
+            includesHeadphones: includesHeadphones,
+            colorOption: colorOption,
+            proFoil: proFoil
+        )
+        .environment(\.locale, locale)
+        .environment(\.colorScheme, .dark)
+        .dynamicTypeSize(.medium)
         let renderer = ImageRenderer(content: view)
         renderer.scale = size.width / WrappedReelPoster.size.width
         renderer.isOpaque = true
@@ -268,6 +288,8 @@ final class RealityCardVideoRenderer: CardVideoFrameRenderer {
     private let context: CIContext
     private let textureCache: CVMetalTextureCache
     private let summary: WrappedSummary
+    private let colorOption: DeviceColorOption?
+    private let proFoil: ProFoilStyle?
     private let locale: Locale
     private var pool: CVPixelBufferPool?
     private var poolDimension = 0
@@ -278,19 +300,17 @@ final class RealityCardVideoRenderer: CardVideoFrameRenderer {
         let texture: CVMetalTexture
     }
 
-    init(summary: WrappedSummary, locale: Locale = .current) throws {
+    static func make(
+        summary: WrappedSummary,
+        colorOption: DeviceColorOption? = nil,
+        proFoil: ProFoilStyle? = nil,
+        locale: Locale = .current
+    ) async throws -> RealityCardVideoRenderer {
         let renderer = try RealityRenderer()
         guard let device = MTLCreateSystemDefaultDevice() else { throw CardVideoExportError.frameUnavailable }
         var textureCache: CVMetalTextureCache?
         guard CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache) == kCVReturnSuccess,
               let textureCache else { throw CardVideoExportError.frameUnavailable }
-
-        self.summary = summary
-        self.locale = locale
-        self.renderer = renderer
-        self.textureCache = textureCache
-        context = CIContext(mtlDevice: device, options: [.cacheIntermediates: false])
-        model = WrappedHeadphoneScene.makeHeadphones(overEar: summary.topDeviceKey.kind == .overEar)
 
         renderer.extendedDynamicRangeOutput = false
         renderer.cameraSettings.colorBackground = .color(CGColor(red: 0, green: 0, blue: 0, alpha: 0))
@@ -298,8 +318,56 @@ final class RealityCardVideoRenderer: CardVideoFrameRenderer {
         let camera = WrappedHeadphoneScene.makeCamera()
         renderer.entities.append(camera)
         renderer.activeCamera = camera
+
+        let finish = (colorOption ?? DeviceColorOption.defaultOption(for: summary.topDeviceKey))?.modelFinish
+            ?? HeadphoneFinish.glossWhite
+        let model = await WrappedHeadphoneScene.makeHeadphones(
+            modelKey: summary.topDeviceKey,
+            finish: finish
+        )
+
+        let rarity = summary.topCard?.rarity ?? Rarity(minutes: summary.topDeviceMinutes)
+        let tintColors = (proFoil?.baseColors ?? rarity.baseColors).map { UIColor($0) }
+        if let iblEnv = try? await StudioEnvironment.make(tint: tintColors) {
+            let iblEntity = Entity()
+            iblEntity.components.set(ImageBasedLightComponent(source: .single(iblEnv), intensityExponent: 1.25))
+            renderer.entities.append(iblEntity)
+            let receiver = ImageBasedLightReceiverComponent(imageBasedLight: iblEntity)
+            WrappedHeadphoneScene.applyReceiver(receiver, to: model)
+        }
+
         renderer.entities.append(model)
         renderer.entities.append(contentsOf: WrappedHeadphoneScene.makeLights())
+        return RealityCardVideoRenderer(
+            renderer: renderer,
+            model: model,
+            context: CIContext(mtlDevice: device, options: [.cacheIntermediates: false]),
+            textureCache: textureCache,
+            summary: summary,
+            colorOption: colorOption,
+            proFoil: proFoil,
+            locale: locale
+        )
+    }
+
+    private init(
+        renderer: RealityRenderer,
+        model: Entity,
+        context: CIContext,
+        textureCache: CVMetalTextureCache,
+        summary: WrappedSummary,
+        colorOption: DeviceColorOption?,
+        proFoil: ProFoilStyle?,
+        locale: Locale
+    ) {
+        self.renderer = renderer
+        self.model = model
+        self.context = context
+        self.textureCache = textureCache
+        self.summary = summary
+        self.colorOption = colorOption
+        self.proFoil = proFoil
+        self.locale = locale
     }
 
     func frame(at progress: Double, size: CGSize) async throws -> CGImage {
@@ -358,8 +426,10 @@ final class RealityCardVideoRenderer: CardVideoFrameRenderer {
             guard Self.containsTransparentModel(pixelBuffer, dimension: dimension) else {
                 throw CardVideoExportError.frameUnavailable
             }
-            let background = try renderWrappedPoster(summary: summary, locale: locale, progress: progress, size: size,
-                                                     includesHeadphones: false)
+            let background = try renderWrappedPoster(
+                summary: summary, colorOption: colorOption, proFoil: proFoil,
+                locale: locale, progress: progress, size: size, includesHeadphones: false
+            )
             let foreground = CIImage(cvPixelBuffer: pixelBuffer).transformed(by: CGAffineTransform(
                 translationX: (size.width - CGFloat(dimension)) / 2,
                 y: size.height * (1 - WrappedReelPoster.modelCenter / WrappedReelPoster.size.height) - CGFloat(dimension) / 2
@@ -393,58 +463,51 @@ final class RealityCardVideoRenderer: CardVideoFrameRenderer {
 enum WrappedHeadphoneScene {
     static func makeCamera() -> PerspectiveCamera {
         let camera = PerspectiveCamera()
-        camera.position.z = 0.78
-        camera.camera.fieldOfViewInDegrees = 38
+        camera.position.z = 0.52
+        camera.camera.fieldOfViewInDegrees = 26
         return camera
     }
 
     static func makeLights() -> [DirectionalLight] {
-        let positions: [SIMD3<Float>] = [[1, 1, 2], [-1, 0.5, 1]]
-        return positions.map { position in
-            let light = DirectionalLight()
-            light.light.intensity = 1600
-            light.look(at: .zero, from: position, relativeTo: nil)
-            return light
-        }
+        let key = DirectionalLight()
+        key.light.intensity = 3400
+        key.look(at: .zero, from: [0.4, 0.6, 0.5], relativeTo: nil)
+
+        let fill = DirectionalLight()
+        fill.light.intensity = 1400
+        fill.look(at: .zero, from: [-0.3, 0.1, 0.8], relativeTo: nil)
+
+        let rim = DirectionalLight()
+        rim.light.intensity = 900
+        rim.light.color = UIColor(red: 0.72, green: 0.88, blue: 1, alpha: 1)
+        rim.look(at: .zero, from: [-0.5, 0.2, -0.6], relativeTo: nil)
+
+        return [key, fill, rim]
     }
 
     static func orientation(at progress: Double) -> simd_quatf {
-        simd_quatf(angle: Float(progress * 2 * .pi), axis: [0, 1, 0])
+        simd_quatf(angle: Float(progress * 2 * .pi) - 0.5, axis: [0, 1, 0])
             * simd_quatf(angle: 0.12, axis: [1, 0, 0])
     }
 
-    static func makeHeadphones(overEar: Bool) -> Entity {
-        let root = Entity()
-        let enamel = SimpleMaterial(color: UIColor(red: 0.67, green: 0.94, blue: 0.86, alpha: 1),
-                                    roughness: 0.39, isMetallic: true)
-        let cushion = SimpleMaterial(color: UIColor(red: 0.12, green: 0.25, blue: 0.28, alpha: 1),
-                                     roughness: 0.9, isMetallic: false)
-        func add(_ mesh: MeshResource, at position: SIMD3<Float>, material: SimpleMaterial) -> ModelEntity {
-            let entity = ModelEntity(mesh: mesh, materials: [material])
-            entity.position = position
-            root.addChild(entity)
-            return entity
+    static func applyReceiver(_ receiver: ImageBasedLightReceiverComponent, to entity: Entity) {
+        entity.components.set(receiver)
+        for child in entity.children {
+            applyReceiver(receiver, to: child)
         }
-        if overEar {
-            // Small overlapping spheres form a rounded, segmented arch with no product-specific geometry.
-            for step in 0...24 {
-                let angle = Float(step) / 24 * .pi
-                _ = add(.generateSphere(radius: 0.013), at: [0.142 * cos(angle), 0.142 * sin(angle) - 0.026, 0], material: enamel)
-            }
-            for side: Float in [-1, 1] {
-                let cup = MeshResource.generateBox(width: 0.065, height: 0.116, depth: 0.080, cornerRadius: 0.026)
-                let pad = MeshResource.generateBox(width: 0.030, height: 0.100, depth: 0.072, cornerRadius: 0.014)
-                _ = add(cup, at: [side * 0.145, -0.063, 0], material: enamel)
-                _ = add(pad, at: [side * 0.110, -0.063, 0], material: cushion)
-            }
-        } else {
-            for side: Float in [-1, 1] {
-                let bud = add(.generateSphere(radius: 0.065), at: [side * 0.090, side * 0.041, 0], material: enamel)
-                bud.scale = [0.92, 1, 0.58]
-                let tip = add(.generateSphere(radius: 0.035), at: [side * 0.067, side * 0.041, 0.04], material: cushion)
-                tip.scale = [0.92, 0.92, 0.65]
-            }
-        }
-        return root
+    }
+
+    static func makeHeadphones(
+        modelKey: HeadphoneModelKey,
+        finish: HeadphoneFinish,
+        size: Float = 0.145
+    ) async -> Entity {
+        await HeadphoneModelLoader.load(
+            modelKey.kind,
+            finish: finish,
+            assetName: modelKey.collectibleModel,
+            modelKey: modelKey,
+            size: size
+        )
     }
 }
