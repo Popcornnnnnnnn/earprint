@@ -1,6 +1,6 @@
 # 3D Headphone Assets & Attribution
 
-Earprint bundles four optimized `.usdz` models in `Earprint/Resources/Models/` for interactive RealityKit display inside headphone collection cards (iOS 18+). Each model is normalized to unit bounding size (largest dimension = `1.0`, centered at the origin, Y-up, facing `+Z`) and verified with Apple's `usdzip -c` compliance checker and live iOS Simulator RealityKit rendering.
+Earprint bundles seven optimized `.usdz` models in `Earprint/Resources/Models/` for interactive RealityKit display inside headphone collection cards (iOS 18+). Each model is normalized to unit bounding size (largest dimension = `1.0`, centered at the origin, Y-up, facing `+Z`) and verified with `usdchecker` and live iOS Simulator RealityKit rendering.
 
 ## Collectible support
 
@@ -10,8 +10,11 @@ Earprint bundles four optimized `.usdz` models in `Earprint/Resources/Models/` f
 | AirPods 4 and AirPods 4 (ANC) | Earbuds alone in Collection. Earbuds with the open charging case in detail. | Shared AirPods 4 USDZ model with the open case |
 | AirPods Pro 1, 2 (Lightning and USB-C), and 3 | Shared AirPods Pro artwork | Shared AirPods Pro USDZ model |
 | AirPods Max (Lightning, USB-C) and AirPods Max 2 | Shared AirPods Max artwork and finish choices | Shared AirPods Max USDZ model |
+| Beats earbuds (Fit Pro, Studio Buds / +, Solo Buds, Powerbeats Fit, Beats Flex, BeatsX) | Sculpted wingtip earbud artwork and finish choices | Original procedural Blender USDZ (`BeatsBuds.usdz`) with per-zone PBR finish support |
+| Powerbeats earhook (Powerbeats Pro, Pro 2, Powerbeats, Powerbeats3) | Sport earbud artwork and finish choices | Original procedural Blender USDZ (`BeatsEarhook.usdz`) with per-zone PBR finish support |
+| Beats over-ear (Studio Pro, Solo 4, Studio3, Solo Pro, Solo3) | Custom closed-back over-ear artwork and finish choices | Original procedural Blender USDZ (`BeatsOverEar.usdz`) with per-zone PBR finish support |
 
-Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Beats, Bose, Redmi, sanag, and other devices without supported collectible artwork remain in the listening history. They are excluded when publishing Collection cards and widget shelves.
+Generation names come from the HealthKit product catalog. Artwork and interactive models are shared within their listed families. Other third-party devices use generic fallback geometry/previews (`HeadphoneGeneric.usdz` / `ProceduralHeadphones`) while staying in the listening history.
 
 ## Attribution Table (CC-BY 4.0)
 
@@ -38,6 +41,9 @@ Each preview shows a 3/4 hero angle (left) and straight `+Z` front view (right),
 - **AirPodsMax.usdz** — ![AirPods Max preview](assets-previews/AirPodsMax.png)
 - **AirPodsPro.usdz** — ![AirPods Pro preview](assets-previews/AirPodsPro.png)
 - **HeadphoneGeneric.usdz** — ![Studio Headphones preview](assets-previews/HeadphoneGeneric.png)
+- **BeatsBuds.usdz** — ![Beats wingtip earbuds preview](assets-previews/BeatsBuds.png)
+- **BeatsEarhook.usdz** — ![Beats sport earhook preview](assets-previews/BeatsEarhook.png)
+- **BeatsOverEar.usdz** — ![Beats closed-back over-ear preview](assets-previews/BeatsOverEar.png)
 
 ## Reproducing the Pipeline
 

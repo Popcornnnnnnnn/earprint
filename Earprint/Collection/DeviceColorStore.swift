@@ -159,30 +159,30 @@ struct DeviceColorOption: Identifiable, Equatable, Hashable {
         DeviceColorOption(
             id: "beatsOE.black", title: "Black",
             swatchTop: Color(red: 0.22, green: 0.22, blue: 0.24), swatchBottom: Color(red: 0.08, green: 0.08, blue: 0.10),
-            cardAssetName: "IconCutoutMidnight",
-            shellRGB: (0.11, 0.11, 0.13), accentRGB: (0.18, 0.18, 0.20), cushionRGB: (0.10, 0.10, 0.12),
-            metallic: 0.35, roughness: 0.45
+            cardAssetName: "CardRenderBeatsOverEarBlack",
+            shellRGB: (0.11, 0.11, 0.13), accentRGB: (0.20, 0.20, 0.23), cushionRGB: (0.09, 0.09, 0.11),
+            metallic: 0.35, roughness: 0.42
         ),
         DeviceColorOption(
             id: "beatsOE.sandstone", title: "Sandstone",
             swatchTop: Color(red: 0.86, green: 0.82, blue: 0.76), swatchBottom: Color(red: 0.70, green: 0.65, blue: 0.59),
-            cardAssetName: "IconCutoutStarlight",
-            shellRGB: (0.80, 0.76, 0.70), accentRGB: (0.85, 0.81, 0.76), cushionRGB: (0.72, 0.68, 0.62),
-            metallic: 0.25, roughness: 0.48
+            cardAssetName: "CardRenderBeatsOverEarSandstone",
+            shellRGB: (0.80, 0.76, 0.70), accentRGB: (0.86, 0.82, 0.76), cushionRGB: (0.72, 0.68, 0.62),
+            metallic: 0.25, roughness: 0.44
         ),
         DeviceColorOption(
             id: "beatsOE.navy", title: "Navy",
             swatchTop: Color(red: 0.26, green: 0.36, blue: 0.52), swatchBottom: Color(red: 0.14, green: 0.22, blue: 0.36),
-            cardAssetName: "IconCutoutBlue",
-            shellRGB: (0.18, 0.28, 0.44), accentRGB: (0.24, 0.34, 0.50), cushionRGB: (0.14, 0.22, 0.36),
-            metallic: 0.30, roughness: 0.46
+            cardAssetName: "CardRenderBeatsOverEarNavy",
+            shellRGB: (0.18, 0.28, 0.44), accentRGB: (0.26, 0.37, 0.54), cushionRGB: (0.14, 0.22, 0.36),
+            metallic: 0.30, roughness: 0.42
         ),
         DeviceColorOption(
             id: "beatsOE.cloudPink", title: "Cloud Pink",
             swatchTop: Color(red: 0.90, green: 0.68, blue: 0.72), swatchBottom: Color(red: 0.76, green: 0.50, blue: 0.55),
-            cardAssetName: "IconCutoutPink",
-            shellRGB: (0.86, 0.62, 0.66), accentRGB: (0.90, 0.68, 0.72), cushionRGB: (0.74, 0.52, 0.56),
-            metallic: 0.25, roughness: 0.46
+            cardAssetName: "CardRenderBeatsOverEarCloudPink",
+            shellRGB: (0.86, 0.62, 0.66), accentRGB: (0.91, 0.70, 0.74), cushionRGB: (0.74, 0.52, 0.56),
+            metallic: 0.25, roughness: 0.42
         ),
     ]
 

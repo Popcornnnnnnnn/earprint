@@ -4,12 +4,11 @@ import XCTest
 
 final class LiveActivityAndFallbackTests: XCTestCase {
     func testCollectibleModelFallbacks() {
-        for key in [HeadphoneModelKey.overEarGeneric, .beatsOverEar] {
-            XCTAssertEqual(key.collectibleModel, "HeadphoneGeneric")
-        }
-        for key in [HeadphoneModelKey.earbudsGeneric, .beatsEarbuds, .beatsEarhook] {
-            XCTAssertEqual(key.collectibleModel, "")
-        }
+        XCTAssertEqual(HeadphoneModelKey.overEarGeneric.collectibleModel, "HeadphoneGeneric")
+        XCTAssertEqual(HeadphoneModelKey.beatsOverEar.collectibleModel, "BeatsOverEar")
+        XCTAssertEqual(HeadphoneModelKey.beatsEarbuds.collectibleModel, "BeatsBuds")
+        XCTAssertEqual(HeadphoneModelKey.beatsEarhook.collectibleModel, "BeatsEarhook")
+        XCTAssertEqual(HeadphoneModelKey.earbudsGeneric.collectibleModel, "")
         for key in [HeadphoneModelKey.airpods, .airpods3] {
             XCTAssertNil(key.collectibleModel)
             XCTAssertEqual(key.collectibleArtwork, "CardRenderAirPodsOpen")
@@ -23,6 +22,35 @@ final class LiveActivityAndFallbackTests: XCTestCase {
             .overEar, finish: .spaceGray, assetName: "HeadphoneGeneric", modelKey: .overEarGeneric
         )
         XCTAssertGreaterThan(overEar.visualBounds(relativeTo: nil).extents.x, 0)
+
+        func firstBaseTexture(in entity: Entity) -> MaterialParameters.Texture? {
+            if let model = (entity as? ModelEntity)?.model {
+                for mat in model.materials {
+                    if let pbr = mat as? PhysicallyBasedMaterial, let tex = pbr.baseColor.texture {
+                        return tex
+                    }
+                }
+            }
+            for child in entity.children {
+                if let tex = firstBaseTexture(in: child) { return tex }
+            }
+            return nil
+        }
+        XCTAssertNotNil(firstBaseTexture(in: overEar))
+
+        for (asset, key, kind) in [
+            ("BeatsBuds", HeadphoneModelKey.beatsEarbuds, HeadphoneKind.sportBuds),
+            ("BeatsEarhook", HeadphoneModelKey.beatsEarhook, HeadphoneKind.sportBuds),
+            ("BeatsOverEar", HeadphoneModelKey.beatsOverEar, HeadphoneKind.overEar),
+        ] {
+            XCTAssertNotNil(Bundle.main.url(forResource: asset, withExtension: "usdz"), "Missing \(asset).usdz")
+            let loaded = await HeadphoneModelLoader.load(kind, finish: .matteBlack, assetName: asset, modelKey: key)
+            XCTAssertGreaterThan(loaded.visualBounds(relativeTo: nil).extents.x, 0)
+            if let alt = DeviceColorOption.options(for: key).last {
+                HeadphoneModelLoader.applyFinish(alt.modelFinish, to: loaded, modelKey: key)
+            }
+            XCTAssertGreaterThan(loaded.visualBounds(relativeTo: nil).extents.x, 0)
+        }
 
         let sportBuds = ProceduralHeadphones.make(.sportBuds, finish: .matteBlack)
         XCTAssertEqual(sportBuds.children.count, 2)

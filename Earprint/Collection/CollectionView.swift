@@ -14,6 +14,8 @@ struct CollectionView: View {
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
     #if DEBUG
+    @State private var debugPreviewSelection: HeadphoneCard?
+    @State private var debugPreviewColors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.debug-preview") ?? .standard)
     @State private var showCardTiers = ProcessInfo.processInfo.arguments.contains("-cardTiers")
     private let openIconPicker = ProcessInfo.processInfo.arguments.contains("-iconPicker")
     @State private var showSettings = ProcessInfo.processInfo.arguments.contains("-iconPicker")
@@ -103,6 +105,24 @@ struct CollectionView: View {
                 }
                 .zIndex(1)
             }
+
+            #if DEBUG
+            if let debugSelection = debugPreviewSelection {
+                CardDetail(
+                    card: debugSelection,
+                    cards: ModelGalleryCatalog.allCards,
+                    isModelPreview: true,
+                    unlockedPreviewIDs: ModelGalleryCatalog.unlockedIDs(for: cards),
+                    catalogDetails: ModelGalleryCatalog.detailsByCardID,
+                    catalogSurfaces: ModelGalleryView.surfacesByCardID(unlocked: ModelGalleryCatalog.unlockedIDs(for: cards)),
+                    colorStore: debugPreviewColors,
+                    onSelectCard: { debugPreviewSelection = $0 }
+                ) {
+                    debugPreviewSelection = nil
+                }
+                .zIndex(2)
+            }
+            #endif
         }
         .foregroundStyle(Theme.primaryText)
         .toolbar(selected == nil ? .visible : .hidden, for: .tabBar)
@@ -363,6 +383,23 @@ struct CollectionView: View {
     /// Launch arguments: `-dossier` / `-dossierDemo` open a card's dossier directly; `-demo` opens card detail.
     private func runDemoIfNeeded() async {
         let args = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        if !demoStarted,
+           let i = args.firstIndex(of: "-modelPreview"), i + 1 < args.count {
+            let targetID = args[i + 1]
+            if let targetCard = ModelGalleryCatalog.allCards.first(where: { $0.id == targetID || $0.modelKey.rawValue == targetID }) {
+                demoStarted = true
+                if let fIdx = args.firstIndex(of: "-modelFinish"), fIdx + 1 < args.count {
+                    let finishID = args[fIdx + 1]
+                    if let opt = DeviceColorOption.options(for: targetCard.modelKey).first(where: { $0.id == finishID }) {
+                        debugPreviewColors.select(opt, for: targetCard)
+                    }
+                }
+                debugPreviewSelection = targetCard
+                return
+            }
+        }
+        #endif
         guard !demoStarted, !cards.isEmpty else { return }
         var index = 0
         if let i = args.firstIndex(of: "-demoIndex"), i + 1 < args.count, let n = Int(args[i + 1]) {
@@ -540,7 +577,7 @@ struct ModelGalleryView: View {
     @State private var selection: HeadphoneCard?
     @State private var colors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.model-gallery") ?? .standard)
 
-    private func catalogSurfacesByCardID(unlocked: Set<String>) -> [String: Rarity] {
+    static func surfacesByCardID(unlocked: Set<String>) -> [String: Rarity] {
         Dictionary(uniqueKeysWithValues: ModelGalleryCatalog.allEntries.map { entry in
             if unlocked.contains(entry.id) {
                 return (entry.id, Rarity.holo)
@@ -554,6 +591,10 @@ struct ModelGalleryView: View {
             }
             return (entry.id, surface)
         })
+    }
+
+    private func catalogSurfacesByCardID(unlocked: Set<String>) -> [String: Rarity] {
+        Self.surfacesByCardID(unlocked: unlocked)
     }
 
     var body: some View {

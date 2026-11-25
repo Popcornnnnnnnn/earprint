@@ -318,16 +318,126 @@ enum HeadphoneModelLoader {
     }
 
     /// Updates materials on an already-loaded 3D entity in place when the user changes device color.
+    private enum BeatsZone {
+        case shell
+        case inner
+        case accent
+        case wing
+        case cushion
+        case metal
+        case grille
+
+        init?(name: String) {
+            if name.contains("Zone_Shell") || name.contains("Mat_Shell") { self = .shell }
+            else if name.contains("Zone_Inner") || name.contains("Mat_Inner") { self = .inner }
+            else if name.contains("Zone_Accent") || name.contains("Mat_Accent") { self = .accent }
+            else if name.contains("Zone_Wing") || name.contains("Mat_Wing") { self = .wing }
+            else if name.contains("Zone_Cushion") || name.contains("Mat_Cushion") { self = .cushion }
+            else if name.contains("Zone_Metal") || name.contains("Mat_Metal") { self = .metal }
+            else if name.contains("Zone_Grille") || name.contains("Mat_Grille") { self = .grille }
+            else { return nil }
+        }
+    }
+
     @MainActor
     static func applyFinish(_ finish: HeadphoneFinish, to entity: Entity, modelKey: HeadphoneModelKey) {
         switch modelKey {
         case .airpodsMax:
             recolorAirPodsMax(entity, finish: finish)
-        case .beatsOverEar, .overEarGeneric:
-            recolorGenericOverEar(entity, finish: finish)
+        case .beatsEarbuds, .beatsEarhook, .beatsOverEar:
+            recolorBeatsModel(entity, finish: finish)
+        case .overEarGeneric:
+            // Preserve HeadphoneGeneric.usdz's baked studio PBR textures.
+            break
         default:
             break
         }
+    }
+
+    private static func relativeLuminance(_ color: UIColor) -> CGFloat {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard color.getRed(&r, green: &g, blue: &b, alpha: &a) else { return 0.5 }
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    @MainActor
+    private static func recolorBeatsModel(_ entity: Entity, finish: HeadphoneFinish) {
+        let shellLum = relativeLuminance(finish.shell)
+        let metalTint: UIColor = shellLum < 0.24
+            ? UIColor(white: 0.44, alpha: 1)
+            : blendColor(finish.accent, UIColor(white: 0.90, alpha: 1), amount: 0.45)
+
+        func applyRecursive(_ node: Entity) {
+            if let modelEntity = node as? ModelEntity, var modelComp = modelEntity.model {
+                let candidateName = "\(modelEntity.name)|\(modelEntity.parent?.name ?? "")"
+                var changed = false
+                modelComp.materials = modelComp.materials.map { material in
+                    guard var pbr = material as? PhysicallyBasedMaterial else { return material }
+                    let zone = BeatsZone(name: candidateName) ?? BeatsZone(name: pbr.name ?? "")
+                    guard let zone else { return material }
+                    switch zone {
+                    case .shell:
+                        pbr.baseColor = .init(tint: finish.shell)
+                        pbr.metallic = .init(floatLiteral: finish.metallic)
+                        pbr.roughness = .init(floatLiteral: finish.roughness)
+                        pbr.clearcoat = .init(floatLiteral: 0.20)
+                    case .inner:
+                        pbr.baseColor = .init(tint: finish.cushion)
+                        pbr.metallic = .init(floatLiteral: 0.08)
+                        pbr.roughness = .init(floatLiteral: min(0.62, finish.roughness + 0.14))
+                        pbr.clearcoat = .init(floatLiteral: 0.04)
+                    case .accent:
+                        pbr.baseColor = .init(tint: finish.accent)
+                        pbr.metallic = .init(floatLiteral: 0.72)
+                        pbr.roughness = .init(floatLiteral: 0.26)
+                        pbr.clearcoat = .init(floatLiteral: 0.20)
+                    case .wing:
+                        pbr.baseColor = .init(tint: finish.cushion)
+                        pbr.metallic = .init(floatLiteral: 0.0)
+                        pbr.roughness = .init(floatLiteral: 0.60)
+                        pbr.clearcoat = .init(floatLiteral: 0.02)
+                    case .cushion:
+                        pbr.baseColor = .init(tint: finish.cushion)
+                        pbr.metallic = .init(floatLiteral: 0.0)
+                        pbr.roughness = .init(floatLiteral: 0.56)
+                        pbr.clearcoat = .init(floatLiteral: 0.0)
+                    case .metal:
+                        pbr.baseColor = .init(tint: metalTint)
+                        pbr.metallic = .init(floatLiteral: 0.88)
+                        pbr.roughness = .init(floatLiteral: 0.22)
+                        pbr.clearcoat = .init(floatLiteral: 0.12)
+                    case .grille:
+                        pbr.baseColor = .init(tint: UIColor(red: 0.05, green: 0.055, blue: 0.065, alpha: 1))
+                        pbr.metallic = .init(floatLiteral: 0.35)
+                        pbr.roughness = .init(floatLiteral: 0.55)
+                        pbr.clearcoat = .init(floatLiteral: 0.0)
+                    }
+                    changed = true
+                    return pbr
+                }
+                if changed {
+                    modelEntity.model = modelComp
+                }
+            }
+            for child in node.children {
+                applyRecursive(child)
+            }
+        }
+        applyRecursive(entity)
+    }
+
+    private static func blendColor(_ a: UIColor, _ b: UIColor, amount: CGFloat) -> UIColor {
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        guard a.getRed(&ar, green: &ag, blue: &ab, alpha: &aa),
+              b.getRed(&br, green: &bg, blue: &bb, alpha: &ba) else { return a }
+        let t = max(0, min(1, amount))
+        return UIColor(
+            red: ar + (br - ar) * t,
+            green: ag + (bg - ag) * t,
+            blue: ab + (bb - ab) * t,
+            alpha: 1
+        )
     }
 
     @MainActor
@@ -381,21 +491,6 @@ enum HeadphoneModelLoader {
         }
         for child in entity.children {
             recolorAirPodsMax(child, finish: finish)
-        }
-    }
-
-    @MainActor
-    private static func recolorGenericOverEar(_ entity: Entity, finish: HeadphoneFinish) {
-        if let modelEntity = entity as? ModelEntity, var modelComp = modelEntity.model {
-            modelComp.materials = modelComp.materials.map { material in
-                guard var pbr = material as? PhysicallyBasedMaterial else { return material }
-                pbr.baseColor = .init(tint: finish.shell)
-                return pbr
-            }
-            modelEntity.model = modelComp
-        }
-        for child in entity.children {
-            recolorGenericOverEar(child, finish: finish)
         }
     }
 

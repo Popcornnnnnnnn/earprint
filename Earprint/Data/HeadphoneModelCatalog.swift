@@ -41,8 +41,11 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
         case .airpods4: "AirPods4"
         case .airpodsPro: "AirPodsPro"
         case .airpodsMax: "AirPodsMax"
-        case .overEarGeneric, .beatsOverEar: "HeadphoneGeneric"
-        case .earbudsGeneric, .beatsEarbuds, .beatsEarhook: ""
+        case .beatsOverEar: "BeatsOverEar"
+        case .beatsEarbuds: "BeatsBuds"
+        case .beatsEarhook: "BeatsEarhook"
+        case .overEarGeneric: "HeadphoneGeneric"
+        case .earbudsGeneric: ""
         case .airpods, .airpods3: nil
         }
     }

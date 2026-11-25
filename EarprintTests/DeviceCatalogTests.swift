@@ -279,7 +279,7 @@ final class DeviceCatalogTests: XCTestCase {
         XCTAssertEqual(cards.first?.model, "AirPods Pro 2 · USB-C")
         XCTAssertEqual(cards.first?.modelKey, .airpodsPro)
         XCTAssertEqual(cards.first?.kind, .earbuds)
-        XCTAssertEqual(cards.first { $0.modelKey == .beatsEarbuds }?.modelAssetName, "")
+        XCTAssertEqual(cards.first { $0.modelKey == .beatsEarbuds }?.modelAssetName, "BeatsBuds")
         // Earlier nickname merged into otherNames via localIdentifier
         XCTAssertEqual(snap.devices.first?.otherNames, ["AirPods Pro"])
 
