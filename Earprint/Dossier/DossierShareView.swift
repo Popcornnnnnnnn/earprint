@@ -1094,7 +1094,8 @@ private struct DossierSharePosterCanvas {
                     engravedSubtitle: customization?.engravedTitle,
                     customSerialTag: customization?.customSerial,
                     usesSavedCustomization: false,
-                    usesOriginalArtwork: options.usesOriginalArtwork
+                    usesOriginalArtwork: options.usesOriginalArtwork,
+                    colorOption: options.usesOriginalArtwork ? nil : color
                 )
                 .scaleEffect(0.73)
                 .frame(width: SlabMetrics.width * 0.73, height: SlabMetrics.height * 0.73)

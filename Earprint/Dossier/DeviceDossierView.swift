@@ -543,6 +543,14 @@ struct DeviceDossierView: View {
             return
         }
 
+        #if DEBUG
+        if args.contains("-customizeSlab"), !showSlabStudio {
+            try? await Task.sleep(for: .milliseconds(550))
+            showSlabStudio = true
+            return
+        }
+        #endif
+
         guard args.contains("-dossierDemo"), !demoStarted else { return }
         demoStarted = true
         await runDemoSequence(proxy: proxy)

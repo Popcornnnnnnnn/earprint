@@ -24,10 +24,12 @@ struct GradingSlab: View {
     var customSerialTag: String? = nil
     var usesSavedCustomization = true
     var usesOriginalArtwork = false
+    var colorOption: DeviceColorOption? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
+    @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
 
     private var customization: CardCustomization {
         let foilUnlocked = usesSavedCustomization && proAccess.isUnlocked(.foilShaders)
@@ -135,8 +137,8 @@ struct GradingSlab: View {
 
     private func cardWell(foil: ProFoilStyle?) -> some View {
         ZStack {
-            CardFront(card: card, tilt: tilt, showsFirstMet: showsFirstWear,
-                      proFoil: foil, usesOriginalArtwork: usesOriginalArtwork)
+            CardFront(card: card, tilt: tilt, colorOption: colorOption ?? colorStore?.selectedColor(for: card),
+                      showsFirstMet: showsFirstWear, proFoil: foil, usesOriginalArtwork: usesOriginalArtwork)
                 .environment(\.proAccess, .free)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
             CardBack(card: card)

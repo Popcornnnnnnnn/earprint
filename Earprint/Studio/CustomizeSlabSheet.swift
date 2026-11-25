@@ -23,8 +23,7 @@ struct CustomizeSlabSheet: View {
                     let preview = draft.sanitized
                     GradingSlab(card: card, dossier: dossier, animateSeal: false,
                                 proFoil: preview.proFoil, engravedSubtitle: preview.engravedTitle,
-                                customSerialTag: preview.customSerial, usesSavedCustomization: false,
-                                usesOriginalArtwork: true)
+                                customSerialTag: preview.customSerial, usesSavedCustomization: false)
                         .frame(maxWidth: .infinity)
 
                     VStack(alignment: .leading, spacing: 10) {
