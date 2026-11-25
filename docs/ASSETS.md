@@ -1,12 +1,12 @@
 # 3D Headphone Assets & Attribution
 
-Earprint bundles seven optimized `.usdz` models in `Earprint/Resources/Models/` for interactive RealityKit display inside headphone collection cards (iOS 18+). Each model is normalized to unit bounding size (largest dimension = `1.0`, centered at the origin, Y-up, facing `+Z`) and verified with `usdchecker` and live iOS Simulator RealityKit rendering.
+Earprint bundles eight optimized `.usdz` models in `Earprint/Resources/Models/` for interactive RealityKit display inside headphone collection cards (iOS 18+). Each model is normalized to unit bounding size (largest dimension = `1.0`, centered at the origin, Y-up, facing `+Z`) and verified with `usdchecker` and live iOS Simulator RealityKit rendering.
 
 ## Collectible support
 
 | Identified product family | Card artwork | Interactive 3D |
 | --- | --- | --- |
-| AirPods (1st and 2nd generation), AirPods 3, and mapped AirPods 5 variants | Shared open-ear AirPods artwork | Card tilt and flip |
+| AirPods (1st and 2nd generation), AirPods 3, and mapped AirPods 5 variants | Shared open-ear AirPods artwork | Shared open-ear AirPods USDZ model |
 | AirPods 4 and AirPods 4 (ANC) | Earbuds alone in Collection. Earbuds with the open charging case in detail. | Shared AirPods 4 USDZ model with the open case |
 | AirPods Pro 1, 2 (Lightning and USB-C), and 3 | Shared AirPods Pro artwork | Shared AirPods Pro USDZ model |
 | AirPods Max (Lightning, USB-C) and AirPods Max 2 | Shared AirPods Max artwork and finish choices | Shared AirPods Max USDZ model |
@@ -44,6 +44,7 @@ Each preview shows a 3/4 hero angle (left) and straight `+Z` front view (right),
 - **BeatsBuds.usdz** — ![Beats wingtip earbuds preview](assets-previews/BeatsBuds.png)
 - **BeatsEarhook.usdz** — ![Beats sport earhook preview](assets-previews/BeatsEarhook.png)
 - **BeatsOverEar.usdz** — ![Beats closed-back over-ear preview](assets-previews/BeatsOverEar.png)
+- **EarbudsGeneric.usdz** — ![Generic wireless earbuds preview](assets-previews/EarbudsGeneric.png)
 
 ## Reproducing the Pipeline
 

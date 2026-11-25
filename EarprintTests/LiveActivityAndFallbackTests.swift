@@ -5,12 +5,14 @@ import XCTest
 final class LiveActivityAndFallbackTests: XCTestCase {
     func testCollectibleModelFallbacks() {
         XCTAssertEqual(HeadphoneModelKey.overEarGeneric.collectibleModel, "HeadphoneGeneric")
+        XCTAssertEqual(HeadphoneModelKey.earbudsGeneric.collectibleModel, "EarbudsGeneric")
         XCTAssertEqual(HeadphoneModelKey.beatsOverEar.collectibleModel, "BeatsOverEar")
         XCTAssertEqual(HeadphoneModelKey.beatsEarbuds.collectibleModel, "BeatsBuds")
         XCTAssertEqual(HeadphoneModelKey.beatsEarhook.collectibleModel, "BeatsEarhook")
-        XCTAssertEqual(HeadphoneModelKey.earbudsGeneric.collectibleModel, "")
+        for key in [HeadphoneModelKey.airpods, .airpods3, .airpods4] {
+            XCTAssertEqual(key.collectibleModel, "AirPods4")
+        }
         for key in [HeadphoneModelKey.airpods, .airpods3] {
-            XCTAssertNil(key.collectibleModel)
             XCTAssertEqual(key.collectibleArtwork, "CardRenderAirPodsOpen")
         }
     }
@@ -42,6 +44,7 @@ final class LiveActivityAndFallbackTests: XCTestCase {
             ("BeatsBuds", HeadphoneModelKey.beatsEarbuds, HeadphoneKind.sportBuds),
             ("BeatsEarhook", HeadphoneModelKey.beatsEarhook, HeadphoneKind.sportBuds),
             ("BeatsOverEar", HeadphoneModelKey.beatsOverEar, HeadphoneKind.overEar),
+            ("EarbudsGeneric", HeadphoneModelKey.earbudsGeneric, HeadphoneKind.earbuds),
         ] {
             XCTAssertNotNil(Bundle.main.url(forResource: asset, withExtension: "usdz"), "Missing \(asset).usdz")
             let loaded = await HeadphoneModelLoader.load(kind, finish: .matteBlack, assetName: asset, modelKey: key)

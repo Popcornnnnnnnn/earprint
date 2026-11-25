@@ -1026,9 +1026,139 @@ def render_over_ear_card_png(finish):
     print(f"RENDERED CARD PNG {png_path}")
 
 
+def _generic_bud_parts(side: int, mats, world_mat: Matrix, groups: dict):
+    """Build one neutral, wingtip-free sculpted in-ear wireless earbud (+X = Right, -X = Left)."""
+    mirror = Matrix.Scale(-1.0, 4, Vector((1, 0, 0))) if side < 0 else Matrix.Identity(4)
+    xf = world_mat @ mirror
+
+    # 1) Zone_Shell: Clean smooth ergonomic oval/bean acoustic capsule (neutral matte graphite).
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=4, radius=1.0)
+    for v in bm.verts:
+        p = v.co
+        taper = 1.0 - 0.14 * max(0.0, -p.z) + 0.04 * max(0.0, p.z)
+        x = p.x * 0.142 * taper
+        z = p.z * 0.205
+        y_scale = 0.075 if p.y < 0 else 0.110
+        y = p.y * y_scale
+        if y < 0:
+            # Soft subtle flat studio touch pad facet on outer face
+            dx = x / 0.108
+            dz = z / 0.155
+            r2 = dx * dx + dz * dz
+            y += (1.0 - smoothstep(0.18, 0.85, r2)) * 0.008
+        v.co = Vector((x, y, z))
+    groups["Zone_Shell"].append(finalize_bm(bm, xf, f"GenericBudShell_{side}", mats["shell"], subsurf_levels=1))
+
+    # 2) Zone_Accent: Subtle brushed-titanium chamfer split ring around outer housing.
+    bm = bmesh.new()
+    n_rim = 48
+    rim_rings = []
+    for i in range(n_rim):
+        a = 2.0 * math.pi * i / n_rim
+        pz = math.sin(a)
+        px = math.cos(a)
+        taper = 1.0 - 0.14 * max(0.0, -pz) + 0.04 * max(0.0, pz)
+        center_l = Vector((px * 0.139 * taper, -0.004, pz * 0.202))
+        out_dir = Vector((px * 0.95, 0.0, pz * 0.68)).normalized()
+        y_dir = Vector((0, 1, 0))
+        ring = []
+        for s in range(14):
+            b = 2.0 * math.pi * s / 14
+            off = out_dir * (0.007 * math.cos(b)) + y_dir * (0.010 * math.sin(b))
+            ring.append(bm.verts.new(center_l + off))
+        rim_rings.append(ring)
+    for i in range(n_rim):
+        r0 = rim_rings[i]
+        r1 = rim_rings[(i + 1) % n_rim]
+        for s in range(14):
+            sn = (s + 1) % 14
+            bm.faces.new((r0[s], r0[sn], r1[sn], r1[s]))
+    groups["Zone_Accent"].append(finalize_bm(bm, xf, f"GenericBudBezel_{side}", mats["accent"], subsurf_levels=1))
+
+    # 3) Zone_Inner: Contoured inner ear-bowl + angled acoustic nozzle.
+    bm_bowl = bmesh.new()
+    bmesh.ops.create_icosphere(bm_bowl, subdivisions=3, radius=1.0)
+    for v in bm_bowl.verts:
+        p = v.co
+        r_y = 0.115 if p.y > 0 else 0.055
+        v.co = Vector((p.x * 0.120 - 0.018, p.y * r_y + 0.048, p.z * 0.142 + 0.018))
+    groups["Zone_Inner"].append(finalize_bm(bm_bowl, xf, f"GenericBudInner_{side}", mats["inner"], subsurf_levels=1))
+
+    bm_noz = bmesh.new()
+    nozzle_pts = [
+        Vector((-0.025, 0.095, 0.008)),
+        Vector((-0.046, 0.148, -0.004)),
+        Vector((-0.070, 0.198, -0.016)),
+    ]
+    add_swept_tube(bm_noz, nozzle_pts, [(0.055, 0.055), (0.048, 0.048), (0.045, 0.045)], sides=20)
+    groups["Zone_Inner"].append(finalize_bm(bm_noz, xf, f"GenericBudNozzle_{side}", mats["inner"], subsurf_levels=1))
+
+    # 4) Zone_Cushion: Watertight contoured silicone eartip seated on nozzle.
+    tip_origin = Vector((-0.070, 0.198, -0.016))
+    nozzle_dir = Vector((-0.045, 0.103, -0.024)).normalized()
+    tip_rot = Vector((0, 0, 1)).rotation_difference(nozzle_dir).to_matrix().to_4x4()
+    tip_local = Matrix.Translation(tip_origin) @ tip_rot
+    profile = [
+        (0.0, -0.032),
+        (0.036, -0.032),
+        (0.048, -0.025),
+        (0.088, -0.002),
+        (0.108, 0.038),
+        (0.100, 0.075),
+        (0.076, 0.098),
+        (0.046, 0.106),
+        (0.030, 0.096),
+        (0.026, 0.060),
+        (0.0, 0.060),
+    ]
+    bm_tip = bmesh.new()
+    add_lathe(bm_tip, profile, segments=32, axis_mat=tip_local)
+    groups["Zone_Cushion"].append(finalize_bm(bm_tip, xf, f"GenericBudTip_{side}", mats["cushion"], subsurf_levels=1))
+
+    # 5) Zone_Grille: Recessed acoustic screen + outer mic vent.
+    bm_screen = bmesh.new()
+    add_lathe(bm_screen, [(0.0, 0.082), (0.027, 0.082), (0.027, 0.075), (0.0, 0.075)], segments=20, axis_mat=tip_local)
+    groups["Zone_Grille"].append(finalize_bm(bm_screen, xf, f"GenericBudScreen_{side}", mats["grille"], subsurf_levels=1))
+
+    bm_vent = bmesh.new()
+    add_swept_tube(bm_vent, [Vector((0.118, -0.006, 0.015)), Vector((0.114, -0.004, 0.068))], [(0.012, 0.010), (0.012, 0.010)], sides=14)
+    groups["Zone_Grille"].append(finalize_bm(bm_vent, xf, f"GenericBudVent_{side}", mats["grille"], subsurf_levels=1))
+
+
+def build_generic_earbuds(usdz_path):
+    reset_scene()
+    neutral_finish = {
+        "shell": (0.14, 0.145, 0.16),
+        "accent": (0.36, 0.38, 0.42),
+        "cushion": (0.10, 0.105, 0.115),
+        "metal": (0.42, 0.44, 0.48),
+        "metallic": 0.25,
+        "roughness": 0.38,
+    }
+    mats = make_zone_materials(neutral_finish)
+    groups = {k: [] for k in ["Zone_Shell", "Zone_Inner", "Zone_Accent", "Zone_Cushion", "Zone_Grille"]}
+
+    left_xf = (
+        Matrix.Translation(Vector((-0.205, 0.015, 0.0)))
+        @ Euler((math.radians(8), math.radians(-8), math.radians(36)), "XYZ").to_matrix().to_4x4()
+    )
+    right_xf = (
+        Matrix.Translation(Vector((0.205, -0.015, 0.0)))
+        @ Euler((math.radians(6), math.radians(8), math.radians(-24)), "XYZ").to_matrix().to_4x4()
+    )
+    _generic_bud_parts(-1, mats, left_xf, groups)
+    _generic_bud_parts(+1, mats, right_xf, groups)
+    normalize_and_export(groups, mats, usdz_path)
+
+
 if __name__ == "__main__":
-    build_beats_buds(os.path.join(MODELS_DIR, "BeatsBuds.usdz"))
-    build_beats_earhook(os.path.join(MODELS_DIR, "BeatsEarhook.usdz"))
-    build_beats_over_ear(os.path.join(MODELS_DIR, "BeatsOverEar.usdz"))
-    for fin in OVER_EAR_FINISHES:
-        render_over_ear_card_png(fin)
+    if "--only-generic-earbuds" in sys.argv:
+        build_generic_earbuds(os.path.join(MODELS_DIR, "EarbudsGeneric.usdz"))
+    else:
+        build_beats_buds(os.path.join(MODELS_DIR, "BeatsBuds.usdz"))
+        build_beats_earhook(os.path.join(MODELS_DIR, "BeatsEarhook.usdz"))
+        build_beats_over_ear(os.path.join(MODELS_DIR, "BeatsOverEar.usdz"))
+        build_generic_earbuds(os.path.join(MODELS_DIR, "EarbudsGeneric.usdz"))
+        for fin in OVER_EAR_FINISHES:
+            render_over_ear_card_png(fin)

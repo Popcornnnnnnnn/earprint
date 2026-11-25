@@ -40,15 +40,14 @@ enum HeadphoneModelKey: String, Codable, CaseIterable, Sendable {
 
     var collectibleModel: String? {
         switch self {
-        case .airpods4: "AirPods4"
+        case .airpods, .airpods3, .airpods4: "AirPods4"
         case .airpodsPro: "AirPodsPro"
         case .airpodsMax: "AirPodsMax"
         case .beatsOverEar: "BeatsOverEar"
         case .beatsEarbuds: "BeatsBuds"
         case .beatsEarhook: "BeatsEarhook"
         case .overEarGeneric: "HeadphoneGeneric"
-        case .earbudsGeneric: ""
-        case .airpods, .airpods3: nil
+        case .earbudsGeneric: "EarbudsGeneric"
         }
     }
 

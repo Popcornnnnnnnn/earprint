@@ -449,7 +449,7 @@ enum ModelGalleryCatalog {
 
         var hasDedicated3DModel: Bool {
             guard let asset = card.modelAssetName, !asset.isEmpty else { return false }
-            return asset != "HeadphoneGeneric"
+            return asset != "HeadphoneGeneric" && asset != "EarbudsGeneric"
         }
 
         static func == (lhs: Entry, rhs: Entry) -> Bool { lhs.id == rhs.id }
@@ -1084,7 +1084,7 @@ struct CardDetail: View {
     }
 
     private func resolvedAssetName(for item: HeadphoneCard) -> String? {
-        item.modelAssetName ?? (isModelPreview ? "" : nil)
+        item.modelAssetName
     }
 
     private var deckHasAny3DModel: Bool {
