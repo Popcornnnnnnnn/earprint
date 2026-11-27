@@ -385,11 +385,17 @@ struct CertificateLabel: View {
                         let startText = showsFirstWear ? (dossier.days.first.map { DateText.dotted($0.date, calendar: dossier.calendar) } ?? "—") : "—"
                         Text("\(startText) – \(DateText.dotted(dossier.now, calendar: dossier.calendar))")
                             .font(.system(compact ? .caption2 : .subheadline, design: .monospaced, weight: .semibold))
-                        Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
-                            .font(compact ? .caption2 : .caption)
-                            .foregroundStyle(DossierPalette.dim)
-                            .lineLimit(compact ? 1 : 2)
-                            .minimumScaleFactor(0.85)
+                        Group {
+                            if showsFirstWear {
+                                Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
+                            } else {
+                                Text("\(dossier.recordDays) record days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
+                            }
+                        }
+                        .font(compact ? .caption2 : .caption)
+                        .foregroundStyle(DossierPalette.dim)
+                        .lineLimit(compact ? 1 : 2)
+                        .minimumScaleFactor(0.85)
                     }
                     DossierBarcode(seed: card.serial * 13 + 1, color: DossierPalette.primaryText.opacity(0.6))
                         .frame(height: compact ? 10 : 18)

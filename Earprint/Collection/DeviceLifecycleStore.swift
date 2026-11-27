@@ -210,9 +210,17 @@ final class DeviceLifecycleStore {
     static let shared = DeviceLifecycleStore()
     static let inactiveNudgeThresholdDays = 90
 
-    private static let storageKey = "earprint.deviceRetirements.v1"
+    private nonisolated static let storageKey = "earprint.deviceRetirements.v1"
     private let defaults: UserDefaults
     private(set) var retirements: [String: DeviceRetirement]
+
+    nonisolated static func persistedCutoffs(defaults: UserDefaults = .standard) -> [Date] {
+        guard let data = defaults.data(forKey: storageKey),
+              let stored = try? JSONDecoder().decode([String: DeviceRetirement].self, from: data) else {
+            return []
+        }
+        return Array(Set(stored.values.map(\.careerCutoffEnd))).sorted()
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -311,7 +319,6 @@ final class DeviceLifecycleStore {
         let hasPostCutoffWear: Bool = {
             if let lastWearStart, lastWearStart >= cutoff { return true }
             if let lastWearEnd, lastWearEnd > cutoff { return true }
-            if lastWearStart == nil, let lastWearEnd, lastWearEnd >= cutoff { return true }
             return false
         }()
         guard hasPostCutoffWear else { return false }
@@ -323,7 +330,7 @@ final class DeviceLifecycleStore {
     }
 
     func hasUnacknowledgedPostRetirementActivity(for card: HeadphoneCard, lastWear: Date?) -> Bool {
-        hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: lastWear, lastWearStart: nil)
+        hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: lastWear, lastWearStart: lastWear)
     }
 
     /// Gentle prompt condition for active cards unused for 90+ days when the collector still owns other active pairs.

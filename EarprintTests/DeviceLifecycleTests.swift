@@ -1,4 +1,5 @@
 import SwiftUI
+import Vision
 import XCTest
 @testable import Earprint
 
@@ -513,6 +514,8 @@ final class DeviceLifecycleTests: XCTestCase {
                 if idx == 0 {
                     try hiddenFirstWearPages[0].pngData.write(to: dirURL.appendingPathComponent("farewell-poster-no-firstwear.png"))
                     try hiddenLongPages[1].pngData.write(to: dirURL.appendingPathComponent("farewell-long-rhythm-no-firstwear.png"))
+                    try hiddenLongPages[2].pngData.write(to: dirURL.appendingPathComponent("farewell-long-habits-no-firstwear.png"))
+                    try hiddenLongPages[3].pngData.write(to: dirURL.appendingPathComponent("farewell-long-cert-source-no-firstwear.png"))
                     try hiddenMilestonesOnlyPages[0].pngData.write(to: dirURL.appendingPathComponent("farewell-long-cert-no-firstwear.png"))
 
                     let dossierView = DeviceDossierView(card: maxCard, dossier: retiredDossier, isSampleData: true)
@@ -555,6 +558,216 @@ final class DeviceLifecycleTests: XCTestCase {
                 }
             }
         }
+    }
+
+    @MainActor
+    func testSchemaVersionInvalidatesV2CacheAndNilLastSampleStartDoesNotFalseTrigger() throws {
+        XCTAssertGreaterThanOrEqual(ListeningAggregate.schemaVersion, 3)
+
+        let cacheURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("earprint-v2-cache-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: cacheURL) }
+        var stale = ListeningAggregate()
+        stale.version = 2
+        let cache = AggregateCache(url: cacheURL)
+        cache.save(aggregate: stale, anchor: nil)
+        XCTAssertNil(cache.load(), "Legacy v2 caches must be invalidated after schemaVersion bump")
+
+        let midnightCutoff = date(2026, 9, 3, hour: 0)
+        let dev = DeviceDescriptor(name: "Legacy Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "legacy-max")
+        var acc = DeviceAccumulator(key: dev.identityKey, descriptor: dev, descriptorDate: midnightCutoff)
+        acc.sampleCount = 1
+        acc.seconds = 1800
+        acc.energy = HearingBudget.energy(decibels: 64, seconds: 1800)
+        acc.first = midnightCutoff.addingTimeInterval(-1800)
+        acc.last = midnightCutoff
+        acc.lastSampleStart = nil
+        acc.sessions.insert(
+            start: midnightCutoff.addingTimeInterval(-1800).timeIntervalSince1970,
+            end: midnightCutoff.timeIntervalSince1970,
+            gap: ListeningAggregate.sessionGap,
+            listeningSeconds: 1800,
+            energy: acc.energy,
+            peakDecibels: 64
+        )
+        var agg = ListeningAggregate()
+        agg.devices[dev.identityKey] = acc
+        let snapshot = LibrarySnapshot(aggregate: agg, now: midnightCutoff, calendar: utcCalendar)
+        let card = try XCTUnwrap(snapshot.cards(now: midnightCutoff, calendar: utcCalendar).first)
+        XCTAssertNil(card.lastWearStartDate)
+
+        let defaults = UserDefaults(suiteName: "NilSampleStartTests.\(UUID().uuidString)")!
+        let store = DeviceLifecycleStore(defaults: defaults)
+        store.retire(card, at: date(2026, 9, 2, hour: 12), reason: .other, farewellNote: "", calendar: utcCalendar)
+
+        XCTAssertFalse(
+            store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: midnightCutoff, lastWearStart: nil),
+            "Exact midnight end without lastWearStart must not trigger post-retirement reactivation"
+        )
+        XCTAssertTrue(
+            store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: midnightCutoff.addingTimeInterval(1), lastWearStart: nil)
+        )
+        XCTAssertTrue(store.hasUnacknowledgedPostRetirementActivity(for: card, lastWear: midnightCutoff))
+    }
+
+    @MainActor
+    func testCrossTimezoneIngestionAndAliasCombineIsolateSavedRetirementCutoffs() throws {
+        var laCal = Calendar(identifier: .gregorian)
+        laCal.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+
+        let maxDevPrimary = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "la-max-1")
+        let maxDevAlias = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "la-max-2")
+        let utcRet = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2),
+            timeZoneIdentifier: "UTC",
+            reason: .upgraded,
+            farewellNote: ""
+        )
+
+        let preStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 58, second: 0))!
+        let preEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 59, second: 59))!
+        let postStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 1, second: 0))!
+        let postEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 5, second: 0))!
+        let now = date(2026, 9, 3, hour: 12)
+
+        var unsplit = ListeningAggregate()
+        unsplit.ingest([
+            RawListeningSample(start: preStart, end: preEnd, decibels: 60, device: maxDevPrimary),
+            RawListeningSample(start: postStart, end: postEnd, decibels: 90, device: maxDevPrimary),
+        ], now: now, calendar: laCal)
+        XCTAssertTrue(unsplit.hasSpanCrossing(cutoffs: [utcRet.careerCutoffEnd]))
+
+        var isolated = ListeningAggregate()
+        isolated.ingest([
+            RawListeningSample(start: preStart, end: preEnd, decibels: 60, device: maxDevPrimary),
+            RawListeningSample(start: postStart, end: postEnd, decibels: 90, device: maxDevAlias),
+        ], now: now, calendar: laCal, splitCutoffs: [utcRet.careerCutoffEnd])
+        XCTAssertFalse(isolated.hasSpanCrossing(cutoffs: [utcRet.careerCutoffEnd]))
+
+        let snapshot = LibrarySnapshot(aggregate: isolated, now: now, calendar: laCal, splitCutoffs: [utcRet.careerCutoffEnd])
+        let card = try XCTUnwrap(snapshot.cards(now: now, calendar: laCal).first)
+        let dossier = try XCTUnwrap(snapshot.dossier(forCardID: card.id, retirement: utcRet, now: now, calendar: laCal))
+        XCTAssertEqual(dossier.sessions.count, 1)
+        XCTAssertEqual(dossier.lifetimeMinutes, 119.0 / 60, accuracy: 0.05)
+        XCTAssertEqual(dossier.averageDecibels, 60.0, accuracy: 0.05)
+
+        let defaults = UserDefaults(suiteName: "CrossTZCutoffTests.\(UUID().uuidString)")!
+        let store = DeviceLifecycleStore(defaults: defaults)
+        store.saveRetirement(utcRet, for: card)
+        XCTAssertTrue(store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: card.lastWearDate, lastWearStart: card.lastWearStartDate))
+    }
+
+    @MainActor
+    func testSaoPauloDSTBuildDaysAndStatsDoNotDropPostJumpDay() {
+        var spCal = Calendar(identifier: .gregorian)
+        spCal.timeZone = TimeZone(identifier: "America/Sao_Paulo")!
+        let day1Start = spCal.date(from: DateComponents(year: 2018, month: 11, day: 4, hour: 10, minute: 0))!
+        let day2Start = spCal.date(from: DateComponents(year: 2018, month: 11, day: 5, hour: 10, minute: 0))!
+        let now = spCal.date(from: DateComponents(year: 2018, month: 11, day: 5, hour: 18, minute: 0))!
+
+        let dossier = DeviceDossier(
+            id: "sp-max",
+            nickname: "Studio Max",
+            symbol: "airpodsmax",
+            serial: 1,
+            hardware: DossierSample.hardware(for: SampleCards.all[1]),
+            sessions: [
+                WearSession(start: day1Start, minutes: 45, averageDecibels: 65, peakDecibels: 72, isEstimated: false),
+                WearSession(start: day2Start, minutes: 30, averageDecibels: 67, peakDecibels: 74, isEstimated: false),
+            ],
+            otherDevicesDailyMinutes: [:],
+            sampleCount: 2,
+            lastSynced: now,
+            retirement: nil,
+            now: now,
+            calendar: spCal
+        )
+
+        XCTAssertEqual(dossier.days.count, 2)
+        XCTAssertEqual(dossier.historyDays, 2)
+        XCTAssertEqual(dossier.days[0].minutes, 45, accuracy: 0.01)
+        XCTAssertEqual(dossier.days[1].minutes, 30, accuracy: 0.01)
+        let allStats = dossier.stats(.all)
+        XCTAssertEqual(allStats.spanDays, 2)
+        XCTAssertEqual(allStats.totalMinutes, 75, accuracy: 0.01)
+        XCTAssertEqual(allStats.buckets.count, 2)
+    }
+
+    @MainActor
+    func testLongFarewellRedactsSpanAndHistoryDaysAndPreservesZhHansRhythmCaption() throws {
+        let maxCard = SampleCards.all[1]
+        var localCal = Calendar(identifier: .gregorian)
+        localCal.timeZone = .current
+        let sep2Local = localCal.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 12))!
+        let retirement = DeviceRetirement(
+            retiredAt: sep2Local,
+            reason: .upgraded,
+            farewellNote: "Three winters",
+            calendar: localCal
+        )
+        let retiredDossier = DeviceDossier.sample(for: maxCard, retirement: retirement, now: DossierSample.referenceNow)
+        let color = DeviceColorOption.defaultOption(for: maxCard.modelKey)
+
+        var hiddenOpts = DossierShareOptions.default
+        hiddenOpts.long.showFirstWear = false
+        hiddenOpts.long.showSourceMetadata = true
+        let hiddenPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: retiredDossier,
+            period: .all,
+            color: color,
+            isSampleData: true,
+            format: .long,
+            options: hiddenOpts,
+            scheme: .dark,
+            locale: Locale(identifier: "en"),
+            scale: 3
+        )
+        XCTAssertEqual(hiddenPages.count, 4)
+
+        let habitsText = try recognizeText(fromPNG: hiddenPages[2].pngData, languages: ["en-US"])
+        XCTAssertTrue(habitsText.contains("active days"), "Expected active days tile in Habits OCR: \(habitsText)")
+        XCTAssertFalse(habitsText.contains("/ \(retiredDossier.stats(.all).spanDays)"), "Hidden spanDays leaked in Habits OCR: \(habitsText)")
+
+        let certText = try recognizeText(fromPNG: hiddenPages[3].pngData, languages: ["en-US"])
+        XCTAssertTrue(certText.contains("record days"), "Expected record days label in Certificate OCR: \(certText)")
+        XCTAssertFalse(certText.contains("of \(retiredDossier.historyDays) days"), "Hidden historyDays leaked in Certificate OCR: \(certText)")
+
+        var zhOpts = DossierShareOptions.default
+        zhOpts.long.showFirstWear = true
+        let zhPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: retiredDossier,
+            period: .all,
+            color: color,
+            isSampleData: true,
+            format: .long,
+            options: zhOpts,
+            scheme: .dark,
+            locale: Locale(identifier: "zh-Hans"),
+            scale: 3
+        )
+        XCTAssertEqual(zhPages.count, 4)
+        let rhythmZhText = try recognizeText(fromPNG: zhPages[1].pngData, languages: ["zh-Hans", "en-US"])
+        XCTAssertFalse(rhythmZhText.contains("wears in"), "Expected localized Rhythm caption, got English: \(rhythmZhText)")
+        XCTAssertTrue(rhythmZhText.contains("共聆听"), "Expected Simplified Chinese Rhythm caption: \(rhythmZhText)")
+    }
+
+    private func recognizeText(fromPNG data: Data, languages: [String]) throws -> String {
+        guard let image = UIImage(data: data), let cgImage = image.cgImage else {
+            XCTFail("Expected valid PNG image")
+            return ""
+        }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = languages
+        request.usesLanguageCorrection = false
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        try handler.perform([request])
+        return (request.results ?? [])
+            .compactMap { $0.topCandidates(1).first?.string }
+            .joined(separator: "\n")
+            .lowercased()
     }
 
     @MainActor

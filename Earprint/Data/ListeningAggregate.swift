@@ -62,9 +62,28 @@ struct SessionSet: Codable, Equatable, Sendable {
     var longest: TimeInterval { spans.map(\.duration).max() ?? 0 }
     var totalSpan: TimeInterval { spans.reduce(0) { $0 + $1.duration } }
 
-    private static func canMerge(_ lhs: Int?, _ rhs: Int?) -> Bool {
-        guard let lhs, let rhs else { return true }
-        return lhs == rhs
+    private static func canMerge(
+        lhsStart: TimeInterval,
+        lhsEnd: TimeInterval,
+        lhsDayKey: Int?,
+        rhsStart: TimeInterval,
+        rhsEnd: TimeInterval,
+        rhsDayKey: Int?,
+        splitCutoffs: [TimeInterval]
+    ) -> Bool {
+        if let lhsDayKey, let rhsDayKey, lhsDayKey != rhsDayKey {
+            return false
+        }
+        for cutoff in splitCutoffs {
+            let lhsBefore = lhsStart < cutoff && lhsEnd <= cutoff
+            let rhsBefore = rhsStart < cutoff && rhsEnd <= cutoff
+            let lhsAfter = lhsStart >= cutoff
+            let rhsAfter = rhsStart >= cutoff
+            if !((lhsBefore && rhsBefore) || (lhsAfter && rhsAfter)) {
+                return false
+            }
+        }
+        return true
     }
 
     mutating func insert(
@@ -74,13 +93,19 @@ struct SessionSet: Codable, Equatable, Sendable {
         listeningSeconds: Double? = nil,
         energy: Double = 0,
         peakDecibels: Double = 0,
-        dayKey: Int? = nil
+        dayKey: Int? = nil,
+        splitCutoffs: [TimeInterval] = []
     ) {
         let end = max(start, end)
         let addedListening = listeningSeconds ?? max(0, end - start)
         // Fast path: samples usually come in time order.
         if let last = spans.last, start >= last.start {
-            if start - last.end <= gap && Self.canMerge(last.dayKey, dayKey) {
+            if start - last.end <= gap,
+               Self.canMerge(
+                   lhsStart: last.start, lhsEnd: last.end, lhsDayKey: last.dayKey,
+                   rhsStart: start, rhsEnd: end, rhsDayKey: dayKey,
+                   splitCutoffs: splitCutoffs
+               ) {
                 let idx = spans.count - 1
                 spans[idx].end = max(last.end, end)
                 spans[idx].listeningSeconds = last.effectiveSeconds + addedListening
@@ -103,14 +128,22 @@ struct SessionSet: Codable, Equatable, Sendable {
         var first = lo
         if first > 0,
            start - spans[first - 1].end <= gap,
-           Self.canMerge(spans[first - 1].dayKey, dayKey) {
+           Self.canMerge(
+               lhsStart: spans[first - 1].start, lhsEnd: spans[first - 1].end, lhsDayKey: spans[first - 1].dayKey,
+               rhsStart: start, rhsEnd: end, rhsDayKey: dayKey,
+               splitCutoffs: splitCutoffs
+           ) {
             first -= 1
         }
         var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels, dayKey: dayKey)
         var last = first
         while last < spans.count,
               spans[last].start - merged.end <= gap,
-              Self.canMerge(merged.dayKey, spans[last].dayKey) {
+              Self.canMerge(
+                  lhsStart: merged.start, lhsEnd: merged.end, lhsDayKey: merged.dayKey,
+                  rhsStart: spans[last].start, rhsEnd: spans[last].end, rhsDayKey: spans[last].dayKey,
+                  splitCutoffs: splitCutoffs
+              ) {
             merged.start = min(merged.start, spans[last].start)
             merged.end = max(merged.end, spans[last].end)
             merged.listeningSeconds += spans[last].effectiveSeconds
@@ -158,7 +191,7 @@ struct DeviceAccumulator: Codable, Sendable {
 
 /// The whole listening history, folded into small per-device totals.
 struct ListeningAggregate: Codable, Sendable {
-    static let schemaVersion = 2
+    static let schemaVersion = 3
     /// Gap that still counts as the same session (wearing) — 5 minutes.
     static let sessionGap: TimeInterval = 5 * 60
     /// iOS writes short clips (seconds to ~30 min). Anything longer is clipped so one bad sample cannot
@@ -180,8 +213,27 @@ struct ListeningAggregate: Codable, Sendable {
 
     var isEmpty: Bool { devices.isEmpty }
 
-    mutating func ingest(_ samples: [RawListeningSample], now: Date = Date(), calendar: Calendar = .current) {
+    func hasSpanCrossing(cutoffs: [Date]) -> Bool {
+        let epochs = cutoffs.map(\.timeIntervalSince1970)
+        guard !epochs.isEmpty else { return false }
+        for device in devices.values {
+            for span in device.sessions.spans {
+                if epochs.contains(where: { span.start < $0 && span.end > $0 }) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    mutating func ingest(
+        _ samples: [RawListeningSample],
+        now: Date = Date(),
+        calendar: Calendar = .current,
+        splitCutoffs: [Date] = []
+    ) {
         let slotCutoff = now.addingTimeInterval(-Double(Self.slotRetentionDays) * 86_400).timeIntervalSince1970
+        let cutoffEpochs = Array(Set(splitCutoffs.map(\.timeIntervalSince1970))).sorted()
         var dayCache = DayCache(calendar: calendar)
 
         for sample in samples {
@@ -221,22 +273,29 @@ struct ListeningAggregate: Codable, Sendable {
                 acc.names.append(name)
             }
 
-            // Split across local days before merging sessions so midnight cutoffs isolate archived career energy and timestamps.
+            // Split across local days and saved retirement cutoffs before merging sessions so archival careers stay isolated across time zones.
             var cursor = sample.start
             while cursor < end {
                 let (dayKey, dayEnd) = dayCache.day(containing: cursor)
-                let pieceEnd = min(end, dayEnd)
+                let cursorEpoch = cursor.timeIntervalSince1970
+                var pieceEnd = min(end, dayEnd)
+                let pieceEndEpoch = pieceEnd.timeIntervalSince1970
+                if let nextCutoff = cutoffEpochs.first(where: { $0 > cursorEpoch && $0 < pieceEndEpoch }) {
+                    pieceEnd = Date(timeIntervalSince1970: nextCutoff)
+                }
+                if pieceEnd <= cursor { break }
                 let pieceSeconds = pieceEnd.timeIntervalSince(cursor)
                 if pieceSeconds > 0 {
                     acc.daily[dayKey, default: 0] += pieceSeconds
                     acc.sessions.insert(
-                        start: cursor.timeIntervalSince1970,
+                        start: cursorEpoch,
                         end: pieceEnd.timeIntervalSince1970,
                         gap: Self.sessionGap,
                         listeningSeconds: pieceSeconds,
                         energy: HearingBudget.energy(decibels: sample.decibels, seconds: pieceSeconds),
                         peakDecibels: sample.decibels,
-                        dayKey: dayKey
+                        dayKey: dayKey,
+                        splitCutoffs: cutoffEpochs
                     )
                 }
                 cursor = pieceEnd

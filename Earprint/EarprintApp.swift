@@ -153,8 +153,10 @@ struct EarprintApp: App {
             .onChange(of: library.cards.map(\.id)) { _, _ in
                 syncLiveActivity()
             }
-            .onChange(of: lifecycleStore.retirements) { _, _ in
+            .onChange(of: lifecycleStore.retirements) { _, updated in
                 publishWidgets()
+                let cutoffs = Array(Set(updated.values.map(\.careerCutoffEnd))).sorted()
+                Task { await library.ensureCutoffsIsolated(cutoffs) }
             }
             .onChange(of: proStore.hasPro) { _, _ in
                 syncLiveActivity()

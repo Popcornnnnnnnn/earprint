@@ -1306,11 +1306,13 @@ private struct DossierSharePosterCanvas {
                             Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(nightPct > 20 ? Theme.moderateColor : Color.adaptive(light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1), dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)))
-                            Text(
-                                (!l.showFirstWear && period == .all)
-                                    ? AppLanguage.current.text("%lld wears", stats.sessionCount)
-                                    : "\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))"
-                            )
+                            Group {
+                                if !l.showFirstWear && period == .all {
+                                    Text("\(stats.sessionCount) wears")
+                                } else {
+                                    Text("\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))")
+                                }
+                            }
                             .font(.caption2)
                             .foregroundStyle(DossierPalette.dim)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1330,6 +1332,9 @@ private struct DossierSharePosterCanvas {
         let budgetPct = Int((stats.weeklyDose * 100).rounded())
         let loudPct = Int((stats.loudShare * 100).rounded())
         let longestMinutes = stats.longest?.minutes ?? displayCard.longestMinutes
+        let activeDaysValue = (!l.showFirstWear && period == .all)
+            ? "\(stats.activeDays)"
+            : "\(stats.activeDays) / \(max(1, stats.spanDays))"
         return longFrame(page: .habits, index: index, total: total) {
             VStack(spacing: 7) {
                 if l.showWearHabits && l.showHearingHealth {
@@ -1347,7 +1352,7 @@ private struct DossierSharePosterCanvas {
 
                     HStack(spacing: 8) {
                         posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
-                        posterMetricTile("Active days", "\(stats.activeDays) / \(max(1, stats.spanDays))")
+                        posterMetricTile("Active days", activeDaysValue)
                     }
                     .frame(height: 62)
                 } else if l.showWearHabits {
@@ -1357,7 +1362,7 @@ private struct DossierSharePosterCanvas {
                     }
                     .frame(height: 68)
 
-                    posterMetricTile("Active days", "\(stats.activeDays) / \(max(1, stats.spanDays))")
+                    posterMetricTile("Active days", activeDaysValue)
                         .frame(height: 68)
                 } else if l.showHearingHealth {
                     HStack(spacing: 8) {

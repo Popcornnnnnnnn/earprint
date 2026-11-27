@@ -56,11 +56,17 @@ struct LibrarySnapshot: Sendable {
 
     static let gridDays = 28
 
-    init(aggregate: ListeningAggregate, now: Date = Date(), calendar: Calendar = .current) {
+    init(
+        aggregate: ListeningAggregate,
+        now: Date = Date(),
+        calendar: Calendar = .current,
+        splitCutoffs: [Date] = []
+    ) {
         generatedAt = now
         totalSamples = aggregate.totalSamples
         hostSamples = aggregate.hostSamples
         invalidSamples = aggregate.invalidSamples
+        let cutoffEpochs = Array(Set(splitCutoffs.map(\.timeIntervalSince1970))).sorted()
         let sources = aggregate.devices.values
             .filter { $0.sampleCount > 0 }
             .sorted { ($0.first ?? .distantFuture, $0.key) < ($1.first ?? .distantFuture, $1.key) }
@@ -68,7 +74,7 @@ struct LibrarySnapshot: Sendable {
         devices = Dictionary(grouping: sources, by: DeviceGroup.init)
             .values
             .map { group in
-                Self.summary(for: DeviceAccumulator.combining(group), aliasIDs: group.dropFirst().map(\.key),
+                Self.summary(for: DeviceAccumulator.combining(group, splitCutoffs: cutoffEpochs), aliasIDs: group.dropFirst().map(\.key),
                              now: now, calendar: calendar)
             }
             .sorted { ($0.lifetimeSeconds, $0.id) > ($1.lifetimeSeconds, $1.id) }
@@ -142,7 +148,7 @@ struct LibrarySnapshot: Sendable {
             averageSession: sessions.count > 0 ? sessions.totalSpan / Double(sessions.count) : 0,
             first: acc.first,
             last: acc.last,
-            lastSampleStart: acc.lastSampleStart ?? acc.last,
+            lastSampleStart: acc.lastSampleStart,
             activeDays: acc.activeDays,
             sources: acc.sources.sorted(),
             grid: window.grid,
@@ -262,7 +268,7 @@ struct LibrarySnapshot: Sendable {
 
 private extension DeviceAccumulator {
     /// The first accessory keeps its key. Only the snapshot combines records; the cache retains each source.
-    static func combining(_ devices: [Self]) -> Self {
+    static func combining(_ devices: [Self], splitCutoffs: [TimeInterval] = []) -> Self {
         var combined = devices[0]
         guard devices.count > 1 else { return combined }
 
@@ -301,7 +307,8 @@ private extension DeviceAccumulator {
                 listeningSeconds: span.effectiveSeconds,
                 energy: span.energy,
                 peakDecibels: span.peakDecibels,
-                dayKey: span.dayKey
+                dayKey: span.dayKey,
+                splitCutoffs: splitCutoffs
             )
         }
         return combined
@@ -333,7 +340,7 @@ extension LibrarySnapshot {
                 aliasIDs: d.aliasIDs,
                 tierAchievedDates: d.tierAchievedDates,
                 lastWearDate: d.last,
-                lastWearStartDate: d.lastSampleStart ?? d.last
+                lastWearStartDate: d.lastSampleStart
             )
         }
     }
@@ -461,7 +468,7 @@ extension LibrarySnapshot {
             sampleCount: d.sampleCount,
             lastSynced: generatedAt,
             retirement: retirement,
-            liveLastSampleStart: d.lastSampleStart ?? d.last,
+            liveLastSampleStart: d.lastSampleStart,
             liveLastSampleEnd: d.last,
             now: now,
             calendar: calendar

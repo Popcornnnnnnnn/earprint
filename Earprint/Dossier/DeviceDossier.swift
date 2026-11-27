@@ -346,16 +346,21 @@ struct DeviceDossier: Identifiable {
         let dayCount = LibrarySnapshot.gridDays
         var minutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
         var decibels = minutes
-        let endDay = calendar.startOfDay(for: now)
-        let firstGridDay = calendar.date(byAdding: .day, value: -(dayCount - 1), to: endDay) ?? endDay
+        let endDay = calendar.dateInterval(of: .day, for: now)?.start ?? calendar.startOfDay(for: now)
+        let firstGridDay = Self.addingCalendarDays(-(dayCount - 1), to: endDay, calendar: calendar)
         let byDate = Dictionary(uniqueKeysWithValues: days.map { ($0.date, $0) })
+        var cursor = firstGridDay
         for offset in 0..<dayCount {
-            guard let targetDay = calendar.date(byAdding: .day, value: offset, to: firstGridDay),
-                  let stat = byDate[targetDay] else { continue }
-            for h in 0..<24 where stat.hourMinutes[h] > 0 {
-                minutes[offset][h] = stat.hourMinutes[h]
-                decibels[offset][h] = stat.hourEnergy[h] > 0 ? 10 * log10(stat.hourEnergy[h] / stat.hourMinutes[h]) : 0
+            if let stat = byDate[cursor] {
+                for h in 0..<24 where stat.hourMinutes[h] > 0 {
+                    minutes[offset][h] = stat.hourMinutes[h]
+                    decibels[offset][h] = stat.hourEnergy[h] > 0 ? 10 * log10(stat.hourEnergy[h] / stat.hourMinutes[h]) : 0
+                }
             }
+            let nextCursor = calendar.dateInterval(of: .day, for: cursor)?.end
+                ?? Self.addingCalendarDays(1, to: cursor, calendar: calendar)
+            if nextCursor <= cursor { break }
+            cursor = nextCursor
         }
         return ListeningGrid(minutes: minutes, decibels: decibels)
     }
@@ -413,7 +418,7 @@ struct DeviceDossier: Identifiable {
                 cumulative += session.minutes
                 for mark in hourMarks where before < mark * 60 && cumulative >= mark * 60 {
                     let date = session.start.addingTimeInterval((mark * 60 - before) * 60)
-                    let delta = calendar.dateComponents([.day], from: firstDayStart, to: calendar.startOfDay(for: date)).day ?? 0
+                    let delta = Self.calendarDayDelta(from: firstDayStart, to: date, calendar: calendar)
                     let dayDetail = delta == 0 ? "Same day as minting" : (delta == 1 ? "1 day after minting" : "\(delta) days after minting")
                     result.append(.init(id: "h\(Int(mark))", kind: .hours, date: date, title: "\(Int(mark)) hours",
                                         detail: dayDetail))
@@ -479,7 +484,33 @@ struct DeviceDossier: Identifiable {
     }
 
     func daysBetween(_ a: Date, _ b: Date) -> Int {
-        calendar.dateComponents([.day], from: calendar.startOfDay(for: a), to: calendar.startOfDay(for: b)).day ?? 0
+        Self.calendarDayDelta(from: a, to: b, calendar: calendar)
+    }
+
+    private static func addingCalendarDays(_ delta: Int, to dayStart: Date, calendar: Calendar) -> Date {
+        let interval = calendar.dateInterval(of: .day, for: dayStart)
+        let midpoint: Date
+        if let interval {
+            midpoint = interval.start.addingTimeInterval(interval.duration / 2)
+        } else {
+            midpoint = calendar.startOfDay(for: dayStart).addingTimeInterval(12 * 3600)
+        }
+        guard let shifted = calendar.date(byAdding: .day, value: delta, to: midpoint) else {
+            return dayStart.addingTimeInterval(Double(delta) * 86_400)
+        }
+        return calendar.dateInterval(of: .day, for: shifted)?.start ?? calendar.startOfDay(for: shifted)
+    }
+
+    private static func calendarDayDelta(from a: Date, to b: Date, calendar: Calendar) -> Int {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let aComps = calendar.dateComponents([.year, .month, .day], from: a)
+        let bComps = calendar.dateComponents([.year, .month, .day], from: b)
+        guard let aUTC = utc.date(from: DateComponents(year: aComps.year, month: aComps.month, day: aComps.day)),
+              let bUTC = utc.date(from: DateComponents(year: bComps.year, month: bComps.month, day: bComps.day)) else {
+            return calendar.dateComponents([.day], from: calendar.startOfDay(for: a), to: calendar.startOfDay(for: b)).day ?? 0
+        }
+        return utc.dateComponents([.day], from: aUTC, to: bUTC).day ?? 0
     }
 
     // MARK: Builders
@@ -496,29 +527,38 @@ struct DeviceDossier: Identifiable {
 
     private static func buildDays(sessions: [WearSession], others: [Date: Double], now: Date, calendar: Calendar) -> [DayStat] {
         guard let first = sessions.first else { return [] }
-        let start = calendar.startOfDay(for: first.start)
-        let lastSessionDay = sessions.map { calendar.startOfDay(for: $0.end) }.max() ?? start
-        let today = max(start, max(lastSessionDay, calendar.startOfDay(for: now)))
-        let count = max(1, (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1)
+        let start = calendar.dateInterval(of: .day, for: first.start)?.start ?? calendar.startOfDay(for: first.start)
+        let lastSessionDay = sessions
+            .map { calendar.dateInterval(of: .day, for: $0.end)?.start ?? calendar.startOfDay(for: $0.end) }
+            .max() ?? start
+        let nowDay = calendar.dateInterval(of: .day, for: now)?.start ?? calendar.startOfDay(for: now)
+        let today = max(start, max(lastSessionDay, nowDay))
 
         var days: [DayStat] = []
-        days.reserveCapacity(count)
-        var dayStarts = [Double](repeating: 0, count: count)
-        var dayEnds = [Double](repeating: 0, count: count)
-        var uniformDay = [Bool](repeating: false, count: count)
+        var dayStarts: [Double] = []
+        var dayEnds: [Double] = []
+        var uniformDay: [Bool] = []
         let tz = calendar.timeZone
 
-        for i in 0..<count {
-            let d = calendar.date(byAdding: .day, value: i, to: start)!
-            let nextD = calendar.date(byAdding: .day, value: i + 1, to: start)!
+        var cursor = start
+        while cursor <= today {
+            let interval = calendar.dateInterval(of: .day, for: cursor)
+            let d = interval?.start ?? cursor
+            let nextD = interval?.end ?? Self.addingCalendarDays(1, to: d, calendar: calendar)
             days.append(DayStat(date: d))
             let s = d.timeIntervalSince1970
             let e = nextD.timeIntervalSince1970
-            dayStarts[i] = s
-            dayEnds[i] = e
-            uniformDay[i] = (e - s == 86_400)
+            dayStarts.append(s)
+            dayEnds.append(e)
+            uniformDay.append(
+                (e - s == 86_400)
                 && tz.secondsFromGMT(for: d) == tz.secondsFromGMT(for: Date(timeIntervalSince1970: e - 1))
+            )
+            if nextD <= cursor { break }
+            cursor = nextD
         }
+        let count = days.count
+        guard count > 0 else { return [] }
 
         let firstStart = dayStarts[0]
         let lastEnd = dayEnds[count - 1]
@@ -566,23 +606,26 @@ struct DeviceDossier: Identifiable {
     }
 
     private static func stats(_ period: DossierPeriod, days: [DayStat], sessions: [WearSession], now: Date, calendar: Calendar) -> PeriodStats {
-        let firstDay = days.first?.date ?? calendar.startOfDay(for: now)
+        let nowDay = calendar.dateInterval(of: .day, for: now)?.start ?? calendar.startOfDay(for: now)
+        let firstDay = days.first?.date ?? nowDay
         let lastDay = days.last?.date ?? firstDay
-        let today = max(lastDay, calendar.startOfDay(for: now))
-        let start = period.days.map { calendar.date(byAdding: .day, value: -($0 - 1), to: today)! } ?? firstDay
+        let today = max(lastDay, nowDay)
+        let start = period.days.map { Self.addingCalendarDays(-($0 - 1), to: today, calendar: calendar) } ?? firstDay
 
         // Single linear pass over sorted `days` for range totals, previous period, active days, and 24h bins.
-        let prevStart = period.days.map { calendar.date(byAdding: .day, value: -$0, to: start)! }
+        let prevStart = period.days.map { Self.addingCalendarDays(-$0, to: start, calendar: calendar) }
         var total = 0.0
         var all = 0.0
         var energy = 0.0
         var activeDays = 0
+        var spanDaysInRange = 0
         var prevTotal = 0.0
         var hourMinutes = [Double](repeating: 0, count: 24)
         var hourEnergy = [Double](repeating: 0, count: 24)
 
         for day in days {
             if day.date >= start {
+                spanDaysInRange += 1
                 total += day.minutes
                 all += day.allDevicesMinutes
                 energy += day.energy
@@ -598,8 +641,7 @@ struct DeviceDossier: Identifiable {
         let previous: Double? = prevStart != nil ? prevTotal : nil
 
         let periodSessions = sessions.filter { $0.start >= start }
-        let clippedStart = max(start, firstDay)
-        let span = max(1, (calendar.dateComponents([.day], from: clippedStart, to: today).day ?? 0) + 1)
+        let span = max(1, spanDaysInRange)
 
         // Buckets for the trend chart via O(days) two-pointer scan over sorted `days`.
         let unit: Calendar.Component
@@ -620,7 +662,10 @@ struct DeviceDossier: Identifiable {
             dayCursor += 1
         }
         while cursor <= today {
-            let next = calendar.date(byAdding: unit, value: 1, to: cursor)!
+            let next = calendar.dateInterval(of: unit, for: cursor)?.end
+                ?? (unit == .day
+                    ? Self.addingCalendarDays(1, to: cursor, calendar: calendar)
+                    : calendar.date(byAdding: unit, value: 1, to: cursor)!)
             var m = 0.0
             var e = 0.0
             var sCount = 0
@@ -634,6 +679,7 @@ struct DeviceDossier: Identifiable {
             buckets.append(TrendBucket(id: buckets.count, start: cursor, end: next, minutes: m,
                                        averageDecibels: m > 0 ? 10 * log10(e / m) : 0,
                                        sessions: sCount, isFuture: false))
+            if next <= cursor { break }
             cursor = next
         }
 

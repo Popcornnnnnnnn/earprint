@@ -55,11 +55,25 @@ actor HealthIngestor {
 
     /// Snapshot from the disk cache, available instantly at launch.
     func cachedSnapshot(now: Date = Date()) -> LibrarySnapshot? {
-        aggregate.isEmpty ? nil : LibrarySnapshot(aggregate: aggregate, now: now, calendar: .current)
+        aggregate.isEmpty ? nil : LibrarySnapshot(
+            aggregate: aggregate,
+            now: now,
+            calendar: .current,
+            splitCutoffs: DeviceLifecycleStore.persistedCutoffs()
+        )
     }
 
     func snapshot(now: Date = Date()) -> LibrarySnapshot {
-        LibrarySnapshot(aggregate: aggregate, now: now, calendar: .current)
+        LibrarySnapshot(
+            aggregate: aggregate,
+            now: now,
+            calendar: .current,
+            splitCutoffs: DeviceLifecycleStore.persistedCutoffs()
+        )
+    }
+
+    func needsRebuild(for cutoffs: [Date]) -> Bool {
+        aggregate.hasSpanCrossing(cutoffs: cutoffs)
     }
 
     /// Whether iOS still needs to present the HealthKit permission sheet for read access.
@@ -86,10 +100,16 @@ actor HealthIngestor {
         syncing = true
         defer { syncing = false }
 
+        let splitCutoffs = DeviceLifecycleStore.persistedCutoffs()
         var rebuilt = anchor == nil
         var fetched = 0
         var working = aggregate
         var workingAnchor = anchor
+        if !rebuilt && working.hasSpanCrossing(cutoffs: splitCutoffs) {
+            working = ListeningAggregate()
+            workingAnchor = nil
+            rebuilt = true
+        }
 
         while true {
             let descriptor = HKAnchoredObjectQueryDescriptor(
@@ -109,7 +129,7 @@ actor HealthIngestor {
             }
 
             let samples = result.addedSamples.map(Self.plain)
-            working.ingest(samples, now: Date(), calendar: .current)
+            working.ingest(samples, now: Date(), calendar: .current, splitCutoffs: splitCutoffs)
             fetched += samples.count
             workingAnchor = result.newAnchor
             progress?(fetched)

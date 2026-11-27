@@ -211,6 +211,16 @@
         }
       }
     },
+    "%lld record days · synced %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天有记录 · 同步于 %@"
+          }
+        }
+      }
+    },
     "%lld samples from %lld devices in %@s. If this shows 0, allow access in Settings › Health › Data Access.": {
       "localizations": {
         "zh-Hans": {

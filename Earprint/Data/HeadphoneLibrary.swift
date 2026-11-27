@@ -69,7 +69,10 @@ final class HeadphoneLibrary: ObservableObject {
         self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved)
         #endif
         if let saved, !saved.aggregate.isEmpty {
-            let cached = LibrarySnapshot(aggregate: saved.aggregate)
+            let cached = LibrarySnapshot(
+                aggregate: saved.aggregate,
+                splitCutoffs: DeviceLifecycleStore.persistedCutoffs()
+            )
             self.snapshot = cached
             self.state = .ready
         } else if !HealthIngestor.isAvailable {
@@ -462,6 +465,13 @@ final class HeadphoneLibrary: ObservableObject {
         await ingestor.resetCache()
         snapshot = nil
         await sync()
+    }
+
+    func ensureCutoffsIsolated(_ cutoffs: [Date]) async {
+        guard HealthIngestor.isAvailable, snapshot != nil, !cutoffs.isEmpty else { return }
+        if await ingestor.needsRebuild(for: cutoffs) {
+            await sync(silent: true)
+        }
     }
 
     private func ensureObserving() async {
