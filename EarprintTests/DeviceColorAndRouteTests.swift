@@ -1,4 +1,6 @@
 import RealityKit
+import SwiftUI
+import UIKit
 import XCTest
 @testable import Earprint
 
@@ -240,7 +242,11 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(Rarity.holo.progressToNextTier(minutes: 2500 * 60), 1.0, accuracy: 0.001)
 
         XCTAssertEqual(Set(Rarity.allCases.map(\.title)).count, 6)
+        XCTAssertEqual(Set(Rarity.allCases.map(\.shortName)).count, 6)
         XCTAssertTrue(Rarity.allCases.allSatisfy { !$0.finishLabel.isEmpty })
+        XCTAssertTrue(Rarity.allCases.allSatisfy { $0.meshColors.count == 9 && $0.ink == .white })
+        XCTAssertEqual(Rarity.holo.baseColors.count, 5)
+        XCTAssertGreaterThanOrEqual(Rarity.holo.prismRimColors.count, 6)
         XCTAssertEqual(Rarity.obsidian.material, .carbon)
         XCTAssertEqual(Rarity.holo.material, .holo)
 
@@ -929,5 +935,105 @@ final class DeviceColorAndRouteTests: XCTestCase {
         XCTAssertEqual(empty.weekMinutes, 0)
         XCTAssertEqual(empty.sessions, 0)
         XCTAssertFalse(empty.has28DayData)
+    }
+
+    @MainActor
+    func testRenderSeriesFourCardTierPreviewsIfRequested() throws {
+        let baseMax = try XCTUnwrap(SampleCards.all.first { $0.modelKey == .airpodsMax })
+        let hoursByTier: [Rarity: Double] = [
+            .bronze: 12,
+            .silver: 68,
+            .sapphire: 214,
+            .platinum: 642,
+            .obsidian: 1380,
+            .holo: 2490
+        ]
+        let tierCards: [(Rarity, HeadphoneCard)] = Rarity.allAscending.enumerated().map { idx, tier in
+            var card = baseMax
+            card.lifetimeMinutes = (hoursByTier[tier] ?? tier.minimumHours) * 60
+            card.serial = idx + 1
+            return (tier, card)
+        }
+
+        let verticalGrid = VStack(spacing: 14) {
+            HStack(spacing: 14) {
+                ForEach(tierCards.prefix(3), id: \.0) { _, card in
+                    CardFront(card: card)
+                        .scaleEffect(0.65)
+                        .frame(width: 195, height: 286)
+                }
+            }
+            HStack(spacing: 14) {
+                ForEach(tierCards.dropFirst(3), id: \.0) { _, card in
+                    CardFront(card: card)
+                        .scaleEffect(0.65)
+                        .frame(width: 195, height: 286)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+
+        let horizontalStack = VStack(spacing: 14) {
+            ForEach(tierCards, id: \.0) { _, card in
+                CardHorizontalFront(card: card)
+            }
+        }
+        .padding(16)
+        .frame(width: 410)
+        .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+
+        let holoCard = tierCards.last!.1
+        let holoDualSurface = HStack(spacing: 20) {
+            CardFront(card: holoCard, tilt: CGSize(width: 0.25, height: -0.15))
+                .padding(16)
+                .background(Color(red: 0.05, green: 0.06, blue: 0.09), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            CardFront(card: holoCard, tilt: CGSize(width: -0.25, height: 0.15))
+                .padding(16)
+                .background(Color(red: 0.96, green: 0.96, blue: 0.98), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        }
+        .padding(16)
+        .background(Color.gray.opacity(0.22))
+
+        let binderHero = CardTiersView(ownedCards: [holoCard])
+            .frame(width: 402, height: 860)
+
+        let verticalData = try XCTUnwrap(renderHostingImage(verticalGrid, size: CGSize(width: 646, height: 618), style: .dark).pngData())
+        let horizontalData = try XCTUnwrap(renderHostingImage(horizontalStack, size: CGSize(width: 410, height: 1230), style: .dark).pngData())
+        let holoData = try XCTUnwrap(renderHostingImage(holoDualSurface, size: CGSize(width: 716, height: 504), style: .dark).pngData())
+        let binderData = try XCTUnwrap(renderHostingImage(binderHero, size: CGSize(width: 402, height: 860), style: .dark).pngData())
+
+        XCTAssertGreaterThan(verticalData.count, 1000)
+        XCTAssertGreaterThan(horizontalData.count, 1000)
+        XCTAssertGreaterThan(holoData.count, 1000)
+        XCTAssertGreaterThan(binderData.count, 1000)
+
+        if let dir = ProcessInfo.processInfo.environment["EARPRINT_TIER_PREVIEW_DIR"], !dir.isEmpty {
+            let folder = URL(fileURLWithPath: dir, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try verticalData.write(to: folder.appendingPathComponent("tiers-vertical-grid.png"))
+            try horizontalData.write(to: folder.appendingPathComponent("tiers-horizontal-stack.png"))
+            try holoData.write(to: folder.appendingPathComponent("tier-holo-hero.png"))
+            try binderData.write(to: folder.appendingPathComponent("tier-binder-dark.png"))
+        }
+    }
+
+    @MainActor
+    private func renderHostingImage<V: View>(_ view: V, size: CGSize, style: UIUserInterfaceStyle) -> UIImage {
+        let host = UIHostingController(rootView: view)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.overrideUserInterfaceStyle = style
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.frame = CGRect(origin: .zero, size: size)
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        window.isHidden = true
+        return image
     }
 }

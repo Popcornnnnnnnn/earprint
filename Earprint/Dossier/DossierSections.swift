@@ -216,8 +216,8 @@ struct AirtimeHero: View {
         let isLight = colorScheme == .light
         let ringColors: [Color] = if rarity == .obsidian && !isLight {
             [rarity.accent, rarity.glow, rarity.accent]
-        } else if rarity == .silver && isLight {
-            [rarity.accent, Color(red: 0.45, green: 0.50, blue: 0.58), rarity.accent]
+        } else if rarity == .holo {
+            rarity.prismRimColors
         } else {
             rarity.baseColors + [rarity.baseColors[0]]
         }

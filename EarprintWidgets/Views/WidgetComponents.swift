@@ -28,69 +28,68 @@ struct WidgetBackdrop: View {
     }
 }
 
-/// Static foil for mini cards: per-material natural gradients (no center pinwheel) + micro finish.
+/// Static foil for mini cards: sculptural iOS 18 `MeshGradient` silk + prism highlight on 2,000h cards.
 struct MiniFoil: View {
     let rarity: Rarity
 
     var body: some View {
         let colors = rarity.baseColors
-        let mid = colors.indices.contains(0) ? colors[0] : rarity.glow
-        let hi = colors.indices.contains(1) ? colors[1] : mid
-        let sh = colors.indices.contains(2) ? colors[2] : mid
-        let deep = colors.indices.contains(3) ? colors[3] : sh
+        let hi = colors.indices.contains(1) ? colors[1] : rarity.glow
 
         ZStack {
-            switch rarity.material {
-            case .matteGrain:
-                LinearGradient(colors: [hi, mid, sh, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                RadialGradient(colors: [hi.opacity(0.40), .clear], center: UnitPoint(x: 0.20, y: 0.15), startRadius: 2, endRadius: 90)
-            case .brushed:
-                LinearGradient(colors: [mid, hi, mid, sh], startPoint: UnitPoint(x: 0.12, y: 0), endPoint: UnitPoint(x: 0.88, y: 1))
-                LinearGradient(colors: [.clear, .white.opacity(0.24), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.8, y: 0.75))
-                    .blendMode(.softLight)
-            case .satin:
-                LinearGradient(colors: [hi, mid, sh, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                RadialGradient(colors: [hi.opacity(0.45), .clear], center: UnitPoint(x: 0.82, y: 0.18), startRadius: 2, endRadius: 85)
-            case .carbon:
-                LinearGradient(colors: [mid, deep, sh], startPoint: .top, endPoint: .bottom)
-                RadialGradient(colors: [hi.opacity(0.55), rarity.glow.opacity(0.22), .clear], center: UnitPoint(x: 0.85, y: 0.12), startRadius: 2, endRadius: 75)
-            case .holo:
-                LinearGradient(colors: [colors[0], colors[1], colors[2], colors[3]], startPoint: .topLeading, endPoint: .bottomTrailing)
-                RadialGradient(colors: [colors[0].opacity(0.52), .clear], center: UnitPoint(x: 0.2, y: 0.2), startRadius: 2, endRadius: 75)
-                RadialGradient(colors: [colors[2].opacity(0.42), .clear], center: UnitPoint(x: 0.82, y: 0.45), startRadius: 2, endRadius: 75)
-            }
+            MeshGradient(
+                width: 3,
+                height: 3,
+                points: Rarity.meshPoints(),
+                colors: rarity.meshColors,
+                smoothsColors: true
+            )
 
-            Canvas { context, size in
-                var path = Path()
-                switch rarity.material {
-                case .brushed:
-                    stride(from: CGFloat(0), to: size.height, by: 2.5).forEach { y in
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: size.width, y: y))
-                    }
-                    context.stroke(path, with: .color(.white.opacity(0.05)), lineWidth: 0.5)
-                case .carbon:
-                    stride(from: -size.height, to: size.width + size.height, by: 4).forEach { x in
+            if rarity.material == .carbon {
+                Canvas { context, size in
+                    var path = Path()
+                    stride(from: -size.height, to: size.width + size.height, by: 4.5).forEach { x in
                         path.move(to: CGPoint(x: x, y: size.height))
                         path.addLine(to: CGPoint(x: x + size.height, y: 0))
                         path.move(to: CGPoint(x: x, y: 0))
                         path.addLine(to: CGPoint(x: x + size.height, y: size.height))
                     }
-                    context.stroke(path, with: .color(.white.opacity(0.06)), lineWidth: 0.6)
-                case .matteGrain, .satin, .holo:
-                    stride(from: -size.height, to: size.width, by: 3.5).forEach { x in
-                        path.move(to: CGPoint(x: x, y: size.height))
-                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
-                    }
-                    context.stroke(path, with: .color(.white.opacity(rarity == .holo ? 0.06 : 0.035)), lineWidth: 0.55)
+                    context.stroke(path, with: .color(.white.opacity(0.036)), lineWidth: 0.55)
                 }
             }
 
+            RadialGradient(
+                colors: [.white.opacity(0.20), hi.opacity(0.14), .clear],
+                center: UnitPoint(x: rarity == .obsidian ? 0.82 : 0.24, y: 0.16),
+                startRadius: 2,
+                endRadius: 85
+            )
+            .blendMode(.softLight)
+
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0.45),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(rarity == .holo ? 0.28 : 0.22), location: 1.0)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
             if rarity == .holo {
-                LinearGradient(colors: [.clear, .pink.opacity(0.24), .yellow.opacity(0.20), .cyan.opacity(0.26), .clear],
-                               startPoint: UnitPoint(x: -0.1, y: 0), endPoint: UnitPoint(x: 1.1, y: 1))
-                    .blendMode(.colorDodge)
-                    .opacity(0.55)
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        colors[0].opacity(0.36),
+                        colors[2].opacity(0.34),
+                        colors[3].opacity(0.36),
+                        colors[4].opacity(0.30),
+                        .clear
+                    ],
+                    startPoint: UnitPoint(x: -0.15, y: 0.05),
+                    endPoint: UnitPoint(x: 1.15, y: 0.95)
+                )
+                .blendMode(.colorDodge)
+                .opacity(0.56)
             }
         }
     }
@@ -108,18 +107,28 @@ struct MiniCard: View {
     var body: some View {
         let rarity = card.rarity
         let ink = rarity.ink
+        let shape = RoundedRectangle(cornerRadius: 7 * s, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
-            Text(rarity.shortName.uppercased())
-                .font(.system(size: 5.5 * s, weight: .heavy))
-                .tracking(0.6 * s)
-                .padding(.horizontal, 3.5 * s).padding(.vertical, 1.5 * s)
-                .background(.black.opacity(0.28), in: Capsule())
-                .foregroundStyle(.white)
+            HStack(spacing: 2 * s) {
+                if rarity == .holo {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 5 * s, weight: .bold))
+                }
+                Text(rarity.shortName.uppercased())
+                    .font(.system(size: 5.5 * s, weight: .heavy, design: .rounded))
+                    .tracking(0.6 * s)
+            }
+            .padding(.horizontal, 3.5 * s).padding(.vertical, 1.5 * s)
+            .background(.black.opacity(0.30), in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(.white.opacity(rarity == .holo ? 0.42 : 0.20), lineWidth: max(0.4, 0.5 * s))
+            )
+            .foregroundStyle(.white)
             Spacer(minLength: 0)
             Image(systemName: card.symbol)
                 .font(.system(size: 30 * s, weight: .thin))
-                .foregroundStyle(ink.opacity(0.85))
-                .shadow(color: .white.opacity(0.6), radius: 0.5, y: 0.5)
+                .foregroundStyle(ink.opacity(0.90))
+                .shadow(color: .white.opacity(0.35), radius: 2 * s, y: 0.5)
                 .frame(maxWidth: .infinity)
             Spacer(minLength: 0)
             Text(WidgetFormat.hours(card.lifetimeMinutes))
@@ -132,15 +141,26 @@ struct MiniCard: View {
                 Text(card.nickname)
                     .font(.system(size: 6.5 * s, weight: .bold))
                     .lineLimit(1)
-                    .opacity(0.75)
+                    .opacity(0.78)
             }
         }
         .foregroundStyle(ink)
         .padding(6 * s)
         .frame(width: width, height: width / Self.aspect)
         .background(MiniFoil(rarity: rarity))
-        .clipShape(RoundedRectangle(cornerRadius: 7 * s, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 7 * s, style: .continuous).strokeBorder(.white.opacity(0.5), lineWidth: max(0.5, 0.8 * s)))
+        .clipShape(shape)
+        .overlay(
+            Group {
+                if rarity == .holo {
+                    shape.strokeBorder(
+                        AngularGradient(colors: rarity.prismRimColors, center: .center),
+                        lineWidth: max(0.85, 1.2 * s)
+                    )
+                } else {
+                    shape.strokeBorder(.white.opacity(0.45), lineWidth: max(0.5, 0.8 * s))
+                }
+            }
+        )
         .shadow(color: rarity.glow.opacity(0.55), radius: 8 * s, y: 3 * s)
     }
 }

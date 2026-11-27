@@ -59,33 +59,33 @@ extension Rarity {
         switch self {
         case .holo:
             Color.adaptive(
-                light: UIColor(red: 0.04, green: 0.56, blue: 0.54, alpha: 1),
-                dark: UIColor(red: 0.533, green: 0.961, blue: 0.925, alpha: 1)
+                light: UIColor(red: 0.659, green: 0.141, blue: 0.541, alpha: 1),
+                dark: UIColor(red: 1.000, green: 0.471, blue: 0.784, alpha: 1)
             )
         case .obsidian:
             Color.adaptive(
-                light: UIColor(red: 0.18, green: 0.34, blue: 0.58, alpha: 1),
-                dark: UIColor(red: 0.494, green: 0.651, blue: 0.878, alpha: 1)
+                light: UIColor(red: 0.247, green: 0.212, blue: 0.478, alpha: 1),
+                dark: UIColor(red: 0.608, green: 0.573, blue: 0.941, alpha: 1)
             )
         case .platinum:
             Color.adaptive(
-                light: UIColor(red: 0.40, green: 0.25, blue: 0.62, alpha: 1),
-                dark: UIColor(red: 0.639, green: 0.510, blue: 0.839, alpha: 1)
+                light: UIColor(red: 0.145, green: 0.247, blue: 0.659, alpha: 1),
+                dark: UIColor(red: 0.490, green: 0.600, blue: 1.000, alpha: 1)
             )
         case .sapphire:
             Color.adaptive(
-                light: UIColor(red: 0.14, green: 0.43, blue: 0.49, alpha: 1),
-                dark: UIColor(red: 0.494, green: 0.690, blue: 0.741, alpha: 1)
+                light: UIColor(red: 0.055, green: 0.420, blue: 0.459, alpha: 1),
+                dark: UIColor(red: 0.322, green: 0.859, blue: 0.808, alpha: 1)
             )
         case .silver:
             Color.adaptive(
-                light: UIColor(red: 0.35, green: 0.39, blue: 0.46, alpha: 1),
-                dark: UIColor(red: 0.867, green: 0.890, blue: 0.929, alpha: 1)
+                light: UIColor(red: 0.114, green: 0.373, blue: 0.580, alpha: 1),
+                dark: UIColor(red: 0.486, green: 0.784, blue: 0.961, alpha: 1)
             )
         case .bronze:
             Color.adaptive(
-                light: UIColor(red: 0.56, green: 0.34, blue: 0.21, alpha: 1),
-                dark: UIColor(red: 0.800, green: 0.588, blue: 0.459, alpha: 1)
+                light: UIColor(red: 0.294, green: 0.333, blue: 0.400, alpha: 1),
+                dark: UIColor(red: 0.659, green: 0.702, blue: 0.769, alpha: 1)
             )
         }
     }

@@ -661,6 +661,26 @@
         }
       }
     },
+    "ARCTIC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰蓝"
+          }
+        }
+      }
+    },
+    "ARCTIC ICE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极境冰蓝"
+          }
+        }
+      }
+    },
     "AVG": {
       "localizations": {
         "zh-Hans": {
@@ -881,12 +901,42 @@
         }
       }
     },
+    "Aqua Enamel": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流光青釉"
+          }
+        }
+      }
+    },
     "Architectural frosted plum finish at 550+ hours": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "550 小时解锁的建筑感深紫磨砂卡面"
+          }
+        }
+      }
+    },
+    "Arctic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰蓝"
+          }
+        }
+      }
+    },
+    "Arctic tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰蓝等级"
           }
         }
       }
@@ -1017,6 +1067,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "青铜岩等级"
+          }
+        }
+      }
+    },
+    "BRUSHED MIST": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾银拉丝"
           }
         }
       }
@@ -1201,6 +1261,16 @@
         }
       }
     },
+    "COBALT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "钴蓝"
+          }
+        }
+      }
+    },
     "COLLECTION NUMBER": {
       "localizations": {
         "zh-Hans": {
@@ -1247,6 +1317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "取消"
+          }
+        }
+      }
+    },
+    "Carbon obsidian lit with violet-steel silk at 1,000+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 1,000 小时解锁的烟熏紫钢曜石碳钛"
           }
         }
       }
@@ -1357,6 +1437,16 @@
         }
       }
     },
+    "Chromatic Prism": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全光谱棱镜"
+          }
+        }
+      }
+    },
     "Classic Finishes": {
       "localizations": {
         "zh-Hans": {
@@ -1403,6 +1493,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭档案"
+          }
+        }
+      }
+    },
+    "Cobalt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "钴蓝"
+          }
+        }
+      }
+    },
+    "Cobalt tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "钴蓝等级"
           }
         }
       }
@@ -1543,6 +1653,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "160 小时解锁的冷冽拉丝峡湾岩青"
+          }
+        }
+      }
+    },
+    "Cool brushed mist glass cast on your first listen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初次聆听即铸就的清冷雾银玻璃质感"
           }
         }
       }
@@ -1689,6 +1809,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "日均时长"
+          }
+        }
+      }
+    },
+    "DEEP COBALT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深海钴蓝"
           }
         }
       }
@@ -2219,6 +2349,16 @@
         }
       }
     },
+    "Electric indigo to royal sapphire silk at 400+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 400 小时解锁的电靛蓝宝丝釉阶梯"
+          }
+        }
+      }
+    },
     "Ends the current Earprint listening session.": {
       "localizations": {
         "zh-Hans": {
@@ -2489,12 +2629,32 @@
         }
       }
     },
+    "Forged Carbon": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "锻造碳钛"
+          }
+        }
+      }
+    },
     "Freezes this pair's career span, daily averages, and final Ear Grade on this date.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "将在该日期定格这副耳机的生涯跨度、日均时长与最终听感评分。"
+          }
+        }
+      }
+    },
+    "Frosted Glass": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "凝霜玻璃"
           }
         }
       }
@@ -2515,6 +2675,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "哑光深紫釉"
+          }
+        }
+      }
+    },
+    "Full-spectrum liquid prism aurora at 2,000+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 2,000 小时加冕的全光谱流光极光棱镜"
+          }
+        }
+      }
+    },
+    "GLACIER": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰川青"
+          }
+        }
+      }
+    },
+    "GLACIER TEAL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰川青釉"
           }
         }
       }
@@ -2615,6 +2805,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "赠予或转卖"
+          }
+        }
+      }
+    },
+    "Glacier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰川青"
+          }
+        }
+      }
+    },
+    "Glacier tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰川青等级"
           }
         }
       }
@@ -3045,6 +3255,16 @@
         }
       }
     },
+    "Liquid Satin": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "液态缎面"
+          }
+        }
+      }
+    },
     "Listen with any supported pair to add it to your Collection.": {
       "localizations": {
         "zh-Hans": {
@@ -3271,6 +3491,16 @@
         }
       }
     },
+    "Luminous frost-blue silk glass at 25+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 25 小时解锁的透亮冰蓝丝绒玻璃"
+          }
+        }
+      }
+    },
     "MANUFACTURER": {
       "localizations": {
         "zh-Hans": {
@@ -3317,6 +3547,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "生成于 %@"
+          }
+        }
+      }
+    },
+    "MIST": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾银"
           }
         }
       }
@@ -3411,6 +3651,16 @@
         }
       }
     },
+    "Mint-aqua to deep ocean glass at 120+ hours": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 120 小时解锁的薄荷青至深海渐变琉璃"
+          }
+        }
+      }
+    },
     "Minted": {
       "localizations": {
         "zh-Hans": {
@@ -3427,6 +3677,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "首次聆听即铸造的起始卡面"
+          }
+        }
+      }
+    },
+    "Mist": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾银"
+          }
+        }
+      }
+    },
+    "Mist tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾银等级"
           }
         }
       }
@@ -3881,6 +4151,26 @@
         }
       }
     },
+    "PRISM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极光"
+          }
+        }
+      }
+    },
+    "PRISM AURORA · LEGENDARY": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极光棱镜 · 传说"
+          }
+        }
+      }
+    },
     "PRODUCT ID": {
       "localizations": {
         "zh-Hans": {
@@ -4011,12 +4301,32 @@
         }
       }
     },
+    "Prism": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极光"
+          }
+        }
+      }
+    },
     "Prism Oxide": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "液态全息镀膜"
+          }
+        }
+      }
+    },
+    "Prism tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极光等级"
           }
         }
       }
@@ -4587,6 +4897,16 @@
         }
       }
     },
+    "SMOKED TITANIUM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏钛碳"
+          }
+        }
+      }
+    },
     "SOURCE BUNDLE": {
       "localizations": {
         "zh-Hans": {
@@ -4673,6 +4993,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "示例数据 · 模拟器"
+          }
+        }
+      }
+    },
+    "Sapphire Silk": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蓝宝丝釉"
           }
         }
       }
@@ -5217,6 +5547,16 @@
         }
       }
     },
+    "TITANIUM": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏钛"
+          }
+        }
+      }
+    },
     "TWILIGHT": {
       "localizations": {
         "zh-Hans": {
@@ -5423,6 +5763,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "打赏"
+          }
+        }
+      }
+    },
+    "Titanium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏钛"
+          }
+        }
+      }
+    },
+    "Titanium tier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏钛等级"
           }
         }
       }

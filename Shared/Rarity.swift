@@ -98,111 +98,160 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
     /// Short finish descriptor shown in tier badges and the collector binder.
     var finishLabel: String {
         switch self {
-        case .bronze: "Anodized Matte"
-        case .silver: "Beaded Alloy"
-        case .sapphire: "Brushed Slate"
-        case .platinum: "Frosted Plum"
-        case .obsidian: "DLC Coating"
-        case .holo: "Prism Oxide"
+        case .bronze: "Liquid Satin"
+        case .silver: "Frosted Glass"
+        case .sapphire: "Aqua Enamel"
+        case .platinum: "Sapphire Silk"
+        case .obsidian: "Forged Carbon"
+        case .holo: "Chromatic Prism"
         }
     }
 
-    /// Intensity of prismatic color-dodge foil shimmer (0 for matte entry tiers, up to 0.9 for Holo).
+    /// Intensity of glass foil refraction sheen (from subtle satin on Mist up to 0.92 on Prism Aurora).
     var sheenOpacity: Double {
         switch self {
-        case .holo: 0.90
+        case .holo: 0.92
         case .obsidian: 0.62
-        case .platinum: 0.42
-        case .sapphire: 0.26
-        case .silver, .bronze: 0
+        case .platinum: 0.46
+        case .sapphire: 0.34
+        case .silver: 0.26
+        case .bronze: 0.18
         }
     }
 
     var title: String {
         switch self {
-        case .holo: "LIQUID HOLO · LEGENDARY"
-        case .obsidian: "MIDNIGHT CARBON"
-        case .platinum: "DEEP PURPLE"
-        case .sapphire: "FJORD TEAL"
-        case .silver: "SILVER ALUMINUM"
-        case .bronze: "BRONZE SLATE"
+        case .holo: "PRISM AURORA · LEGENDARY"
+        case .obsidian: "SMOKED TITANIUM"
+        case .platinum: "DEEP COBALT"
+        case .sapphire: "GLACIER TEAL"
+        case .silver: "ARCTIC ICE"
+        case .bronze: "BRUSHED MIST"
         }
     }
 
     var shortName: String {
         switch self {
-        case .holo: "Holo"
-        case .obsidian: "Carbon"
-        case .platinum: "Deep Purple"
-        case .sapphire: "Fjord"
-        case .silver: "Silver"
-        case .bronze: "Bronze"
+        case .holo: "Prism"
+        case .obsidian: "Titanium"
+        case .platinum: "Cobalt"
+        case .sapphire: "Glacier"
+        case .silver: "Arctic"
+        case .bronze: "Mist"
         }
     }
 
     var tagline: String {
         switch self {
-        case .bronze: "Starter anodized slate cast on your first listen"
-        case .silver: "Brushed silver aluminum unibody at 25+ hours"
-        case .sapphire: "Coastal brushed fjord teal at 120+ hours"
-        case .platinum: "Frosted velvet deep purple at 400+ hours"
-        case .obsidian: "Forged midnight carbon at 1,000+ hours"
-        case .holo: "Full-spectrum liquid holographic crown at 2,000+ hours"
+        case .bronze: "Cool brushed mist glass cast on your first listen"
+        case .silver: "Luminous frost-blue silk glass at 25+ hours"
+        case .sapphire: "Mint-aqua to deep ocean glass at 120+ hours"
+        case .platinum: "Electric indigo to royal sapphire silk at 400+ hours"
+        case .obsidian: "Carbon obsidian lit with violet-steel silk at 1,000+ hours"
+        case .holo: "Full-spectrum liquid prism aurora at 2,000+ hours"
         }
     }
 
     var baseColors: [Color] {
         switch self {
         case .holo:
-            // #6 Liquid Holo
-            [Color(red: 0.424, green: 0.961, blue: 0.910), Color(red: 0.604, green: 0.518, blue: 1.000),
-             Color(red: 1.000, green: 0.518, blue: 0.808), Color(red: 1.000, green: 0.941, blue: 0.549),
-             Color(red: 0.424, green: 0.961, blue: 0.910)]
+            // #6 Prism Aurora — full-spectrum vivid crown
+            [Color(red: 0.125, green: 0.910, blue: 0.863), Color(red: 0.259, green: 0.596, blue: 1.000),
+             Color(red: 0.604, green: 0.302, blue: 1.000), Color(red: 1.000, green: 0.278, blue: 0.620),
+             Color(red: 1.000, green: 0.820, blue: 0.302)]
         case .obsidian:
-            // #5 Midnight Carbon
-            [Color(red: 0.059, green: 0.078, blue: 0.125), Color(red: 0.145, green: 0.180, blue: 0.259),
-             Color(red: 0.086, green: 0.118, blue: 0.180), Color(red: 0.031, green: 0.043, blue: 0.071),
-             Color(red: 0.059, green: 0.078, blue: 0.125)]
+            // #5 Smoked Titanium
+            [Color(red: 0.078, green: 0.094, blue: 0.149), Color(red: 0.275, green: 0.337, blue: 0.502),
+             Color(red: 0.365, green: 0.306, blue: 0.651), Color(red: 0.031, green: 0.039, blue: 0.071),
+             Color(red: 0.078, green: 0.094, blue: 0.149)]
         case .platinum:
-            // #4 Deep Purple
-            [Color(red: 0.294, green: 0.204, blue: 0.427), Color(red: 0.522, green: 0.388, blue: 0.710),
-             Color(red: 0.212, green: 0.137, blue: 0.322), Color(red: 0.141, green: 0.086, blue: 0.227),
-             Color(red: 0.294, green: 0.204, blue: 0.427)]
+            // #4 Deep Cobalt
+            [Color(red: 0.118, green: 0.208, blue: 0.600), Color(red: 0.388, green: 0.510, blue: 1.000),
+             Color(red: 0.078, green: 0.129, blue: 0.420), Color(red: 0.043, green: 0.071, blue: 0.259),
+             Color(red: 0.118, green: 0.208, blue: 0.600)]
         case .sapphire:
-            // #3 Fjord Teal
-            [Color(red: 0.322, green: 0.482, blue: 0.525), Color(red: 0.525, green: 0.682, blue: 0.722),
-             Color(red: 0.227, green: 0.376, blue: 0.420), Color(red: 0.149, green: 0.271, blue: 0.306),
-             Color(red: 0.322, green: 0.482, blue: 0.525)]
+            // #3 Glacier Teal
+            [Color(red: 0.063, green: 0.471, blue: 0.522), Color(red: 0.322, green: 0.859, blue: 0.808),
+             Color(red: 0.051, green: 0.275, blue: 0.388), Color(red: 0.031, green: 0.153, blue: 0.239),
+             Color(red: 0.063, green: 0.471, blue: 0.522)]
         case .silver:
-            // #2 Silver Aluminum
-            [Color(red: 0.725, green: 0.753, blue: 0.800), Color(red: 0.933, green: 0.945, blue: 0.965),
-             Color(red: 0.604, green: 0.635, blue: 0.690), Color(red: 0.482, green: 0.514, blue: 0.569),
-             Color(red: 0.725, green: 0.753, blue: 0.800)]
+            // #2 Arctic Ice
+            [Color(red: 0.169, green: 0.431, blue: 0.627), Color(red: 0.580, green: 0.831, blue: 0.969),
+             Color(red: 0.106, green: 0.286, blue: 0.451), Color(red: 0.059, green: 0.165, blue: 0.278),
+             Color(red: 0.169, green: 0.431, blue: 0.627)]
         case .bronze:
-            // #1 Bronze Slate
-            [Color(red: 0.455, green: 0.314, blue: 0.231), Color(red: 0.710, green: 0.510, blue: 0.388),
-             Color(red: 0.353, green: 0.231, blue: 0.165), Color(red: 0.263, green: 0.169, blue: 0.118),
-             Color(red: 0.455, green: 0.314, blue: 0.231)]
+            // #1 Brushed Mist
+            [Color(red: 0.314, green: 0.349, blue: 0.408), Color(red: 0.659, green: 0.702, blue: 0.769),
+             Color(red: 0.208, green: 0.235, blue: 0.290), Color(red: 0.129, green: 0.149, blue: 0.188),
+             Color(red: 0.314, green: 0.349, blue: 0.408)]
         }
     }
 
-    var ink: Color {
+    /// 3x3 sculptural `MeshGradient` stop colors for iOS 18 liquid-silk cards & widgets.
+    var meshColors: [Color] {
+        let mid = baseColors[0]
+        let hi = baseColors[1]
+        let sh = baseColors[2]
+        let deep = baseColors[3]
         switch self {
-        case .bronze, .sapphire, .platinum, .obsidian:
-            .white
-        case .silver, .holo:
-            Color(red: 0.08, green: 0.08, blue: 0.10)
+        case .holo:
+            let gold = baseColors[4]
+            let deepCyan = Color(red: 0.086, green: 0.678, blue: 0.737)
+            let royalIndigo = Color(red: 0.114, green: 0.141, blue: 0.478)
+            let amethyst = Color(red: 0.424, green: 0.180, blue: 0.902)
+            let coral = Color(red: 1.000, green: 0.431, blue: 0.533)
+            return [
+                mid, hi, gold,
+                deepCyan, sh, deep,
+                royalIndigo, amethyst, coral,
+            ]
+        case .obsidian:
+            return [
+                mid, hi, sh,
+                deep, mid, sh,
+                deep, deep, mid,
+            ]
+        case .bronze, .silver, .sapphire, .platinum:
+            return [
+                hi, hi, mid,
+                mid, hi, sh,
+                deep, sh, deep,
+            ]
         }
+    }
+
+    /// Closed full-spectrum color ring for exclusive `.holo` prismatic borders.
+    var prismRimColors: [Color] {
+        let emerald = Color(red: 0.169, green: 0.910, blue: 0.690)
+        return [
+            baseColors[0], baseColors[1], baseColors[2],
+            baseColors[3], baseColors[4], emerald, baseColors[0],
+        ]
+    }
+
+    /// Tilt-shifted 3x3 control points for `MeshGradient` surfaces.
+    static func meshPoints(tilt: CGSize = .zero) -> [SIMD2<Float>] {
+        let ox = Float(max(-0.14, min(0.14, tilt.width * 0.14)))
+        let oy = Float(max(-0.12, min(0.12, tilt.height * 0.12)))
+        return [
+            [0, 0], [0.5 + ox * 0.4, 0], [1, 0],
+            [0, 0.5 + oy * 0.4], [0.5 + ox, 0.46 + oy], [1, 0.5 - oy * 0.4],
+            [0, 1], [0.5 - ox * 0.4, 1], [1, 1],
+        ]
+    }
+
+    var ink: Color {
+        .white
     }
 
     var glow: Color {
         switch self {
-        case .obsidian: Color(red: 0.302, green: 0.565, blue: 0.769)
-        case .platinum: Color(red: 0.522, green: 0.388, blue: 0.710)
-        case .sapphire: Color(red: 0.427, green: 0.612, blue: 0.659)
-        case .silver: Color(red: 0.725, green: 0.753, blue: 0.800)
-        case .bronze: Color(red: 0.710, green: 0.510, blue: 0.388)
-        case .holo: Color(red: 0.604, green: 0.518, blue: 1.000)
+        case .holo: Color(red: 0.659, green: 0.333, blue: 1.000)
+        case .obsidian: Color(red: 0.478, green: 0.447, blue: 0.851)
+        case .platinum: Color(red: 0.400, green: 0.522, blue: 1.000)
+        case .sapphire: Color(red: 0.275, green: 0.824, blue: 0.784)
+        case .silver: Color(red: 0.471, green: 0.769, blue: 0.941)
+        case .bronze: Color(red: 0.596, green: 0.639, blue: 0.710)
         }
     }
 }
