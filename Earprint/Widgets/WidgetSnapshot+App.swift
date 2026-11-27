@@ -123,15 +123,26 @@ enum WidgetPublisher {
     private static var latestGeneration: UInt64 = 0
 
     static func enqueue(_ snapshot: WidgetSnapshot) {
-        let generation: UInt64 = stateLock.withLock {
-            latestGeneration &+= 1
-            return latestGeneration
+        enqueueWork {
+            let changed = try WidgetSnapshotStore.save(snapshot)
+            #if DEBUG
+            print("[Widgets] snapshot \(changed ? "written" : "unchanged") at \(WidgetSnapshotStore.fileURL?.path ?? "-")")
+            #endif
         }
-        queue.async {
-            let current: UInt64 = stateLock.withLock { latestGeneration }
-            guard generation == current else { return }
-            writeNow(snapshot)
+    }
+
+    static func enqueue(
+        _ snapshot: WidgetSnapshot,
+        to url: URL,
+        reload: @escaping () -> Void = {}
+    ) {
+        enqueueWork {
+            _ = try WidgetSnapshotStore.save(snapshot, to: url, reload: reload)
         }
+    }
+
+    static func flushForTesting() {
+        queue.sync {}
     }
 
     /// Writes the snapshot asynchronously via the serialized publisher queue.
@@ -139,14 +150,19 @@ enum WidgetPublisher {
         enqueue(snapshot)
     }
 
-    private static func writeNow(_ snapshot: WidgetSnapshot) {
-        do {
-            let changed = try WidgetSnapshotStore.save(snapshot)
-            #if DEBUG
-            print("[Widgets] snapshot \(changed ? "written" : "unchanged") at \(WidgetSnapshotStore.fileURL?.path ?? "-")")
-            #endif
-        } catch {
-            print("[Widgets] could not write snapshot: \(error)")
+    private static func enqueueWork(_ work: @escaping () throws -> Void) {
+        let generation: UInt64 = stateLock.withLock {
+            latestGeneration &+= 1
+            return latestGeneration
+        }
+        queue.async {
+            let current: UInt64 = stateLock.withLock { latestGeneration }
+            guard generation == current else { return }
+            do {
+                try work()
+            } catch {
+                print("[Widgets] could not write snapshot: \(error)")
+            }
         }
     }
 

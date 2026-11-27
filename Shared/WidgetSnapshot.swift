@@ -36,8 +36,6 @@ struct WidgetSnapshot: Codable, Equatable {
     var totalLifetimeMinutes: Double? = nil
     /// Weekly listening breakdown across all active and vaulted headphones so weekly widget rankings stay accurate.
     var weeklyBreakdown: [Card]? = nil
-    /// Full-precision UNIX timestamp for sub-millisecond freshness checks; falls back to `generatedAt` on legacy snapshots.
-    var generatedAtEpoch: TimeInterval? = nil
 
     struct Today: Codable, Equatable {
         var minutes: Double
@@ -106,10 +104,6 @@ extension WidgetSnapshot {
     /// Weekly listening breakdown across all headphones, falling back to `cards` for legacy v1 snapshots.
     var resolvedWeeklyBreakdown: [Card] {
         weeklyBreakdown ?? cards
-    }
-
-    var resolvedGeneratedAtEpoch: TimeInterval {
-        generatedAtEpoch ?? generatedAt.timeIntervalSince1970
     }
 }
 
@@ -263,18 +257,13 @@ enum WidgetSnapshotStore {
 
     @discardableResult
     static func save(_ snapshot: WidgetSnapshot, to url: URL, reload: () -> Void = {}) throws -> Bool {
-        var toSave = snapshot
-        toSave.generatedAtEpoch = toSave.resolvedGeneratedAtEpoch
-        return try saveLock.withLock {
-            // Reject snapshots older than the persisted one so out-of-order publishes never resurrect retired cards.
+        try saveLock.withLock {
             if var old = load(from: url) {
-                if toSave.resolvedGeneratedAtEpoch < old.resolvedGeneratedAtEpoch { return false }
                 // Compare without `generatedAt` so re-publishing identical data does not burn the reload budget.
-                old.generatedAt = toSave.generatedAt
-                old.generatedAtEpoch = toSave.generatedAtEpoch
-                if old == toSave { return false }
+                old.generatedAt = snapshot.generatedAt
+                if old == snapshot { return false }
             }
-            try encoder.encode(toSave).write(to: url, options: .atomic)
+            try encoder.encode(snapshot).write(to: url, options: .atomic)
             reload()
             return true
         }

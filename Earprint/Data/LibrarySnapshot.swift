@@ -130,7 +130,8 @@ struct LibrarySnapshot: Sendable {
                 minutes: activeSeconds / 60,
                 averageDecibels: avgDB,
                 peakDecibels: peakDB,
-                isEstimated: false
+                isEstimated: false,
+                spanEnd: Date(timeIntervalSince1970: span.end)
             )
         }
         let recentSessionDecibels: Double?

@@ -12,6 +12,8 @@ struct WearSession: Hashable, Identifiable {
     var peakDecibels: Double
     /// True when the session edges were inferred from gaps between samples.
     var isEstimated: Bool
+    /// True span end from HealthKit samples, preserved separately from `minutes` when overlapping samples exceed elapsed wall time.
+    var spanEnd: Date? = nil
 
     var end: Date { start.addingTimeInterval(minutes * 60) }
 }
@@ -258,7 +260,13 @@ struct DeviceDossier: Identifiable {
             sortedSessions = allSortedSessions.compactMap { session in
                 guard session.start < cutoff else { return nil }
                 var clipped = session
-                if clipped.end > endMoment {
+                if let spanEnd = clipped.spanEnd {
+                    if spanEnd > cutoff {
+                        let clippedSpanEnd = min(spanEnd, endMoment)
+                        clipped.spanEnd = clippedSpanEnd
+                        clipped.minutes = max(0, min(clipped.minutes, clippedSpanEnd.timeIntervalSince(clipped.start) / 60))
+                    }
+                } else if clipped.end > endMoment {
                     clipped.minutes = max(0, endMoment.timeIntervalSince(clipped.start) / 60)
                 }
                 return clipped.minutes > 0 ? clipped : nil
@@ -529,7 +537,10 @@ struct DeviceDossier: Identifiable {
         guard let first = sessions.first else { return [] }
         let start = calendar.dateInterval(of: .day, for: first.start)?.start ?? calendar.startOfDay(for: first.start)
         let lastSessionDay = sessions
-            .map { calendar.dateInterval(of: .day, for: $0.end)?.start ?? calendar.startOfDay(for: $0.end) }
+            .map {
+                let end = $0.spanEnd ?? $0.end
+                return calendar.dateInterval(of: .day, for: end)?.start ?? calendar.startOfDay(for: end)
+            }
             .max() ?? start
         let nowDay = calendar.dateInterval(of: .day, for: now)?.start ?? calendar.startOfDay(for: now)
         let today = max(start, max(lastSessionDay, nowDay))
@@ -572,9 +583,24 @@ struct DeviceDossier: Identifiable {
 
         for s in sessions {
             let startEpoch = s.start.timeIntervalSince1970
-            let endEpoch = s.end.timeIntervalSince1970
+            let actualEnd = s.spanEnd ?? s.end
+            let endEpoch = max(startEpoch, actualEnd.timeIntervalSince1970)
             if let i = dayIndex(for: startEpoch) { days[i].sessions += 1 }
+            guard s.minutes > 0 else { continue }
             let level = pow(10, s.averageDecibels / 10)
+            let spanDuration = endEpoch - startEpoch
+            guard spanDuration > 0 else {
+                if let i = dayIndex(for: startEpoch) {
+                    let date = Date(timeIntervalSince1970: startEpoch)
+                    let h = calendar.component(.hour, from: date)
+                    days[i].minutes += s.minutes
+                    days[i].energy += level * s.minutes
+                    days[i].hourMinutes[h] += s.minutes
+                    days[i].hourEnergy[h] += level * s.minutes
+                }
+                continue
+            }
+            let rate = (s.minutes * 60) / spanDuration
             var t = startEpoch
             while t < endEpoch {
                 guard let i = dayIndex(for: t) else { break }
@@ -589,14 +615,14 @@ struct DeviceDossier: Identifiable {
                     hourEndEpoch = calendar.dateInterval(of: .hour, for: date)?.end.timeIntervalSince1970 ?? (t + 3600)
                 }
                 let sliceEnd = min(hourEndEpoch, endEpoch)
-                let minutes = (sliceEnd - t) / 60
+                let minutes = ((sliceEnd - t) / 60) * rate
                 if minutes > 0 {
                     days[i].minutes += minutes
                     days[i].energy += level * minutes
                     days[i].hourMinutes[h] += minutes
                     days[i].hourEnergy[h] += level * minutes
                 }
-                t = max(sliceEnd, t + 1)
+                t = sliceEnd > t ? sliceEnd : t + 1
             }
         }
         for i in days.indices {

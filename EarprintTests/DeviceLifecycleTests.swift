@@ -969,6 +969,50 @@ final class DeviceLifecycleTests: XCTestCase {
         XCTAssertFalse(singleWeekCertText.contains("2026.08.30"), "Single-wear Certificate milestones leaked first-wear date: \(singleWeekCertText)")
         XCTAssertFalse(singleWeekCertText.contains("aug 30"), "Single-wear Certificate milestones leaked first-wear date: \(singleWeekCertText)")
 
+        // Regression: single wear on Aug 30 with retirement on Sep 5 places the first wear at the start of the Sep 5 week;
+        // .week Rhythm must redact the "wears in ..." range and weekday axis labels so the Aug 30 start date stays hidden.
+        let utcRetSep5 = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 5),
+            timeZoneIdentifier: "UTC",
+            reason: .other,
+            farewellNote: ""
+        )
+        let singleSep5Dossier = DeviceDossier(
+            id: "single-max-sep5",
+            nickname: "Single Max Sep 5",
+            symbol: "airpodsmax",
+            serial: 4,
+            hardware: DossierSample.hardware(for: maxCard),
+            sessions: [WearSession(start: shortStart, minutes: 60, averageDecibels: 64, peakDecibels: 70, isEstimated: false)],
+            otherDevicesDailyMinutes: [:],
+            sampleCount: 1,
+            lastSynced: date(2026, 9, 6, hour: 10),
+            retirement: utcRetSep5,
+            now: date(2026, 9, 6, hour: 10),
+            calendar: utcCalendar
+        )
+        let singleSep5WeekPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: singleSep5Dossier,
+            period: .week,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: hiddenOpts,
+            scheme: .dark,
+            locale: Locale(identifier: "en"),
+            scale: 3
+        )
+        XCTAssertEqual(singleSep5WeekPages.count, 4)
+        let singleSep5RhythmText = try recognizeText(fromPNG: singleSep5WeekPages[1].pngData, languages: ["en-US"])
+        XCTAssertTrue(singleSep5RhythmText.contains("1 wears"), "Expected redacted wear count in weekly Rhythm OCR: \(singleSep5RhythmText)")
+        XCTAssertFalse(singleSep5RhythmText.contains("wears in"), "Weekly Rhythm caption leaked date range: \(singleSep5RhythmText)")
+        XCTAssertFalse(singleSep5RhythmText.contains("aug 30"), "Weekly Rhythm caption leaked Aug 30 first-wear date: \(singleSep5RhythmText)")
+        XCTAssertFalse(singleSep5RhythmText.contains("sun"), "Weekly Rhythm chart leaked weekday axis label: \(singleSep5RhythmText)")
+        let singleSep5CertText = try recognizeText(fromPNG: singleSep5WeekPages[3].pngData, languages: ["en-US"])
+        XCTAssertFalse(singleSep5CertText.contains("2026.08.30"), "Single-wear Sep 5 Certificate leaked first-wear date: \(singleSep5CertText)")
+        XCTAssertFalse(singleSep5CertText.contains("aug 30"), "Single-wear Sep 5 Certificate leaked first-wear date: \(singleSep5CertText)")
+
         // Localized zh-Hans Rhythm caption + timezone-anchored date range.
         var zhOpts = DossierShareOptions.default
         zhOpts.long.showFirstWear = true
@@ -993,22 +1037,86 @@ final class DeviceLifecycleTests: XCTestCase {
         XCTAssertEqual(utcRange, "Aug 27 – Sep 2")
     }
 
-    func testWidgetSnapshotStoreRejectsStaleSnapshotWrites() throws {
+    @MainActor
+    func testOverlappingPreCutoffSamplesPreserveActiveMinutes() throws {
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(identifier: "UTC")!
+        let maxDev = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "overlap-max")
+
+        let s1Start = utcCal.date(from: DateComponents(timeZone: utcCal.timeZone, year: 2026, month: 9, day: 2, hour: 23, minute: 40))!
+        let s2Start = utcCal.date(from: DateComponents(timeZone: utcCal.timeZone, year: 2026, month: 9, day: 2, hour: 23, minute: 45))!
+        let sEnd = utcCal.date(from: DateComponents(timeZone: utcCal.timeZone, year: 2026, month: 9, day: 2, hour: 23, minute: 55))!
+        let now = utcCal.date(from: DateComponents(timeZone: utcCal.timeZone, year: 2026, month: 9, day: 5, hour: 10))!
+
+        let utcRet = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2),
+            timeZoneIdentifier: "UTC",
+            reason: .upgraded,
+            farewellNote: ""
+        )
+
+        var seedAgg = ListeningAggregate()
+        seedAgg.ingest([
+            RawListeningSample(start: s1Start, end: sEnd, decibels: 64, device: maxDev),
+        ], now: now, calendar: utcCal)
+        let maxCard = try XCTUnwrap(LibrarySnapshot(aggregate: seedAgg, now: now, calendar: utcCal).cards(now: now, calendar: utcCal).first)
+
+        let suite = "OverlappingPreCutoffTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = DeviceLifecycleStore(defaults: defaults)
+        store.saveRetirement(utcRet, for: maxCard)
+        let scopes = DeviceLifecycleStore.persistedCutoffScopes(defaults: defaults)
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            RawListeningSample(start: s1Start, end: sEnd, decibels: 64, device: maxDev),
+            RawListeningSample(start: s2Start, end: sEnd, decibels: 68, device: maxDev),
+        ], now: now, calendar: utcCal, cutoffScopes: scopes)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: utcCal, cutoffScopes: scopes)
+        let dossier = try XCTUnwrap(snapshot.dossier(forCardID: maxCard.id, retirement: utcRet, now: now, calendar: utcCal))
+
+        XCTAssertEqual(dossier.sessions.count, 1)
+        XCTAssertEqual(dossier.sessions[0].spanEnd, sEnd)
+        XCTAssertEqual(dossier.lifetimeMinutes, 25.0, accuracy: 0.01)
+        XCTAssertEqual(dossier.stats(.all).totalMinutes, 25.0, accuracy: 0.01)
+        XCTAssertEqual(dossier.historyDays, 1)
+        XCTAssertEqual(dossier.days.count, 1)
+    }
+
+    func testWidgetPublisherSerializesAndAllowsBackwardClockCorrection() throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("widget-stale-guard-\(UUID().uuidString).json")
+            .appendingPathComponent("widget-backward-clock-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let newerTime = Date(timeIntervalSince1970: 1_788_436_800.9004)
-        let olderSubMillisecond = Date(timeIntervalSince1970: 1_788_436_800.9001)
+        let initialTime = Date(timeIntervalSince1970: 1_788_436_800.9004)
+        let backwardClockTime = Date(timeIntervalSince1970: 1_788_436_200.125)
+        let laterDedupeTime = Date(timeIntervalSince1970: 1_788_436_205.0)
         let emptyCards: [HeadphoneCard] = []
-        let newer = WidgetSnapshot(summary: SampleData.summary, cards: emptyCards, isSample: false, now: newerTime)
-        let olderWithCards = WidgetSnapshot(summary: SampleData.summary, cards: SampleCards.all, isSample: false, now: olderSubMillisecond)
 
-        XCTAssertTrue(try WidgetSnapshotStore.save(newer, to: url))
-        XCTAssertFalse(try WidgetSnapshotStore.save(olderWithCards, to: url))
-        let loaded = try XCTUnwrap(WidgetSnapshotStore.load(from: url))
-        XCTAssertEqual(loaded.cards.count, 0)
-        XCTAssertEqual(loaded.resolvedGeneratedAtEpoch, newerTime.timeIntervalSince1970, accuracy: 0.00001)
+        let activeBeforeRetire = WidgetSnapshot(summary: SampleData.summary, cards: SampleCards.all, isSample: false, now: initialTime)
+        let emptyAfterBackwardClock = WidgetSnapshot(summary: SampleData.summary, cards: emptyCards, isSample: false, now: backwardClockTime)
+
+        // Store accepts an earlier wall-clock timestamp so a backward clock adjustment cannot freeze widget updates.
+        XCTAssertTrue(try WidgetSnapshotStore.save(activeBeforeRetire, to: url))
+        XCTAssertTrue(try WidgetSnapshotStore.save(emptyAfterBackwardClock, to: url))
+        let storedAfterBackwardClock = try XCTUnwrap(WidgetSnapshotStore.load(from: url))
+        XCTAssertEqual(storedAfterBackwardClock.cards.count, 0)
+        XCTAssertEqual(storedAfterBackwardClock.generatedAt.timeIntervalSince1970, backwardClockTime.timeIntervalSince1970, accuracy: 0.001)
+
+        // Identical payload with only a newer generatedAt still skips redundant timeline reloads.
+        let duplicateEmpty = WidgetSnapshot(summary: SampleData.summary, cards: emptyCards, isSample: false, now: laterDedupeTime)
+        XCTAssertFalse(try WidgetSnapshotStore.save(duplicateEmpty, to: url))
+
+        // Serial publisher coalesces out-of-order timestamps by enqueue generation order, not wall clock.
+        try? FileManager.default.removeItem(at: url)
+        WidgetPublisher.enqueue(activeBeforeRetire, to: url)
+        WidgetPublisher.enqueue(emptyAfterBackwardClock, to: url)
+        WidgetPublisher.flushForTesting()
+        let publishedLatest = try XCTUnwrap(WidgetSnapshotStore.load(from: url))
+        XCTAssertEqual(publishedLatest.cards.count, 0)
+        XCTAssertEqual(publishedLatest.generatedAt.timeIntervalSince1970, backwardClockTime.timeIntervalSince1970, accuracy: 0.001)
 
         // Whole-second ISO-8601 snapshots written by earlier app builds still decode cleanly.
         let legacyEncoder = JSONEncoder()

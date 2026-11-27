@@ -173,9 +173,9 @@ struct DossierTrendChart: View {
                 }
             }
         }
-        .chartXAxis(redactsAllTimeStart ? .hidden : .automatic)
+        .chartXAxis(showsMintedMarker ? .automatic : .hidden)
         .chartXAxis {
-            if !redactsAllTimeStart {
+            if showsMintedMarker {
                 AxisMarks(values: xValues) { value in
                     AxisValueLabel(format: xFormat, centered: true)
                         .foregroundStyle(DossierPalette.dim)

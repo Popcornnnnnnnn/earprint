@@ -1318,7 +1318,7 @@ private struct DossierSharePosterCanvas {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(nightPct > 20 ? Theme.moderateColor : Color.adaptive(light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1), dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)))
                             Group {
-                                if !l.showFirstWear && period == .all {
+                                if !l.showFirstWear {
                                     Text("\(stats.sessionCount) wears")
                                 } else {
                                     Text("\(stats.sessionCount) wears in \(DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))")
