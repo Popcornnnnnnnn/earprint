@@ -51,8 +51,48 @@ enum DossierFormat {
 // MARK: - Shared pieces
 
 extension Rarity {
+    /// Contrast-safe rich foil gradient for compact pills and segmented controls with white ink.
     var foil: LinearGradient {
-        LinearGradient(colors: Array(baseColors.prefix(4)), startPoint: .topLeading, endPoint: .bottomTrailing)
+        let colors: [Color] = switch self {
+        case .holo:
+            [
+                Color(red: 0.031, green: 0.400, blue: 0.459),
+                Color(red: 0.122, green: 0.278, blue: 0.722),
+                Color(red: 0.420, green: 0.137, blue: 0.769),
+                Color(red: 0.659, green: 0.102, blue: 0.420),
+            ]
+        case .obsidian:
+            [
+                Color(red: 0.078, green: 0.094, blue: 0.149),
+                Color(red: 0.196, green: 0.192, blue: 0.388),
+                Color(red: 0.051, green: 0.063, blue: 0.110),
+            ]
+        case .platinum:
+            [
+                Color(red: 0.102, green: 0.188, blue: 0.541),
+                Color(red: 0.173, green: 0.282, blue: 0.741),
+                Color(red: 0.071, green: 0.118, blue: 0.361),
+            ]
+        case .sapphire:
+            [
+                Color(red: 0.039, green: 0.337, blue: 0.380),
+                Color(red: 0.063, green: 0.435, blue: 0.478),
+                Color(red: 0.035, green: 0.231, blue: 0.322),
+            ]
+        case .silver:
+            [
+                Color(red: 0.094, green: 0.294, blue: 0.471),
+                Color(red: 0.141, green: 0.408, blue: 0.620),
+                Color(red: 0.071, green: 0.212, blue: 0.349),
+            ]
+        case .bronze:
+            [
+                Color(red: 0.231, green: 0.263, blue: 0.322),
+                Color(red: 0.322, green: 0.365, blue: 0.439),
+                Color(red: 0.169, green: 0.192, blue: 0.239),
+            ]
+        }
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
     /// Adaptive tier accent tuned for crisp contrast in both Light and Dark mode.
     var accent: Color {

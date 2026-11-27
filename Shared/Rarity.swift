@@ -196,14 +196,18 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .holo:
             let gold = baseColors[4]
-            let deepCyan = Color(red: 0.086, green: 0.678, blue: 0.737)
-            let royalIndigo = Color(red: 0.114, green: 0.141, blue: 0.478)
-            let amethyst = Color(red: 0.424, green: 0.180, blue: 0.902)
-            let coral = Color(red: 1.000, green: 0.431, blue: 0.533)
+            let jewelTeal = Color(red: 0.047, green: 0.486, blue: 0.588)
+            let vividAzure = Color(red: 0.145, green: 0.388, blue: 0.922)
+            let deepCobalt = Color(red: 0.078, green: 0.251, blue: 0.600)
+            let irisViolet = Color(red: 0.486, green: 0.227, blue: 0.929)
+            let hotMagenta = Color(red: 0.902, green: 0.180, blue: 0.541)
+            let royalIndigo = Color(red: 0.075, green: 0.090, blue: 0.369)
+            let deepAmethyst = Color(red: 0.357, green: 0.129, blue: 0.714)
+            let coralRose = Color(red: 0.878, green: 0.282, blue: 0.459)
             return [
-                mid, hi, gold,
-                deepCyan, sh, deep,
-                royalIndigo, amethyst, coral,
+                jewelTeal, vividAzure, gold,
+                deepCobalt, irisViolet, hotMagenta,
+                royalIndigo, deepAmethyst, coralRose,
             ]
         case .obsidian:
             return [
@@ -213,7 +217,7 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
             ]
         case .bronze, .silver, .sapphire, .platinum:
             return [
-                hi, hi, mid,
+                mid, hi, mid,
                 mid, hi, sh,
                 deep, sh, deep,
             ]

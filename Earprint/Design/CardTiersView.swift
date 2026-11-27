@@ -247,6 +247,9 @@ struct CardTiersView: View {
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .monospacedDigit()
                 }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(badgeBg, in: Capsule())
@@ -257,7 +260,8 @@ struct CardTiersView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(LocalizedStringKey(tier.finishLabel))
                         .font(.caption.weight(.semibold))
-                        .opacity(0.78)
+                        .opacity(0.90)
+                        .shadow(color: .black.opacity(0.22), radius: 1.5, y: 0.5)
 
                     Text(hoursLabel(tier.minimumHours))
                         .font(.system(size: 32, weight: .black, design: .rounded))

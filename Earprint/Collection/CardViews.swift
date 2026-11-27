@@ -27,19 +27,73 @@ struct CardFaceRotation: ViewModifier, Animatable {
 /// Static micro-texture for `FoilSurface`, isolated as `Equatable` so tilt changes never redraw the Canvas.
 private struct FoilTexturePattern: View, Equatable {
     let material: FoilMaterial
+    var carbonOpacity: Double = 0.062
 
     var body: some View {
         Canvas { context, size in
-            guard material == .carbon else { return }
-            // Ultra-subtle carbon twill for forged titanium obsidian tiers.
-            var weave = Path()
-            stride(from: -size.height, to: size.width + size.height, by: 8.5).forEach { x in
-                weave.move(to: CGPoint(x: x, y: size.height))
-                weave.addLine(to: CGPoint(x: x + size.height, y: 0))
-                weave.move(to: CGPoint(x: x, y: 0))
-                weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
+            switch material {
+            case .matteGrain:
+                // Bead-blasted anodized micro-stipple (no linear grooves).
+                var stipple = Path()
+                let step: CGFloat = 6
+                var row = 0
+                stride(from: CGFloat(1), to: size.height, by: step).forEach { y in
+                    let shift: CGFloat = row.isMultiple(of: 2) ? 0 : step * 0.5
+                    stride(from: shift + 1, to: size.width, by: step).forEach { x in
+                        stipple.addRect(CGRect(x: x, y: y, width: 1.1, height: 1.1))
+                    }
+                    row += 1
+                }
+                context.fill(stipple, with: .color(.white.opacity(0.042)))
+
+            case .brushed:
+                // Fine horizontal brushed alloy hairlines at subtle alternating weights.
+                var primary = Path()
+                var secondary = Path()
+                var idx = 0
+                stride(from: CGFloat(0), to: size.height, by: 3.0).forEach { y in
+                    let target = idx.isMultiple(of: 3) ? 0 : 1
+                    if target == 0 {
+                        primary.move(to: CGPoint(x: 0, y: y))
+                        primary.addLine(to: CGPoint(x: size.width, y: y))
+                    } else {
+                        secondary.move(to: CGPoint(x: 0, y: y))
+                        secondary.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    idx += 1
+                }
+                context.stroke(primary, with: .color(.white.opacity(0.055)), lineWidth: 0.75)
+                context.stroke(secondary, with: .color(.white.opacity(0.025)), lineWidth: 0.55)
+
+            case .satin:
+                // Ultra-fine vertical silk grain so satin finishes read smooth and directional.
+                var path = Path()
+                stride(from: CGFloat(0), to: size.width, by: 4.5).forEach { x in
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                context.stroke(path, with: .color(.white.opacity(0.028)), lineWidth: 0.6)
+
+            case .carbon:
+                // Authentic 2x2 carbon-fiber twill weave.
+                var weave = Path()
+                stride(from: -size.height, to: size.width + size.height, by: 8.0).forEach { x in
+                    weave.move(to: CGPoint(x: x, y: size.height))
+                    weave.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    weave.move(to: CGPoint(x: x, y: 0))
+                    weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                }
+                context.stroke(weave, with: .color(.white.opacity(carbonOpacity)), lineWidth: 0.9)
+
+            case .holo:
+                // Delicate pearlescent cross-shimmer mesh.
+                var shimmer = Path()
+                stride(from: -size.height, to: size.width, by: 5.5).forEach { x in
+                    shimmer.move(to: CGPoint(x: x, y: size.height))
+                    shimmer.addLine(to: CGPoint(x: x + size.height, y: 0))
+                }
+                context.stroke(shimmer, with: .color(.white.opacity(0.055)), lineWidth: 0.8)
             }
-            context.stroke(weave, with: .color(.white.opacity(0.036)), lineWidth: 0.85)
         }
     }
 }
@@ -74,11 +128,13 @@ struct FoilSurface: View {
             // 1. Native 3x3 sculptural silk mesh gradient tailored to each tier.
             baseLayer(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
 
-            // 2. Static micro-weave (carbon only) so silk gradients stay clean and uncluttered.
-            FoilTexturePattern(material: rarity.material)
-                .equatable()
+            // 2. Earned tiers stay clean liquid silk except subtle carbon twill on forged Titanium obsidian.
+            if rarity.material == .carbon {
+                FoilTexturePattern(material: .carbon, carbonOpacity: 0.036)
+                    .equatable()
+            }
 
-            // 3. Soft liquid-glass silk highlight + bottom contrast feather (+ rainbow refraction on 2,000h Prism).
+            // 3. Soft liquid-glass silk highlight + contrast veil (+ rainbow refraction on 2,000h Prism).
             lightingOverlay(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
         }
     }
@@ -177,40 +233,46 @@ struct FoilSurface: View {
         )
         .blendMode(.softLight)
 
-        // Subtle bottom contrast feather so white typography remains crisp over every gradient.
-        LinearGradient(
-            stops: [
-                .init(color: .clear, location: 0.44),
-                .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(rarity == .holo ? 0.36 : 0.24), location: 1.0)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-
         // Exclusive 2,000h Prism Aurora chromatic color-dodge sweep.
         if rarity == .holo {
             LinearGradient(
                 colors: [
                     .clear,
-                    rarity.baseColors[0].opacity(0.36),
+                    rarity.baseColors[0].opacity(0.32),
                     rarity.baseColors[2].opacity(0.34),
-                    rarity.baseColors[3].opacity(0.38),
-                    rarity.baseColors[4].opacity(0.32),
+                    rarity.baseColors[3].opacity(0.36),
+                    rarity.baseColors[4].opacity(0.30),
                     .clear
                 ],
                 startPoint: UnitPoint(x: -0.22 + tx * 0.58, y: 0.06 + ty * 0.34),
                 endPoint: UnitPoint(x: 1.14 + tx * 0.58, y: 0.92 + ty * 0.34)
             )
             .blendMode(.colorDodge)
-            .opacity(0.56)
+            .opacity(0.52)
 
             LinearGradient(
-                colors: [.clear, .white.opacity(0.32), .clear],
+                colors: [.clear, .white.opacity(0.28), .clear],
                 startPoint: UnitPoint(x: 0.04 + tx * 0.62, y: 0.04 + ty * 0.38),
                 endPoint: UnitPoint(x: 0.72 + tx * 0.62, y: 0.76 + ty * 0.38)
             )
             .blendMode(.overlay)
         }
+
+        // Subtle contrast veil so white typography stays legible over every gradient stop.
+        LinearGradient(
+            stops: rarity == .holo
+                ? [
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.18), location: 0.0),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.26), location: 0.45),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.38), location: 1.0)
+                ]
+                : [
+                    .init(color: .clear, location: 0.44),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.24), location: 1.0)
+                ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }
 
@@ -234,11 +296,12 @@ struct TierBadgePill: View {
                 .font(.system(size: fontSize, weight: .heavy, design: .rounded))
                 .tracking(tracking)
                 .lineLimit(1)
+                .minimumScaleFactor(0.58)
+                .allowsTightening(true)
         }
-        .fixedSize(horizontal: true, vertical: false)
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
-        .background(Color.black.opacity(isHolo ? 0.40 : (ink == .white ? 0.28 : 0.74)), in: Capsule())
+        .background(Color.black.opacity(isHolo ? 0.44 : (ink == .white ? 0.28 : 0.74)), in: Capsule())
         .overlay(
             Capsule().strokeBorder(
                 isHolo
@@ -398,6 +461,7 @@ private struct VaultedCardBadge: View {
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(1)
         .padding(.horizontal, 8)
         .padding(.vertical, 3.5)
         .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())

@@ -984,43 +984,75 @@ final class DeviceColorAndRouteTests: XCTestCase {
         .background(Color(red: 0.05, green: 0.06, blue: 0.09))
 
         let holoCard = tierCards.last!.1
-        let holoDualSurface = HStack(spacing: 20) {
-            CardFront(card: holoCard, tilt: CGSize(width: 0.25, height: -0.15))
-                .padding(16)
-                .background(Color(red: 0.05, green: 0.06, blue: 0.09), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            CardFront(card: holoCard, tilt: CGSize(width: -0.25, height: 0.15))
-                .padding(16)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.98), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        let retirement = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 11, day: 20),
+            timeZoneIdentifier: "UTC",
+            reason: .upgraded,
+            farewellNote: ""
+        )
+        let vaultedHolo = CardFront(card: holoCard, tilt: CGSize(width: 0.25, height: -0.15), retirement: retirement)
+            .padding(16)
+            .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+
+        let lightHolo = CardFront(card: holoCard, tilt: CGSize(width: -0.25, height: 0.15))
+            .padding(16)
+            .background(Color(red: 0.96, green: 0.96, blue: 0.98))
+
+        let binder375 = CardTiersView(ownedCards: [holoCard])
+            .frame(width: 375, height: 812)
+
+        let switcherAndPills = VStack(spacing: 14) {
+            PeriodSwitcher(period: .constant(.month), rarity: .holo, rangeText: "Oct 29 – Nov 27")
+            HStack(spacing: 6) {
+                ForEach(Rarity.allAscending) { r in
+                    Text(r.shortName.uppercased())
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundStyle(r.ink)
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(r.foil, in: Capsule())
+                }
+            }
         }
         .padding(16)
-        .background(Color.gray.opacity(0.22))
+        .frame(width: 480)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.98))
 
-        let binderHero = CardTiersView(ownedCards: [holoCard])
-            .frame(width: 402, height: 860)
+        let verticalImage = try renderHostingImage(verticalGrid, size: CGSize(width: 646, height: 618), style: .dark)
+        let horizontalImage = try renderHostingImage(horizontalStack, size: CGSize(width: 410, height: 1230), style: .dark)
+        let darkHoloImage = try renderHostingImage(vaultedHolo, size: CGSize(width: 332, height: 472), style: .dark)
+        let lightHoloImage = try renderHostingImage(lightHolo, size: CGSize(width: 332, height: 472), style: .light)
+        let binder375Image = try renderHostingImage(binder375, size: CGSize(width: 375, height: 812), style: .dark)
+        let pillsLightImage = try renderHostingImage(switcherAndPills, size: CGSize(width: 480, height: 190), style: .light)
 
-        let verticalData = try XCTUnwrap(renderHostingImage(verticalGrid, size: CGSize(width: 646, height: 618), style: .dark).pngData())
-        let horizontalData = try XCTUnwrap(renderHostingImage(horizontalStack, size: CGSize(width: 410, height: 1230), style: .dark).pngData())
-        let holoData = try XCTUnwrap(renderHostingImage(holoDualSurface, size: CGSize(width: 716, height: 504), style: .dark).pngData())
-        let binderData = try XCTUnwrap(renderHostingImage(binderHero, size: CGSize(width: 402, height: 860), style: .dark).pngData())
+        for img in [verticalImage, horizontalImage, darkHoloImage, lightHoloImage, binder375Image, pillsLightImage] {
+            try assertImageHasVisibleContent(img)
+        }
 
-        XCTAssertGreaterThan(verticalData.count, 1000)
-        XCTAssertGreaterThan(horizontalData.count, 1000)
-        XCTAssertGreaterThan(holoData.count, 1000)
-        XCTAssertGreaterThan(binderData.count, 1000)
+        // Verify all 4 paid ProFoilStyle surfaces render non-blank content with their textures intact.
+        for style in ProFoilStyle.allCases {
+            let proCard = CardFront(card: holoCard, proFoil: style)
+            let proImage = try renderHostingImage(proCard, size: CGSize(width: 300, height: 440), style: .dark)
+            try assertImageHasVisibleContent(proImage)
+        }
 
         if let dir = ProcessInfo.processInfo.environment["EARPRINT_TIER_PREVIEW_DIR"], !dir.isEmpty {
             let folder = URL(fileURLWithPath: dir, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try verticalData.write(to: folder.appendingPathComponent("tiers-vertical-grid.png"))
-            try horizontalData.write(to: folder.appendingPathComponent("tiers-horizontal-stack.png"))
-            try holoData.write(to: folder.appendingPathComponent("tier-holo-hero.png"))
-            try binderData.write(to: folder.appendingPathComponent("tier-binder-dark.png"))
+            try XCTUnwrap(verticalImage.pngData()).write(to: folder.appendingPathComponent("tiers-vertical-grid.png"))
+            try XCTUnwrap(horizontalImage.pngData()).write(to: folder.appendingPathComponent("tiers-horizontal-stack.png"))
+            try XCTUnwrap(darkHoloImage.pngData()).write(to: folder.appendingPathComponent("tier-holo-vaulted.png"))
+            try XCTUnwrap(lightHoloImage.pngData()).write(to: folder.appendingPathComponent("tier-holo-light.png"))
+            try XCTUnwrap(binder375Image.pngData()).write(to: folder.appendingPathComponent("tier-binder-375.png"))
+            try XCTUnwrap(pillsLightImage.pngData()).write(to: folder.appendingPathComponent("tier-pills-contrast.png"))
         }
     }
 
     @MainActor
-    private func renderHostingImage<V: View>(_ view: V, size: CGSize, style: UIUserInterfaceStyle) -> UIImage {
-        let host = UIHostingController(rootView: view)
+    private func renderHostingImage<V: View>(_ view: V, size: CGSize, style: UIUserInterfaceStyle) throws -> UIImage {
+        let themed = view.environment(\.colorScheme, style == .light ? .light : .dark)
+        let host = UIHostingController(rootView: themed)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.overrideUserInterfaceStyle = style
         window.rootViewController = host
@@ -1030,10 +1062,44 @@ final class DeviceColorAndRouteTests: XCTestCase {
         host.view.layoutIfNeeded()
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2
+        var drew = false
         let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+            drew = host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
         }
         window.isHidden = true
+        XCTAssertTrue(drew, "Expected drawHierarchy to succeed for \(size)")
         return image
+    }
+
+    private func assertImageHasVisibleContent(_ image: UIImage, file: StaticString = #filePath, line: UInt = #line) throws {
+        let cgImage = try XCTUnwrap(image.cgImage, "Expected CGImage", file: file, line: line)
+        XCTAssertGreaterThan(cgImage.width, 0, file: file, line: line)
+        XCTAssertGreaterThan(cgImage.height, 0, file: file, line: line)
+        let width = min(cgImage.width, 64)
+        let height = min(cgImage.height, 64)
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let ctx = try XCTUnwrap(
+            CGContext(
+                data: &bytes,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ),
+            "Expected bitmap context",
+            file: file,
+            line: line
+        )
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var distinctColors = Set<UInt32>()
+        for i in stride(from: 0, to: bytes.count, by: 4) {
+            let quantized = (UInt32(bytes[i] >> 4) << 8) | (UInt32(bytes[i + 1] >> 4) << 4) | UInt32(bytes[i + 2] >> 4)
+            distinctColors.insert(quantized)
+            if distinctColors.count >= 12 { break }
+        }
+        XCTAssertGreaterThanOrEqual(distinctColors.count, 12, "Rendered image looks flat/blank", file: file, line: line)
     }
 }
