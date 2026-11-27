@@ -160,14 +160,15 @@ struct CollectionView: View {
                     } else if space.isWide || space.verticalFold != nil {
                         // Wide / iPhone Duo displays keep multi-column cards aligned clear of the hinge.
                         let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 210)
-                        LazyVGrid(columns: grid.columns, spacing: 14) {
-                            ForEach(activeCards) { card in
-                                verticalThumbnail(card)
+                        if !activeCards.isEmpty {
+                            LazyVGrid(columns: grid.columns, spacing: 14) {
+                                ForEach(activeCards) { card in
+                                    verticalThumbnail(card)
+                                }
                             }
-                            lockedSlotVertical
+                            .padding(.leading, grid.leadingPadding)
+                            .padding(.trailing, grid.trailingPadding)
                         }
-                        .padding(.leading, grid.leadingPadding)
-                        .padding(.trailing, grid.trailingPadding)
 
                         if !retiredCards.isEmpty {
                             vaultHeader
@@ -190,7 +191,6 @@ struct CollectionView: View {
                             ForEach(activeCards) { card in
                                 horizontalThumbnail(card)
                             }
-                            lockedSlotHorizontal
 
                             if !retiredCards.isEmpty {
                                 vaultHeader
@@ -588,79 +588,6 @@ struct CollectionView: View {
                 retireSheetCardID = PresentedCardID(id: card.id)
             }
         }
-    }
-
-    private var lockedSlotHorizontal: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showModelGallery = true
-        } label: {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Theme.card.opacity(0.60))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1.4, dash: [6, 6]))
-                        .foregroundStyle(Theme.secondaryText.opacity(0.32))
-                )
-                .frame(height: 86)
-                .overlay {
-                    HStack(spacing: 14) {
-                        Image(systemName: "plus.viewfinder")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(Theme.primaryText.opacity(0.72))
-                            .frame(width: 40, height: 40)
-                            .background(Theme.surfaceFill, in: Circle())
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Next pair")
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(Theme.primaryText)
-                            Text("Listen with supported headphones to unlock a card")
-                                .font(.caption)
-                                .foregroundStyle(Theme.secondaryText)
-                                .lineLimit(2)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .padding(.horizontal, 18)
-                }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var lockedSlotVertical: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showModelGallery = true
-        } label: {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Theme.card.opacity(0.60))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1.4, dash: [6, 6]))
-                        .foregroundStyle(Theme.secondaryText.opacity(0.32))
-                )
-                .aspectRatio(CardMetrics.size.width / CardMetrics.size.height, contentMode: .fit)
-                .overlay {
-                    VStack(spacing: 8) {
-                        Image(systemName: "plus.viewfinder")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(Theme.primaryText.opacity(0.72))
-                        Text("Next pair")
-                            .font(.footnote.weight(.bold))
-                            .foregroundStyle(Theme.primaryText)
-                        Text("Listen with supported headphones\nto unlock a card")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.secondaryText)
-                            .multilineTextAlignment(.center)
-                            .minimumScaleFactor(0.8)
-                    }
-                    .padding(.horizontal, 12)
-                }
-        }
-        .buttonStyle(.plain)
     }
 
     /// Launch arguments: `-dossier` / `-dossierDemo` open a card's dossier directly; `-demo` opens card detail.
