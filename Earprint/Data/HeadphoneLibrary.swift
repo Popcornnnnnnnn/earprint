@@ -456,11 +456,13 @@ final class HeadphoneLibrary: ObservableObject {
                     if recoveryVersion == retirementScopeVersion {
                         await sync(silent: true)
                     }
-                } else if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes),
-                          recoveryVersion == retirementScopeVersion {
-                    snapshot = refreshed
+                    return
                 }
-                if state != .ready { state = .ready }
+                if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes),
+                   recoveryVersion == retirementScopeVersion {
+                    snapshot = refreshed
+                    if state != .ready { state = .ready }
+                }
             } else if let fresh = result.snapshot {
                 snapshot = fresh
                 if state != .ready { state = .ready }

@@ -44,6 +44,7 @@ struct LibrarySnapshot: Sendable {
     var hostSamples: Int
     var invalidSamples: Int
     private(set) var sourceSerials: [String: Int]
+    private let indexedArchivalBucketKeys: Set<String>
 
     var isEmpty: Bool { devices.isEmpty }
     var lifetimeSeconds: Double { devices.reduce(0) { $0 + $1.lifetimeSeconds } }
@@ -67,6 +68,7 @@ struct LibrarySnapshot: Sendable {
         totalSamples = aggregate.totalSamples
         hostSamples = aggregate.hostSamples
         invalidSamples = aggregate.invalidSamples
+        indexedArchivalBucketKeys = aggregate.indexedArchivalBucketKeys
         let sources = aggregate.devices.values
             .filter { $0.sampleCount > 0 }
             .sorted { ($0.first ?? .distantFuture, $0.key) < ($1.first ?? .distantFuture, $1.key) }
@@ -458,7 +460,8 @@ extension LibrarySnapshot {
             let cutoffDayStart = effectiveCalendar.dateInterval(of: .day, for: retirement.careerEndMoment)?.start
                 ?? effectiveCalendar.startOfDay(for: retirement.careerEndMoment)
             for other in devices where other.id != d.id {
-                if let exactDays = other.archivalDailyByBucketKey[retirementBucketKey] {
+                if indexedArchivalBucketKeys.contains(retirementBucketKey),
+                   let exactDays = other.archivalDailyByBucketKey[retirementBucketKey] {
                     Self.addDailySeconds(exactDays, in: effectiveCalendar, maxDayStart: nil, into: &others)
                 } else if !other.wearSessions.isEmpty {
                     for session in other.wearSessions {

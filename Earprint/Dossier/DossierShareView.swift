@@ -1403,6 +1403,12 @@ private struct DossierSharePosterCanvas {
         } else {
             dossier.milestones.compactMap { item in
                 guard item.kind != .minted else { return nil }
+                if let firstWear = dossier.firstWear,
+                   item.kind != .retired,
+                   !item.isFuture,
+                   dossier.calendar.isDate(item.date, inSameDayAs: firstWear) {
+                    return nil
+                }
                 if item.kind == .hours {
                     return DossierMilestone(
                         id: item.id,

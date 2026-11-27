@@ -765,11 +765,15 @@ final class DeviceLifecycleTests: XCTestCase {
         XCTAssertEqual(proDossier.sessions.count, 1)
 
         // If Pair A is unretired, a backdated/new sync arrives without scopes, and Pair A is re-retired
-        // with the same cutoff date, the stale archival bucket must be invalidated so rebuild triggers.
+        // with the same cutoff date, the stale archival bucket must be invalidated so rebuild triggers
+        // and any pre-rebuild snapshot falls back to clipped sessions instead of reading stale bucket data.
         agg.ingest([
             RawListeningSample(start: date(2026, 9, 2, hour: 15), end: date(2026, 9, 2, hour: 15).addingTimeInterval(600), decibels: 64, device: proDev),
         ], now: now, calendar: laCal, cutoffScopes: [])
         XCTAssertTrue(agg.needsRebuild(for: scopes))
+        let preRebuildSnapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: laCal, cutoffScopes: scopes)
+        let preRebuildDossier = try XCTUnwrap(preRebuildSnapshot.dossier(forCardID: maxCard.id, retirement: utcRet, now: now, calendar: laCal))
+        XCTAssertGreaterThanOrEqual(preRebuildDossier.stats(.all).allDevicesMinutes, 80)
     }
 
     @MainActor
@@ -957,8 +961,13 @@ final class DeviceLifecycleTests: XCTestCase {
             locale: Locale(identifier: "en"),
             scale: 3
         )
+        XCTAssertEqual(singleWeekPages.count, 4)
         let singleWeekRhythmText = try recognizeText(fromPNG: singleWeekPages[1].pngData, languages: ["en-US"])
         XCTAssertFalse(singleWeekRhythmText.contains("aug 30"), "Single-wear Best day caption leaked first-wear date: \(singleWeekRhythmText)")
+        let singleWeekCertText = try recognizeText(fromPNG: singleWeekPages[3].pngData, languages: ["en-US"])
+        XCTAssertTrue(singleWeekCertText.contains("retired to vault"), "Expected Retired milestone on Certificate: \(singleWeekCertText)")
+        XCTAssertFalse(singleWeekCertText.contains("2026.08.30"), "Single-wear Certificate milestones leaked first-wear date: \(singleWeekCertText)")
+        XCTAssertFalse(singleWeekCertText.contains("aug 30"), "Single-wear Certificate milestones leaked first-wear date: \(singleWeekCertText)")
 
         // Localized zh-Hans Rhythm caption + timezone-anchored date range.
         var zhOpts = DossierShareOptions.default
