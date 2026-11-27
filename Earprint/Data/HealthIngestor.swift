@@ -79,7 +79,7 @@ actor HealthIngestor {
     }
 
     func needsRebuild(for scopes: [RetirementCutoffScope]) -> Bool {
-        aggregate.hasSpanCrossing(scopes: scopes)
+        aggregate.needsRebuild(for: scopes)
     }
 
     /// Whether iOS still needs to present the HealthKit permission sheet for read access.
@@ -106,13 +106,13 @@ actor HealthIngestor {
         syncing = true
         defer { syncing = false }
 
-        let scopes = DeviceLifecycleStore.persistedCutoffScopes()
-        let scopesChanged = lastSnapshotScopes != scopes
+        var scopes = DeviceLifecycleStore.persistedCutoffScopes()
+        var scopesChanged = lastSnapshotScopes != scopes
         var rebuilt = anchor == nil
         var fetched = 0
         var working = aggregate
         var workingAnchor = anchor
-        if !rebuilt && working.hasSpanCrossing(scopes: scopes) {
+        if !rebuilt && working.needsRebuild(for: scopes) {
             working = ListeningAggregate()
             workingAnchor = nil
             rebuilt = true
@@ -125,6 +125,19 @@ actor HealthIngestor {
                 limit: Self.pageSize
             )
             let result = try await descriptor.result(for: store)
+
+            let latestScopes = DeviceLifecycleStore.persistedCutoffScopes()
+            if latestScopes != scopes {
+                scopes = latestScopes
+                scopesChanged = true
+                if (!rebuilt && working.needsRebuild(for: scopes)) || (fetched > 0 && working.needsRebuild(for: scopes)) {
+                    working = ListeningAggregate()
+                    workingAnchor = nil
+                    rebuilt = true
+                    fetched = 0
+                    continue
+                }
+            }
 
             if !result.deletedObjects.isEmpty && workingAnchor != nil && !rebuilt {
                 // Totals cannot subtract a deleted sample, so start over. Deletions are rare.
@@ -141,7 +154,27 @@ actor HealthIngestor {
             workingAnchor = result.newAnchor
             progress?(fetched)
 
-            if result.addedSamples.count + result.deletedObjects.count < Self.pageSize { break }
+            if result.addedSamples.count + result.deletedObjects.count < Self.pageSize {
+                let finalScopes = DeviceLifecycleStore.persistedCutoffScopes()
+                if finalScopes != scopes {
+                    scopes = finalScopes
+                    scopesChanged = true
+                    if working.needsRebuild(for: scopes) {
+                        working = ListeningAggregate()
+                        workingAnchor = nil
+                        rebuilt = true
+                        fetched = 0
+                        continue
+                    }
+                }
+                break
+            }
+        }
+
+        let commitScopes = DeviceLifecycleStore.persistedCutoffScopes()
+        if commitScopes != scopes {
+            scopes = commitScopes
+            scopesChanged = true
         }
 
         aggregate = working

@@ -33,6 +33,7 @@ struct DeviceSummary: Identifiable, Sendable {
     var tierAchievedDates: [Rarity: Date] = [:]
     var wearSessions: [WearSession] = []
     var dailySeconds: [Int: Double] = [:]
+    var archivalDailyByBucketKey: [String: [Int: Double]] = [:]
 }
 
 struct LibrarySnapshot: Sendable {
@@ -165,7 +166,8 @@ struct LibrarySnapshot: Sendable {
             weeklyBudget: HearingBudget.dose(energy: window.weekEnergy),
             tierAchievedDates: tierDates,
             wearSessions: wearSessions,
-            dailySeconds: acc.daily
+            dailySeconds: acc.daily,
+            archivalDailyByBucketKey: acc.archivalDailyByBucketKey
         )
     }
 
@@ -298,6 +300,9 @@ private extension DeviceAccumulator {
             }
             combined.sources.formUnion(device.sources)
             combined.daily.merge(device.daily, uniquingKeysWith: +)
+            for (bucketKey, days) in device.archivalDailyByBucketKey {
+                combined.archivalDailyByBucketKey[bucketKey, default: [:]].merge(days, uniquingKeysWith: +)
+            }
             for (index, totals) in device.slots {
                 combined.slots[index, default: SlotTotals()].seconds += totals.seconds
                 combined.slots[index, default: SlotTotals()].energy += totals.energy
@@ -444,13 +449,26 @@ extension LibrarySnapshot {
         guard let d = devices.first(where: { $0.id == id || $0.aliasIDs.contains(id) }) else { return nil }
         let effectiveCalendar = retirement?.retiredCalendar ?? calendar
         let cutoff = retirement?.careerCutoffEnd
+        let retirementBucketKey = retirement.map {
+            RetirementCutoffScope.bucketKey(cutoff: $0.careerCutoffEnd, timeZoneIdentifier: $0.timeZoneIdentifier)
+        }
         let cutoffDayStart = cutoff.map {
             effectiveCalendar.dateInterval(of: .day, for: retirement?.careerEndMoment ?? $0)?.start
                 ?? effectiveCalendar.startOfDay(for: retirement?.careerEndMoment ?? $0)
         }
         var others: [Date: Double] = [:]
         for other in devices where other.id != d.id {
-            if !other.wearSessions.isEmpty {
+            if let retirementBucketKey, let exactDays = other.archivalDailyByBucketKey[retirementBucketKey] {
+                for (dayKey, secs) in exactDays where secs > 0 {
+                    let year = dayKey / 10_000
+                    let month = (dayKey / 100) % 100
+                    let day = dayKey % 100
+                    if let noon = effectiveCalendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12)),
+                       let dayStart = effectiveCalendar.dateInterval(of: .day, for: noon)?.start {
+                        others[dayStart, default: 0] += secs / 60
+                    }
+                }
+            } else if !other.wearSessions.isEmpty {
                 for session in other.wearSessions {
                     if let cutoff, session.start >= cutoff { continue }
                     var cursor = session.start

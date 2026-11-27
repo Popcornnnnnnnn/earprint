@@ -175,9 +175,11 @@ struct DossierTrendChart: View {
         }
         .chartXAxis(redactsAllTimeStart ? .hidden : .automatic)
         .chartXAxis {
-            AxisMarks(values: xValues) { value in
-                AxisValueLabel(format: xFormat, centered: true)
-                    .foregroundStyle(DossierPalette.dim)
+            if !redactsAllTimeStart {
+                AxisMarks(values: xValues) { value in
+                    AxisValueLabel(format: xFormat, centered: true)
+                        .foregroundStyle(DossierPalette.dim)
+                }
             }
         }
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: stats.period)
@@ -233,6 +235,7 @@ struct DayClock: View {
     let stats: PeriodStats
     let rarity: Rarity
     @Binding var selectedHour: Int?
+    var showsPerDayAverage = true
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -288,7 +291,10 @@ struct DayClock: View {
     private var accessibilityValue: String {
         let h = selectedHour ?? stats.peakHour?.hour ?? 0
         let stat = stats.hours[h]
-        return "\(DossierFormat.hourLabel(h)), \((stat.minutes / Double(stats.spanDays)).minutesText) a day"
+        if showsPerDayAverage {
+            return "\(DossierFormat.hourLabel(h)), \((stat.minutes / Double(max(stats.spanDays, 1))).minutesText) a day"
+        }
+        return "\(DossierFormat.hourLabel(h)), \(stat.minutes.minutesText)"
     }
 
     private func select(_ location: CGPoint, center: CGPoint, size: CGFloat, toggle: Bool) {
@@ -305,7 +311,7 @@ struct DayClock: View {
         let h = selectedHour ?? stats.peakHour?.hour
         if let h {
             let stat = stats.hours[h]
-            let perDay = stat.minutes / Double(max(stats.spanDays, 1))
+            let displayMinutes = showsPerDayAverage ? (stat.minutes / Double(max(stats.spanDays, 1))) : stat.minutes
             let titleSize = compact ? max(12, diameter * 0.25) : min(28, max(18, diameter * 0.23))
             let detailSize = compact ? max(7.5, diameter * 0.145) : 12
             VStack(spacing: compact ? 1 : 2) {
@@ -320,11 +326,17 @@ struct DayClock: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                     .contentTransition(.numericText(value: Double(h)))
-                Text("\(perDay.minutesText) a day")
-                    .font(.system(size: detailSize, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText(value: perDay))
+                Group {
+                    if showsPerDayAverage {
+                        Text("\(displayMinutes.minutesText) a day")
+                    } else {
+                        Text(displayMinutes.minutesText)
+                    }
+                }
+                .font(.system(size: detailSize, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText(value: displayMinutes))
                 if stat.minutes > 0 && !compact {
                     Text("\(Int(stat.averageDecibels.rounded())) dB(A)")
                         .font(.system(.caption, design: .rounded, weight: .bold))

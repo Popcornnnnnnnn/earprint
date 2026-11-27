@@ -172,6 +172,9 @@ struct DeviceAccumulator: Codable, Sendable {
     var daily: [Int: Double] = [:]
     /// Absolute 15-minute slot index (epoch seconds / 900) -> totals. Only recent slots are kept.
     var slots: [Int: SlotTotals] = [:]
+    /// Exact pre-cutoff listening seconds per day (`yyyymmdd` in a retired pair's `retiredCalendar`),
+    /// clipped from raw samples before session merging and keyed by `RetirementCutoffScope.bucketKey`.
+    var archivalDailyByBucketKey: [String: [Int: Double]] = [:]
 
     var activeDays: Int { daily.values.filter { $0 > 0 }.count }
     var averageDecibels: Double? { HearingBudget.averageDecibels(energy: energy, seconds: seconds) }
@@ -179,7 +182,7 @@ struct DeviceAccumulator: Codable, Sendable {
 
 /// The whole listening history, folded into small per-device totals.
 struct ListeningAggregate: Codable, Sendable {
-    static let schemaVersion = 3
+    static let schemaVersion = 4
     /// Gap that still counts as the same session (wearing) — 5 minutes.
     static let sessionGap: TimeInterval = 5 * 60
     /// iOS writes short clips (seconds to ~30 min). Anything longer is clipped so one bad sample cannot
@@ -198,6 +201,7 @@ struct ListeningAggregate: Codable, Sendable {
     /// Samples with impossible values (negative duration, NaN or out-of-range dB).
     var invalidSamples = 0
     var clippedSamples = 0
+    var indexedArchivalBucketKeys: Set<String> = []
 
     var isEmpty: Bool { devices.isEmpty }
 
@@ -217,6 +221,18 @@ struct ListeningAggregate: Codable, Sendable {
         return false
     }
 
+    func needsRebuild(for scopes: [RetirementCutoffScope]) -> Bool {
+        if hasSpanCrossing(scopes: scopes) {
+            return true
+        }
+        for scope in scopes where !indexedArchivalBucketKeys.contains(scope.bucketKey) {
+            if devices.values.contains(where: { ($0.first ?? .distantFuture) < scope.cutoff }) {
+                return true
+            }
+        }
+        return false
+    }
+
     mutating func ingest(
         _ samples: [RawListeningSample],
         now: Date = Date(),
@@ -225,6 +241,17 @@ struct ListeningAggregate: Codable, Sendable {
     ) {
         let slotCutoff = now.addingTimeInterval(-Double(Self.slotRetentionDays) * 86_400).timeIntervalSince1970
         var dayCache = DayCache(calendar: calendar)
+        var archivalBuckets: [(bucketKey: String, cutoff: Date, dayCache: DayCache)] = []
+        var seenBucketKeys: Set<String> = []
+        for scope in cutoffScopes {
+            let key = scope.bucketKey
+            if seenBucketKeys.insert(key).inserted {
+                archivalBuckets.append((bucketKey: key, cutoff: scope.cutoff, dayCache: DayCache(calendar: scope.retiredCalendar)))
+            }
+        }
+        if devices.isEmpty {
+            indexedArchivalBucketKeys = seenBucketKeys
+        }
 
         for sample in samples {
             totalSamples += 1
@@ -274,6 +301,24 @@ struct ListeningAggregate: Codable, Sendable {
                     acc.daily[dayKey, default: 0] += pieceSeconds
                 }
                 cursor = pieceEnd
+            }
+
+            // Clip raw sample intervals against each active retirement cutoff in that retirement's calendar
+            // so merged 5-min sessions on other pairs never shift pre-cutoff wear share.
+            for idx in archivalBuckets.indices where sample.start < archivalBuckets[idx].cutoff {
+                let bucketKey = archivalBuckets[idx].bucketKey
+                let clippedEnd = min(end, archivalBuckets[idx].cutoff)
+                var bCursor = sample.start
+                while bCursor < clippedEnd {
+                    let (bDayKey, bDayEnd) = archivalBuckets[idx].dayCache.day(containing: bCursor)
+                    let pieceEnd = min(clippedEnd, bDayEnd)
+                    if pieceEnd <= bCursor { break }
+                    let pieceSeconds = pieceEnd.timeIntervalSince(bCursor)
+                    if pieceSeconds > 0 {
+                        acc.archivalDailyByBucketKey[bucketKey, default: [:]][bDayKey, default: 0] += pieceSeconds
+                    }
+                    bCursor = pieceEnd
+                }
             }
 
             // Isolate sessions only across retirement cutoffs matching this physical device.

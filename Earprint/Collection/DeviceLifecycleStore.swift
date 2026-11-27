@@ -210,6 +210,49 @@ struct RetirementCutoffScope: Codable, Equatable, Hashable, Sendable {
     var modelName: String?
     var nickname: String?
     var cutoff: Date
+    var timeZoneIdentifier: String = TimeZone.current.identifier
+
+    private enum CodingKeys: String, CodingKey {
+        case cardID, aliasIDs, modelName, nickname, cutoff, timeZoneIdentifier
+    }
+
+    init(
+        cardID: String,
+        aliasIDs: [String],
+        modelName: String?,
+        nickname: String?,
+        cutoff: Date,
+        timeZoneIdentifier: String = TimeZone.current.identifier
+    ) {
+        self.cardID = cardID
+        self.aliasIDs = aliasIDs
+        self.modelName = modelName
+        self.nickname = nickname
+        self.cutoff = cutoff
+        self.timeZoneIdentifier = timeZoneIdentifier
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        cardID = try container.decode(String.self, forKey: .cardID)
+        aliasIDs = try container.decodeIfPresent([String].self, forKey: .aliasIDs) ?? []
+        modelName = try container.decodeIfPresent(String.self, forKey: .modelName)
+        nickname = try container.decodeIfPresent(String.self, forKey: .nickname)
+        cutoff = try container.decode(Date.self, forKey: .cutoff)
+        timeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier) ?? TimeZone.current.identifier
+    }
+
+    var retiredCalendar: Calendar {
+        DeviceRetirement.gregorianCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .current)
+    }
+
+    var bucketKey: String {
+        Self.bucketKey(cutoff: cutoff, timeZoneIdentifier: timeZoneIdentifier)
+    }
+
+    static func bucketKey(cutoff: Date, timeZoneIdentifier: String) -> String {
+        "\(Int(cutoff.timeIntervalSince1970))|\(timeZoneIdentifier)"
+    }
 
     func matches(deviceKey: String, descriptor: DeviceDescriptor?) -> Bool {
         if deviceKey == cardID || aliasIDs.contains(deviceKey) {
@@ -260,12 +303,14 @@ final class DeviceLifecycleStore {
         if let data = defaults.data(forKey: storageKey),
            let stored = try? JSONDecoder().decode([String: DeviceRetirement].self, from: data) {
             for (key, retirement) in stored where byID[key] == nil {
+                let sanitized = retirement.sanitized
                 byID[key] = RetirementCutoffScope(
                     cardID: key,
                     aliasIDs: [],
                     modelName: nil,
                     nickname: nil,
-                    cutoff: retirement.sanitized.careerCutoffEnd
+                    cutoff: sanitized.careerCutoffEnd,
+                    timeZoneIdentifier: sanitized.timeZoneIdentifier
                 )
             }
             byID = byID.filter { stored[$0.key] != nil }
@@ -293,7 +338,8 @@ final class DeviceLifecycleStore {
                 aliasIDs: [],
                 modelName: nil,
                 nickname: nil,
-                cutoff: retirement.careerCutoffEnd
+                cutoff: retirement.careerCutoffEnd,
+                timeZoneIdentifier: retirement.timeZoneIdentifier
             )
         }
         loadedScopes = loadedScopes.filter { loadedRetirements[$0.key] != nil }
@@ -341,7 +387,8 @@ final class DeviceLifecycleStore {
             aliasIDs: card.aliasIDs,
             modelName: card.model,
             nickname: card.nickname,
-            cutoff: normalized.careerCutoffEnd
+            cutoff: normalized.careerCutoffEnd,
+            timeZoneIdentifier: normalized.timeZoneIdentifier
         )
         retirements[card.id] = normalized
         persist()
@@ -394,7 +441,8 @@ final class DeviceLifecycleStore {
             aliasIDs: card.aliasIDs,
             modelName: card.model,
             nickname: card.nickname,
-            cutoff: normalized.careerCutoffEnd
+            cutoff: normalized.careerCutoffEnd,
+            timeZoneIdentifier: normalized.timeZoneIdentifier
         )
         retirements[card.id] = normalized
         persist()

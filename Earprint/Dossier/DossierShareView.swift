@@ -1297,7 +1297,12 @@ private struct DossierSharePosterCanvas {
 
                 if l.showDayClock {
                     HStack(spacing: 12) {
-                        DayClock(stats: stats, rarity: rarity, selectedHour: .constant(nil))
+                        DayClock(
+                            stats: stats,
+                            rarity: rarity,
+                            selectedHour: .constant(nil),
+                            showsPerDayAverage: l.showFirstWear
+                        )
                             .frame(width: 134, height: 134)
 
                         VStack(alignment: .leading, spacing: 6) {

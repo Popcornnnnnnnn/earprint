@@ -57,6 +57,7 @@ final class HeadphoneLibrary: ObservableObject {
     private let ingestor: HealthIngestor
     private var started = false
     private var observing = false
+    private var retirementScopeVersion: UInt64 = 0
 
     init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
         // Instant launch: decode the on-disk aggregate cache ONCE and share it with HealthIngestor.
@@ -430,6 +431,7 @@ final class HeadphoneLibrary: ObservableObject {
         let canReuseSnapshot = snapshot.map {
             Calendar.current.isDate($0.generatedAt, inSameDayAs: Date())
         } ?? false
+        let scopeVersionBefore = retirementScopeVersion
 
         do {
             let result = try await ingestor.sync(skipSnapshotIfUnchanged: canReuseSnapshot) { [weak self] fetched in
@@ -447,6 +449,13 @@ final class HeadphoneLibrary: ObservableObject {
             if result.isEmpty {
                 if snapshot != nil { snapshot = nil }
                 if state != .empty { state = .empty }
+            } else if retirementScopeVersion != scopeVersionBefore {
+                let latestScopes = DeviceLifecycleStore.persistedCutoffScopes()
+                if !(await ingestor.needsRebuild(for: latestScopes)),
+                   let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes) {
+                    snapshot = refreshed
+                }
+                if state != .ready { state = .ready }
             } else if let fresh = result.snapshot {
                 snapshot = fresh
                 if state != .ready { state = .ready }
@@ -468,13 +477,15 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     func handleRetirementScopesChanged(_ scopes: [RetirementCutoffScope]) async {
+        retirementScopeVersion &+= 1
+        let version = retirementScopeVersion
         guard snapshot != nil else { return }
+        if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: scopes),
+           version == retirementScopeVersion {
+            snapshot = refreshed
+        }
         if HealthIngestor.isAvailable, await ingestor.needsRebuild(for: scopes) {
             await sync(silent: true)
-            return
-        }
-        if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: scopes) {
-            snapshot = refreshed
         }
     }
 

@@ -56,7 +56,7 @@ struct WidgetDebugSection: View {
                         listening: library.snapshot
                     )
                 }
-                WidgetPublisher.publish(snapshot)
+                WidgetPublisher.enqueue(snapshot)
                 published = Date()
             } label: {
                 Label(published == nil ? "Publish widget snapshot" : "Snapshot published", systemImage: "square.grid.2x2")

@@ -202,14 +202,33 @@ enum WidgetSnapshotStore {
 
     private static var encoder: JSONEncoder {
         let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
+        e.dateEncodingStrategy = .custom { date, encoder in
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            var container = encoder.singleValueContainer()
+            try container.encode(formatter.string(from: date))
+        }
         e.outputFormatting = [.sortedKeys]
         return e
     }
 
     private static var decoder: JSONDecoder {
         let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
+        d.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let text = try container.decode(String.self)
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = fractional.date(from: text) {
+                return date
+            }
+            let wholeSecond = ISO8601DateFormatter()
+            wholeSecond.formatOptions = [.withInternetDateTime]
+            if let date = wholeSecond.date(from: text) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO-8601 date: \(text)")
+        }
         return d
     }
 

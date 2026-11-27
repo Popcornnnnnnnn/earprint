@@ -130,12 +130,16 @@ enum WidgetPublisher {
         queue.async {
             let current: UInt64 = stateLock.withLock { latestGeneration }
             guard generation == current else { return }
-            publish(snapshot)
+            writeNow(snapshot)
         }
     }
 
-    /// Writes the snapshot to the App Group and reloads widgets if it changed.
+    /// Writes the snapshot asynchronously via the serialized publisher queue.
     static func publish(_ snapshot: WidgetSnapshot) {
+        enqueue(snapshot)
+    }
+
+    private static func writeNow(_ snapshot: WidgetSnapshot) {
         do {
             let changed = try WidgetSnapshotStore.save(snapshot)
             #if DEBUG
@@ -147,5 +151,5 @@ enum WidgetPublisher {
     }
 
     /// Placeholder until real HealthKit data is wired in.
-    static func publishSample() { publish(.sample()) }
+    static func publishSample() { enqueue(.sample()) }
 }
