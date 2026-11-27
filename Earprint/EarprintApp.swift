@@ -201,7 +201,7 @@ struct EarprintApp: App {
 
     private func publishWidgets() {
         let snapshot = WidgetSnapshot.forApp(
-            summary: library.homeSummary,
+            summary: library.summary(forCardID: nil),
             allCards: library.cards,
             lifecycleStore: lifecycleStore,
             isSample: library.isShowingSampleData,

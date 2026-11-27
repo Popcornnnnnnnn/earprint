@@ -39,6 +39,13 @@ enum RetirementReason: String, Codable, CaseIterable, Identifiable, Hashable, Se
 struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
     static let maxFarewellLength = 80
 
+    /// Gregorian calendar anchored to a specific time zone so non-Gregorian user settings stay consistent.
+    static func gregorianCalendar(timeZone: TimeZone = .current) -> Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        return cal
+    }
+
     /// Year/month/day triple preserving the archival date independent of later time-zone travel.
     struct CalendarDay: Codable, Equatable, Hashable, Sendable, Comparable {
         var year: Int
@@ -52,7 +59,8 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
         }
 
         init(date: Date, calendar: Calendar = .current) {
-            let comps = calendar.dateComponents([.year, .month, .day], from: date)
+            let cal = DeviceRetirement.gregorianCalendar(timeZone: calendar.timeZone)
+            let comps = cal.dateComponents([.year, .month, .day], from: date)
             self.year = comps.year ?? 1970
             self.month = comps.month ?? 1
             self.day = comps.day ?? 1
@@ -96,7 +104,7 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
     ) {
         self.retiredDay = retiredDay
         self.timeZoneIdentifier = timeZoneIdentifier
-        self.retiredAt = Self.startOfDay(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier)
+        self.retiredAt = Self.dayInterval(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier).start
         self.reason = reason
         self.farewellNote = farewellNote
         self.acknowledgedActivityAt = acknowledgedActivityAt
@@ -123,22 +131,19 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let decodedDate = try container.decode(Date.self, forKey: .retiredAt)
         let tzID = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier) ?? TimeZone.current.identifier
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: tzID) ?? .current
+        let cal = Self.gregorianCalendar(timeZone: TimeZone(identifier: tzID) ?? .current)
         let day = try container.decodeIfPresent(CalendarDay.self, forKey: .retiredDay)
             ?? CalendarDay(date: decodedDate, calendar: cal)
         self.retiredDay = day
         self.timeZoneIdentifier = tzID
-        self.retiredAt = Self.startOfDay(for: day, timeZoneIdentifier: tzID)
+        self.retiredAt = Self.dayInterval(for: day, timeZoneIdentifier: tzID).start
         self.reason = try container.decode(RetirementReason.self, forKey: .reason)
         self.farewellNote = try container.decodeIfPresent(String.self, forKey: .farewellNote) ?? ""
         self.acknowledgedActivityAt = try container.decodeIfPresent(Date.self, forKey: .acknowledgedActivityAt)
     }
 
     var retiredCalendar: Calendar {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        return cal
+        Self.gregorianCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .current)
     }
 
     /// Date-only archival stamp in the time zone where the pair was retired (`yyyy.MM.dd`).
@@ -146,21 +151,19 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
         retiredDay.dottedText
     }
 
-    /// Local midnight starting `retiredDay` in `retiredCalendar`.
+    /// Local day start on `retiredDay` in `retiredCalendar`.
     var startOfRetiredDay: Date {
-        Self.startOfDay(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier)
+        Self.dayInterval(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier).start
     }
 
-    /// Exclusive upper bound (`00:00:00` of the day after `retiredDay` in `retiredCalendar`).
+    /// Exclusive upper bound (the exact end of `retiredDay`'s calendar-day interval in `retiredCalendar`, DST-safe).
     /// Sessions starting strictly before this cutoff belong to the vaulted career (clamped to `careerEndMoment`);
     /// wear recorded at or after this cutoff triggers post-retirement activity detection.
     var careerCutoffEnd: Date {
-        let cal = retiredCalendar
-        let start = startOfRetiredDay
-        return cal.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        Self.dayInterval(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier).end
     }
 
-    /// Inclusive final second (`23:59:59` of `retiredDay` in `retiredCalendar`) used to freeze `DeviceDossier.now` and milestones.
+    /// Inclusive final second of `retiredDay` in `retiredCalendar` used to freeze `DeviceDossier.now` and milestones.
     var careerEndMoment: Date {
         careerCutoffEnd.addingTimeInterval(-1)
     }
@@ -181,11 +184,16 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
         return String(singleLine.prefix(maxFarewellLength))
     }
 
-    private static func startOfDay(for day: CalendarDay, timeZoneIdentifier: String) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        return cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day))
+    private static func dayInterval(for day: CalendarDay, timeZoneIdentifier: String) -> DateInterval {
+        let cal = gregorianCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .current)
+        if let noon = cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 12)),
+           let interval = cal.dateInterval(of: .day, for: noon) {
+            return interval
+        }
+        let start = cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day))
             ?? Date(timeIntervalSince1970: 0)
+        let end = cal.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        return DateInterval(start: start, end: end)
     }
 
     private static func clean(_ value: String, limit: Int) -> String {
@@ -292,14 +300,30 @@ final class DeviceLifecycleStore {
         persist()
     }
 
-    /// True when HealthKit shows wear on or after `careerCutoffEnd` (day after `retiredDay` in `retiredCalendar`) that hasn't been acknowledged yet.
-    func hasUnacknowledgedPostRetirementActivity(for card: HeadphoneCard, lastWear: Date?) -> Bool {
-        guard let retirement = retirement(for: card), let lastWear else { return false }
-        guard lastWear >= retirement.careerCutoffEnd else { return false }
+    /// True when HealthKit shows an underlying wear sample on or after `careerCutoffEnd` (DST-safe day end in `retiredCalendar`) that hasn't been acknowledged yet.
+    func hasUnacknowledgedPostRetirementActivity(
+        for card: HeadphoneCard,
+        lastWearEnd: Date?,
+        lastWearStart: Date? = nil
+    ) -> Bool {
+        guard let retirement = retirement(for: card) else { return false }
+        let cutoff = retirement.careerCutoffEnd
+        let hasPostCutoffWear: Bool = {
+            if let lastWearStart, lastWearStart >= cutoff { return true }
+            if let lastWearEnd, lastWearEnd > cutoff { return true }
+            if lastWearStart == nil, let lastWearEnd, lastWearEnd >= cutoff { return true }
+            return false
+        }()
+        guard hasPostCutoffWear else { return false }
+        let activityMoment = max(lastWearEnd ?? .distantPast, lastWearStart ?? .distantPast)
         if let acknowledged = retirement.acknowledgedActivityAt {
-            return lastWear > acknowledged.addingTimeInterval(60)
+            return activityMoment > acknowledged.addingTimeInterval(60)
         }
         return true
+    }
+
+    func hasUnacknowledgedPostRetirementActivity(for card: HeadphoneCard, lastWear: Date?) -> Bool {
+        hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: lastWear, lastWearStart: nil)
     }
 
     /// Gentle prompt condition for active cards unused for 90+ days when the collector still owns other active pairs.

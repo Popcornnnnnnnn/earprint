@@ -68,9 +68,11 @@ struct WidgetSnapshot: Codable, Equatable {
         var weekMinutes: Double
         var sessions: Int
         var serial: Int
+        /// Nil on legacy v1 snapshots, which always originated from collectible Collection cards.
+        var hasCollectionCard: Bool? = nil
 
         var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
-        var deepLink: URL { EarprintLink.card(id) }
+        var deepLink: URL { (hasCollectionCard ?? true) ? EarprintLink.card(id) : EarprintLink.rings }
     }
 
     struct Heatmap: Codable, Equatable {

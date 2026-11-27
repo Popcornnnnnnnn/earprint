@@ -77,7 +77,8 @@ extension WidgetSnapshot {
             lifetimeMinutes: card.lifetimeMinutes,
             weekMinutes: card.grid.totalMinutes(lastDays: 7),
             sessions: card.sessions,
-            serial: card.serial
+            serial: card.serial,
+            hasCollectionCard: true
         )
     }
 
@@ -98,7 +99,8 @@ extension WidgetSnapshot {
                             lifetimeMinutes: device.lifetimeSeconds / 60,
                             weekMinutes: device.weekSeconds / 60,
                             sessions: device.sessionCount,
-                            serial: listening.sourceSerials[device.id] ?? 0
+                            serial: listening.sourceSerials[device.id] ?? 0,
+                            hasCollectionCard: false
                         )
                     )
                 }

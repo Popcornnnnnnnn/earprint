@@ -219,7 +219,8 @@ final class DeviceLifecycleTests: XCTestCase {
         XCTAssertGreaterThan(retiredDossier.stats(.all).dailyAverage, activeDossier.stats(.all).dailyAverage * 5)
 
         XCTAssertEqual(retiredDossier.liveFirstWearDate, start)
-        XCTAssertEqual(retiredDossier.liveLastWearDate, loudPostSession2.start)
+        XCTAssertEqual(retiredDossier.liveLastWearStartDate, loudPostSession2.start)
+        XCTAssertEqual(retiredDossier.liveLastWearDate, loudPostSession2.end)
 
         // Card snapshot reflects frozen stats even if live card gained post-retirement sessions.
         var liveCard = SampleCards.all[1]
@@ -311,12 +312,93 @@ final class DeviceLifecycleTests: XCTestCase {
         XCTAssertEqual(widgetSnapshot.cards.count, 1)
         XCTAssertEqual(widgetSnapshot.cards.first?.model, "AirPods Pro 2 · USB-C")
         XCTAssertEqual(widgetSnapshot.today.minutes, 75, accuracy: 0.01)
+        XCTAssertEqual(widgetSnapshot.week.minutes, 75, accuracy: 0.01)
         XCTAssertEqual(widgetSnapshot.resolvedLifetimeMinutes, 135, accuracy: 0.01)
         XCTAssertEqual(widgetSnapshot.resolvedWeeklyBreakdown.map(\.model), [
             "AirPods Max · Lightning",
             "AirPods Pro 2 · USB-C",
             "Bose headphones"
         ])
+        let linksByModel = Dictionary(uniqueKeysWithValues: widgetSnapshot.resolvedWeeklyBreakdown.map { ($0.model, $0.deepLink) })
+        XCTAssertEqual(linksByModel["AirPods Pro 2 · USB-C"], EarprintLink.card(cards.first { $0.modelKey == .airpodsPro }!.id))
+        XCTAssertEqual(linksByModel["AirPods Max · Lightning"], EarprintLink.card(maxCard.id))
+        XCTAssertEqual(linksByModel["Bose headphones"], EarprintLink.rings)
+    }
+
+    @MainActor
+    func testMidnightAdjacentSamplesIsolateEnergyAndDetectPostRetirementWear() {
+        let cal = utcCalendar
+        let maxDev = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "midnight-max")
+        let retireDayNoon = date(2026, 9, 2, hour: 12)
+        let morningStart = date(2026, 9, 2, hour: 10)
+        let morningEnd = morningStart.addingTimeInterval(1800)
+        let preMidnightStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 59, second: 0))!
+        let preMidnightEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 59, second: 59))!
+        let postMidnightStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 0, second: 30))!
+        let postMidnightEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 4, second: 30))!
+        let now = date(2026, 9, 3, hour: 12)
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            RawListeningSample(start: morningStart, end: morningEnd, decibels: 60, device: maxDev),
+            RawListeningSample(start: preMidnightStart, end: preMidnightEnd, decibels: 60, device: maxDev),
+            RawListeningSample(start: postMidnightStart, end: postMidnightEnd, decibels: 90, device: maxDev),
+        ], now: now, calendar: cal)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: cal)
+        let cards = snapshot.cards(now: now, calendar: cal)
+        let card = cards[0]
+
+        let defaults = UserDefaults(suiteName: "MidnightEnergyTests.\(UUID().uuidString)")!
+        let store = DeviceLifecycleStore(defaults: defaults)
+        store.retire(card, at: retireDayNoon, reason: .upgraded, farewellNote: "", calendar: cal)
+        let retirement = store.retirement(for: card)!
+
+        let dossier = snapshot.dossier(forCardID: card.id, retirement: retirement, now: now, calendar: cal)!
+        XCTAssertEqual(dossier.lifetimeMinutes, 1859.0 / 60, accuracy: 0.02)
+        XCTAssertEqual(dossier.averageDecibels, 60.0, accuracy: 0.05)
+        XCTAssertEqual(card.lastWearStartDate, postMidnightStart)
+        XCTAssertEqual(card.lastWearDate, postMidnightEnd)
+        XCTAssertTrue(store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: card.lastWearDate, lastWearStart: card.lastWearStartDate))
+
+        // Sample ending at exact midnight does not falsely trigger post-retirement activity.
+        let boundaryEnd = date(2026, 9, 3, hour: 0)
+        XCTAssertFalse(store.hasUnacknowledgedPostRetirementActivity(
+            for: card,
+            lastWearEnd: boundaryEnd,
+            lastWearStart: date(2026, 9, 2, hour: 23)
+        ))
+    }
+
+    func testSaoPauloDSTCutoffAndBuddhistCalendarStayOnIntendedDay() {
+        // Brazil 2018-11-04 sprang forward at midnight (00:00 -> 01:00); cutoff must still be Nov 5 00:00, not 01:00.
+        let spTZ = TimeZone(identifier: "America/Sao_Paulo")!
+        var spCal = Calendar(identifier: .gregorian)
+        spCal.timeZone = spTZ
+        let spRetirement = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2018, month: 11, day: 4),
+            timeZoneIdentifier: "America/Sao_Paulo",
+            reason: .other,
+            farewellNote: ""
+        )
+        let cutoffComps = spCal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: spRetirement.careerCutoffEnd)
+        XCTAssertEqual(cutoffComps.year, 2018)
+        XCTAssertEqual(cutoffComps.month, 11)
+        XCTAssertEqual(cutoffComps.day, 5)
+        XCTAssertEqual(cutoffComps.hour, 0)
+        XCTAssertEqual(cutoffComps.minute, 0)
+        XCTAssertEqual(cutoffComps.second, 0)
+
+        var buddhistCal = Calendar(identifier: .buddhist)
+        buddhistCal.timeZone = TimeZone(secondsFromGMT: 0)!
+        let buddhistRetirement = DeviceRetirement(
+            retiredAt: date(2026, 9, 2, hour: 12),
+            reason: .upgraded,
+            farewellNote: "",
+            calendar: buddhistCal
+        )
+        XCTAssertEqual(buddhistRetirement.retiredDay, DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2))
+        XCTAssertEqual(buddhistRetirement.formattedRetiredDate, "2026.09.02")
     }
 
     @MainActor
@@ -355,6 +437,40 @@ final class DeviceLifecycleTests: XCTestCase {
         )
         XCTAssertEqual(hiddenFirstWearPages.count, 1)
         XCTAssertGreaterThan(hiddenFirstWearPages[0].pngData.count, 10_000)
+
+        var hiddenLongOptions = DossierShareOptions.default
+        hiddenLongOptions.long.showFirstWear = false
+        let hiddenLongPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: retiredDossier,
+            period: .all,
+            color: color,
+            isSampleData: true,
+            format: .long,
+            options: hiddenLongOptions,
+            scheme: .dark
+        )
+        XCTAssertEqual(hiddenLongPages.count, 4)
+
+        var hiddenMilestonesOnlyOptions = DossierShareOptions.default
+        hiddenMilestonesOnlyOptions.long.showFirstWear = false
+        hiddenMilestonesOnlyOptions.long.includeCoverPage = false
+        hiddenMilestonesOnlyOptions.long.includeRhythmPage = false
+        hiddenMilestonesOnlyOptions.long.includeHabitsPage = false
+        hiddenMilestonesOnlyOptions.long.showCertificate = false
+        hiddenMilestonesOnlyOptions.long.showMilestones = true
+        let hiddenMilestonesOnlyPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: retiredDossier,
+            period: .all,
+            color: color,
+            isSampleData: true,
+            format: .long,
+            options: hiddenMilestonesOnlyOptions,
+            scheme: .dark
+        )
+        XCTAssertEqual(hiddenMilestonesOnlyPages.count, 1)
+        XCTAssertGreaterThan(hiddenMilestonesOnlyPages[0].pngData.count, 10_000)
 
         for (idx, scheme) in [ColorScheme.dark, ColorScheme.light].enumerated() {
             let pages = DossierShareRenderer.renderPages(
@@ -396,6 +512,8 @@ final class DeviceLifecycleTests: XCTestCase {
                 }
                 if idx == 0 {
                     try hiddenFirstWearPages[0].pngData.write(to: dirURL.appendingPathComponent("farewell-poster-no-firstwear.png"))
+                    try hiddenLongPages[1].pngData.write(to: dirURL.appendingPathComponent("farewell-long-rhythm-no-firstwear.png"))
+                    try hiddenMilestonesOnlyPages[0].pngData.write(to: dirURL.appendingPathComponent("farewell-long-cert-no-firstwear.png"))
 
                     let dossierView = DeviceDossierView(card: maxCard, dossier: retiredDossier, isSampleData: true)
                         .environment(store)

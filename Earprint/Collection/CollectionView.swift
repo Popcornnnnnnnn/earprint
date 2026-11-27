@@ -1,5 +1,52 @@
 import SwiftUI
 
+/// Caches frozen Vault card snapshots across scroll and live-tilt redraws so cards remain static when retired.
+@MainActor
+private enum VaultCardSnapshotCache {
+    private struct Key: Hashable {
+        let cardID: String
+        let aliasIDs: [String]
+        let lifetimeMinutesHundredths: Int
+        let sessions: Int
+        let lastWearTime: TimeInterval?
+        let syncToken: TimeInterval?
+        let retirement: DeviceRetirement
+        let isSampleData: Bool
+    }
+
+    private static var entries: [Key: HeadphoneCard] = [:]
+
+    static func card(
+        for liveCard: HeadphoneCard,
+        retirement: DeviceRetirement,
+        librarySyncToken: Date?,
+        isSampleData: Bool,
+        dossierProvider: ((HeadphoneCard, DeviceRetirement?) -> DeviceDossier?)?
+    ) -> HeadphoneCard {
+        let key = Key(
+            cardID: liveCard.id,
+            aliasIDs: liveCard.aliasIDs,
+            lifetimeMinutesHundredths: Int((liveCard.lifetimeMinutes * 100).rounded()),
+            sessions: liveCard.sessions,
+            lastWearTime: liveCard.lastWearDate?.timeIntervalSince1970,
+            syncToken: librarySyncToken?.timeIntervalSince1970,
+            retirement: retirement,
+            isSampleData: isSampleData
+        )
+        if let cached = entries[key] {
+            return cached
+        }
+        if entries.count > 24 {
+            entries.removeAll(keepingCapacity: true)
+        }
+        let dossier = dossierProvider?(liveCard, retirement)
+            ?? DeviceDossier.sample(for: liveCard, retirement: retirement, now: DossierSample.referenceNow)
+        let frozen = dossier.cardSnapshot(from: liveCard)
+        entries[key] = frozen
+        return frozen
+    }
+}
+
 struct CollectionView: View {
     let cards: [HeadphoneCard]
     var isSampleData: Bool = false
@@ -50,6 +97,17 @@ struct CollectionView: View {
 
     private func retirement(for card: HeadphoneCard) -> DeviceRetirement? {
         lifecycleStore?.retirement(for: card)
+    }
+
+    private func displayCard(for card: HeadphoneCard) -> HeadphoneCard {
+        guard let retirement = retirement(for: card) else { return card }
+        return VaultCardSnapshotCache.card(
+            for: card,
+            retirement: retirement,
+            librarySyncToken: librarySyncToken,
+            isSampleData: isSampleData,
+            dossierProvider: dossierForCard
+        )
     }
 
     private var activeCards: [HeadphoneCard] {
@@ -155,12 +213,14 @@ struct CollectionView: View {
             .readLayoutSpace($space)
 
             if let selection = selected {
-                let card = cards.first(where: { $0.matches(id: selection.id) }) ?? selection
-                let isVaultedSelection = retirement(for: card) != nil
+                let liveCard = cards.first(where: { $0.matches(id: selection.id) }) ?? selection
+                let isVaultedSelection = retirement(for: liveCard) != nil
                 let pool = isVaultedSelection ? retiredCards : activeCards
-                let scopedCards = pool.contains(where: { $0.matches(id: card.id) }) ? pool : [card]
+                let livePool = pool.contains(where: { $0.matches(id: liveCard.id) }) ? pool : [liveCard]
+                let shownCard = displayCard(for: liveCard)
+                let scopedCards = isVaultedSelection ? livePool.map(displayCard(for:)) : livePool
                 CardDetail(
-                    card: card,
+                    card: shownCard,
                     cards: scopedCards,
                     colorStore: colorStore,
                     routeMonitor: routeMonitor,
@@ -169,7 +229,7 @@ struct CollectionView: View {
                         selected = next
                     },
                     openDossier: {
-                        dossierCardID = PresentedCardID(id: card.id)
+                        dossierCardID = PresentedCardID(id: liveCard.id)
                     },
                     openTiers: {
                         showCardTiers = true
@@ -429,6 +489,7 @@ struct CollectionView: View {
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let ret = retirement(for: card)
+        let shownCard = displayCard(for: card)
         let worn = ret == nil && (routeMonitor?.isCurrentlyWorn(card) ?? false)
         let disableTilt = reduceMotion
         let isLight = colorScheme == .light
@@ -437,7 +498,7 @@ struct CollectionView: View {
             selected = card
         } label: {
             LiveTiltView(isActive: listMotionActive) { liveTilt in
-                CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, retirement: ret)
+                CardHorizontalFront(card: shownCard, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, retirement: ret)
                     .overlay {
                         ScrollSheenSweep(cornerRadius: 24)
                     }
@@ -445,7 +506,7 @@ struct CollectionView: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(Theme.card)
                             .shadow(
-                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
+                                color: isLight ? Theme.cardShadow : shownCard.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
                                 radius: isLight ? 12 : 14,
                                 y: isLight ? 5 : 8
                             )
@@ -474,6 +535,7 @@ struct CollectionView: View {
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
         let ret = retirement(for: card)
+        let shownCard = displayCard(for: card)
         let worn = ret == nil && (routeMonitor?.isCurrentlyWorn(card) ?? false)
         let isLight = colorScheme == .light
         return Button {
@@ -481,7 +543,7 @@ struct CollectionView: View {
             selected = card
         } label: {
             LiveTiltView(isActive: listMotionActive) { liveTilt in
-                ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false, retirement: ret) }
+                ScaledCard { CardFront(card: shownCard, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false, retirement: ret) }
                     .overlay {
                         ScrollSheenSweep(cornerRadius: 22)
                     }
@@ -489,7 +551,7 @@ struct CollectionView: View {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .fill(Theme.card)
                             .shadow(
-                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
+                                color: isLight ? Theme.cardShadow : shownCard.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
                                 radius: isLight ? 12 : 14,
                                 y: isLight ? 5 : 8
                             )

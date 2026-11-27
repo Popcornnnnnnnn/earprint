@@ -21,6 +21,7 @@ struct HeadphoneCard: Identifiable, Equatable {
     var aliasIDs: [String] = []
     var tierAchievedDates: [Rarity: Date] = [:]
     var lastWearDate: Date? = nil
+    var lastWearStartDate: Date? = nil
 
     var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
 

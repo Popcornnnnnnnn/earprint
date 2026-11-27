@@ -48,6 +48,8 @@ struct SessionSet: Codable, Equatable, Sendable {
         var listeningSeconds: Double = 0
         var energy: Double = 0
         var peakDecibels: Double = 0
+        /// Local calendar day (`yyyymmdd`) so midnight boundaries keep archived sessions isolated from next-day wear.
+        var dayKey: Int? = nil
 
         var duration: TimeInterval { end - start }
         var effectiveSeconds: Double { listeningSeconds > 0 ? listeningSeconds : duration }
@@ -60,26 +62,35 @@ struct SessionSet: Codable, Equatable, Sendable {
     var longest: TimeInterval { spans.map(\.duration).max() ?? 0 }
     var totalSpan: TimeInterval { spans.reduce(0) { $0 + $1.duration } }
 
+    private static func canMerge(_ lhs: Int?, _ rhs: Int?) -> Bool {
+        guard let lhs, let rhs else { return true }
+        return lhs == rhs
+    }
+
     mutating func insert(
         start: TimeInterval,
         end: TimeInterval,
         gap: TimeInterval,
         listeningSeconds: Double? = nil,
         energy: Double = 0,
-        peakDecibels: Double = 0
+        peakDecibels: Double = 0,
+        dayKey: Int? = nil
     ) {
         let end = max(start, end)
         let addedListening = listeningSeconds ?? max(0, end - start)
         // Fast path: samples usually come in time order.
         if let last = spans.last, start >= last.start {
-            if start - last.end <= gap {
+            if start - last.end <= gap && Self.canMerge(last.dayKey, dayKey) {
                 let idx = spans.count - 1
                 spans[idx].end = max(last.end, end)
                 spans[idx].listeningSeconds = last.effectiveSeconds + addedListening
                 spans[idx].energy += energy
                 spans[idx].peakDecibels = max(last.peakDecibels, peakDecibels)
+                if spans[idx].dayKey == nil {
+                    spans[idx].dayKey = dayKey
+                }
             } else {
-                spans.append(Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels))
+                spans.append(Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels, dayKey: dayKey))
             }
             return
         }
@@ -90,15 +101,22 @@ struct SessionSet: Codable, Equatable, Sendable {
             if spans[mid].start <= start { lo = mid + 1 } else { hi = mid }
         }
         var first = lo
-        if first > 0, start - spans[first - 1].end <= gap { first -= 1 }
-        var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels)
+        if first > 0,
+           start - spans[first - 1].end <= gap,
+           Self.canMerge(spans[first - 1].dayKey, dayKey) {
+            first -= 1
+        }
+        var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels, dayKey: dayKey)
         var last = first
-        while last < spans.count, spans[last].start - merged.end <= gap {
+        while last < spans.count,
+              spans[last].start - merged.end <= gap,
+              Self.canMerge(merged.dayKey, spans[last].dayKey) {
             merged.start = min(merged.start, spans[last].start)
             merged.end = max(merged.end, spans[last].end)
             merged.listeningSeconds += spans[last].effectiveSeconds
             merged.energy += spans[last].energy
             merged.peakDecibels = max(merged.peakDecibels, spans[last].peakDecibels)
+            merged.dayKey = merged.dayKey ?? spans[last].dayKey
             last += 1
         }
         spans.replaceSubrange(first..<last, with: [merged])
@@ -126,6 +144,8 @@ struct DeviceAccumulator: Codable, Sendable {
     var energy: Double = 0
     var first: Date?
     var last: Date?
+    /// Start timestamp of the latest underlying sample ingested for post-retirement activity checks.
+    var lastSampleStart: Date? = nil
     var sessions = SessionSet()
     /// Local calendar day (yyyymmdd, in the time zone at ingest time) -> listening seconds.
     var daily: [Int: Double] = [:]
@@ -190,6 +210,7 @@ struct ListeningAggregate: Codable, Sendable {
             acc.seconds += seconds
             acc.energy += energy
             acc.first = min(acc.first ?? sample.start, sample.start)
+            acc.lastSampleStart = max(acc.lastSampleStart ?? sample.start, sample.start)
             acc.last = max(acc.last ?? end, end)
             if !sample.source.isEmpty { acc.sources.insert(sample.source) }
             if let device = sample.device, end >= acc.descriptorDate {
@@ -199,21 +220,25 @@ struct ListeningAggregate: Codable, Sendable {
             if let name = DeviceDescriptor.clean(sample.device?.name), !acc.names.contains(name) {
                 acc.names.append(name)
             }
-            acc.sessions.insert(
-                start: sample.start.timeIntervalSince1970,
-                end: end.timeIntervalSince1970,
-                gap: Self.sessionGap,
-                listeningSeconds: seconds,
-                energy: energy,
-                peakDecibels: sample.decibels
-            )
 
-            // Split across local days.
+            // Split across local days before merging sessions so midnight cutoffs isolate archived career energy and timestamps.
             var cursor = sample.start
             while cursor < end {
                 let (dayKey, dayEnd) = dayCache.day(containing: cursor)
                 let pieceEnd = min(end, dayEnd)
-                acc.daily[dayKey, default: 0] += pieceEnd.timeIntervalSince(cursor)
+                let pieceSeconds = pieceEnd.timeIntervalSince(cursor)
+                if pieceSeconds > 0 {
+                    acc.daily[dayKey, default: 0] += pieceSeconds
+                    acc.sessions.insert(
+                        start: cursor.timeIntervalSince1970,
+                        end: pieceEnd.timeIntervalSince1970,
+                        gap: Self.sessionGap,
+                        listeningSeconds: pieceSeconds,
+                        energy: HearingBudget.energy(decibels: sample.decibels, seconds: pieceSeconds),
+                        peakDecibels: sample.decibels,
+                        dayKey: dayKey
+                    )
+                }
                 cursor = pieceEnd
             }
 

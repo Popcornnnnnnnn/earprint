@@ -38,9 +38,10 @@ struct WidgetDebugSection: View {
                 .disabled(library.cards.isEmpty)
             }
             Button {
+                let combinedSummary = library.summary(forCardID: nil)
                 let snapshot: WidgetSnapshot = if let lifecycleStore {
                     WidgetSnapshot.forApp(
-                        summary: library.homeSummary,
+                        summary: combinedSummary,
                         allCards: library.cards,
                         lifecycleStore: lifecycleStore,
                         isSample: library.isShowingSampleData,
@@ -48,7 +49,7 @@ struct WidgetDebugSection: View {
                     )
                 } else {
                     WidgetSnapshot(
-                        summary: library.homeSummary,
+                        summary: combinedSummary,
                         cards: library.cards,
                         allCards: library.cards,
                         isSample: library.isShowingSampleData,

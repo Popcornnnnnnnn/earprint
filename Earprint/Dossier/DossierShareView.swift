@@ -1306,10 +1306,14 @@ private struct DossierSharePosterCanvas {
                             Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(nightPct > 20 ? Theme.moderateColor : Color.adaptive(light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1), dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)))
-                            Text("\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))")
-                                .font(.caption2)
-                                .foregroundStyle(DossierPalette.dim)
-                                .fixedSize(horizontal: false, vertical: true)
+                            Text(
+                                (!l.showFirstWear && period == .all)
+                                    ? AppLanguage.current.text("%lld wears", stats.sessionCount)
+                                    : "\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))"
+                            )
+                            .font(.caption2)
+                            .foregroundStyle(DossierPalette.dim)
+                            .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -1378,7 +1382,26 @@ private struct DossierSharePosterCanvas {
         let l = options.long
         let snapshotCard = displayCard
         let rarity = displayRarity
-        let hasAnyMilestones = !dossier.milestones.isEmpty
+        let visibleMilestones: [DossierMilestone] = if l.showFirstWear {
+            dossier.milestones
+        } else {
+            dossier.milestones.compactMap { item in
+                guard item.kind != .minted else { return nil }
+                if item.kind == .hours {
+                    return DossierMilestone(
+                        id: item.id,
+                        kind: item.kind,
+                        date: item.date,
+                        title: item.title,
+                        detail: "",
+                        tier: item.tier,
+                        isFuture: item.isFuture
+                    )
+                }
+                return item
+            }
+        }
+        let hasAnyMilestones = !visibleMilestones.isEmpty
         let showMilestones = l.showMilestones && hasAnyMilestones
         return longFrame(page: .certificate, index: index, total: total) {
             VStack(alignment: .leading, spacing: 8) {
@@ -1395,7 +1418,7 @@ private struct DossierSharePosterCanvas {
                         compact: true
                     )
 
-                    compactMilestonesSection(Array(dossier.milestones.suffix(3)))
+                    compactMilestonesSection(Array(visibleMilestones.suffix(3)))
                 } else if l.showCertificate {
                     ViewThatFits(in: .vertical) {
                         CertificateLabel(
@@ -1424,7 +1447,7 @@ private struct DossierSharePosterCanvas {
                 } else if showMilestones {
                     VStack(alignment: .leading, spacing: 8) {
                         Eyebrow("Milestones")
-                        MilestoneTimelineCard(milestones: Array(dossier.milestones.suffix(4)), rarity: rarity, calendar: dossier.calendar)
+                        MilestoneTimelineCard(milestones: Array(visibleMilestones.suffix(4)), rarity: rarity, calendar: dossier.calendar)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else if !l.showCertificate {

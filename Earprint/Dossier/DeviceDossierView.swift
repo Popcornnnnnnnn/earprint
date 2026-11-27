@@ -114,6 +114,7 @@ struct DeviceDossierView: View {
     private var liveFirstWear: Date? {
         dossier.liveFirstWearDate ?? dossier.firstWear ?? DateText.parse(card.firstMet, dateFormat: "yyyy.MM.dd", calendar: .current)
     }
+    private var liveLastWearStart: Date? { card.lastWearStartDate ?? dossier.liveLastWearStartDate }
     private var liveLastWear: Date? { card.lastWearDate ?? dossier.liveLastWearDate }
 
     private var refreshKey: RefreshKey {
@@ -502,8 +503,9 @@ struct DeviceDossierView: View {
             : AnyLayout(HStackLayout(spacing: 8))
 
         if let store = lifecycleStore,
-           store.hasUnacknowledgedPostRetirementActivity(for: card, lastWear: liveLastWear),
+           store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: liveLastWear, lastWearStart: liveLastWearStart),
            let lastWear = liveLastWear {
+            let acknowledgedTimestamp = max(lastWear, liveLastWearStart ?? lastWear)
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "waveform.badge.exclamationmark")
@@ -533,7 +535,7 @@ struct DeviceDossierView: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        store.acknowledgePostRetirementActivity(for: card, activityDate: lastWear)
+                        store.acknowledgePostRetirementActivity(for: card, activityDate: acknowledgedTimestamp)
                     } label: {
                         Text("Keep Vaulted")
                             .font(.caption.weight(.semibold))
@@ -682,7 +684,7 @@ struct DeviceDossierView: View {
                         Text("“\(retirement.farewellNote)”")
                             .font(.caption.italic())
                             .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if !dynamicTypeSize.isAccessibilitySize {
@@ -1174,9 +1176,11 @@ struct MilestoneTimelineCard: View {
                                 .lineLimit(1)
                                 .fixedSize()
                         }
-                        Text(LocalizedStringKey(item.detail))
-                            .font(.caption)
-                            .foregroundStyle(DossierPalette.dim)
+                        if !item.detail.isEmpty {
+                            Text(LocalizedStringKey(item.detail))
+                                .font(.caption)
+                                .foregroundStyle(DossierPalette.dim)
+                        }
                     }
                     .padding(.top, 3)
                     .padding(.bottom, isLast ? 2 : 14)

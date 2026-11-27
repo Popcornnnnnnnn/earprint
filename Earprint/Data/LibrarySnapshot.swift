@@ -20,6 +20,7 @@ struct DeviceSummary: Identifiable, Sendable {
     var averageSession: TimeInterval
     var first: Date?
     var last: Date?
+    var lastSampleStart: Date? = nil
     var activeDays: Int
     var sources: [String]
 
@@ -141,6 +142,7 @@ struct LibrarySnapshot: Sendable {
             averageSession: sessions.count > 0 ? sessions.totalSpan / Double(sessions.count) : 0,
             first: acc.first,
             last: acc.last,
+            lastSampleStart: acc.lastSampleStart ?? acc.last,
             activeDays: acc.activeDays,
             sources: acc.sources.sorted(),
             grid: window.grid,
@@ -275,6 +277,9 @@ private extension DeviceAccumulator {
             if let last = device.last {
                 combined.last = max(combined.last ?? last, last)
             }
+            if let lastStart = device.lastSampleStart {
+                combined.lastSampleStart = max(combined.lastSampleStart ?? lastStart, lastStart)
+            }
             for name in device.names where !combined.names.contains(name) {
                 combined.names.append(name)
             }
@@ -295,7 +300,8 @@ private extension DeviceAccumulator {
                 gap: ListeningAggregate.sessionGap,
                 listeningSeconds: span.effectiveSeconds,
                 energy: span.energy,
-                peakDecibels: span.peakDecibels
+                peakDecibels: span.peakDecibels,
+                dayKey: span.dayKey
             )
         }
         return combined
@@ -326,7 +332,8 @@ extension LibrarySnapshot {
                 kind: d.model.key.kind,
                 aliasIDs: d.aliasIDs,
                 tierAchievedDates: d.tierAchievedDates,
-                lastWearDate: d.wearSessions.max(by: { $0.start < $1.start })?.start ?? d.last
+                lastWearDate: d.last,
+                lastWearStartDate: d.lastSampleStart ?? d.last
             )
         }
     }
@@ -454,6 +461,8 @@ extension LibrarySnapshot {
             sampleCount: d.sampleCount,
             lastSynced: generatedAt,
             retirement: retirement,
+            liveLastSampleStart: d.lastSampleStart ?? d.last,
+            liveLastSampleEnd: d.last,
             now: now,
             calendar: calendar
         )

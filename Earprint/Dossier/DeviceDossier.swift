@@ -202,8 +202,9 @@ struct DeviceDossier: Identifiable {
     var hardware: DossierHardware
     /// All wear sessions (clamped at the retirement cutoff when vaulted), sorted by start.
     let sessions: [WearSession]
-    /// Unclipped first and last session timestamps across the full Health archive.
+    /// Unclipped first and last sample timestamps across the full Health archive.
     let liveFirstWearDate: Date?
+    let liveLastWearStartDate: Date?
     let liveLastWearDate: Date?
     /// Health samples read for this device.
     var sampleCount: Int
@@ -233,7 +234,9 @@ struct DeviceDossier: Identifiable {
     /// - Parameter otherDevicesDailyMinutes: minutes on *other* headphones keyed by start of day.
     init(id: String, nickname: String, symbol: String, serial: Int, hardware: DossierHardware,
          sessions: [WearSession], otherDevicesDailyMinutes: [Date: Double], sampleCount: Int,
-         lastSynced: Date, retirement: DeviceRetirement? = nil, now: Date, calendar: Calendar = .current) {
+         lastSynced: Date, retirement: DeviceRetirement? = nil,
+         liveLastSampleStart: Date? = nil, liveLastSampleEnd: Date? = nil,
+         now: Date, calendar: Calendar = .current) {
         self.id = id
         self.nickname = nickname
         self.symbol = symbol
@@ -243,7 +246,8 @@ struct DeviceDossier: Identifiable {
 
         let allSortedSessions = sessions.sorted { $0.start < $1.start }
         self.liveFirstWearDate = allSortedSessions.first?.start
-        self.liveLastWearDate = allSortedSessions.last?.start
+        self.liveLastWearStartDate = liveLastSampleStart ?? allSortedSessions.last?.start
+        self.liveLastWearDate = liveLastSampleEnd ?? allSortedSessions.last?.end
 
         let effectiveCalendar = retirement?.retiredCalendar ?? calendar
         let sortedSessions: [WearSession]
