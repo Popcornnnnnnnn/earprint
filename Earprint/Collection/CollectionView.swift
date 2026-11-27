@@ -7,13 +7,18 @@ struct CollectionView: View {
     var statusMessage: LocalizedStringKey? = nil
     var isLoading: Bool = false
     var isActiveTab: Bool = true
+    var librarySyncToken: Date? = nil
     var onConnectHealth: (() -> Void)? = nil
     var onPreviewFirstLaunch: (() -> Void)? = nil
     var dossierForCard: ((HeadphoneCard, DeviceRetirement?) -> DeviceDossier?)? = nil
 
+    private struct PresentedCardID: Identifiable, Hashable {
+        let id: String
+    }
+
     @State private var selected: HeadphoneCard?
-    @State private var dossierCard: HeadphoneCard?
-    @State private var retireSheetCard: HeadphoneCard?
+    @State private var dossierCardID: PresentedCardID?
+    @State private var retireSheetCardID: PresentedCardID?
     @AppStorage("collection.vaultExpanded") private var vaultExpanded = true
     #if DEBUG
     @State private var debugPreviewSelection: HeadphoneCard?
@@ -39,6 +44,10 @@ struct CollectionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var space = LayoutSpace()
 
+    private func resolveCard(id: String) -> HeadphoneCard? {
+        cards.first(where: { $0.matches(id: id) })
+    }
+
     private func retirement(for card: HeadphoneCard) -> DeviceRetirement? {
         lifecycleStore?.retirement(for: card)
     }
@@ -51,9 +60,9 @@ struct CollectionView: View {
         cards
             .filter { retirement(for: $0) != nil }
             .sorted { a, b in
-                let da = retirement(for: a)?.retiredAt ?? .distantPast
-                let db = retirement(for: b)?.retiredAt ?? .distantPast
-                if da != db { return da > db }
+                let da = retirement(for: a)?.retiredDay
+                let db = retirement(for: b)?.retiredDay
+                if let da, let db, da != db { return da > db }
                 return a.lifetimeMinutes > b.lifetimeMinutes
             }
     }
@@ -64,7 +73,7 @@ struct CollectionView: View {
         #else
         let previewActive = false
         #endif
-        return isActiveTab && !reduceMotion && selected == nil && dossierCard == nil
+        return isActiveTab && !reduceMotion && selected == nil && dossierCardID == nil
             && !showSettings && !showCardTiers && !showModelGallery && !previewActive
     }
 
@@ -160,7 +169,7 @@ struct CollectionView: View {
                         selected = next
                     },
                     openDossier: {
-                        dossierCard = card
+                        dossierCardID = PresentedCardID(id: card.id)
                     },
                     openTiers: {
                         showCardTiers = true
@@ -192,39 +201,43 @@ struct CollectionView: View {
         .foregroundStyle(Theme.primaryText)
         .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
         .animation(.easeInOut(duration: 0.22), value: hidesTabBar)
-        .fullScreenCover(item: $dossierCard) { card in
-            DeviceDossierView(
-                card: card,
-                dossier: dossierForCard?(card, retirement(for: card)),
-                dossierProvider: { ret in dossierForCard?(card, ret) },
-                activeCardCount: activeCards.count,
-                isSampleData: isSampleData
-            ) {
-                dossierCard = nil
+        .fullScreenCover(item: $dossierCardID) { presented in
+            if let liveCard = resolveCard(id: presented.id) {
+                DeviceDossierView(
+                    card: liveCard,
+                    dossier: dossierForCard?(liveCard, retirement(for: liveCard)),
+                    dossierProvider: { ret in dossierForCard?(liveCard, ret) },
+                    activeCardCount: activeCards.count,
+                    librarySyncToken: librarySyncToken,
+                    isSampleData: isSampleData
+                ) {
+                    dossierCardID = nil
+                }
+            } else {
+                Color.clear.onAppear { dossierCardID = nil }
             }
         }
-        .sheet(item: $retireSheetCard) { card in
-            let existing = retirement(for: card)
-            let d = dossierForCard?(card, existing)
-            RetireDeviceSheet(
-                card: card,
-                firstWear: d?.firstWear ?? DateText.parse(card.firstMet, dateFormat: "yyyy.MM.dd", calendar: .current),
-                lastWear: card.lastWearDate ?? d?.lastWear?.start,
-                existingRetirement: existing,
-                colorOption: colorStore?.selectedColor(for: card),
-                onSave: { newRetirement in
-                    lifecycleStore?.retire(
-                        card,
-                        at: newRetirement.retiredAt,
-                        reason: newRetirement.reason,
-                        farewellNote: newRetirement.farewellNote
-                    )
-                },
-                onUnretire: existing != nil ? {
-                    lifecycleStore?.unretire(card)
-                } : nil
-            )
-            .presentationDragIndicator(.visible)
+        .sheet(item: $retireSheetCardID) { presented in
+            if let liveCard = resolveCard(id: presented.id) {
+                let existing = retirement(for: liveCard)
+                let d = dossierForCard?(liveCard, existing)
+                RetireDeviceSheet(
+                    card: liveCard,
+                    firstWear: d?.liveFirstWearDate ?? d?.firstWear ?? DateText.parse(liveCard.firstMet, dateFormat: "yyyy.MM.dd", calendar: .current),
+                    lastWear: liveCard.lastWearDate ?? d?.liveLastWearDate,
+                    existingRetirement: existing,
+                    colorOption: colorStore?.selectedColor(for: liveCard),
+                    onSave: { newRetirement in
+                        lifecycleStore?.saveRetirement(newRetirement, for: liveCard)
+                    },
+                    onUnretire: existing != nil ? {
+                        lifecycleStore?.unretire(liveCard)
+                    } : nil
+                )
+                .presentationDragIndicator(.visible)
+            } else {
+                Color.clear.onAppear { retireSheetCardID = nil }
+            }
         }
         .sheet(isPresented: $showCardTiers) {
             NavigationStack {
@@ -499,18 +512,18 @@ struct CollectionView: View {
     @ViewBuilder
     private func cardContextMenu(for card: HeadphoneCard, retirement: DeviceRetirement?) -> some View {
         Button("Open Dossier", systemImage: "doc.text") {
-            dossierCard = card
+            dossierCardID = PresentedCardID(id: card.id)
         }
         if retirement != nil {
             Button("Edit Vault Details…", systemImage: "archivebox") {
-                retireSheetCard = card
+                retireSheetCardID = PresentedCardID(id: card.id)
             }
             Button("Restore to Active", systemImage: "arrow.uturn.backward") {
                 lifecycleStore?.unretire(card)
             }
         } else {
             Button("Retire to Vault…", systemImage: "archivebox") {
-                retireSheetCard = card
+                retireSheetCardID = PresentedCardID(id: card.id)
             }
         }
     }
@@ -615,7 +628,7 @@ struct CollectionView: View {
         }
         if args.contains("-dossier") || args.contains("-dossierDemo") {
             demoStarted = true
-            dossierCard = cards[index]
+            dossierCardID = PresentedCardID(id: cards[index].id)
             return
         }
         if args.contains("-cardDetail") {

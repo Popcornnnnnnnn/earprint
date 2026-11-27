@@ -32,6 +32,10 @@ struct WidgetSnapshot: Codable, Equatable {
     var week: Week
     var cards: [Card]
     var heatmap: Heatmap
+    /// Combined lifetime listening across all pairs (active + vaulted), kept intact when `cards` filters vaulted pairs out.
+    var totalLifetimeMinutes: Double? = nil
+    /// Weekly listening breakdown across all active and vaulted headphones so weekly widget rankings stay accurate.
+    var weeklyBreakdown: [Card]? = nil
 
     struct Today: Codable, Equatable {
         var minutes: Double
@@ -89,6 +93,16 @@ extension WidgetSnapshot {
     }
 
     var topCard: Card? { cards.first }
+
+    /// Full lifetime minutes across active and vaulted pairs, falling back cleanly for legacy v1 snapshots.
+    var resolvedLifetimeMinutes: Double {
+        totalLifetimeMinutes ?? cards.reduce(0) { $0 + $1.lifetimeMinutes }
+    }
+
+    /// Weekly listening breakdown across all headphones, falling back to `cards` for legacy v1 snapshots.
+    var resolvedWeeklyBreakdown: [Card] {
+        weeklyBreakdown ?? cards
+    }
 }
 
 // MARK: - Loudness band

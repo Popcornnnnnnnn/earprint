@@ -44,12 +44,13 @@ struct GradingSlab: View {
 
     var body: some View {
         let grade = dossier.grade
-        let rarity = card.rarity
+        let rarity = dossier.rarity
+        let displayCard = dossier.cardSnapshot(from: card)
         let customization = customization
         VStack(spacing: 10) {
             label(grade: grade, rarity: rarity, customization: customization)
                 .frame(height: SlabMetrics.labelHeight)
-            cardWell(foil: customization.proFoil)
+            cardWell(card: displayCard, foil: customization.proFoil)
             footer(rarity: rarity)
                 .frame(height: 26)
         }
@@ -139,13 +140,13 @@ struct GradingSlab: View {
         }
     }
 
-    private func cardWell(foil: ProFoilStyle?) -> some View {
+    private func cardWell(card displayCard: HeadphoneCard, foil: ProFoilStyle?) -> some View {
         ZStack {
-            CardFront(card: card, tilt: tilt, colorOption: colorOption ?? colorStore?.selectedColor(for: card),
+            CardFront(card: displayCard, tilt: tilt, colorOption: colorOption ?? colorStore?.selectedColor(for: displayCard),
                       showsFirstMet: showsFirstWear, proFoil: foil, retirement: dossier.retirement)
                 .environment(\.proAccess, .free)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
-            CardBack(card: card, retirement: dossier.retirement)
+            CardBack(card: displayCard, retirement: dossier.retirement)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0, isBack: true))
         }
         .scaleEffect(SlabMetrics.cardScale)
@@ -162,19 +163,17 @@ struct GradingSlab: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
-            if showsFirstWear {
-                if let retirement = dossier.retirement {
-                    Text("VAULTED \(DossierFormat.dot(retirement.retiredAt))")
-                        .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                } else {
-                    let minted = dossier.firstWear.map(DossierFormat.dot) ?? "—"
-                    Text("MINTED \(minted)")
-                        .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+            if let retirement = dossier.retirement {
+                Text("VAULTED \(retirement.formattedRetiredDate)")
+                    .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } else if showsFirstWear {
+                let minted = dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—"
+                Text("MINTED \(minted)")
+                    .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             HoloSeal(
                 tilt: tilt,
@@ -225,7 +224,9 @@ struct GradingSlab: View {
     private var certNumber: String {
         let prefix = String(format: "#%04d·", card.serial) + dossier.hardware.productID.dropFirst(2)
         guard showsFirstWear else { return prefix }
-        let date = dossier.firstWear.map { DossierFormat.dot($0).replacingOccurrences(of: ".", with: "").suffix(4) } ?? "0000"
+        let date = dossier.firstWear.map {
+            DateText.dotted($0, calendar: dossier.calendar).replacingOccurrences(of: ".", with: "").suffix(4)
+        } ?? "0000"
         return prefix + "·" + date
     }
 }
@@ -248,7 +249,7 @@ struct CertificateLabel: View {
     var body: some View {
         let hw = dossier.hardware
         let grade = dossier.grade
-        let rarity = card.rarity
+        let rarity = dossier.rarity
         let isLight = colorScheme == .light
         let scoreStyle = DossierContrast.gradeScoreGradient(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
         let borderColors = DossierContrast.borderColors(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
@@ -329,7 +330,7 @@ struct CertificateLabel: View {
                         GridRow {
                             if showsFirstWear {
                                 engraved("FIRMWARE", hw.firmwareVersion ?? "Not reported")
-                                engraved("MINTED", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                                engraved("MINTED", dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—")
                             } else {
                                 engraved("FIRMWARE", hw.firmwareVersion ?? "Not reported")
                                     .gridCellColumns(2)
@@ -337,7 +338,7 @@ struct CertificateLabel: View {
                         }
                     } else if showsFirstWear {
                         GridRow {
-                            engraved("MINTED", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                            engraved("MINTED", dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—")
                                 .gridCellColumns(2)
                         }
                     }
@@ -358,7 +359,7 @@ struct CertificateLabel: View {
                     if let retirement = dossier.retirement {
                         GridRow {
                             engraved("STATUS", AppLanguage.current.text("Vaulted · %@", AppLanguage.current.text(retirement.reason.title)))
-                            engraved("RETIRED", DossierFormat.dot(retirement.retiredAt))
+                            engraved("RETIRED", retirement.formattedRetiredDate)
                         }
                         if !compact && !retirement.farewellNote.isEmpty {
                             engraved("FAREWELL NOTE", "“\(retirement.farewellNote)”")
@@ -381,8 +382,8 @@ struct CertificateLabel: View {
                 VStack(alignment: .leading, spacing: compact ? 2 : 5) {
                     if showsSourceMetadata {
                         Eyebrow("History read")
-                        let startText = showsFirstWear ? (dossier.days.first.map { DossierFormat.dot($0.date) } ?? "—") : "—"
-                        Text("\(startText) – \(DossierFormat.dot(dossier.now))")
+                        let startText = showsFirstWear ? (dossier.days.first.map { DateText.dotted($0.date, calendar: dossier.calendar) } ?? "—") : "—"
+                        Text("\(startText) – \(DateText.dotted(dossier.now, calendar: dossier.calendar))")
                             .font(.system(compact ? .caption2 : .subheadline, design: .monospaced, weight: .semibold))
                         Text("\(dossier.recordDays) of \(dossier.historyDays) days · synced \(dossier.lastSynced.formatted(.relative(presentation: .named)))")
                             .font(compact ? .caption2 : .caption)

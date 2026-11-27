@@ -503,10 +503,10 @@ struct CardHorizontalFront: View {
                         if let retirement {
                             if !card.firstMet.isEmpty {
                                 Text("·")
-                                Text("\(card.firstMet) – \(DossierFormat.dot(retirement.retiredAt))")
+                                Text("\(card.firstMet) – \(retirement.formattedRetiredDate)")
                             } else {
                                 Text("·")
-                                Text("Vaulted \(DossierFormat.dot(retirement.retiredAt))")
+                                Text("Vaulted \(retirement.formattedRetiredDate)")
                             }
                         } else if !card.firstMet.isEmpty {
                             Text("·")
@@ -625,7 +625,7 @@ struct CardFront: View {
                     Spacer()
                     if showsFirstMet {
                         if let retirement {
-                            Text("\(card.firstMet) – \(DossierFormat.dot(retirement.retiredAt))")
+                            Text("\(card.firstMet) – \(retirement.formattedRetiredDate)")
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
                         } else {
@@ -799,7 +799,7 @@ struct CardBack: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
-                Text(DossierFormat.dot(retirement.retiredAt))
+                Text(retirement.formattedRetiredDate)
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .opacity(0.65)
             }

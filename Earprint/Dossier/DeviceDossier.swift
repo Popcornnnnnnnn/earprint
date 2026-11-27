@@ -200,8 +200,11 @@ struct DeviceDossier: Identifiable {
     var symbol: String
     var serial: Int
     var hardware: DossierHardware
-    /// All wear sessions, sorted by start.
+    /// All wear sessions (clamped at the retirement cutoff when vaulted), sorted by start.
     let sessions: [WearSession]
+    /// Unclipped first and last session timestamps across the full Health archive.
+    let liveFirstWearDate: Date?
+    let liveLastWearDate: Date?
     /// Health samples read for this device.
     var sampleCount: Int
     var lastSynced: Date
@@ -237,25 +240,60 @@ struct DeviceDossier: Identifiable {
         self.serial = serial
         self.hardware = hardware
         self.retirement = retirement
-        let sortedSessions = sessions.sorted { $0.start < $1.start }
+
+        let allSortedSessions = sessions.sorted { $0.start < $1.start }
+        self.liveFirstWearDate = allSortedSessions.first?.start
+        self.liveLastWearDate = allSortedSessions.last?.start
+
+        let effectiveCalendar = retirement?.retiredCalendar ?? calendar
+        let sortedSessions: [WearSession]
+        let effectiveNow: Date
+        if let retirement {
+            let cutoff = retirement.careerCutoffEnd
+            let endMoment = retirement.careerEndMoment
+            sortedSessions = allSortedSessions.compactMap { session in
+                guard session.start < cutoff else { return nil }
+                var clipped = session
+                if clipped.end > endMoment {
+                    clipped.minutes = max(0, endMoment.timeIntervalSince(clipped.start) / 60)
+                }
+                return clipped.minutes > 0 ? clipped : nil
+            }
+            effectiveNow = max(sortedSessions.first?.start ?? endMoment, endMoment)
+        } else {
+            sortedSessions = allSortedSessions
+            effectiveNow = now
+        }
+
+        let normalizedOthers: [Date: Double]
+        if let retirement {
+            let cutoffDay = effectiveCalendar.startOfDay(for: effectiveNow)
+            if effectiveCalendar.timeZone != calendar.timeZone {
+                var remapped: [Date: Double] = [:]
+                for (date, mins) in otherDevicesDailyMinutes where mins > 0 {
+                    let comps = calendar.dateComponents([.year, .month, .day], from: date)
+                    if let day = effectiveCalendar.date(from: comps), day <= cutoffDay {
+                        remapped[day, default: 0] += mins
+                    }
+                }
+                normalizedOthers = remapped
+            } else {
+                normalizedOthers = otherDevicesDailyMinutes.filter { $0.key <= cutoffDay }
+            }
+        } else {
+            normalizedOthers = otherDevicesDailyMinutes
+        }
+
         self.sessions = sortedSessions
         self.sampleCount = sampleCount
         self.lastSynced = lastSynced
-        let effectiveNow: Date = if let retirement {
-            max(
-                sortedSessions.first?.start ?? retirement.retiredAt,
-                max(retirement.retiredAt, sortedSessions.last?.end ?? retirement.retiredAt)
-            )
-        } else {
-            now
-        }
         self.now = effectiveNow
-        self.calendar = calendar
-        let days = Self.buildDays(sessions: sortedSessions, others: otherDevicesDailyMinutes, now: effectiveNow, calendar: calendar)
+        self.calendar = effectiveCalendar
+        let days = Self.buildDays(sessions: sortedSessions, others: normalizedOthers, now: effectiveNow, calendar: effectiveCalendar)
         self.days = days
         var periods: [DossierPeriod: PeriodStats] = [:]
         for period in DossierPeriod.allCases {
-            periods[period] = Self.stats(period, days: days, sessions: sortedSessions, now: effectiveNow, calendar: calendar)
+            periods[period] = Self.stats(period, days: days, sessions: sortedSessions, now: effectiveNow, calendar: effectiveCalendar)
         }
         self.periods = periods
 
@@ -285,9 +323,9 @@ struct DeviceDossier: Identifiable {
             pace: monthStats.dailyAverage,
             retirement: retirement,
             now: effectiveNow,
-            calendar: calendar
+            calendar: effectiveCalendar
         )
-        self.careerRows = Self.buildCareerRows(sessions: sortedSessions, calendar: calendar)
+        self.careerRows = Self.buildCareerRows(sessions: sortedSessions, calendar: effectiveCalendar)
     }
 
     func stats(_ period: DossierPeriod) -> PeriodStats { periods[period]! }
@@ -298,6 +336,38 @@ struct DeviceDossier: Identifiable {
     var firstWear: Date? { sessions.first?.start }
     var lastWear: WearSession? { sessions.last }
     var historyDays: Int { days.count }
+
+    /// 28-day × 24-hour listening grid ending on `calendar.startOfDay(for: now)` so vaulted glyphs reflect the archived cutoff.
+    var recentFourWeekGrid: ListeningGrid {
+        let dayCount = LibrarySnapshot.gridDays
+        var minutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
+        var decibels = minutes
+        let endDay = calendar.startOfDay(for: now)
+        let firstGridDay = calendar.date(byAdding: .day, value: -(dayCount - 1), to: endDay) ?? endDay
+        let byDate = Dictionary(uniqueKeysWithValues: days.map { ($0.date, $0) })
+        for offset in 0..<dayCount {
+            guard let targetDay = calendar.date(byAdding: .day, value: offset, to: firstGridDay),
+                  let stat = byDate[targetDay] else { continue }
+            for h in 0..<24 where stat.hourMinutes[h] > 0 {
+                minutes[offset][h] = stat.hourMinutes[h]
+                decibels[offset][h] = stat.hourEnergy[h] > 0 ? 10 * log10(stat.hourEnergy[h] / stat.hourMinutes[h]) : 0
+            }
+        }
+        return ListeningGrid(minutes: minutes, decibels: decibels)
+    }
+
+    /// Returns a card whose career metrics and 4-week ring match this frozen dossier when retired.
+    func cardSnapshot(from card: HeadphoneCard) -> HeadphoneCard {
+        guard isRetired else { return card }
+        var copy = card
+        copy.lifetimeMinutes = lifetimeMinutes
+        copy.sessions = sessions.count
+        copy.longestMinutes = longestSession?.minutes ?? 0
+        copy.averageDecibels = averageDecibels.rounded()
+        copy.firstMet = firstWear.map { DateText.dotted($0, calendar: calendar) } ?? "—"
+        copy.grid = recentFourWeekGrid
+        return copy
+    }
 
     private static func buildGrade(recent: PeriodStats, fallbackDecibels: Double, nightShare: Double) -> EarGrade {
         let db = recent.totalMinutes > 0 ? recent.averageDecibels : fallbackDecibels
@@ -369,7 +439,7 @@ struct DeviceDossier: Identifiable {
             result.append(.init(
                 id: "retired",
                 kind: .retired,
-                date: retirement.retiredAt,
+                date: retirement.careerEndMoment,
                 title: "Retired to Vault",
                 detail: detail,
                 tier: finalTier

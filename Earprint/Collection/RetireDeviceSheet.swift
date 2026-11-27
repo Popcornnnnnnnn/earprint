@@ -12,15 +12,20 @@ struct RetireDeviceSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline) private var reasonIconWidth: CGFloat = 20
 
     @State private var reason: RetirementReason
     @State private var retiredAt: Date
     @State private var farewellNote: String
 
-    private let reasonColumns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
+    private var reasonColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            [GridItem(.flexible(), spacing: 10)]
+        } else {
+            [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        }
+    }
 
     init(
         card: HeadphoneCard,
@@ -39,23 +44,34 @@ struct RetireDeviceSheet: View {
         self.onSave = onSave
         self.onUnretire = onUnretire
 
-        let upper = max(Date(), firstWear ?? Date())
-        let lower = min(firstWear ?? .distantPast, upper)
-        let defaultDate = min(max(existingRetirement?.retiredAt ?? lastWear ?? Date(), lower), upper)
+        let cal = Calendar.current
+        let upperDay = cal.startOfDay(for: max(Date(), firstWear ?? Date()))
+        let todayEnd = cal.date(byAdding: .day, value: 1, to: upperDay)?.addingTimeInterval(-1) ?? upperDay
+        let lower = min(cal.startOfDay(for: firstWear ?? .distantPast), todayEnd)
+        let seed: Date = if let existing = existingRetirement,
+            let localDay = cal.date(from: DateComponents(year: existing.retiredDay.year, month: existing.retiredDay.month, day: existing.retiredDay.day)) {
+            localDay
+        } else {
+            cal.startOfDay(for: lastWear ?? Date())
+        }
+        let defaultDate = min(max(seed, lower), todayEnd)
         _reason = State(initialValue: existingRetirement?.reason ?? .upgraded)
         _retiredAt = State(initialValue: defaultDate)
         _farewellNote = State(initialValue: existingRetirement?.farewellNote ?? "")
     }
 
     private var dateRange: ClosedRange<Date> {
-        let upper = max(Date(), firstWear ?? Date())
-        let lower = min(firstWear ?? .distantPast, upper)
-        return lower...upper
+        let cal = Calendar.current
+        let upperDay = cal.startOfDay(for: max(Date(), firstWear ?? Date()))
+        let todayEnd = cal.date(byAdding: .day, value: 1, to: upperDay)?.addingTimeInterval(-1) ?? upperDay
+        let lower = min(cal.startOfDay(for: firstWear ?? .distantPast), todayEnd)
+        return lower...todayEnd
     }
 
     private var careerSpanText: String {
-        let start = firstWear.map(DossierFormat.dot) ?? (card.firstMet.isEmpty ? "—" : card.firstMet)
-        let end = DossierFormat.dot(retiredAt)
+        let cal = Calendar.current
+        let start = firstWear.map { DateText.dotted($0, calendar: cal) } ?? (card.firstMet.isEmpty ? "—" : card.firstMet)
+        let end = DeviceRetirement.CalendarDay(date: retiredAt, calendar: cal).dottedText
         return "\(start) – \(end)"
     }
 
@@ -110,12 +126,19 @@ struct RetireDeviceSheet: View {
                                 .font(.caption)
                                 .foregroundStyle(DossierPalette.dim)
                             Spacer()
-                            Text("\(min(farewellNote.count, DeviceRetirement.maxFarewellLength))/\(DeviceRetirement.maxFarewellLength)")
+                            Text("\(farewellNote.count)/\(DeviceRetirement.maxFarewellLength)")
                                 .font(.caption2.monospacedDigit())
                                 .foregroundStyle(DossierPalette.faint)
                         }
 
                         TextField("e.g. Survived 3 winters & 40 flights", text: $farewellNote)
+                            .accessibilityLabel("Farewell note")
+                            .onChange(of: farewellNote) { _, updated in
+                                let clamped = DeviceRetirement.clampEditingNote(updated)
+                                if clamped != updated {
+                                    farewellNote = clamped
+                                }
+                            }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 11)
                             .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -128,11 +151,19 @@ struct RetireDeviceSheet: View {
                     VStack(spacing: 10) {
                         Button {
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            let cal = Calendar.current
+                            let pickedDay = DeviceRetirement.CalendarDay(date: retiredAt, calendar: cal)
+                            let sameDayAsExisting = existingRetirement?.retiredDay == pickedDay
+                            let tzID = sameDayAsExisting
+                                ? (existingRetirement?.timeZoneIdentifier ?? TimeZone.current.identifier)
+                                : TimeZone.current.identifier
+                            let ack = sameDayAsExisting ? existingRetirement?.acknowledgedActivityAt : nil
                             let payload = DeviceRetirement(
-                                retiredAt: retiredAt,
+                                retiredDay: pickedDay,
+                                timeZoneIdentifier: tzID,
                                 reason: reason,
                                 farewellNote: farewellNote,
-                                acknowledgedActivityAt: existingRetirement?.acknowledgedActivityAt
+                                acknowledgedActivityAt: ack
                             ).sanitized
                             onSave(payload)
                             dismiss()
@@ -214,7 +245,8 @@ struct RetireDeviceSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(card.model)
                     .font(.system(.headline, design: .rounded, weight: .bold))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .minimumScaleFactor(0.78)
                 Text("\(card.lifetimeMinutes.minutesText) · \(card.sessions) sessions")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(rarity.accent)
@@ -246,14 +278,17 @@ struct RetireDeviceSheet: View {
                 Image(systemName: item.symbol)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(selected ? accent : DossierPalette.dim)
-                    .frame(width: 20)
+                    .frame(minWidth: reasonIconWidth)
                 Text(LocalizedStringKey(item.title))
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 46)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)

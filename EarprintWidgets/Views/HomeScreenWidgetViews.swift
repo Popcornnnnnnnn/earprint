@@ -61,7 +61,7 @@ struct CardShelfView: View {
 
     var body: some View {
         let cards = Array(snapshot.cards.prefix(3))
-        let lifetime = snapshot.cards.reduce(0) { $0 + $1.lifetimeMinutes }
+        let lifetime = snapshot.resolvedLifetimeMinutes
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("CARD SHELF")
@@ -167,7 +167,7 @@ struct EarprintRingView: View {
 
             Spacer(minLength: 0)
 
-            WeekByHeadphone(cards: Array(snapshot.cards.prefix(3)))
+            WeekByHeadphone(cards: Array(snapshot.resolvedWeeklyBreakdown.prefix(3)))
 
             Spacer(minLength: 0)
 

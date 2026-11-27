@@ -58,6 +58,7 @@ struct EarprintApp: App {
                     statusMessage: library.statusMessage,
                     isLoading: library.isLoading,
                     isActiveTab: router.tab == .collection,
+                    librarySyncToken: library.snapshot?.generatedAt,
                     onConnectHealth: { Task { await library.connectAndSync() } },
                     onPreviewFirstLaunch: previewFirstLaunch,
                     dossierForCard: { card, retirement in library.dossier(for: card, retirement: retirement) }
@@ -199,17 +200,14 @@ struct EarprintApp: App {
     }
 
     private func publishWidgets() {
-        let summary = library.homeSummary
-        let cards = library.cards.filter { !lifecycleStore.isRetired($0) }
-        let isSample = library.isShowingSampleData
-        let listening = library.snapshot
+        let snapshot = WidgetSnapshot.forApp(
+            summary: library.homeSummary,
+            allCards: library.cards,
+            lifecycleStore: lifecycleStore,
+            isSample: library.isShowingSampleData,
+            listening: library.snapshot
+        )
         Task.detached(priority: .utility) {
-            let snapshot = WidgetSnapshot(
-                summary: summary,
-                cards: cards,
-                isSample: isSample,
-                listening: listening
-            )
             WidgetPublisher.publish(snapshot)
         }
     }

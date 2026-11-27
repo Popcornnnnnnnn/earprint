@@ -267,19 +267,19 @@ struct DossierShareSheet: View {
         } label: {
             Image(systemName: "slider.horizontal.3")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isCurrentFormatCustomized ? card.rarity.accent : Theme.primaryText)
+                .foregroundStyle(isCurrentFormatCustomized ? dossier.rarity.accent : Theme.primaryText)
                 .frame(width: 46, height: 46)
                 .background(Theme.surfaceFill, in: Circle())
                 .overlay(
                     Circle().strokeBorder(
-                        isCurrentFormatCustomized ? card.rarity.accent.opacity(0.65) : Theme.hairline,
+                        isCurrentFormatCustomized ? dossier.rarity.accent.opacity(0.65) : Theme.hairline,
                         lineWidth: isCurrentFormatCustomized ? 1.4 : 1
                     )
                 )
                 .overlay(alignment: .topTrailing) {
                     if isCurrentFormatCustomized {
                         Circle()
-                            .fill(card.rarity.accent)
+                            .fill(dossier.rarity.accent)
                             .frame(width: 9, height: 9)
                             .offset(x: -3, y: 3)
                     }
@@ -293,7 +293,7 @@ struct DossierShareSheet: View {
         HStack(spacing: 8) {
             Label("Customized details", systemImage: "slider.horizontal.3")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(card.rarity.accent)
+                .foregroundStyle(dossier.rarity.accent)
             Spacer()
             Button("Reset") {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -395,7 +395,7 @@ struct DossierShareSheet: View {
     // MARK: - Preview Stage
 
     @ViewBuilder private var previewStage: some View {
-        let previewGlow = activePosterScheme == .light ? Theme.cardShadow : card.rarity.glow.opacity(0.28)
+        let previewGlow = activePosterScheme == .light ? Theme.cardShadow : dossier.rarity.glow.opacity(0.28)
         let previewStroke = activePosterScheme == .light ? Color.black.opacity(0.10) : Color.white.opacity(0.12)
         if isRendering && activePages.isEmpty {
             VStack(spacing: 12) {
@@ -461,7 +461,7 @@ struct DossierShareSheet: View {
                     HStack(spacing: 6) {
                         ForEach(activePages) { page in
                             Capsule()
-                                .fill(page.id == safeIndex ? card.rarity.accent : Theme.primaryText.opacity(0.25))
+                                .fill(page.id == safeIndex ? dossier.rarity.accent : Theme.primaryText.opacity(0.25))
                                 .frame(width: page.id == safeIndex ? 18 : 6, height: 6)
                                 .animation(.snappy(duration: 0.22), value: safeIndex)
                         }
@@ -747,6 +747,9 @@ private struct DossierSharePosterCanvas {
     var customization: CardCustomization? = nil
     let posterScheme: ColorScheme
 
+    private var displayCard: HeadphoneCard { dossier.cardSnapshot(from: card) }
+    private var displayRarity: Rarity { dossier.rarity }
+
     private struct MetricTileItem: Identifiable {
         let id: String
         let label: LocalizedStringKey
@@ -770,16 +773,16 @@ private struct DossierSharePosterCanvas {
                 pageTag()
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
                     .tracking(1.6)
-                    .foregroundStyle(card.rarity.accent)
+                    .foregroundStyle(displayRarity.accent)
                 Spacer()
-                Text(LocalizedStringKey(card.rarity.title))
+                Text(LocalizedStringKey(displayRarity.title))
                     .font(.system(size: 9, weight: .heavy, design: .rounded))
                     .tracking(1.0)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3.5)
-                    .background(card.rarity.accent.opacity(0.16), in: Capsule())
-                    .overlay(Capsule().strokeBorder(card.rarity.accent.opacity(0.45), lineWidth: 0.9))
-                    .foregroundStyle(card.rarity.accent)
+                    .background(displayRarity.accent.opacity(0.16), in: Capsule())
+                    .overlay(Capsule().strokeBorder(displayRarity.accent.opacity(0.45), lineWidth: 0.9))
+                    .foregroundStyle(displayRarity.accent)
             }
 
             content()
@@ -790,7 +793,7 @@ private struct DossierSharePosterCanvas {
                     HStack(spacing: 5) {
                         Image(systemName: "ear.fill")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(card.rarity.accent)
+                            .foregroundStyle(displayRarity.accent)
                         Text("Earprint")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                         Text("· \(card.model)")
@@ -816,13 +819,13 @@ private struct DossierSharePosterCanvas {
         .background {
             canvasBg
             RadialGradient(
-                colors: [card.rarity.glow.opacity(isLight ? 0.16 : 0.24), card.rarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
+                colors: [displayRarity.glow.opacity(isLight ? 0.16 : 0.24), displayRarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
                 center: .topTrailing,
                 startRadius: 10,
                 endRadius: 340
             )
             RadialGradient(
-                colors: [card.rarity.accent.opacity(isLight ? 0.08 : 0.12), .clear],
+                colors: [displayRarity.accent.opacity(isLight ? 0.08 : 0.12), .clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 280
@@ -834,11 +837,12 @@ private struct DossierSharePosterCanvas {
 
     var simpleOnePagePoster: some View {
         let s = options.simple
-        let rarity = card.rarity
+        let rarity = displayRarity
+        let snapshotCard = displayCard
         let foil = customization?.proFoil
         let ink = foil?.ink ?? rarity.ink
         let accent = foil?.accent ?? rarity.accent
-        let hours = card.lifetimeMinutes / 60
+        let hours = snapshotCard.lifetimeMinutes / 60
         let visibleTiles = simpleVisibleTiles(s)
         return posterFrame(showsHardwareID: s.showHardwareID) {
             Text(dossier.isRetired ? "EARPRINT · HALL OF FAME" : "EARPRINT · DEVICE DOSSIER")
@@ -881,7 +885,7 @@ private struct DossierSharePosterCanvas {
                             .lineLimit(2)
                             .minimumScaleFactor(0.75)
 
-                        Text(card.lifetimeMinutes.minutesText)
+                        Text(snapshotCard.lifetimeMinutes.minutesText)
                             .font(.system(size: 36, weight: .black, design: .rounded))
                             .monospacedDigit()
                             .lineLimit(1)
@@ -896,7 +900,7 @@ private struct DossierSharePosterCanvas {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HeadphoneArtwork(card: card, colorOption: color, showsChargingCase: true)
+                    HeadphoneArtwork(card: snapshotCard, colorOption: color, showsChargingCase: true)
                         .frame(width: 132, height: 132)
                 }
                 .foregroundStyle(ink)
@@ -916,20 +920,37 @@ private struct DossierSharePosterCanvas {
                 // Tier & Hearing summary footer card (or Vault Career footer when retired)
                 if s.showTierSummary {
                     if let retirement = dossier.retirement {
+                        let firstDate = dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) }
+                            ?? (snapshotCard.firstMet == "—" || snapshotCard.firstMet.isEmpty ? nil : snapshotCard.firstMet)
                         VStack(alignment: .leading, spacing: 7) {
                             HStack(spacing: 6) {
-                                Label(
-                                    "\(dossier.firstWear.map(DossierFormat.dot) ?? card.firstMet) – \(DossierFormat.dot(retirement.retiredAt))",
-                                    systemImage: "archivebox.fill"
-                                )
-                                .font(.caption.weight(.bold).monospacedDigit())
-                                .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                Spacer()
-                                Text("\(dossier.historyDays) days")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(accent)
+                                if s.showFirstWear, let firstDate {
+                                    Label(
+                                        "\(firstDate) – \(retirement.formattedRetiredDate)",
+                                        systemImage: "archivebox.fill"
+                                    )
+                                    .font(.caption.weight(.bold).monospacedDigit())
+                                    .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    Spacer()
+                                    Text("\(dossier.historyDays) days")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(accent)
+                                } else {
+                                    Label(
+                                        "Vaulted \(retirement.formattedRetiredDate)",
+                                        systemImage: "archivebox.fill"
+                                    )
+                                    .font(.caption.weight(.bold).monospacedDigit())
+                                    .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    Spacer()
+                                    Text("\(dossier.recordDays) record days")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(accent)
+                                }
                             }
                             if !retirement.farewellNote.isEmpty {
                                 Text("“\(retirement.farewellNote)”")
@@ -968,7 +989,7 @@ private struct DossierSharePosterCanvas {
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(accent)
                             }
-                            let tierProgress = min(max(rarity.progressToNextTier(minutes: card.lifetimeMinutes), 0), 1)
+                            let tierProgress = min(max(rarity.progressToNextTier(minutes: snapshotCard.lifetimeMinutes), 0), 1)
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
                                     Capsule()
@@ -999,26 +1020,27 @@ private struct DossierSharePosterCanvas {
     }
 
     private func simpleVisibleTiles(_ s: DossierShareOptions.Simple) -> [MetricTileItem] {
+        let snapshotCard = displayCard
         var tiles: [MetricTileItem] = []
         if s.showSessions {
-            tiles.append(MetricTileItem(id: "sessions", label: "Sessions", value: "\(card.sessions)", valueColor: DossierPalette.primaryText))
+            tiles.append(MetricTileItem(id: "sessions", label: "Sessions", value: "\(snapshotCard.sessions)", valueColor: DossierPalette.primaryText))
         }
         if s.showLongestWear {
-            tiles.append(MetricTileItem(id: "longest", label: "Longest", value: card.longestMinutes.minutesText, valueColor: DossierPalette.primaryText))
+            tiles.append(MetricTileItem(id: "longest", label: "Longest", value: snapshotCard.longestMinutes.minutesText, valueColor: DossierPalette.primaryText))
         }
         if s.showAverageLevel {
             tiles.append(MetricTileItem(
                 id: "avg",
                 label: "Avg level",
-                value: "\(Int(card.averageDecibels.rounded())) dB",
-                valueColor: Theme.levelColor(db: card.averageDecibels, colorScheme: posterScheme)
+                value: "\(Int(snapshotCard.averageDecibels.rounded())) dB",
+                valueColor: Theme.levelColor(db: snapshotCard.averageDecibels, colorScheme: posterScheme)
             ))
         }
         if s.showFirstWear {
             tiles.append(MetricTileItem(
                 id: "firstWear",
                 label: "First wear",
-                value: dossier.firstWear.map(DossierFormat.dot) ?? card.firstMet,
+                value: dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? snapshotCard.firstMet,
                 valueColor: DossierPalette.primaryText
             ))
         }
@@ -1047,7 +1069,7 @@ private struct DossierSharePosterCanvas {
     private var simpleRingPanel: some View {
         VStack(spacing: 4) {
             ZStack {
-                EarprintGlyph(grid: card.grid, showHourLabels: false, forcedColorScheme: posterScheme)
+                EarprintGlyph(grid: displayCard.grid, showHourLabels: false, forcedColorScheme: posterScheme)
                 VStack(spacing: 0) {
                     Text("4 weeks")
                         .font(.system(size: 9.5, weight: .bold))
@@ -1150,10 +1172,12 @@ private struct DossierSharePosterCanvas {
 
     private func longPageCover(index: Int, total: Int) -> some View {
         let l = options.long
+        let snapshotCard = displayCard
+        let rarity = displayRarity
         return longFrame(page: .cover, index: index, total: total) {
             VStack(spacing: 12) {
                 GradingSlab(
-                    card: card,
+                    card: snapshotCard,
                     dossier: dossier,
                     tilt: CGSize(width: 0.18, height: -0.12),
                     flipped: false,
@@ -1172,14 +1196,14 @@ private struct DossierSharePosterCanvas {
 
                 if l.showCoverStats {
                     HStack(spacing: 0) {
-                        quickStatTile("LIFETIME", dossier.lifetimeMinutes.minutesText, accent: card.rarity.accent)
+                        quickStatTile("LIFETIME", dossier.lifetimeMinutes.minutesText, accent: rarity.accent)
                         if l.showFirstWear {
                             Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
-                            quickStatTile("FIRST WEAR", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                            quickStatTile("FIRST WEAR", dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—")
                         }
                         if let retirement = dossier.retirement {
                             Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
-                            quickStatTile("RETIRED", DossierFormat.dot(retirement.retiredAt))
+                            quickStatTile("RETIRED", retirement.formattedRetiredDate)
                         }
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
                         quickStatTile("RECORD DAYS", "\(dossier.recordDays)")
@@ -1193,7 +1217,7 @@ private struct DossierSharePosterCanvas {
                     HStack(spacing: 6) {
                         Image(systemName: "cpu")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(card.rarity.accent)
+                            .foregroundStyle(rarity.accent)
                         Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundStyle(DossierPalette.primaryText.opacity(0.78))
@@ -1229,6 +1253,7 @@ private struct DossierSharePosterCanvas {
 
     private func longPageRhythm(index: Int, total: Int) -> some View {
         let l = options.long
+        let rarity = displayRarity
         let stats = dossier.stats(period)
         let lateNightMinutes = stats.hours
             .filter { $0.hour >= 22 || $0.hour <= 3 }
@@ -1240,7 +1265,7 @@ private struct DossierSharePosterCanvas {
             VStack(spacing: 8) {
                 if l.showPeriodSummary {
                     HStack(spacing: 0) {
-                        quickStatTile(LocalizedStringKey(period.title), stats.totalMinutes.minutesText, accent: card.rarity.accent)
+                        quickStatTile(LocalizedStringKey(period.title), stats.totalMinutes.minutesText, accent: rarity.accent)
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
                         quickStatTile("WEAR SHARE", "\(Int((stats.share * 100).rounded()))%")
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
@@ -1254,19 +1279,19 @@ private struct DossierSharePosterCanvas {
                 if l.showTrendChart {
                     DossierTrendChart(
                         stats: stats,
-                        rarity: card.rarity,
+                        rarity: rarity,
                         firstWear: dossier.firstWear,
                         selection: .constant(nil),
                         showsInteractionHint: false,
                         showsMintedMarker: l.showFirstWear,
                         chartHeight: 132
                     )
-                    .dossierTile(tint: card.rarity.accent)
+                    .dossierTile(tint: rarity.accent)
                 }
 
                 if l.showDayClock {
                     HStack(spacing: 12) {
-                        DayClock(stats: stats, rarity: card.rarity, selectedHour: .constant(nil))
+                        DayClock(stats: stats, rarity: rarity, selectedHour: .constant(nil))
                             .frame(width: 134, height: 134)
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -1276,7 +1301,7 @@ private struct DossierSharePosterCanvas {
                             if let peakHour {
                                 Label("Peak \(DossierFormat.hourLabel(peakHour))", systemImage: "clock.fill")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(card.rarity.accent)
+                                    .foregroundStyle(rarity.accent)
                             }
                             Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                                 .font(.caption.weight(.semibold))
@@ -1288,7 +1313,7 @@ private struct DossierSharePosterCanvas {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .dossierTile(tint: card.rarity.glow)
+                    .dossierTile(tint: rarity.glow)
                 }
             }
         }
@@ -1296,15 +1321,16 @@ private struct DossierSharePosterCanvas {
 
     private func longPageHabits(index: Int, total: Int) -> some View {
         let l = options.long
+        let rarity = displayRarity
         let stats = dossier.stats(period)
         let budgetPct = Int((stats.weeklyDose * 100).rounded())
         let loudPct = Int((stats.loudShare * 100).rounded())
-        let longestMinutes = stats.longest?.minutes ?? card.longestMinutes
+        let longestMinutes = stats.longest?.minutes ?? displayCard.longestMinutes
         return longFrame(page: .habits, index: index, total: total) {
             VStack(spacing: 7) {
                 if l.showWearHabits && l.showHearingHealth {
                     HStack(spacing: 8) {
-                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: card.rarity.accent)
+                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: rarity.accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
                     .frame(height: 62)
@@ -1322,7 +1348,7 @@ private struct DossierSharePosterCanvas {
                     .frame(height: 62)
                 } else if l.showWearHabits {
                     HStack(spacing: 8) {
-                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: card.rarity.accent)
+                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: rarity.accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
                     .frame(height: 68)
@@ -1341,8 +1367,8 @@ private struct DossierSharePosterCanvas {
                 }
 
                 if l.showGradeBreakdown {
-                    GradeBreakdown(grade: dossier.grade, accent: card.rarity.accent)
-                        .dossierTile(tint: card.rarity.accent)
+                    GradeBreakdown(grade: dossier.grade, accent: rarity.accent)
+                        .dossierTile(tint: rarity.accent)
                 }
             }
         }
@@ -1350,13 +1376,15 @@ private struct DossierSharePosterCanvas {
 
     private func longPageCertificate(index: Int, total: Int) -> some View {
         let l = options.long
+        let snapshotCard = displayCard
+        let rarity = displayRarity
         let hasAnyMilestones = !dossier.milestones.isEmpty
         let showMilestones = l.showMilestones && hasAnyMilestones
         return longFrame(page: .certificate, index: index, total: total) {
             VStack(alignment: .leading, spacing: 8) {
                 if l.showCertificate && showMilestones {
                     CertificateLabel(
-                        card: card,
+                        card: snapshotCard,
                         dossier: dossier,
                         tilt: CGSize(width: 0.16, height: -0.10),
                         animateSeal: false,
@@ -1371,7 +1399,7 @@ private struct DossierSharePosterCanvas {
                 } else if l.showCertificate {
                     ViewThatFits(in: .vertical) {
                         CertificateLabel(
-                            card: card,
+                            card: snapshotCard,
                             dossier: dossier,
                             tilt: CGSize(width: 0.16, height: -0.10),
                             animateSeal: false,
@@ -1382,7 +1410,7 @@ private struct DossierSharePosterCanvas {
                             compact: false
                         )
                         CertificateLabel(
-                            card: card,
+                            card: snapshotCard,
                             dossier: dossier,
                             tilt: CGSize(width: 0.16, height: -0.10),
                             animateSeal: false,
@@ -1396,7 +1424,7 @@ private struct DossierSharePosterCanvas {
                 } else if showMilestones {
                     VStack(alignment: .leading, spacing: 8) {
                         Eyebrow("Milestones")
-                        MilestoneTimelineCard(milestones: Array(dossier.milestones.suffix(4)), rarity: card.rarity)
+                        MilestoneTimelineCard(milestones: Array(dossier.milestones.suffix(4)), rarity: rarity, calendar: dossier.calendar)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else if !l.showCertificate {
@@ -1410,7 +1438,8 @@ private struct DossierSharePosterCanvas {
     }
 
     private func compactMilestonesSection(_ milestones: [DossierMilestone]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let rarity = displayRarity
+        return VStack(alignment: .leading, spacing: 6) {
             Eyebrow("Milestones")
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(milestones) { item in
@@ -1442,8 +1471,8 @@ private struct DossierSharePosterCanvas {
                                 .tracking(0.6)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1.5)
-                                .background(card.rarity.accent.opacity(0.18), in: Capsule())
-                                .foregroundStyle(card.rarity.accent)
+                                .background(rarity.accent.opacity(0.18), in: Capsule())
+                                .foregroundStyle(rarity.accent)
                         } else if let tier = item.tier, item.kind == .tier || item.kind == .minted {
                             Text(LocalizedStringKey(tier.shortName.uppercased()))
                                 .font(.system(size: 7.5, weight: .heavy, design: .rounded))
@@ -1459,15 +1488,15 @@ private struct DossierSharePosterCanvas {
                                 .tracking(0.6)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1.5)
-                                .background(card.rarity.accent.opacity(0.18), in: Capsule())
-                                .foregroundStyle(card.rarity.accent)
+                                .background(rarity.accent.opacity(0.18), in: Capsule())
+                                .foregroundStyle(rarity.accent)
                         }
 
                         Spacer(minLength: 6)
 
-                        Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DossierFormat.dot(item.date))
+                        Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DateText.dotted(item.date, calendar: dossier.calendar))
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(item.isFuture ? card.rarity.accent.opacity(0.85) : DossierPalette.dim)
+                            .foregroundStyle(item.isFuture ? rarity.accent.opacity(0.85) : DossierPalette.dim)
                             .lineLimit(1)
                     }
                 }
@@ -1495,7 +1524,7 @@ private struct DossierSharePosterCanvas {
         if let tier = item.tier { return tier.accent }
         switch item.kind {
         case .longest: return Theme.moderateColor
-        case .bestDay, .upcoming, .minted, .tier, .retired: return card.rarity.accent
+        case .bestDay, .upcoming, .minted, .tier, .retired: return displayRarity.accent
         case .hours: return Theme.quietColor
         }
     }

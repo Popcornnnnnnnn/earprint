@@ -39,19 +39,153 @@ enum RetirementReason: String, Codable, CaseIterable, Identifiable, Hashable, Se
 struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
     static let maxFarewellLength = 80
 
+    /// Year/month/day triple preserving the archival date independent of later time-zone travel.
+    struct CalendarDay: Codable, Equatable, Hashable, Sendable, Comparable {
+        var year: Int
+        var month: Int
+        var day: Int
+
+        init(year: Int, month: Int, day: Int) {
+            self.year = year
+            self.month = month
+            self.day = day
+        }
+
+        init(date: Date, calendar: Calendar = .current) {
+            let comps = calendar.dateComponents([.year, .month, .day], from: date)
+            self.year = comps.year ?? 1970
+            self.month = comps.month ?? 1
+            self.day = comps.day ?? 1
+        }
+
+        var dottedText: String {
+            String(format: "%04d.%02d.%02d", year, month, day)
+        }
+
+        static func < (lhs: CalendarDay, rhs: CalendarDay) -> Bool {
+            if lhs.year != rhs.year { return lhs.year < rhs.year }
+            if lhs.month != rhs.month { return lhs.month < rhs.month }
+            return lhs.day < rhs.day
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case retiredDay
+        case timeZoneIdentifier
+        case retiredAt
+        case reason
+        case farewellNote
+        case acknowledgedActivityAt
+    }
+
+    var retiredDay: CalendarDay
+    var timeZoneIdentifier: String
+    /// Local start-of-day timestamp in `retiredCalendar`, kept aligned with `retiredDay` for sorting and compatibility.
     var retiredAt: Date
     var reason: RetirementReason
     var farewellNote: String = ""
     /// Last post-retirement HealthKit wear timestamp the user explicitly chose to keep vaulted.
     var acknowledgedActivityAt: Date? = nil
 
+    init(
+        retiredDay: CalendarDay,
+        timeZoneIdentifier: String = TimeZone.current.identifier,
+        reason: RetirementReason,
+        farewellNote: String = "",
+        acknowledgedActivityAt: Date? = nil
+    ) {
+        self.retiredDay = retiredDay
+        self.timeZoneIdentifier = timeZoneIdentifier
+        self.retiredAt = Self.startOfDay(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier)
+        self.reason = reason
+        self.farewellNote = farewellNote
+        self.acknowledgedActivityAt = acknowledgedActivityAt
+    }
+
+    init(
+        retiredAt: Date,
+        reason: RetirementReason,
+        farewellNote: String = "",
+        acknowledgedActivityAt: Date? = nil,
+        calendar: Calendar = .current
+    ) {
+        let day = CalendarDay(date: retiredAt, calendar: calendar)
+        self.init(
+            retiredDay: day,
+            timeZoneIdentifier: calendar.timeZone.identifier,
+            reason: reason,
+            farewellNote: farewellNote,
+            acknowledgedActivityAt: acknowledgedActivityAt
+        )
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedDate = try container.decode(Date.self, forKey: .retiredAt)
+        let tzID = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier) ?? TimeZone.current.identifier
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: tzID) ?? .current
+        let day = try container.decodeIfPresent(CalendarDay.self, forKey: .retiredDay)
+            ?? CalendarDay(date: decodedDate, calendar: cal)
+        self.retiredDay = day
+        self.timeZoneIdentifier = tzID
+        self.retiredAt = Self.startOfDay(for: day, timeZoneIdentifier: tzID)
+        self.reason = try container.decode(RetirementReason.self, forKey: .reason)
+        self.farewellNote = try container.decodeIfPresent(String.self, forKey: .farewellNote) ?? ""
+        self.acknowledgedActivityAt = try container.decodeIfPresent(Date.self, forKey: .acknowledgedActivityAt)
+    }
+
+    var retiredCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return cal
+    }
+
+    /// Date-only archival stamp in the time zone where the pair was retired (`yyyy.MM.dd`).
+    var formattedRetiredDate: String {
+        retiredDay.dottedText
+    }
+
+    /// Local midnight starting `retiredDay` in `retiredCalendar`.
+    var startOfRetiredDay: Date {
+        Self.startOfDay(for: retiredDay, timeZoneIdentifier: timeZoneIdentifier)
+    }
+
+    /// Exclusive upper bound (`00:00:00` of the day after `retiredDay` in `retiredCalendar`).
+    /// Sessions starting strictly before this cutoff belong to the vaulted career (clamped to `careerEndMoment`);
+    /// wear recorded at or after this cutoff triggers post-retirement activity detection.
+    var careerCutoffEnd: Date {
+        let cal = retiredCalendar
+        let start = startOfRetiredDay
+        return cal.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+    }
+
+    /// Inclusive final second (`23:59:59` of `retiredDay` in `retiredCalendar`) used to freeze `DeviceDossier.now` and milestones.
+    var careerEndMoment: Date {
+        careerCutoffEnd.addingTimeInterval(-1)
+    }
+
     var sanitized: Self {
         Self(
-            retiredAt: retiredAt,
+            retiredDay: retiredDay,
+            timeZoneIdentifier: timeZoneIdentifier,
             reason: reason,
             farewellNote: Self.clean(farewellNote, limit: Self.maxFarewellLength),
             acknowledgedActivityAt: acknowledgedActivityAt
         )
+    }
+
+    /// Collapses newlines and caps live typing at `maxFarewellLength` without stripping trailing spaces mid-entry.
+    static func clampEditingNote(_ value: String) -> String {
+        let singleLine = value.components(separatedBy: .newlines).joined(separator: " ")
+        return String(singleLine.prefix(maxFarewellLength))
+    }
+
+    private static func startOfDay(for day: CalendarDay, timeZoneIdentifier: String) -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day))
+            ?? Date(timeIntervalSince1970: 0)
     }
 
     private static func clean(_ value: String, limit: Int) -> String {
@@ -103,29 +237,37 @@ final class DeviceLifecycleStore {
         retirement(forCardID: cardID, aliasIDs: aliasIDs) != nil
     }
 
+    func saveRetirement(_ retirement: DeviceRetirement, for card: HeadphoneCard) {
+        var normalized = retirement.sanitized
+        if let existing = self.retirement(for: card) {
+            if existing.retiredDay == normalized.retiredDay,
+               existing.timeZoneIdentifier == normalized.timeZoneIdentifier {
+                normalized.acknowledgedActivityAt = normalized.acknowledgedActivityAt ?? existing.acknowledgedActivityAt
+            } else {
+                normalized.acknowledgedActivityAt = nil
+            }
+        }
+        for alias in card.aliasIDs {
+            retirements.removeValue(forKey: alias)
+        }
+        retirements[card.id] = normalized
+        persist()
+    }
+
     func retire(
         _ card: HeadphoneCard,
         at date: Date,
         reason: RetirementReason,
-        farewellNote: String
+        farewellNote: String,
+        calendar: Calendar = .current
     ) {
-        let existing = retirement(for: card)
-        let keepAck: Date? = if let existing, abs(existing.retiredAt.timeIntervalSince(date)) < 1 {
-            existing.acknowledgedActivityAt
-        } else {
-            nil
-        }
         let value = DeviceRetirement(
             retiredAt: date,
             reason: reason,
             farewellNote: farewellNote,
-            acknowledgedActivityAt: keepAck
-        ).sanitized
-        for alias in card.aliasIDs {
-            retirements.removeValue(forKey: alias)
-        }
-        retirements[card.id] = value
-        persist()
+            calendar: calendar
+        )
+        saveRetirement(value, for: card)
     }
 
     func unretire(_ card: HeadphoneCard) {
@@ -150,10 +292,10 @@ final class DeviceLifecycleStore {
         persist()
     }
 
-    /// True when HealthKit shows listening sessions strictly after `retiredAt` that haven't been acknowledged yet.
+    /// True when HealthKit shows wear on or after `careerCutoffEnd` (day after `retiredDay` in `retiredCalendar`) that hasn't been acknowledged yet.
     func hasUnacknowledgedPostRetirementActivity(for card: HeadphoneCard, lastWear: Date?) -> Bool {
         guard let retirement = retirement(for: card), let lastWear else { return false }
-        guard lastWear > retirement.retiredAt.addingTimeInterval(60) else { return false }
+        guard lastWear >= retirement.careerCutoffEnd else { return false }
         if let acknowledged = retirement.acknowledgedActivityAt {
             return lastWear > acknowledged.addingTimeInterval(60)
         }

@@ -41,7 +41,7 @@ struct LibrarySnapshot: Sendable {
     var totalSamples: Int
     var hostSamples: Int
     var invalidSamples: Int
-    private var sourceSerials: [String: Int]
+    private(set) var sourceSerials: [String: Int]
 
     var isEmpty: Bool { devices.isEmpty }
     var lifetimeSeconds: Double { devices.reduce(0) { $0 + $1.lifetimeSeconds } }
@@ -326,7 +326,7 @@ extension LibrarySnapshot {
                 kind: d.model.key.kind,
                 aliasIDs: d.aliasIDs,
                 tierAchievedDates: d.tierAchievedDates,
-                lastWearDate: d.last
+                lastWearDate: d.wearSessions.max(by: { $0.start < $1.start })?.start ?? d.last
             )
         }
     }
