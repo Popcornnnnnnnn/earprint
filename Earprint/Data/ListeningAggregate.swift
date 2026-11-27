@@ -251,6 +251,10 @@ struct ListeningAggregate: Codable, Sendable {
         }
         if devices.isEmpty {
             indexedArchivalBucketKeys = seenBucketKeys
+        } else if !samples.isEmpty {
+            // Drop any previously indexed bucket key absent when new/backdated samples arrive
+            // so restoring that retirement later forces a rebuild over the complete sample history.
+            indexedArchivalBucketKeys.formIntersection(seenBucketKeys)
         }
 
         for sample in samples {

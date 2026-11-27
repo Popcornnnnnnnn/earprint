@@ -449,53 +449,42 @@ extension LibrarySnapshot {
         guard let d = devices.first(where: { $0.id == id || $0.aliasIDs.contains(id) }) else { return nil }
         let effectiveCalendar = retirement?.retiredCalendar ?? calendar
         let cutoff = retirement?.careerCutoffEnd
-        let retirementBucketKey = retirement.map {
-            RetirementCutoffScope.bucketKey(cutoff: $0.careerCutoffEnd, timeZoneIdentifier: $0.timeZoneIdentifier)
-        }
-        let cutoffDayStart = cutoff.map {
-            effectiveCalendar.dateInterval(of: .day, for: retirement?.careerEndMoment ?? $0)?.start
-                ?? effectiveCalendar.startOfDay(for: retirement?.careerEndMoment ?? $0)
-        }
         var others: [Date: Double] = [:]
-        for other in devices where other.id != d.id {
-            if let retirementBucketKey, let exactDays = other.archivalDailyByBucketKey[retirementBucketKey] {
-                for (dayKey, secs) in exactDays where secs > 0 {
-                    let year = dayKey / 10_000
-                    let month = (dayKey / 100) % 100
-                    let day = dayKey % 100
-                    if let noon = effectiveCalendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12)),
-                       let dayStart = effectiveCalendar.dateInterval(of: .day, for: noon)?.start {
-                        others[dayStart, default: 0] += secs / 60
-                    }
-                }
-            } else if !other.wearSessions.isEmpty {
-                for session in other.wearSessions {
-                    if let cutoff, session.start >= cutoff { continue }
-                    var cursor = session.start
-                    let sessionEnd = cutoff.map { min(session.end, $0) } ?? session.end
-                    while cursor < sessionEnd {
-                        let interval = effectiveCalendar.dateInterval(of: .day, for: cursor)
-                        let dayStart = interval?.start ?? effectiveCalendar.startOfDay(for: cursor)
-                        let dayEnd = interval?.end ?? cursor.addingTimeInterval(86_400)
-                        let sliceEnd = min(sessionEnd, dayEnd)
-                        let mins = sliceEnd.timeIntervalSince(cursor) / 60
-                        if mins > 0 {
-                            others[dayStart, default: 0] += mins
+        if let retirement, let cutoff {
+            let retirementBucketKey = RetirementCutoffScope.bucketKey(
+                cutoff: cutoff,
+                timeZoneIdentifier: retirement.timeZoneIdentifier
+            )
+            let cutoffDayStart = effectiveCalendar.dateInterval(of: .day, for: retirement.careerEndMoment)?.start
+                ?? effectiveCalendar.startOfDay(for: retirement.careerEndMoment)
+            for other in devices where other.id != d.id {
+                if let exactDays = other.archivalDailyByBucketKey[retirementBucketKey] {
+                    Self.addDailySeconds(exactDays, in: effectiveCalendar, maxDayStart: nil, into: &others)
+                } else if !other.wearSessions.isEmpty {
+                    for session in other.wearSessions {
+                        guard session.start < cutoff else { continue }
+                        var cursor = session.start
+                        let sessionEnd = min(session.end, cutoff)
+                        while cursor < sessionEnd {
+                            let interval = effectiveCalendar.dateInterval(of: .day, for: cursor)
+                            let dayStart = interval?.start ?? effectiveCalendar.startOfDay(for: cursor)
+                            let dayEnd = interval?.end ?? cursor.addingTimeInterval(86_400)
+                            let sliceEnd = min(sessionEnd, dayEnd)
+                            let mins = sliceEnd.timeIntervalSince(cursor) / 60
+                            if mins > 0 {
+                                others[dayStart, default: 0] += mins
+                            }
+                            if sliceEnd <= cursor { break }
+                            cursor = sliceEnd
                         }
-                        if sliceEnd <= cursor { break }
-                        cursor = sliceEnd
                     }
+                } else {
+                    Self.addDailySeconds(other.dailySeconds, in: effectiveCalendar, maxDayStart: cutoffDayStart, into: &others)
                 }
-            } else {
-                for (dayKey, secs) in other.dailySeconds where secs > 0 {
-                    let year = dayKey / 10_000
-                    let month = (dayKey / 100) % 100
-                    let day = dayKey % 100
-                    if let date = effectiveCalendar.date(from: DateComponents(year: year, month: month, day: day)) {
-                        if let cutoffDayStart, date > cutoffDayStart { continue }
-                        others[date, default: 0] += secs / 60
-                    }
-                }
+            }
+        } else {
+            for other in devices where other.id != d.id {
+                Self.addDailySeconds(other.dailySeconds, in: effectiveCalendar, maxDayStart: nil, into: &others)
             }
         }
         let desc = d.descriptor
@@ -528,6 +517,24 @@ extension LibrarySnapshot {
             now: now,
             calendar: effectiveCalendar
         )
+    }
+
+    private static func addDailySeconds(
+        _ dailySeconds: [Int: Double],
+        in calendar: Calendar,
+        maxDayStart: Date?,
+        into target: inout [Date: Double]
+    ) {
+        for (dayKey, secs) in dailySeconds where secs > 0 {
+            let year = dayKey / 10_000
+            let month = (dayKey / 100) % 100
+            let day = dayKey % 100
+            if let noon = calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12)),
+               let dayStart = calendar.dateInterval(of: .day, for: noon)?.start {
+                if let maxDayStart, dayStart > maxDayStart { continue }
+                target[dayStart, default: 0] += secs / 60
+            }
+        }
     }
 
     private static func friendlySourceName(bundleIDs: [String]) -> String {

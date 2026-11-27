@@ -171,12 +171,6 @@ actor HealthIngestor {
             }
         }
 
-        let commitScopes = DeviceLifecycleStore.persistedCutoffScopes()
-        if commitScopes != scopes {
-            scopes = commitScopes
-            scopesChanged = true
-        }
-
         aggregate = working
         anchor = workingAnchor
         if fetched > 0 || rebuilt {

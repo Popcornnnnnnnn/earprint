@@ -450,9 +450,14 @@ final class HeadphoneLibrary: ObservableObject {
                 if snapshot != nil { snapshot = nil }
                 if state != .empty { state = .empty }
             } else if retirementScopeVersion != scopeVersionBefore {
+                let recoveryVersion = retirementScopeVersion
                 let latestScopes = DeviceLifecycleStore.persistedCutoffScopes()
-                if !(await ingestor.needsRebuild(for: latestScopes)),
-                   let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes) {
+                if await ingestor.needsRebuild(for: latestScopes) {
+                    if recoveryVersion == retirementScopeVersion {
+                        await sync(silent: true)
+                    }
+                } else if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes),
+                          recoveryVersion == retirementScopeVersion {
                     snapshot = refreshed
                 }
                 if state != .ready { state = .ready }
@@ -484,7 +489,9 @@ final class HeadphoneLibrary: ObservableObject {
            version == retirementScopeVersion {
             snapshot = refreshed
         }
-        if HealthIngestor.isAvailable, await ingestor.needsRebuild(for: scopes) {
+        if HealthIngestor.isAvailable,
+           await ingestor.needsRebuild(for: scopes),
+           version == retirementScopeVersion {
             await sync(silent: true)
         }
     }

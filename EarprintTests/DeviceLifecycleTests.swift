@@ -763,6 +763,42 @@ final class DeviceLifecycleTests: XCTestCase {
         let proCard = try XCTUnwrap(snapshot.cards(now: now, calendar: laCal).first { $0.modelKey == .airpodsPro })
         let proDossier = try XCTUnwrap(snapshot.dossier(forCardID: proCard.id, retirement: nil, now: now, calendar: laCal))
         XCTAssertEqual(proDossier.sessions.count, 1)
+
+        // If Pair A is unretired, a backdated/new sync arrives without scopes, and Pair A is re-retired
+        // with the same cutoff date, the stale archival bucket must be invalidated so rebuild triggers.
+        agg.ingest([
+            RawListeningSample(start: date(2026, 9, 2, hour: 15), end: date(2026, 9, 2, hour: 15).addingTimeInterval(600), decibels: 64, device: proDev),
+        ], now: now, calendar: laCal, cutoffScopes: [])
+        XCTAssertTrue(agg.needsRebuild(for: scopes))
+    }
+
+    @MainActor
+    func testActiveDossierAllocatesOtherPairDailySecondsAcrossMidnight() throws {
+        let cal = utcCalendar
+        let maxDev = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "active-max")
+        let proDev = DeviceDescriptor(name: "Daily Pro", manufacturer: "Apple Inc.", model: "0x2024", localIdentifier: "active-pro")
+        let day1OtherStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 45))!
+        let day1OtherEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 55))!
+        let day2OtherStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 0))!
+        let day2OtherEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 10))!
+        let maxDay1 = date(2026, 9, 2, hour: 12)
+        let now = date(2026, 9, 3, hour: 18)
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            RawListeningSample(start: maxDay1, end: maxDay1.addingTimeInterval(1800), decibels: 64, device: maxDev),
+            RawListeningSample(start: day1OtherStart, end: day1OtherEnd, decibels: 64, device: proDev),
+            RawListeningSample(start: day2OtherStart, end: day2OtherEnd, decibels: 64, device: proDev),
+        ], now: now, calendar: cal)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: cal)
+        let maxCard = try XCTUnwrap(snapshot.cards(now: now, calendar: cal).first { $0.modelKey == .airpodsMax })
+        let activeDossier = try XCTUnwrap(snapshot.dossier(forCardID: maxCard.id, retirement: nil, now: now, calendar: cal))
+
+        XCTAssertEqual(activeDossier.days.count, 2)
+        // Day 1: 30m (Max) + 10m (Pro) = 40m; Day 2: 0m (Max) + 10m (Pro) = 10m.
+        XCTAssertEqual(activeDossier.days[0].allDevicesMinutes, 40, accuracy: 0.05)
+        XCTAssertEqual(activeDossier.days[1].allDevicesMinutes, 10, accuracy: 0.05)
     }
 
     @MainActor
@@ -894,6 +930,36 @@ final class DeviceLifecycleTests: XCTestCase {
         let weekHabitsText = try recognizeText(fromPNG: hiddenWeekPages[2].pngData, languages: ["en-US"])
         XCTAssertFalse(weekHabitsText.contains("/ 4"), "Hidden 4-day span leaked in .week Habits OCR: \(weekHabitsText)")
 
+        // Single-wear retired pair must redact the dated "Best day" / "Best month" caption so the first wear date isn't revealed.
+        let singleWearDossier = DeviceDossier(
+            id: "single-max",
+            nickname: "Single Max",
+            symbol: "airpodsmax",
+            serial: 3,
+            hardware: DossierSample.hardware(for: maxCard),
+            sessions: [WearSession(start: shortStart, minutes: 60, averageDecibels: 64, peakDecibels: 70, isEstimated: false)],
+            otherDevicesDailyMinutes: [:],
+            sampleCount: 1,
+            lastSynced: date(2026, 9, 3, hour: 10),
+            retirement: utcRet,
+            now: date(2026, 9, 3, hour: 10),
+            calendar: utcCalendar
+        )
+        let singleWeekPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: singleWearDossier,
+            period: .week,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: hiddenOpts,
+            scheme: .dark,
+            locale: Locale(identifier: "en"),
+            scale: 3
+        )
+        let singleWeekRhythmText = try recognizeText(fromPNG: singleWeekPages[1].pngData, languages: ["en-US"])
+        XCTAssertFalse(singleWeekRhythmText.contains("aug 30"), "Single-wear Best day caption leaked first-wear date: \(singleWeekRhythmText)")
+
         // Localized zh-Hans Rhythm caption + timezone-anchored date range.
         var zhOpts = DossierShareOptions.default
         zhOpts.long.showFirstWear = true
@@ -923,17 +989,17 @@ final class DeviceLifecycleTests: XCTestCase {
             .appendingPathComponent("widget-stale-guard-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let newerTime = Date(timeIntervalSince1970: 1_788_436_800.900)
-        let olderSameSecond = Date(timeIntervalSince1970: 1_788_436_800.100)
+        let newerTime = Date(timeIntervalSince1970: 1_788_436_800.9004)
+        let olderSubMillisecond = Date(timeIntervalSince1970: 1_788_436_800.9001)
         let emptyCards: [HeadphoneCard] = []
         let newer = WidgetSnapshot(summary: SampleData.summary, cards: emptyCards, isSample: false, now: newerTime)
-        let olderWithCards = WidgetSnapshot(summary: SampleData.summary, cards: SampleCards.all, isSample: false, now: olderSameSecond)
+        let olderWithCards = WidgetSnapshot(summary: SampleData.summary, cards: SampleCards.all, isSample: false, now: olderSubMillisecond)
 
         XCTAssertTrue(try WidgetSnapshotStore.save(newer, to: url))
         XCTAssertFalse(try WidgetSnapshotStore.save(olderWithCards, to: url))
         let loaded = try XCTUnwrap(WidgetSnapshotStore.load(from: url))
         XCTAssertEqual(loaded.cards.count, 0)
-        XCTAssertEqual(loaded.generatedAt.timeIntervalSince1970, newerTime.timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(loaded.resolvedGeneratedAtEpoch, newerTime.timeIntervalSince1970, accuracy: 0.00001)
 
         // Whole-second ISO-8601 snapshots written by earlier app builds still decode cleanly.
         let legacyEncoder = JSONEncoder()

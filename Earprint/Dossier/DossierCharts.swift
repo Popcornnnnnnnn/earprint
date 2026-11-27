@@ -88,7 +88,7 @@ struct DossierTrendChart: View {
                             .font(.caption.weight(.bold))
                             .foregroundStyle(rarity.accent)
                             .lineLimit(1)
-                        Text("\(best.minutes.minutesText) · \(shortLabel(best))")
+                        Text(showsMintedMarker ? "\(best.minutes.minutesText) · \(shortLabel(best))" : best.minutes.minutesText)
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
                             .lineLimit(1)
