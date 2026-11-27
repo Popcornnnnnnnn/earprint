@@ -27,6 +27,9 @@ struct CardFaceRotation: ViewModifier, Animatable {
 /// Static micro-texture for `FoilSurface`, isolated as `Equatable` so tilt changes never redraw the Canvas.
 private struct FoilTexturePattern: View, Equatable {
     let material: FoilMaterial
+    var carbonOpacity: Double = 0.062
+    var carbonPitch: CGFloat = 7.5
+    var carbonLineWidth: CGFloat = 1.0
 
     var body: some View {
         Canvas { context, size in
@@ -74,15 +77,15 @@ private struct FoilTexturePattern: View, Equatable {
                 context.stroke(path, with: .color(.white.opacity(0.028)), lineWidth: 0.6)
 
             case .carbon:
-                // Authentic 2×2 carbon-fiber twill weave.
+                // Authentic 2x2 carbon-fiber twill weave.
                 var weave = Path()
-                stride(from: -size.height, to: size.width + size.height, by: 7.5).forEach { x in
+                stride(from: -size.height, to: size.width + size.height, by: carbonPitch).forEach { x in
                     weave.move(to: CGPoint(x: x, y: size.height))
                     weave.addLine(to: CGPoint(x: x + size.height, y: 0))
                     weave.move(to: CGPoint(x: x, y: 0))
                     weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
                 }
-                context.stroke(weave, with: .color(.white.opacity(0.062)), lineWidth: 1.0)
+                context.stroke(weave, with: .color(.white.opacity(carbonOpacity)), lineWidth: carbonLineWidth)
 
             case .holo:
                 // Delicate pearlescent cross-shimmer mesh.
@@ -97,7 +100,7 @@ private struct FoilTexturePattern: View, Equatable {
     }
 }
 
-/// Foil surface: distinct per-material lighting architecture + finish micro-texture that responds naturally to tilt.
+/// Foil surface: sculptural iOS 18 `MeshGradient` liquid silk + soft specular catchlight + iridescent prism sweep on `.holo`.
 struct FoilSurface: View {
     let rarity: Rarity
     var tilt: CGSize = .zero
@@ -124,14 +127,16 @@ struct FoilSurface: View {
         let ty = tilt.height
 
         return ZStack {
-            // 1. Pinch-free base coat tailored to each tier's material physics.
+            // 1. Native 3x3 sculptural silk mesh gradient tailored to each tier.
             baseLayer(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
 
-            // 2. Static finish micro-texture (Equatable -> zero CPU cost during tilt).
-            FoilTexturePattern(material: rarity.material)
-                .equatable()
+            // 2. Earned tiers stay clean liquid silk except subtle carbon twill on forged Titanium obsidian.
+            if rarity.material == .carbon {
+                FoilTexturePattern(material: .carbon, carbonOpacity: 0.036, carbonPitch: 8.0, carbonLineWidth: 0.85)
+                    .equatable()
+            }
 
-            // 3. Per-material natural light shape & specular behavior (no shared template!).
+            // 3. Soft liquid-glass silk highlight + contrast veil (+ rainbow refraction on 2,000h Prism).
             lightingOverlay(mid: mid, hi: hi, sh: sh, deep: deep, tx: tx, ty: ty)
         }
     }
@@ -189,183 +194,199 @@ struct FoilSurface: View {
         }
     }
 
-    @ViewBuilder
     private func baseLayer(mid: Color, hi: Color, sh: Color, deep: Color, tx: CGFloat, ty: CGFloat) -> some View {
-        switch rarity.material {
-        case .matteGrain:
-            LinearGradient(
-                colors: [hi, mid, sh, deep],
-                startPoint: UnitPoint(x: 0.08 + tx * 0.06, y: 0.02 + ty * 0.05),
-                endPoint: UnitPoint(x: 0.92 + tx * 0.06, y: 0.98 + ty * 0.05)
-            )
-        case .brushed:
-            if rarity == .silver {
-                LinearGradient(
-                    colors: [mid, hi, mid, sh],
-                    startPoint: UnitPoint(x: 0.12 + tx * 0.08, y: 0.0),
-                    endPoint: UnitPoint(x: 0.88 + tx * 0.08, y: 1.0)
-                )
-            } else {
-                // Fjord Teal: horizontal coastal gradient flow
-                LinearGradient(
-                    colors: [sh, mid, hi, sh, deep],
-                    startPoint: UnitPoint(x: 0.0, y: 0.14 + ty * 0.06),
-                    endPoint: UnitPoint(x: 1.0, y: 0.88 + ty * 0.06)
-                )
-            }
-        case .satin:
-            // Deep Purple: rich velvet plum base with upper-right lift
-            LinearGradient(
-                colors: [deep, sh, mid, deep],
-                startPoint: UnitPoint(x: 0.05, y: 0.95),
-                endPoint: UnitPoint(x: 0.95, y: 0.05)
-            )
-        case .carbon:
-            // Midnight Carbon stays authentically dark forged composite across its body.
-            LinearGradient(
-                colors: [mid, deep, sh, Color(red: 0.025, green: 0.032, blue: 0.055)],
-                startPoint: UnitPoint(x: 0.15, y: 0.0),
-                endPoint: UnitPoint(x: 0.85, y: 1.0)
-            )
-        case .holo:
-            LinearGradient(
-                colors: [
-                    rarity.baseColors[0].opacity(0.92),
-                    rarity.baseColors[1].opacity(0.88),
-                    rarity.baseColors[2].opacity(0.86),
-                    rarity.baseColors[3].opacity(0.92),
-                ],
-                startPoint: UnitPoint(x: 0.02 + tx * 0.08, y: 0.04 + ty * 0.06),
-                endPoint: UnitPoint(x: 0.98 + tx * 0.08, y: 0.96 + ty * 0.06)
-            )
-        }
+        MeshGradient(
+            width: 3,
+            height: 3,
+            points: Rarity.meshPoints(tilt: CGSize(width: tx, height: ty)),
+            colors: rarity.meshColors,
+            smoothsColors: true
+        )
     }
 
     @ViewBuilder
     private func lightingOverlay(mid: Color, hi: Color, sh: Color, deep: Color, tx: CGFloat, ty: CGFloat) -> some View {
-        switch rarity.material {
-        case .matteGrain:
-            // Broad diffused top-left overhead dome + gentle matte roll-off
-            RadialGradient(
-                colors: [hi.opacity(0.45), mid.opacity(0.14), .clear],
-                center: UnitPoint(x: 0.20 + tx * 0.28, y: 0.14 + ty * 0.22),
-                startRadius: 8,
-                endRadius: 310
-            )
-            LinearGradient(
-                colors: [.white.opacity(0.16), .clear, .black.opacity(0.18)],
-                startPoint: UnitPoint(x: 0.1 + tx * 0.25, y: 0.0),
-                endPoint: UnitPoint(x: 0.9, y: 1.0)
-            )
-            .blendMode(.softLight)
+        // Upper sculptural silk dome responding gently to tilt.
+        RadialGradient(
+            colors: [
+                Color.white.opacity(rarity == .obsidian ? 0.16 : 0.22),
+                hi.opacity(rarity == .obsidian ? 0.24 : 0.14),
+                .clear
+            ],
+            center: UnitPoint(
+                x: (rarity == .obsidian ? 0.80 : 0.24) + tx * 0.28,
+                y: 0.16 + ty * 0.22
+            ),
+            startRadius: 6,
+            endRadius: 280
+        )
+        .blendMode(.softLight)
 
-        case .brushed:
-            if rarity == .silver {
-                // Vertical-traveling anisotropic brushed aluminum sheen ribbon
-                LinearGradient(
-                    colors: [.clear, hi.opacity(0.46), .white.opacity(0.32), hi.opacity(0.28), .clear],
-                    startPoint: UnitPoint(x: 0.0, y: 0.10 + ty * 0.35),
-                    endPoint: UnitPoint(x: 0.95, y: 0.72 + ty * 0.35)
-                )
-                .blendMode(.screen)
-                LinearGradient(
-                    colors: [.clear, .white.opacity(0.22), .clear],
-                    startPoint: UnitPoint(x: -0.1 + tx * 0.5, y: 0.25),
-                    endPoint: UnitPoint(x: 0.75 + tx * 0.5, y: 0.85)
-                )
-                .blendMode(.softLight)
-            } else {
-                // Fjord Teal: soft upper-right horizon light + horizontal brushed shimmer band
-                RadialGradient(
-                    colors: [hi.opacity(0.36), .clear],
-                    center: UnitPoint(x: 0.84 + tx * 0.25, y: 0.16 + ty * 0.20),
-                    startRadius: 6,
-                    endRadius: 240
-                )
-                LinearGradient(
-                    colors: [.clear, hi.opacity(0.30), .white.opacity(0.20), .clear],
-                    startPoint: UnitPoint(x: -0.1 + tx * 0.45, y: 0.35),
-                    endPoint: UnitPoint(x: 1.05 + tx * 0.45, y: 0.65)
-                )
-                .blendMode(.overlay)
-            }
+        // Single clean diagonal silk-glass light ribbon.
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0.26),
+                .init(color: Color.white.opacity(0.18 + rarity.sheenOpacity * 0.16), location: 0.48),
+                .init(color: Color.white.opacity(0.04), location: 0.57),
+                .init(color: .clear, location: 0.72)
+            ],
+            startPoint: UnitPoint(x: -0.10 + tx * 0.48, y: 0.0 + ty * 0.30),
+            endPoint: UnitPoint(x: 1.05 + tx * 0.48, y: 0.95 + ty * 0.30)
+        )
+        .blendMode(.softLight)
 
-        case .satin:
-            // Deep Purple: dramatic curved off-axis silk rim + warm violet bounce
-            RadialGradient(
-                colors: [hi.opacity(0.48), mid.opacity(0.20), .clear],
-                center: UnitPoint(x: 0.82 + tx * 0.28, y: 0.18 + ty * 0.22),
-                startRadius: 8,
-                endRadius: 270
-            )
-            LinearGradient(
-                colors: [.clear, hi.opacity(0.26), .white.opacity(0.14), .clear],
-                startPoint: UnitPoint(x: 0.05 + tx * 0.35, y: 0.0),
-                endPoint: UnitPoint(x: 0.85 + tx * 0.35, y: 0.95)
-            )
-            .blendMode(.softLight)
-
-        case .carbon:
-            // Midnight Carbon: directional DLC edge catchlight from upper-right + tight cyan-steel shimmer
-            RadialGradient(
-                colors: [hi.opacity(0.62), rarity.glow.opacity(0.24), .clear],
-                center: UnitPoint(x: 0.86 + tx * 0.32, y: 0.12 + ty * 0.22),
-                startRadius: 4,
-                endRadius: 235
-            )
-            LinearGradient(
-                colors: [.clear, rarity.glow.opacity(0.22), .white.opacity(0.14), .clear],
-                startPoint: UnitPoint(x: 0.25 + tx * 0.55, y: 0.0),
-                endPoint: UnitPoint(x: 0.95 + tx * 0.55, y: 0.85)
-            )
-            .blendMode(.screen)
-            LinearGradient(
-                colors: [.clear, Color.black.opacity(0.32)],
-                startPoint: UnitPoint(x: 0.5, y: 0.35),
-                endPoint: .bottomLeading
-            )
-
-        case .holo:
-            // Liquid Holo: flowing multi-pool iridescent aurora + prism sweep (zero pinch!).
-            RadialGradient(
-                colors: [rarity.baseColors[0].opacity(0.56), .clear],
-                center: UnitPoint(x: 0.18 + tx * 0.32, y: 0.18 + ty * 0.26),
-                startRadius: 8,
-                endRadius: 250
-            )
-            RadialGradient(
-                colors: [rarity.baseColors[2].opacity(0.46), .clear],
-                center: UnitPoint(x: 0.84 - tx * 0.28, y: 0.36 + ty * 0.24),
-                startRadius: 8,
-                endRadius: 245
-            )
-            RadialGradient(
-                colors: [rarity.baseColors[3].opacity(0.44), .clear],
-                center: UnitPoint(x: 0.30 + tx * 0.26, y: 0.86 - ty * 0.22),
-                startRadius: 8,
-                endRadius: 230
-            )
+        // Exclusive 2,000h Prism Aurora chromatic color-dodge sweep.
+        if rarity == .holo {
             LinearGradient(
                 colors: [
                     .clear,
-                    .pink.opacity(0.26),
-                    .yellow.opacity(0.20),
-                    .cyan.opacity(0.28),
-                    .purple.opacity(0.22),
+                    rarity.baseColors[0].opacity(0.32),
+                    rarity.baseColors[2].opacity(0.34),
+                    rarity.baseColors[3].opacity(0.36),
+                    rarity.baseColors[4].opacity(0.30),
                     .clear
                 ],
-                startPoint: UnitPoint(x: -0.15 + tx * 0.55, y: 0.0),
-                endPoint: UnitPoint(x: 1.10 + tx * 0.55, y: 1.0)
+                startPoint: UnitPoint(x: -0.22 + tx * 0.58, y: 0.06 + ty * 0.34),
+                endPoint: UnitPoint(x: 1.14 + tx * 0.58, y: 0.92 + ty * 0.34)
             )
             .blendMode(.colorDodge)
-            .opacity(0.48)
+            .opacity(0.52)
+
             LinearGradient(
-                colors: [.clear, .white.opacity(0.36), .clear],
-                startPoint: UnitPoint(x: 0.0 + tx * 0.65, y: 0.05 + ty * 0.4),
-                endPoint: UnitPoint(x: 0.65 + tx * 0.65, y: 0.72 + ty * 0.4)
+                colors: [.clear, .white.opacity(0.28), .clear],
+                startPoint: UnitPoint(x: 0.04 + tx * 0.62, y: 0.04 + ty * 0.38),
+                endPoint: UnitPoint(x: 0.72 + tx * 0.62, y: 0.76 + ty * 0.38)
             )
             .blendMode(.overlay)
         }
+
+        // Subtle contrast veil so white typography stays legible over every gradient stop.
+        LinearGradient(
+            stops: rarity == .holo
+                ? [
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.18), location: 0.0),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.26), location: 0.45),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.38), location: 1.0)
+                ]
+                : [
+                    .init(color: .clear, location: 0.36),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.30), location: 1.0)
+                ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+/// Clean frosted glass tier pill with subtle prismatic highlight for 2,000h Prism Aurora cards.
+struct TierBadgePill: View {
+    let title: LocalizedStringKey
+    var ink: Color = .white
+    var isHolo: Bool = false
+    var fontSize: CGFloat = 10.5
+    var tracking: CGFloat = 1.4
+    var horizontalPadding: CGFloat = 9
+    var verticalPadding: CGFloat = 4
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if isHolo {
+                Image(systemName: "sparkles")
+                    .font(.system(size: max(8.5, fontSize - 1), weight: .bold))
+            }
+            Text(title)
+                .font(.system(size: fontSize, weight: .heavy, design: .rounded))
+                .tracking(tracking)
+                .lineLimit(1)
+                .minimumScaleFactor(0.58)
+                .allowsTightening(true)
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
+        .background(Color.black.opacity(isHolo ? 0.44 : (ink == .white ? 0.28 : 0.74)), in: Capsule())
+        .overlay(
+            Capsule().strokeBorder(
+                isHolo
+                    ? AnyShapeStyle(LinearGradient(
+                        colors: Rarity.holo.prismRimColors.map { $0.opacity(0.85) },
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    : AnyShapeStyle(Color.white.opacity(0.24)),
+                lineWidth: isHolo ? 0.9 : 0.7
+            )
+        )
+        .foregroundStyle(.white)
+    }
+}
+
+/// Subtle soft studio lightbox lift behind headphone artwork.
+struct StudioHeadphoneLift: View {
+    var diameter: CGFloat = 148
+
+    var body: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [.white.opacity(0.20), .clear],
+                    center: .center,
+                    startRadius: 4,
+                    endRadius: diameter * 0.55
+                )
+            )
+            .frame(width: diameter, height: diameter)
+            .allowsHitTesting(false)
+    }
+}
+
+/// Knife-edge specular glass rim for collector cards; full rainbow prism ring on 2,000h `.holo`.
+struct CardSpecularBorder: View {
+    var cornerRadius: CGFloat
+    var rarity: Rarity
+    var ink: Color
+    var tilt: CGSize = .zero
+    var usesPrismRim: Bool = true
+    var glow: Color? = nil
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let isHoloRim = usesPrismRim && rarity == .holo
+        let accentGlow = glow ?? rarity.glow
+        ZStack {
+            if isHoloRim {
+                shape.strokeBorder(
+                    AngularGradient(
+                        colors: rarity.prismRimColors,
+                        center: .center,
+                        angle: .degrees(Double(tilt.width) * 75 + Double(tilt.height) * 40)
+                    ),
+                    lineWidth: 2.0
+                )
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [.white.opacity(0.55), .clear, .white.opacity(0.28)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.75
+                )
+            } else {
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            ink == .white ? Color.white.opacity(0.50) : Color.black.opacity(0.14),
+                            ink == .white ? Color.white.opacity(0.14) : Color.black.opacity(0.05),
+                            accentGlow.opacity(0.36),
+                            ink == .white ? Color.white.opacity(0.24) : Color.black.opacity(0.14)
+                        ],
+                        startPoint: UnitPoint(x: 0.15 + tilt.width * 0.45, y: 0.0 + tilt.height * 0.35),
+                        endPoint: UnitPoint(x: 0.85 + tilt.width * 0.45, y: 1.0 + tilt.height * 0.35)
+                    ),
+                    lineWidth: 1.35
+                )
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -442,6 +463,7 @@ private struct VaultedCardBadge: View {
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(1)
         .padding(.horizontal, 8)
         .padding(.vertical, 3.5)
         .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
@@ -468,14 +490,13 @@ struct CardHorizontalFront: View {
         let ink = foil?.ink ?? card.rarity.ink
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(LocalizedStringKey(card.rarity.title))
-                    .font(.system(size: 10.5, weight: .heavy))
-                    .tracking(1.4)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
-                    .foregroundStyle(.white)
+                TierBadgePill(
+                    title: LocalizedStringKey(card.rarity.title),
+                    ink: ink,
+                    isHolo: foil == nil && card.rarity == .holo,
+                    fontSize: 10.5,
+                    tracking: 1.4
+                )
                 Spacer()
                 if let retirement {
                     VaultedCardBadge(ink: ink, reason: retirement.reason)
@@ -514,7 +535,7 @@ struct CardHorizontalFront: View {
                         }
                     }
                     .font(.system(size: 11.5, weight: .semibold))
-                    .opacity(0.68)
+                    .opacity(0.76)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                     .padding(.top, 4)
@@ -522,9 +543,12 @@ struct CardHorizontalFront: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .offset(x: tilt.width * 2.5, y: tilt.height * 1.8)
 
-                HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
-                    .frame(width: 120, height: 120)
-                    .offset(x: -tilt.width * 7, y: -tilt.height * 5)
+                ZStack {
+                    StudioHeadphoneLift(diameter: 120)
+                    HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
+                }
+                .frame(width: 120, height: 120)
+                .offset(x: -tilt.width * 7, y: -tilt.height * 5)
             }
         }
         .foregroundStyle(ink)
@@ -535,20 +559,14 @@ struct CardHorizontalFront: View {
         .background(FoilSurface(rarity: card.rarity, tilt: tilt, proFoil: foil))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            ink == .white ? Color.white.opacity(0.45) : Color.black.opacity(0.14),
-                            ink == .white ? Color.white.opacity(0.14) : Color.black.opacity(0.05),
-                            (foil?.glow ?? card.rarity.glow).opacity(0.45),
-                            ink == .white ? Color.white.opacity(0.32) : Color.black.opacity(0.14)
-                        ],
-                        startPoint: UnitPoint(x: 0.2 + tilt.width * 0.5, y: 0.0 + tilt.height * 0.4),
-                        endPoint: UnitPoint(x: 0.8 + tilt.width * 0.5, y: 1.0 + tilt.height * 0.4)
-                    ),
-                    lineWidth: 1.5
-                )
+            CardSpecularBorder(
+                cornerRadius: 24,
+                rarity: card.rarity,
+                ink: ink,
+                tilt: tilt,
+                usesPrismRim: foil == nil,
+                glow: foil?.glow
+            )
         )
     }
 }
@@ -579,16 +597,20 @@ struct CardFront: View {
         let foil = proFoil ?? (surfaceRarityOverride == nil && proAccess.isUnlocked(.foilShaders)
             ? (customizationStore ?? .shared).customization(for: card.id).proFoil : nil)
         let ink = foil?.ink ?? surfaceRarity.ink
+        let pillTitle: LocalizedStringKey = badgeOverride ?? LocalizedStringKey(
+            retirement != nil && surfaceRarity == .holo
+                ? surfaceRarity.shortName.uppercased()
+                : surfaceRarity.title
+        )
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(badgeOverride ?? LocalizedStringKey(surfaceRarity.title))
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.6)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
-                    .foregroundStyle(.white)
+                TierBadgePill(
+                    title: pillTitle,
+                    ink: ink,
+                    isHolo: foil == nil && surfaceRarity == .holo && badgeOverride == nil,
+                    fontSize: 11,
+                    tracking: 1.5
+                )
                 Spacer()
                 if let retirement {
                     VaultedCardBadge(ink: ink, reason: retirement.reason)
@@ -599,8 +621,13 @@ struct CardFront: View {
 
             Spacer()
 
-            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
-                             usesProductArtwork: usesProductArtwork)
+            ZStack {
+                if showSymbol {
+                    StudioHeadphoneLift(diameter: showsChargingCase ? 172 : 152)
+                }
+                HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
+                                 usesProductArtwork: usesProductArtwork)
+            }
             .frame(height: showsChargingCase ? 186 : 165)
             .opacity(showSymbol ? 1 : 0)
             .offset(x: tilt.width * -8, y: tilt.height * -8)
@@ -634,7 +661,7 @@ struct CardFront: View {
                     }
                 }
                 .font(.system(size: 12, weight: .semibold))
-                .opacity(0.7)
+                .opacity(0.76)
                 .padding(.top, 6)
             } else {
                 Text(card.model)
@@ -644,7 +671,7 @@ struct CardFront: View {
                 if let catalogDetail, !catalogDetail.isEmpty {
                     Text(catalogDetail)
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .opacity(0.68)
+                        .opacity(0.74)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .padding(.top, 5)
@@ -656,8 +683,16 @@ struct CardFront: View {
         .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
         .background(FoilSurface(rarity: surfaceRarity, tilt: tilt, proFoil: foil))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-            .strokeBorder(ink == .white ? Color.white.opacity(0.32) : Color.black.opacity(0.14), lineWidth: 1.5))
+        .overlay(
+            CardSpecularBorder(
+                cornerRadius: CardMetrics.corner,
+                rarity: surfaceRarity,
+                ink: ink,
+                tilt: tilt,
+                usesPrismRim: foil == nil,
+                glow: foil?.glow
+            )
+        )
     }
 }
 

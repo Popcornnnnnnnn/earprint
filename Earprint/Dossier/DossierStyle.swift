@@ -51,41 +51,81 @@ enum DossierFormat {
 // MARK: - Shared pieces
 
 extension Rarity {
+    /// Contrast-safe rich foil gradient for compact pills and segmented controls with white ink.
     var foil: LinearGradient {
-        LinearGradient(colors: Array(baseColors.prefix(4)), startPoint: .topLeading, endPoint: .bottomTrailing)
+        let colors: [Color] = switch self {
+        case .holo:
+            [
+                Color(red: 0.031, green: 0.400, blue: 0.459),
+                Color(red: 0.122, green: 0.278, blue: 0.722),
+                Color(red: 0.420, green: 0.137, blue: 0.769),
+                Color(red: 0.659, green: 0.102, blue: 0.420),
+            ]
+        case .obsidian:
+            [
+                Color(red: 0.078, green: 0.094, blue: 0.149),
+                Color(red: 0.196, green: 0.192, blue: 0.388),
+                Color(red: 0.051, green: 0.063, blue: 0.110),
+            ]
+        case .platinum:
+            [
+                Color(red: 0.102, green: 0.188, blue: 0.541),
+                Color(red: 0.173, green: 0.282, blue: 0.741),
+                Color(red: 0.071, green: 0.118, blue: 0.361),
+            ]
+        case .sapphire:
+            [
+                Color(red: 0.039, green: 0.337, blue: 0.380),
+                Color(red: 0.063, green: 0.435, blue: 0.478),
+                Color(red: 0.035, green: 0.231, blue: 0.322),
+            ]
+        case .silver:
+            [
+                Color(red: 0.094, green: 0.294, blue: 0.471),
+                Color(red: 0.141, green: 0.408, blue: 0.620),
+                Color(red: 0.071, green: 0.212, blue: 0.349),
+            ]
+        case .bronze:
+            [
+                Color(red: 0.231, green: 0.263, blue: 0.322),
+                Color(red: 0.322, green: 0.365, blue: 0.439),
+                Color(red: 0.169, green: 0.192, blue: 0.239),
+            ]
+        }
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
     /// Adaptive tier accent tuned for crisp contrast in both Light and Dark mode.
     var accent: Color {
         switch self {
         case .holo:
             Color.adaptive(
-                light: UIColor(red: 0.04, green: 0.56, blue: 0.54, alpha: 1),
-                dark: UIColor(red: 0.533, green: 0.961, blue: 0.925, alpha: 1)
+                light: UIColor(red: 0.659, green: 0.141, blue: 0.541, alpha: 1),
+                dark: UIColor(red: 1.000, green: 0.471, blue: 0.784, alpha: 1)
             )
         case .obsidian:
             Color.adaptive(
-                light: UIColor(red: 0.18, green: 0.34, blue: 0.58, alpha: 1),
-                dark: UIColor(red: 0.494, green: 0.651, blue: 0.878, alpha: 1)
+                light: UIColor(red: 0.247, green: 0.212, blue: 0.478, alpha: 1),
+                dark: UIColor(red: 0.608, green: 0.573, blue: 0.941, alpha: 1)
             )
         case .platinum:
             Color.adaptive(
-                light: UIColor(red: 0.40, green: 0.25, blue: 0.62, alpha: 1),
-                dark: UIColor(red: 0.639, green: 0.510, blue: 0.839, alpha: 1)
+                light: UIColor(red: 0.145, green: 0.247, blue: 0.659, alpha: 1),
+                dark: UIColor(red: 0.490, green: 0.600, blue: 1.000, alpha: 1)
             )
         case .sapphire:
             Color.adaptive(
-                light: UIColor(red: 0.14, green: 0.43, blue: 0.49, alpha: 1),
-                dark: UIColor(red: 0.494, green: 0.690, blue: 0.741, alpha: 1)
+                light: UIColor(red: 0.055, green: 0.420, blue: 0.459, alpha: 1),
+                dark: UIColor(red: 0.322, green: 0.859, blue: 0.808, alpha: 1)
             )
         case .silver:
             Color.adaptive(
-                light: UIColor(red: 0.35, green: 0.39, blue: 0.46, alpha: 1),
-                dark: UIColor(red: 0.867, green: 0.890, blue: 0.929, alpha: 1)
+                light: UIColor(red: 0.114, green: 0.373, blue: 0.580, alpha: 1),
+                dark: UIColor(red: 0.486, green: 0.784, blue: 0.961, alpha: 1)
             )
         case .bronze:
             Color.adaptive(
-                light: UIColor(red: 0.56, green: 0.34, blue: 0.21, alpha: 1),
-                dark: UIColor(red: 0.800, green: 0.588, blue: 0.459, alpha: 1)
+                light: UIColor(red: 0.294, green: 0.333, blue: 0.400, alpha: 1),
+                dark: UIColor(red: 0.659, green: 0.702, blue: 0.769, alpha: 1)
             )
         }
     }

@@ -634,7 +634,7 @@ struct HomeView: View {
                             Capsule()
                                 .fill(
                                     LinearGradient(
-                                        colors: [.white.opacity(rarity.ink == .white ? 0.24 : 0.44), .clear],
+                                        colors: [.white.opacity(0.14), .clear],
                                         startPoint: .top,
                                         endPoint: .center
                                     )

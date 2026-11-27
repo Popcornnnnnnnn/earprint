@@ -22,6 +22,7 @@ struct PeriodSwitcher: View {
                         Text(LocalizedStringKey(p.title))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(selected ? rarity.ink : DossierPalette.primaryText.opacity(0.72))
+                            .shadow(color: selected ? .black.opacity(0.28) : .clear, radius: 1, y: 0.5)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background {
@@ -31,7 +32,7 @@ struct PeriodSwitcher: View {
                                         .overlay(
                                             Capsule().fill(
                                                 LinearGradient(
-                                                    colors: [.white.opacity(rarity.ink == .white ? 0.22 : 0.42), .clear],
+                                                    colors: [.white.opacity(0.14), .clear],
                                                     startPoint: .top,
                                                     endPoint: .center
                                                 )
@@ -41,7 +42,7 @@ struct PeriodSwitcher: View {
                                             Capsule().strokeBorder(
                                                 rarity == .obsidian && !isLight
                                                     ? rarity.accent.opacity(0.55)
-                                                    : (isLight && rarity == .silver ? Color.black.opacity(0.14) : Color.clear),
+                                                    : Color.clear,
                                                 lineWidth: 1
                                             )
                                         )
@@ -216,8 +217,8 @@ struct AirtimeHero: View {
         let isLight = colorScheme == .light
         let ringColors: [Color] = if rarity == .obsidian && !isLight {
             [rarity.accent, rarity.glow, rarity.accent]
-        } else if rarity == .silver && isLight {
-            [rarity.accent, Color(red: 0.45, green: 0.50, blue: 0.58), rarity.accent]
+        } else if rarity == .holo {
+            rarity.prismRimColors
         } else {
             rarity.baseColors + [rarity.baseColors[0]]
         }

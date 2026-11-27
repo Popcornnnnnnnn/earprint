@@ -567,10 +567,15 @@ enum DossierContrast {
             // Ensure strong contrast against the near-white grading label across all tiers & light foils.
             if let proFoil {
                 colors = [accent, proFoil == .obsidianPrism ? darkInk : accent.opacity(0.85), darkInk]
-            } else if rarity == .silver || rarity == .holo {
-                colors = [accent, darkInk]
+            } else if rarity == .holo {
+                colors = [
+                    Color(red: 0.05, green: 0.54, blue: 0.58),
+                    Color(red: 0.22, green: 0.34, blue: 0.84),
+                    Color(red: 0.76, green: 0.16, blue: 0.52)
+                ]
             } else {
-                colors = [accent, rarity.baseColors.last ?? darkInk]
+                let anchor = rarity.baseColors.indices.contains(3) ? rarity.baseColors[3] : darkInk
+                colors = [accent, anchor]
             }
         } else {
             // Ensure dark-label scores always stay bright & crisp against #0D0D14 in Dark mode.
@@ -581,26 +586,26 @@ enum DossierContrast {
                 case .goldBullion, .sakuraPearl:
                     colors = Array(proFoil.baseColors.prefix(3))
                 }
+            } else if rarity == .holo {
+                colors = Array(rarity.baseColors.prefix(5))
             } else {
-                switch rarity {
-                case .bronze, .sapphire, .platinum, .obsidian:
-                    colors = [Color(white: 0.96), accent]
-                case .silver, .holo:
-                    colors = Array(rarity.baseColors.prefix(4))
-                }
+                colors = [Color(white: 0.96), accent]
             }
         }
         return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     static func borderColors(rarity: Rarity, proFoil: ProFoilStyle?, colorScheme: ColorScheme) -> [Color] {
-        if colorScheme == .light && (proFoil == .sakuraPearl || (proFoil == nil && rarity == .silver)) {
+        if colorScheme == .light && proFoil == .sakuraPearl {
             return [Color.black.opacity(0.20), rarity.accent.opacity(0.40), Color.black.opacity(0.16)]
         }
         if colorScheme == .dark && (proFoil == .obsidianPrism || (proFoil == nil && rarity == .obsidian)) {
             let accent = accentColor(rarity: rarity, proFoil: proFoil, colorScheme: colorScheme)
             return [.white.opacity(0.32), accent.opacity(0.55), .white.opacity(0.16)]
         }
-        return proFoil?.baseColors ?? rarity.baseColors
+        if let proFoil {
+            return proFoil.baseColors
+        }
+        return rarity == .holo ? rarity.prismRimColors : rarity.baseColors
     }
 }

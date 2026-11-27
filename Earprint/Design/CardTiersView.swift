@@ -228,15 +228,15 @@ struct CardTiersView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text(LocalizedStringKey(tier.title))
-                    .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                    .tracking(1.2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(badgeBg, in: Capsule())
-                    .foregroundStyle(.white)
+                TierBadgePill(
+                    title: LocalizedStringKey(tier.title),
+                    ink: ink,
+                    isHolo: tier == .holo,
+                    fontSize: 10.5,
+                    tracking: 1.2,
+                    horizontalPadding: 10,
+                    verticalPadding: 4
+                )
 
                 Spacer(minLength: 6)
 
@@ -247,6 +247,9 @@ struct CardTiersView: View {
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .monospacedDigit()
                 }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(badgeBg, in: Capsule())
@@ -257,7 +260,8 @@ struct CardTiersView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(LocalizedStringKey(tier.finishLabel))
                         .font(.caption.weight(.semibold))
-                        .opacity(0.76)
+                        .opacity(0.90)
+                        .shadow(color: .black.opacity(0.22), radius: 1.5, y: 0.5)
 
                     Text(hoursLabel(tier.minimumHours))
                         .font(.system(size: 32, weight: .black, design: .rounded))
@@ -267,7 +271,7 @@ struct CardTiersView: View {
 
                 Image(systemName: tier == .holo ? "sparkles" : (selectedCard?.symbol ?? summary.firstAchiever?.symbol ?? "headphones"))
                     .font(.system(size: 42, weight: .thin))
-                    .opacity(0.82)
+                    .opacity(0.86)
                     .offset(x: liveTilt.width * -6, y: liveTilt.height * -4)
                     .accessibilityHidden(true)
             }
@@ -279,14 +283,17 @@ struct CardTiersView: View {
         .background(FoilSurface(rarity: tier, tilt: liveTilt))
         .clipShape(shape)
         .overlay(
-            shape.strokeBorder(
-                isLightCanvas ? Color.black.opacity(0.12) : Color.white.opacity(0.45),
-                lineWidth: 1.4
+            CardSpecularBorder(
+                cornerRadius: 24,
+                rarity: tier,
+                ink: ink,
+                tilt: liveTilt,
+                usesPrismRim: true
             )
         )
         .background {
             shape.fill(Theme.card)
-                .shadow(color: isLightCanvas ? Theme.cardShadow : tier.glow.opacity(0.35), radius: isLightCanvas ? 14 : 20, y: isLightCanvas ? 6 : 12)
+                .shadow(color: isLightCanvas ? Theme.cardShadow : tier.glow.opacity(tier == .holo ? 0.45 : 0.35), radius: isLightCanvas ? 14 : 20, y: isLightCanvas ? 6 : 12)
         }
         .rotation3DEffect(.degrees(Double(liveTilt.width) * 4), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
         .rotation3DEffect(.degrees(Double(-liveTilt.height) * 3), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
@@ -400,7 +407,6 @@ struct CardTiersView: View {
         let isSelected = selectedTier == tier
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         let ink = tier.ink
-        let chipBg = Color.black.opacity(ink == .white ? 0.36 : 0.76)
         let isLightCanvas = colorScheme == .light
         let attribution = summary.compactAttribution(isSingleDevice: selectedCard != nil, locale: locale)
 
@@ -412,14 +418,15 @@ struct CardTiersView: View {
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 4) {
-                    Text(LocalizedStringKey(tier.shortName.uppercased()))
-                        .font(.system(size: 9.5, weight: .heavy, design: .rounded))
-                        .tracking(0.8)
-                        .lineLimit(1)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(chipBg, in: Capsule())
-                        .foregroundStyle(.white)
+                    TierBadgePill(
+                        title: LocalizedStringKey(tier.shortName.uppercased()),
+                        ink: ink,
+                        isHolo: tier == .holo,
+                        fontSize: 9.5,
+                        tracking: 0.8,
+                        horizontalPadding: 7,
+                        verticalPadding: 3
+                    )
 
                     Spacer(minLength: 4)
 
@@ -466,12 +473,21 @@ struct CardTiersView: View {
             .saturation(unlocked || isSelected ? 1.0 : 0.78)
             .opacity(unlocked || isSelected ? 1.0 : (isLightCanvas ? 0.86 : 0.74))
             .overlay(
-                shape.strokeBorder(
-                    isSelected
-                        ? (isLightCanvas ? Color.black.opacity(0.78) : Color.white.opacity(0.92))
-                        : (isLightCanvas ? Color.black.opacity(unlocked ? 0.14 : 0.08) : Color.white.opacity(unlocked ? 0.36 : 0.16)),
-                    lineWidth: isSelected ? 2 : 1
-                )
+                Group {
+                    if tier == .holo && (unlocked || isSelected) {
+                        shape.strokeBorder(
+                            AngularGradient(colors: tier.prismRimColors, center: .center),
+                            lineWidth: isSelected ? 2.2 : 1.6
+                        )
+                    } else {
+                        shape.strokeBorder(
+                            isSelected
+                                ? (isLightCanvas ? Color.black.opacity(0.78) : Color.white.opacity(0.92))
+                                : (isLightCanvas ? Color.black.opacity(unlocked ? 0.14 : 0.08) : Color.white.opacity(unlocked ? 0.36 : 0.16)),
+                            lineWidth: isSelected ? 2 : 1
+                        )
+                    }
+                }
             )
             .background {
                 if isSelected {
