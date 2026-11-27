@@ -20,6 +20,8 @@ struct HeadphoneCard: Identifiable, Equatable {
     var kind: HeadphoneKind = .overEar
     var aliasIDs: [String] = []
     var tierAchievedDates: [Rarity: Date] = [:]
+    var lastWearDate: Date? = nil
+    var lastWearStartDate: Date? = nil
 
     var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
 
@@ -45,7 +47,8 @@ enum SampleCards {
                               .bronze: day(2026, 10, 30),
                               .silver: day(2026, 11, 2),
                               .sapphire: day(2026, 11, 14)
-                          ]),
+                          ],
+                          lastWearDate: day(2026, 11, 18)),
             HeadphoneCard(id: "max", nickname: "Studio Max", model: "AirPods Max", symbol: "airpodsmax",
                           lifetimeMinutes: 64 * 60 + 10, sessions: 88, longestMinutes: 185, averageDecibels: 63,
                           firstMet: "2024.12.25", lastUsed: "Sep 2", serial: 2, grid: scaled(base.grid, 0.45),
@@ -53,14 +56,16 @@ enum SampleCards {
                           tierAchievedDates: [
                               .bronze: day(2024, 12, 25),
                               .silver: day(2025, 4, 12)
-                          ]),
+                          ],
+                          lastWearDate: day(2026, 9, 2)),
             HeadphoneCard(id: "airpods4", nickname: "AirPods 4", model: "AirPods 4 (ANC)", symbol: "airpods.gen4",
                           lifetimeMinutes: 9 * 60 + 40, sessions: 21, longestMinutes: 64, averageDecibels: 71,
                           firstMet: "2025.03.08", lastUsed: "Nov 2", serial: 3, grid: scaled(base.grid, 0.15),
                           modelKey: .airpods4, kind: .earbuds,
                           tierAchievedDates: [
                               .bronze: day(2025, 3, 8)
-                          ]),
+                          ],
+                          lastWearDate: day(2026, 11, 2)),
         ]
     }()
 

@@ -36,12 +36,16 @@ struct DossierTrendChart: View {
         }
     }
 
+    private var redactsAllTimeStart: Bool {
+        !showsMintedMarker && stats.period == .all
+    }
+
     private var title: String {
         switch stats.period {
         case .week: "Last 7 days"
         case .month: "Last 30 days"
         case .year: "Last 12 months"
-        case .all: "Since minted · by \(unitName)"
+        case .all: redactsAllTimeStart ? "All time" : "Since minted · by \(unitName)"
         }
     }
 
@@ -51,13 +55,15 @@ struct DossierTrendChart: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Eyebrow(selected.map { bucketTitle($0) } ?? title)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text((selected?.minutes ?? average).minutesText)
+                        let primaryValue = selected?.minutes ?? (redactsAllTimeStart ? stats.totalMinutes : average)
+                        let subtitle = selected == nil ? (redactsAllTimeStart ? "" : "avg / \(unitName)") : ""
+                        Text(primaryValue.minutesText)
                             .font(.system(.title, design: .rounded, weight: .heavy))
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
-                            .contentTransition(.numericText(value: selected?.minutes ?? average))
-                        Text(selected == nil ? "avg / \(unitName)" : "")
+                            .contentTransition(.numericText(value: primaryValue))
+                        Text(subtitle)
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(DossierPalette.dim)
                             .lineLimit(1)
@@ -82,7 +88,7 @@ struct DossierTrendChart: View {
                             .font(.caption.weight(.bold))
                             .foregroundStyle(rarity.accent)
                             .lineLimit(1)
-                        Text("\(best.minutes.minutesText) · \(shortLabel(best))")
+                        Text(showsMintedMarker ? "\(best.minutes.minutesText) · \(shortLabel(best))" : best.minutes.minutesText)
                             .font(.caption)
                             .foregroundStyle(DossierPalette.dim)
                             .lineLimit(1)
@@ -128,7 +134,7 @@ struct DossierTrendChart: View {
                 }
             }
 
-            if average > 0 {
+            if average > 0 && !redactsAllTimeStart {
                 RuleMark(y: .value("Average", average / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .foregroundStyle(DossierPalette.faint)
@@ -167,10 +173,13 @@ struct DossierTrendChart: View {
                 }
             }
         }
+        .chartXAxis(showsMintedMarker ? .automatic : .hidden)
         .chartXAxis {
-            AxisMarks(values: xValues) { value in
-                AxisValueLabel(format: xFormat, centered: true)
-                    .foregroundStyle(DossierPalette.dim)
+            if showsMintedMarker {
+                AxisMarks(values: xValues) { value in
+                    AxisValueLabel(format: xFormat, centered: true)
+                        .foregroundStyle(DossierPalette.dim)
+                }
             }
         }
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: stats.period)
@@ -226,6 +235,7 @@ struct DayClock: View {
     let stats: PeriodStats
     let rarity: Rarity
     @Binding var selectedHour: Int?
+    var showsPerDayAverage = true
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -281,7 +291,10 @@ struct DayClock: View {
     private var accessibilityValue: String {
         let h = selectedHour ?? stats.peakHour?.hour ?? 0
         let stat = stats.hours[h]
-        return "\(DossierFormat.hourLabel(h)), \((stat.minutes / Double(stats.spanDays)).minutesText) a day"
+        if showsPerDayAverage {
+            return "\(DossierFormat.hourLabel(h)), \((stat.minutes / Double(max(stats.spanDays, 1))).minutesText) a day"
+        }
+        return "\(DossierFormat.hourLabel(h)), \(stat.minutes.minutesText)"
     }
 
     private func select(_ location: CGPoint, center: CGPoint, size: CGFloat, toggle: Bool) {
@@ -298,7 +311,7 @@ struct DayClock: View {
         let h = selectedHour ?? stats.peakHour?.hour
         if let h {
             let stat = stats.hours[h]
-            let perDay = stat.minutes / Double(max(stats.spanDays, 1))
+            let displayMinutes = showsPerDayAverage ? (stat.minutes / Double(max(stats.spanDays, 1))) : stat.minutes
             let titleSize = compact ? max(12, diameter * 0.25) : min(28, max(18, diameter * 0.23))
             let detailSize = compact ? max(7.5, diameter * 0.145) : 12
             VStack(spacing: compact ? 1 : 2) {
@@ -313,11 +326,17 @@ struct DayClock: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                     .contentTransition(.numericText(value: Double(h)))
-                Text("\(perDay.minutesText) a day")
-                    .font(.system(size: detailSize, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText(value: perDay))
+                Group {
+                    if showsPerDayAverage {
+                        Text("\(displayMinutes.minutesText) a day")
+                    } else {
+                        Text(displayMinutes.minutesText)
+                    }
+                }
+                .font(.system(size: detailSize, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText(value: displayMinutes))
                 if stat.minutes > 0 && !compact {
                     Text("\(Int(stat.averageDecibels.rounded())) dB(A)")
                         .font(.system(.caption, design: .rounded, weight: .bold))

@@ -41,6 +41,36 @@
         }
       }
     },
+    "%@ · %@ career": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · 累计聆听 %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld sessions": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld 次聆听"
+          }
+        }
+      }
+    },
+    "%@ – %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ – %2$@"
+          }
+        }
+      }
+    },
     "%@, graded %@, %@. %@, product ID %@.": {
       "localizations": {
         "zh-Hans": {
@@ -57,6 +87,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld / %2$lld · %3$@"
+          }
+        }
+      }
+    },
+    "%lld active · %lld vaulted · %@ together": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 副在用 · %2$lld 副封存 · 共 %3$@"
           }
         }
       }
@@ -167,6 +207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 天有记录"
+          }
+        }
+      }
+    },
+    "%lld record days · synced %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天有记录 · 同步于 %@"
           }
         }
       }
@@ -711,6 +761,16 @@
         }
       }
     },
+    "All time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间"
+          }
+        }
+      }
+    },
     "All-Day Listener": {
       "localizations": {
         "zh-Hans": {
@@ -961,6 +1021,16 @@
         }
       }
     },
+    "Back from retirement?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新启用这副耳机？"
+          }
+        }
+      }
+    },
     "Back up your complete multi-year listening history locally.": {
       "localizations": {
         "zh-Hans": {
@@ -977,6 +1047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "背景"
+          }
+        }
+      }
+    },
+    "Battery worn out": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电池老化"
           }
         }
       }
@@ -1027,6 +1107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "蓝色"
+          }
+        }
+      }
+    },
+    "Broken": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已损坏"
           }
         }
       }
@@ -1253,16 +1343,16 @@
     },
     "Checking eligibility…": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在验证资格…"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Checking eligibility…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证资格…"
           }
         }
       }
@@ -1323,6 +1413,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "请喝咖啡"
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已收起"
           }
         }
       }
@@ -1469,16 +1569,16 @@
     },
     "Could not verify early collector eligibility. Please try again.": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法验证早期收藏者资格，请稍后重试。"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Could not verify early collector eligibility. Please try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法验证早期收藏者资格，请稍后重试。"
           }
         }
       }
@@ -1793,6 +1893,16 @@
         }
       }
     },
+    "Dismiss": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略"
+          }
+        }
+      }
+    },
     "Done": {
       "localizations": {
         "zh-Hans": {
@@ -1883,6 +1993,16 @@
         }
       }
     },
+    "EARPRINT VAULT ARCHIVE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT 封存档案馆"
+          }
+        }
+      }
+    },
     "EARPRINT · AUTHENTICATED": {
       "localizations": {
         "zh-Hans": {
@@ -1899,6 +2019,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "EARPRINT · 设备档案"
+          }
+        }
+      }
+    },
+    "EARPRINT · HALL OF FAME": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT · 名人堂纪念"
+          }
+        }
+      }
+    },
+    "EARPRINT · VAULTED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT · 已封存"
           }
         }
       }
@@ -1995,16 +2135,16 @@
     },
     "Earprint Pro is required to start a Live Listening Session.": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "需要 Earprint Pro 才能开启实时聆听状态。"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Earprint Pro is required to start a Live Listening Session."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要 Earprint Pro 才能开启实时聆听状态。"
           }
         }
       }
@@ -2069,6 +2209,16 @@
         }
       }
     },
+    "Edit Vault Details…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑封存信息…"
+          }
+        }
+      }
+    },
     "Ends the current Earprint listening session.": {
       "localizations": {
         "zh-Hans": {
@@ -2105,6 +2255,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "每副耳机首次聆听即铸造为青铜卡，累计满 2,000 小时升级为全息传说卡。"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已展开"
           }
         }
       }
@@ -2169,6 +2329,16 @@
         }
       }
     },
+    "Export a Hall of Fame farewell poster.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出一张名人堂告别海报。"
+          }
+        }
+      }
+    },
     "Export failed": {
       "localizations": {
         "zh-Hans": {
@@ -2185,6 +2355,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "导出画质"
+          }
+        }
+      }
+    },
+    "FAREWELL NOTE": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告别寄语"
           }
         }
       }
@@ -2225,6 +2405,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "峡湾青"
+          }
+        }
+      }
+    },
+    "Farewell note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告别寄语"
           }
         }
       }
@@ -2295,6 +2485,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "底部卡片"
+          }
+        }
+      }
+    },
+    "Freezes this pair's career span, daily averages, and final Ear Grade on this date.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将在该日期定格这副耳机的生涯跨度、日均时长与最终听感评分。"
           }
         }
       }
@@ -2405,6 +2605,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "通用头戴式耳机"
+          }
+        }
+      }
+    },
+    "Gifted or sold": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赠予或转卖"
           }
         }
       }
@@ -2601,16 +2811,16 @@
     },
     "High-Res (2100 × 2800)": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "高清（2100 × 2800）"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "High-Res (2100 × 2800)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高清（2100 × 2800）"
           }
         }
       }
@@ -2701,6 +2911,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "靛青等级"
+          }
+        }
+      }
+    },
+    "Keep Vaulted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持封存"
           }
         }
       }
@@ -2927,16 +3147,16 @@
     },
     "Loading Wrapped…": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在加载年度回顾…"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Loading Wrapped…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载年度回顾…"
           }
         }
       }
@@ -2997,6 +3217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "最长单次聆听"
+          }
+        }
+      }
+    },
+    "Lost": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已遗失"
           }
         }
       }
@@ -3351,6 +3581,16 @@
         }
       }
     },
+    "New listening was recorded on %@. Restore this pair to Active or keep it in the Vault?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 %@ 检测到新的聆听记录。要恢复到在用收藏，还是继续封存？"
+          }
+        }
+      }
+    },
     "Next": {
       "localizations": {
         "zh-Hans": {
@@ -3587,6 +3827,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 3D 卡片"
+          }
+        }
+      }
+    },
+    "Open Dossier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设备档案"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可选"
           }
         }
       }
@@ -3871,6 +4131,16 @@
         }
       }
     },
+    "RETIRED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存日期"
+          }
+        }
+      }
+    },
     "RHYTHM": {
       "localizations": {
         "zh-Hans": {
@@ -3993,16 +4263,16 @@
     },
     "Recent Health": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近健康记录"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Recent Health"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近健康记录"
           }
         }
       }
@@ -4103,6 +4373,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "恢复购买"
+          }
+        }
+      }
+    },
+    "Restore to Active": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复到在用收藏"
+          }
+        }
+      }
+    },
+    "Restore to Active Collection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复到在用收藏"
+          }
+        }
+      }
+    },
+    "Retire": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存"
+          }
+        }
+      }
+    },
+    "Retire to Vault": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存入柜"
+          }
+        }
+      }
+    },
+    "Retire to Vault…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存入柜…"
+          }
+        }
+      }
+    },
+    "Retired": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已退役"
+          }
+        }
+      }
+    },
+    "Retired to Vault": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存入柜"
+          }
+        }
+      }
+    },
+    "Retirement date": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存日期"
           }
         }
       }
@@ -4257,6 +4607,16 @@
         }
       }
     },
+    "STATUS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
     "Sage tier": {
       "localizations": {
         "zh-Hans": {
@@ -4333,6 +4693,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存"
+          }
+        }
+      }
+    },
+    "Save Vault Details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存封存信息"
+          }
+        }
+      }
+    },
+    "Seal in Vault": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存入柜"
+          }
+        }
+      }
+    },
+    "Sealed in Vault": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存入柜"
           }
         }
       }
@@ -4423,6 +4813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "分享 %lld 张图片"
+          }
+        }
+      }
+    },
+    "Share Farewell Poster": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享告别海报"
           }
         }
       }
@@ -5099,16 +5499,16 @@
     },
     "Unable to start Live Activity.": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法启动实时活动。"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Unable to start Live Activity."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法启动实时活动。"
           }
         }
       }
@@ -5143,6 +5543,16 @@
         }
       }
     },
+    "Unused for 90+ days · Retire to Vault?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已闲置超过 90 天 · 要封存入柜吗？"
+          }
+        }
+      }
+    },
     "Up to 24 characters for the title and 16 for the serial tag.": {
       "localizations": {
         "zh-Hans": {
@@ -5153,12 +5563,102 @@
         }
       }
     },
+    "Upgraded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "换新升级"
+          }
+        }
+      }
+    },
     "Uses Apple Health headphone audio exposure minutes and dB levels.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "读取 Apple 健康中的耳机聆听时长与分贝记录。"
+          }
+        }
+      }
+    },
+    "VAULT": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存柜"
+          }
+        }
+      }
+    },
+    "VAULTED": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存"
+          }
+        }
+      }
+    },
+    "VAULTED %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存于 %@"
+          }
+        }
+      }
+    },
+    "Vault Details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存详情"
+          }
+        }
+      }
+    },
+    "Vault, %lld retired pairs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存柜，%lld 副已退役耳机"
+          }
+        }
+      }
+    },
+    "Vaulted": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存"
+          }
+        }
+      }
+    },
+    "Vaulted %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存于 %@"
+          }
+        }
+      }
+    },
+    "Vaulted · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存 · %@"
           }
         }
       }
@@ -5175,16 +5675,16 @@
     },
     "Verify Eligibility": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "验证早鸟资格"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Verify Eligibility"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证早鸟资格"
           }
         }
       }
@@ -5341,16 +5841,16 @@
     },
     "Watermark-Free High-Res Posters": {
       "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无水印高清海报"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Watermark-Free High-Res Posters"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无水印高清海报"
           }
         }
       }
@@ -5421,6 +5921,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "白色"
+          }
+        }
+      }
+    },
+    "Why are you retiring this pair?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为什么要封存这副耳机？"
           }
         }
       }
@@ -5565,6 +6075,16 @@
         }
       }
     },
+    "e.g. Survived 3 winters & 40 flights": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "例如：陪我走过三个冬天和 40 次飞行"
+          }
+        }
+      }
+    },
     "estimated": {
       "localizations": {
         "zh-Hans": {
@@ -5691,6 +6211,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "聆听次数"
+          }
+        }
+      }
+    },
+    "“%@”": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”"
           }
         }
       }

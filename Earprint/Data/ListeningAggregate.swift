@@ -60,19 +60,44 @@ struct SessionSet: Codable, Equatable, Sendable {
     var longest: TimeInterval { spans.map(\.duration).max() ?? 0 }
     var totalSpan: TimeInterval { spans.reduce(0) { $0 + $1.duration } }
 
+    private static func canMerge(
+        lhsStart: TimeInterval,
+        lhsEnd: TimeInterval,
+        rhsStart: TimeInterval,
+        rhsEnd: TimeInterval,
+        splitCutoffs: [TimeInterval]
+    ) -> Bool {
+        for cutoff in splitCutoffs {
+            let lhsBefore = lhsStart < cutoff && lhsEnd <= cutoff
+            let rhsBefore = rhsStart < cutoff && rhsEnd <= cutoff
+            let lhsAfter = lhsStart >= cutoff
+            let rhsAfter = rhsStart >= cutoff
+            if !((lhsBefore && rhsBefore) || (lhsAfter && rhsAfter)) {
+                return false
+            }
+        }
+        return true
+    }
+
     mutating func insert(
         start: TimeInterval,
         end: TimeInterval,
         gap: TimeInterval,
         listeningSeconds: Double? = nil,
         energy: Double = 0,
-        peakDecibels: Double = 0
+        peakDecibels: Double = 0,
+        splitCutoffs: [TimeInterval] = []
     ) {
         let end = max(start, end)
         let addedListening = listeningSeconds ?? max(0, end - start)
         // Fast path: samples usually come in time order.
         if let last = spans.last, start >= last.start {
-            if start - last.end <= gap {
+            if start - last.end <= gap,
+               Self.canMerge(
+                   lhsStart: last.start, lhsEnd: last.end,
+                   rhsStart: start, rhsEnd: end,
+                   splitCutoffs: splitCutoffs
+               ) {
                 let idx = spans.count - 1
                 spans[idx].end = max(last.end, end)
                 spans[idx].listeningSeconds = last.effectiveSeconds + addedListening
@@ -90,10 +115,24 @@ struct SessionSet: Codable, Equatable, Sendable {
             if spans[mid].start <= start { lo = mid + 1 } else { hi = mid }
         }
         var first = lo
-        if first > 0, start - spans[first - 1].end <= gap { first -= 1 }
+        if first > 0,
+           start - spans[first - 1].end <= gap,
+           Self.canMerge(
+               lhsStart: spans[first - 1].start, lhsEnd: spans[first - 1].end,
+               rhsStart: start, rhsEnd: end,
+               splitCutoffs: splitCutoffs
+           ) {
+            first -= 1
+        }
         var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels)
         var last = first
-        while last < spans.count, spans[last].start - merged.end <= gap {
+        while last < spans.count,
+              spans[last].start - merged.end <= gap,
+              Self.canMerge(
+                  lhsStart: merged.start, lhsEnd: merged.end,
+                  rhsStart: spans[last].start, rhsEnd: spans[last].end,
+                  splitCutoffs: splitCutoffs
+              ) {
             merged.start = min(merged.start, spans[last].start)
             merged.end = max(merged.end, spans[last].end)
             merged.listeningSeconds += spans[last].effectiveSeconds
@@ -126,11 +165,16 @@ struct DeviceAccumulator: Codable, Sendable {
     var energy: Double = 0
     var first: Date?
     var last: Date?
+    /// Start timestamp of the latest underlying sample ingested for post-retirement activity checks.
+    var lastSampleStart: Date? = nil
     var sessions = SessionSet()
     /// Local calendar day (yyyymmdd, in the time zone at ingest time) -> listening seconds.
     var daily: [Int: Double] = [:]
     /// Absolute 15-minute slot index (epoch seconds / 900) -> totals. Only recent slots are kept.
     var slots: [Int: SlotTotals] = [:]
+    /// Exact pre-cutoff listening seconds per day (`yyyymmdd` in a retired pair's `retiredCalendar`),
+    /// clipped from raw samples before session merging and keyed by `RetirementCutoffScope.bucketKey`.
+    var archivalDailyByBucketKey: [String: [Int: Double]] = [:]
 
     var activeDays: Int { daily.values.filter { $0 > 0 }.count }
     var averageDecibels: Double? { HearingBudget.averageDecibels(energy: energy, seconds: seconds) }
@@ -138,7 +182,7 @@ struct DeviceAccumulator: Codable, Sendable {
 
 /// The whole listening history, folded into small per-device totals.
 struct ListeningAggregate: Codable, Sendable {
-    static let schemaVersion = 2
+    static let schemaVersion = 4
     /// Gap that still counts as the same session (wearing) — 5 minutes.
     static let sessionGap: TimeInterval = 5 * 60
     /// iOS writes short clips (seconds to ~30 min). Anything longer is clipped so one bad sample cannot
@@ -157,12 +201,61 @@ struct ListeningAggregate: Codable, Sendable {
     /// Samples with impossible values (negative duration, NaN or out-of-range dB).
     var invalidSamples = 0
     var clippedSamples = 0
+    var indexedArchivalBucketKeys: Set<String> = []
 
     var isEmpty: Bool { devices.isEmpty }
 
-    mutating func ingest(_ samples: [RawListeningSample], now: Date = Date(), calendar: Calendar = .current) {
+    func hasSpanCrossing(scopes: [RetirementCutoffScope]) -> Bool {
+        guard !scopes.isEmpty else { return false }
+        for device in devices.values {
+            let deviceCutoffs = scopes
+                .filter { $0.matches(deviceKey: device.key, descriptor: device.descriptor) }
+                .map { $0.cutoff.timeIntervalSince1970 }
+            guard !deviceCutoffs.isEmpty else { continue }
+            for span in device.sessions.spans {
+                if deviceCutoffs.contains(where: { span.start < $0 && span.end > $0 }) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    func needsRebuild(for scopes: [RetirementCutoffScope]) -> Bool {
+        if hasSpanCrossing(scopes: scopes) {
+            return true
+        }
+        for scope in scopes where !indexedArchivalBucketKeys.contains(scope.bucketKey) {
+            if devices.values.contains(where: { ($0.first ?? .distantFuture) < scope.cutoff }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    mutating func ingest(
+        _ samples: [RawListeningSample],
+        now: Date = Date(),
+        calendar: Calendar = .current,
+        cutoffScopes: [RetirementCutoffScope] = []
+    ) {
         let slotCutoff = now.addingTimeInterval(-Double(Self.slotRetentionDays) * 86_400).timeIntervalSince1970
         var dayCache = DayCache(calendar: calendar)
+        var archivalBuckets: [(bucketKey: String, cutoff: Date, dayCache: DayCache)] = []
+        var seenBucketKeys: Set<String> = []
+        for scope in cutoffScopes {
+            let key = scope.bucketKey
+            if seenBucketKeys.insert(key).inserted {
+                archivalBuckets.append((bucketKey: key, cutoff: scope.cutoff, dayCache: DayCache(calendar: scope.retiredCalendar)))
+            }
+        }
+        if devices.isEmpty {
+            indexedArchivalBucketKeys = seenBucketKeys
+        } else if !samples.isEmpty {
+            // Drop any previously indexed bucket key absent when new/backdated samples arrive
+            // so restoring that retirement later forces a rebuild over the complete sample history.
+            indexedArchivalBucketKeys.formIntersection(seenBucketKeys)
+        }
 
         for sample in samples {
             totalSamples += 1
@@ -190,6 +283,7 @@ struct ListeningAggregate: Codable, Sendable {
             acc.seconds += seconds
             acc.energy += energy
             acc.first = min(acc.first ?? sample.start, sample.start)
+            acc.lastSampleStart = max(acc.lastSampleStart ?? sample.start, sample.start)
             acc.last = max(acc.last ?? end, end)
             if !sample.source.isEmpty { acc.sources.insert(sample.source) }
             if let device = sample.device, end >= acc.descriptorDate {
@@ -199,22 +293,65 @@ struct ListeningAggregate: Codable, Sendable {
             if let name = DeviceDescriptor.clean(sample.device?.name), !acc.names.contains(name) {
                 acc.names.append(name)
             }
-            acc.sessions.insert(
-                start: sample.start.timeIntervalSince1970,
-                end: end.timeIntervalSince1970,
-                gap: Self.sessionGap,
-                listeningSeconds: seconds,
-                energy: energy,
-                peakDecibels: sample.decibels
-            )
 
-            // Split across local days.
+            // Split across local calendar days for daily totals while preserving the 5-minute session rule.
             var cursor = sample.start
             while cursor < end {
                 let (dayKey, dayEnd) = dayCache.day(containing: cursor)
                 let pieceEnd = min(end, dayEnd)
-                acc.daily[dayKey, default: 0] += pieceEnd.timeIntervalSince(cursor)
+                if pieceEnd <= cursor { break }
+                let pieceSeconds = pieceEnd.timeIntervalSince(cursor)
+                if pieceSeconds > 0 {
+                    acc.daily[dayKey, default: 0] += pieceSeconds
+                }
                 cursor = pieceEnd
+            }
+
+            // Clip raw sample intervals against each active retirement cutoff in that retirement's calendar
+            // so merged 5-min sessions on other pairs never shift pre-cutoff wear share.
+            for idx in archivalBuckets.indices where sample.start < archivalBuckets[idx].cutoff {
+                let bucketKey = archivalBuckets[idx].bucketKey
+                let clippedEnd = min(end, archivalBuckets[idx].cutoff)
+                var bCursor = sample.start
+                while bCursor < clippedEnd {
+                    let (bDayKey, bDayEnd) = archivalBuckets[idx].dayCache.day(containing: bCursor)
+                    let pieceEnd = min(clippedEnd, bDayEnd)
+                    if pieceEnd <= bCursor { break }
+                    let pieceSeconds = pieceEnd.timeIntervalSince(bCursor)
+                    if pieceSeconds > 0 {
+                        acc.archivalDailyByBucketKey[bucketKey, default: [:]][bDayKey, default: 0] += pieceSeconds
+                    }
+                    bCursor = pieceEnd
+                }
+            }
+
+            // Isolate sessions only across retirement cutoffs matching this physical device.
+            let deviceCutoffs = Array(Set(
+                cutoffScopes
+                    .filter { $0.matches(deviceKey: key, descriptor: sample.device ?? acc.descriptor) }
+                    .map { $0.cutoff.timeIntervalSince1970 }
+            )).sorted()
+            var sessionCursor = sample.start.timeIntervalSince1970
+            let sampleEndEpoch = end.timeIntervalSince1970
+            while sessionCursor < sampleEndEpoch {
+                var pieceEnd = sampleEndEpoch
+                if let nextCutoff = deviceCutoffs.first(where: { $0 > sessionCursor && $0 < pieceEnd }) {
+                    pieceEnd = nextCutoff
+                }
+                if pieceEnd <= sessionCursor { break }
+                let pieceSeconds = pieceEnd - sessionCursor
+                if pieceSeconds > 0 {
+                    acc.sessions.insert(
+                        start: sessionCursor,
+                        end: pieceEnd,
+                        gap: Self.sessionGap,
+                        listeningSeconds: pieceSeconds,
+                        energy: HearingBudget.energy(decibels: sample.decibels, seconds: pieceSeconds),
+                        peakDecibels: sample.decibels,
+                        splitCutoffs: deviceCutoffs
+                    )
+                }
+                sessionCursor = pieceEnd
             }
 
             // Split across 15-minute slots (recent samples only).

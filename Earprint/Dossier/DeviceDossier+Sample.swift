@@ -28,7 +28,11 @@ enum DossierSample {
 
 extension DeviceDossier {
     /// Realistic, deterministic sample data that agrees with the card's lifetime numbers.
-    static func sample(for card: HeadphoneCard, now: Date = DossierSample.referenceNow) -> DeviceDossier {
+    static func sample(
+        for card: HeadphoneCard,
+        retirement: DeviceRetirement? = nil,
+        now: Date = DossierSample.referenceNow
+    ) -> DeviceDossier {
         let calendar = Calendar.current
         var rng = SplitMix64(seed: card.id.utf8.reduce(5381) { ($0 &* 33) &+ UInt64($1) })
 
@@ -162,7 +166,8 @@ extension DeviceDossier {
         return DeviceDossier(id: card.id, nickname: card.nickname, symbol: card.symbol, serial: card.serial,
                              hardware: DossierSample.hardware(for: card), sessions: sessions,
                              otherDevicesDailyMinutes: others, sampleCount: Int(total * 1.08),
-                             lastSynced: effectiveNow.addingTimeInterval(-120), now: effectiveNow, calendar: calendar)
+                             lastSynced: effectiveNow.addingTimeInterval(-120),
+                             retirement: retirement, now: effectiveNow, calendar: calendar)
     }
 
     private static func parse(_ text: String, format: String, calendar: Calendar) -> Date? {

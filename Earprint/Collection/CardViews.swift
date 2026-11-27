@@ -427,6 +427,29 @@ struct HeadphoneArtwork: View {
     }
 }
 
+/// Compact pill shown on the top-right of vaulted cards instead of the live-wear dot.
+private struct VaultedCardBadge: View {
+    let ink: Color
+    let reason: RetirementReason
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "archivebox.fill")
+                .font(.system(size: 9, weight: .bold))
+            Text("VAULTED")
+                .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+                .tracking(0.8)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3.5)
+        .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
+        .foregroundStyle(.white)
+        .accessibilityLabel("Vaulted · \(Text(LocalizedStringKey(reason.title)))")
+    }
+}
+
 /// Full-width horizontal collector card used in the main Collection list on standard iPhones.
 struct CardHorizontalFront: View {
     let card: HeadphoneCard
@@ -434,6 +457,7 @@ struct CardHorizontalFront: View {
     var colorOption: DeviceColorOption? = nil
     var isCurrentlyWorn: Bool = false
     var proFoil: ProFoilStyle? = nil
+    var retirement: DeviceRetirement? = nil
 
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
@@ -453,7 +477,9 @@ struct CardHorizontalFront: View {
                     .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                if isCurrentlyWorn {
+                if let retirement {
+                    VaultedCardBadge(ink: ink, reason: retirement.reason)
+                } else if isCurrentlyWorn {
                     ActiveWearDot()
                 }
             }
@@ -474,7 +500,15 @@ struct CardHorizontalFront: View {
 
                     HStack(spacing: 6) {
                         Text("\(card.sessions) sessions")
-                        if !card.firstMet.isEmpty {
+                        if let retirement {
+                            if !card.firstMet.isEmpty {
+                                Text("·")
+                                Text("\(card.firstMet) – \(retirement.formattedRetiredDate)")
+                            } else {
+                                Text("·")
+                                Text("Vaulted \(retirement.formattedRetiredDate)")
+                            }
+                        } else if !card.firstMet.isEmpty {
                             Text("·")
                             Text("since \(card.firstMet)")
                         }
@@ -482,7 +516,7 @@ struct CardHorizontalFront: View {
                     .font(.system(size: 11.5, weight: .semibold))
                     .opacity(0.68)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.75)
                     .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -535,6 +569,7 @@ struct CardFront: View {
     var badgeOverride: LocalizedStringKey? = nil
     var catalogDetail: String? = nil
     var proFoil: ProFoilStyle? = nil
+    var retirement: DeviceRetirement? = nil
 
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
@@ -555,7 +590,9 @@ struct CardFront: View {
                     .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                     .foregroundStyle(.white)
                 Spacer()
-                if isCurrentlyWorn {
+                if let retirement {
+                    VaultedCardBadge(ink: ink, reason: retirement.reason)
+                } else if isCurrentlyWorn {
                     ActiveWearDot()
                 }
             }
@@ -587,7 +624,13 @@ struct CardFront: View {
                     Label("\(card.sessions)", systemImage: "ear")
                     Spacer()
                     if showsFirstMet {
-                        Text("since \(card.firstMet)")
+                        if let retirement {
+                            Text("\(card.firstMet) – \(retirement.formattedRetiredDate)")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        } else {
+                            Text("since \(card.firstMet)")
+                        }
                     }
                 }
                 .font(.system(size: 12, weight: .semibold))
@@ -620,6 +663,7 @@ struct CardFront: View {
 
 struct CardBack: View {
     let card: HeadphoneCard
+    var retirement: DeviceRetirement? = nil
     var openDossier: (() -> Void)? = nil
     var openTiers: (() -> Void)? = nil
     var flip: (() -> Void)? = nil
@@ -744,36 +788,53 @@ struct CardBack: View {
     }
 
     @ViewBuilder private var tierProgressBody: some View {
-        let hours = card.lifetimeMinutes / 60
-        if let next = card.rarity.nextTierHours {
-            let remaining = max(1, Int(ceil(next - hours)))
-            VStack(alignment: .leading, spacing: 6) {
+        if let retirement {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
-                    Text("\(remaining)h to next tier")
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(card.rarity.accent)
+                    Text("Vaulted · \(Text(LocalizedStringKey(retirement.reason.title)))")
                         .font(.system(size: 11, weight: .semibold))
-                        .opacity(0.75)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                Text(retirement.formattedRetiredDate)
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .opacity(0.65)
+            }
+        } else {
+            let hours = card.lifetimeMinutes / 60
+            if let next = card.rarity.nextTierHours {
+                let remaining = max(1, Int(ceil(next - hours)))
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Text("\(remaining)h to next tier")
+                            .font(.system(size: 11, weight: .semibold))
+                            .opacity(0.75)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        if openTiers != nil {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 10))
+                                .opacity(0.55)
+                        }
+                    }
+                    ProgressView(value: card.rarity.progressToNextTier(minutes: card.lifetimeMinutes))
+                        .tint(card.rarity.accent)
+                }
+            } else {
+                HStack(spacing: 5) {
+                    Text("Max tier reached ✦")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(card.rarity.accent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     if openTiers != nil {
                         Image(systemName: "info.circle")
                             .font(.system(size: 10))
-                            .opacity(0.55)
+                            .foregroundStyle(card.rarity.accent.opacity(0.7))
                     }
-                }
-                ProgressView(value: card.rarity.progressToNextTier(minutes: card.lifetimeMinutes))
-                    .tint(card.rarity.accent)
-            }
-        } else {
-            HStack(spacing: 5) {
-                Text("Max tier reached ✦")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(card.rarity.accent)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                if openTiers != nil {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 10))
-                        .foregroundStyle(card.rarity.accent.opacity(0.7))
                 }
             }
         }

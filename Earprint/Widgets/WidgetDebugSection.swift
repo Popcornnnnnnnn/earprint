@@ -4,6 +4,7 @@ import SwiftUI
 /// Debug controls on the Data probe tab: Live Activity start/stop and widget snapshot publishing.
 struct WidgetDebugSection: View {
     @ObservedObject var library: HeadphoneLibrary
+    @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
     @State private var live = LiveActivityController.shared
     @State private var published: Date?
 
@@ -37,13 +38,25 @@ struct WidgetDebugSection: View {
                 .disabled(library.cards.isEmpty)
             }
             Button {
-                let snapshot = WidgetSnapshot(
-                    summary: library.homeSummary,
-                    cards: library.cards,
-                    isSample: library.isShowingSampleData,
-                    listening: library.snapshot
-                )
-                WidgetPublisher.publish(snapshot)
+                let combinedSummary = library.summary(forCardID: nil)
+                let snapshot: WidgetSnapshot = if let lifecycleStore {
+                    WidgetSnapshot.forApp(
+                        summary: combinedSummary,
+                        allCards: library.cards,
+                        lifecycleStore: lifecycleStore,
+                        isSample: library.isShowingSampleData,
+                        listening: library.snapshot
+                    )
+                } else {
+                    WidgetSnapshot(
+                        summary: combinedSummary,
+                        cards: library.cards,
+                        allCards: library.cards,
+                        isSample: library.isShowingSampleData,
+                        listening: library.snapshot
+                    )
+                }
+                WidgetPublisher.enqueue(snapshot)
                 published = Date()
             } label: {
                 Label(published == nil ? "Publish widget snapshot" : "Snapshot published", systemImage: "square.grid.2x2")

@@ -57,6 +57,7 @@ final class HeadphoneLibrary: ObservableObject {
     private let ingestor: HealthIngestor
     private var started = false
     private var observing = false
+    private var retirementScopeVersion: UInt64 = 0
 
     init(store: HKHealthStore = HKHealthStore(), cache: AggregateCache = AggregateCache()) {
         // Instant launch: decode the on-disk aggregate cache ONCE and share it with HealthIngestor.
@@ -69,7 +70,10 @@ final class HeadphoneLibrary: ObservableObject {
         self.ingestor = HealthIngestor(store: store, cache: cache, initialSaved: saved)
         #endif
         if let saved, !saved.aggregate.isEmpty {
-            let cached = LibrarySnapshot(aggregate: saved.aggregate)
+            let cached = LibrarySnapshot(
+                aggregate: saved.aggregate,
+                cutoffScopes: DeviceLifecycleStore.persistedCutoffScopes()
+            )
             self.snapshot = cached
             self.state = .ready
         } else if !HealthIngestor.isAvailable {
@@ -162,8 +166,13 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     /// Returns a real `DeviceDossier` hydrated from Apple Health sessions, or `nil` in sample mode.
-    func dossier(for card: HeadphoneCard, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
-        snapshot?.dossier(forCardID: card.id, now: now, calendar: calendar)
+    func dossier(
+        for card: HeadphoneCard,
+        retirement: DeviceRetirement? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> DeviceDossier? {
+        snapshot?.dossier(forCardID: card.id, retirement: retirement, now: now, calendar: calendar)
     }
 
     /// O(1) cached summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
@@ -422,6 +431,7 @@ final class HeadphoneLibrary: ObservableObject {
         let canReuseSnapshot = snapshot.map {
             Calendar.current.isDate($0.generatedAt, inSameDayAs: Date())
         } ?? false
+        let scopeVersionBefore = retirementScopeVersion
 
         do {
             let result = try await ingestor.sync(skipSnapshotIfUnchanged: canReuseSnapshot) { [weak self] fetched in
@@ -439,6 +449,20 @@ final class HeadphoneLibrary: ObservableObject {
             if result.isEmpty {
                 if snapshot != nil { snapshot = nil }
                 if state != .empty { state = .empty }
+            } else if retirementScopeVersion != scopeVersionBefore {
+                let recoveryVersion = retirementScopeVersion
+                let latestScopes = DeviceLifecycleStore.persistedCutoffScopes()
+                if await ingestor.needsRebuild(for: latestScopes) {
+                    if recoveryVersion == retirementScopeVersion {
+                        await sync(silent: true)
+                    }
+                    return
+                }
+                if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: latestScopes),
+                   recoveryVersion == retirementScopeVersion {
+                    snapshot = refreshed
+                    if state != .ready { state = .ready }
+                }
             } else if let fresh = result.snapshot {
                 snapshot = fresh
                 if state != .ready { state = .ready }
@@ -457,6 +481,21 @@ final class HeadphoneLibrary: ObservableObject {
         await ingestor.resetCache()
         snapshot = nil
         await sync()
+    }
+
+    func handleRetirementScopesChanged(_ scopes: [RetirementCutoffScope]) async {
+        retirementScopeVersion &+= 1
+        let version = retirementScopeVersion
+        guard snapshot != nil else { return }
+        if let refreshed = await ingestor.cachedSnapshot(cutoffScopes: scopes),
+           version == retirementScopeVersion {
+            snapshot = refreshed
+        }
+        if HealthIngestor.isAvailable,
+           await ingestor.needsRebuild(for: scopes),
+           version == retirementScopeVersion {
+            await sync(silent: true)
+        }
     }
 
     private func ensureObserving() async {

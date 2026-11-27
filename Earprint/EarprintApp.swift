@@ -13,6 +13,7 @@ struct EarprintApp: App {
     @State private var routeMonitor = ActiveAudioRouteMonitor()
     @State private var proStore = ProEntitlementStore(autoStart: EarprintReleasePolicy.monetizationEnabled)
     @State private var customizationStore = SlabCustomizationStore()
+    @State private var lifecycleStore = DeviceLifecycleStore()
     @State private var paywallPrompt: PaywallPrompt?
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
@@ -57,9 +58,10 @@ struct EarprintApp: App {
                     statusMessage: library.statusMessage,
                     isLoading: library.isLoading,
                     isActiveTab: router.tab == .collection,
+                    librarySyncToken: library.snapshot?.generatedAt,
                     onConnectHealth: { Task { await library.connectAndSync() } },
                     onPreviewFirstLaunch: previewFirstLaunch,
-                    dossierForCard: { library.dossier(for: $0) }
+                    dossierForCard: { card, retirement in library.dossier(for: card, retirement: retirement) }
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
                 .tag(DeepLinkRouter.Tab.collection)
@@ -85,6 +87,7 @@ struct EarprintApp: App {
             .environment(routeMonitor)
             .environment(proStore)
             .environment(customizationStore)
+            .environment(lifecycleStore)
             .environment(\.proAccess, EarprintReleasePolicy.monetizationEnabled ? proStore.accessSnapshot : .allUnlocked)
             .environment(\.locale, resolvedLocale)
             .preferredColorScheme(resolvedColorScheme)
@@ -150,6 +153,11 @@ struct EarprintApp: App {
             .onChange(of: library.cards.map(\.id)) { _, _ in
                 syncLiveActivity()
             }
+            .onChange(of: lifecycleStore.retirements) { _, _ in
+                publishWidgets()
+                let scopes = lifecycleStore.cutoffScopes
+                Task { await library.handleRetirementScopesChanged(scopes) }
+            }
             .onChange(of: proStore.hasPro) { _, _ in
                 syncLiveActivity()
             }
@@ -194,19 +202,14 @@ struct EarprintApp: App {
     }
 
     private func publishWidgets() {
-        let summary = library.homeSummary
-        let cards = library.cards
-        let isSample = library.isShowingSampleData
-        let listening = library.snapshot
-        Task.detached(priority: .utility) {
-            let snapshot = WidgetSnapshot(
-                summary: summary,
-                cards: cards,
-                isSample: isSample,
-                listening: listening
-            )
-            WidgetPublisher.publish(snapshot)
-        }
+        let snapshot = WidgetSnapshot.forApp(
+            summary: library.summary(forCardID: nil),
+            allCards: library.cards,
+            lifecycleStore: lifecycleStore,
+            isSample: library.isShowingSampleData,
+            listening: library.snapshot
+        )
+        WidgetPublisher.enqueue(snapshot)
     }
 
     private func applyLaunchTab() {

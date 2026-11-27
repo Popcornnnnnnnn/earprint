@@ -32,6 +32,10 @@ struct WidgetSnapshot: Codable, Equatable {
     var week: Week
     var cards: [Card]
     var heatmap: Heatmap
+    /// Combined lifetime listening across all pairs (active + vaulted), kept intact when `cards` filters vaulted pairs out.
+    var totalLifetimeMinutes: Double? = nil
+    /// Weekly listening breakdown across all active and vaulted headphones so weekly widget rankings stay accurate.
+    var weeklyBreakdown: [Card]? = nil
 
     struct Today: Codable, Equatable {
         var minutes: Double
@@ -64,9 +68,11 @@ struct WidgetSnapshot: Codable, Equatable {
         var weekMinutes: Double
         var sessions: Int
         var serial: Int
+        /// Nil on legacy v1 snapshots, which always originated from collectible Collection cards.
+        var hasCollectionCard: Bool? = nil
 
         var rarity: Rarity { Rarity(minutes: lifetimeMinutes) }
-        var deepLink: URL { EarprintLink.card(id) }
+        var deepLink: URL { (hasCollectionCard ?? true) ? EarprintLink.card(id) : EarprintLink.rings }
     }
 
     struct Heatmap: Codable, Equatable {
@@ -89,6 +95,16 @@ extension WidgetSnapshot {
     }
 
     var topCard: Card? { cards.first }
+
+    /// Full lifetime minutes across active and vaulted pairs, falling back cleanly for legacy v1 snapshots.
+    var resolvedLifetimeMinutes: Double {
+        totalLifetimeMinutes ?? cards.reduce(0) { $0 + $1.lifetimeMinutes }
+    }
+
+    /// Weekly listening breakdown across all headphones, falling back to `cards` for legacy v1 snapshots.
+    var resolvedWeeklyBreakdown: [Card] {
+        weeklyBreakdown ?? cards
+    }
 }
 
 // MARK: - Loudness band
@@ -186,20 +202,46 @@ enum WidgetSnapshotStore {
 
     private static var encoder: JSONEncoder {
         let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
+        e.dateEncodingStrategy = .custom { date, encoder in
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            var container = encoder.singleValueContainer()
+            try container.encode(formatter.string(from: date))
+        }
         e.outputFormatting = [.sortedKeys]
         return e
     }
 
     private static var decoder: JSONDecoder {
         let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
+        d.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let text = try container.decode(String.self)
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = fractional.date(from: text) {
+                return date
+            }
+            let wholeSecond = ISO8601DateFormatter()
+            wholeSecond.formatOptions = [.withInternetDateTime]
+            if let date = wholeSecond.date(from: text) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO-8601 date: \(text)")
+        }
         return d
     }
 
+    private static let saveLock = NSLock()
+
     /// Reads the latest snapshot. Nil when the app never wrote one, or the version does not match.
     static func load() -> WidgetSnapshot? {
-        guard let url = fileURL, let data = try? Data(contentsOf: url),
+        guard let url = fileURL else { return nil }
+        return load(from: url)
+    }
+
+    static func load(from url: URL) -> WidgetSnapshot? {
+        guard let data = try? Data(contentsOf: url),
               let snapshot = try? decoder.decode(WidgetSnapshot.self, from: data),
               snapshot.version == WidgetSnapshot.currentVersion else { return nil }
         return snapshot
@@ -210,14 +252,21 @@ enum WidgetSnapshotStore {
     @discardableResult
     static func save(_ snapshot: WidgetSnapshot) throws -> Bool {
         guard let url = fileURL else { throw StoreError.noAppGroup }
-        // Compare without `generatedAt` so re-publishing identical data does not burn the reload budget.
-        if var old = load() {
-            old.generatedAt = snapshot.generatedAt
-            if old == snapshot { return false }
+        return try save(snapshot, to: url, reload: reloadWidgets)
+    }
+
+    @discardableResult
+    static func save(_ snapshot: WidgetSnapshot, to url: URL, reload: () -> Void = {}) throws -> Bool {
+        try saveLock.withLock {
+            if var old = load(from: url) {
+                // Compare without `generatedAt` so re-publishing identical data does not burn the reload budget.
+                old.generatedAt = snapshot.generatedAt
+                if old == snapshot { return false }
+            }
+            try encoder.encode(snapshot).write(to: url, options: .atomic)
+            reload()
+            return true
         }
-        try encoder.encode(snapshot).write(to: url, options: .atomic)
-        reloadWidgets()
-        return true
     }
 
     static func reloadWidgets() {

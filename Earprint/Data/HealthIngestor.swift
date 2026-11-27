@@ -25,6 +25,7 @@ actor HealthIngestor {
     private var anchor: HKQueryAnchor?
     private var observer: HKObserverQuery?
     private var syncing = false
+    private var lastSnapshotScopes: [RetirementCutoffScope] = []
 
     init(
         store: HKHealthStore = HKHealthStore(),
@@ -54,12 +55,31 @@ actor HealthIngestor {
     static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     /// Snapshot from the disk cache, available instantly at launch.
-    func cachedSnapshot(now: Date = Date()) -> LibrarySnapshot? {
-        aggregate.isEmpty ? nil : LibrarySnapshot(aggregate: aggregate, now: now, calendar: .current)
+    func cachedSnapshot(now: Date = Date(), cutoffScopes: [RetirementCutoffScope]? = nil) -> LibrarySnapshot? {
+        guard !aggregate.isEmpty else { return nil }
+        let scopes = cutoffScopes ?? DeviceLifecycleStore.persistedCutoffScopes()
+        lastSnapshotScopes = scopes
+        return LibrarySnapshot(
+            aggregate: aggregate,
+            now: now,
+            calendar: .current,
+            cutoffScopes: scopes
+        )
     }
 
-    func snapshot(now: Date = Date()) -> LibrarySnapshot {
-        LibrarySnapshot(aggregate: aggregate, now: now, calendar: .current)
+    func snapshot(now: Date = Date(), cutoffScopes: [RetirementCutoffScope]? = nil) -> LibrarySnapshot {
+        let scopes = cutoffScopes ?? DeviceLifecycleStore.persistedCutoffScopes()
+        lastSnapshotScopes = scopes
+        return LibrarySnapshot(
+            aggregate: aggregate,
+            now: now,
+            calendar: .current,
+            cutoffScopes: scopes
+        )
+    }
+
+    func needsRebuild(for scopes: [RetirementCutoffScope]) -> Bool {
+        aggregate.needsRebuild(for: scopes)
     }
 
     /// Whether iOS still needs to present the HealthKit permission sheet for read access.
@@ -86,10 +106,17 @@ actor HealthIngestor {
         syncing = true
         defer { syncing = false }
 
+        var scopes = DeviceLifecycleStore.persistedCutoffScopes()
+        var scopesChanged = lastSnapshotScopes != scopes
         var rebuilt = anchor == nil
         var fetched = 0
         var working = aggregate
         var workingAnchor = anchor
+        if !rebuilt && working.needsRebuild(for: scopes) {
+            working = ListeningAggregate()
+            workingAnchor = nil
+            rebuilt = true
+        }
 
         while true {
             let descriptor = HKAnchoredObjectQueryDescriptor(
@@ -98,6 +125,19 @@ actor HealthIngestor {
                 limit: Self.pageSize
             )
             let result = try await descriptor.result(for: store)
+
+            let latestScopes = DeviceLifecycleStore.persistedCutoffScopes()
+            if latestScopes != scopes {
+                scopes = latestScopes
+                scopesChanged = true
+                if (!rebuilt && working.needsRebuild(for: scopes)) || (fetched > 0 && working.needsRebuild(for: scopes)) {
+                    working = ListeningAggregate()
+                    workingAnchor = nil
+                    rebuilt = true
+                    fetched = 0
+                    continue
+                }
+            }
 
             if !result.deletedObjects.isEmpty && workingAnchor != nil && !rebuilt {
                 // Totals cannot subtract a deleted sample, so start over. Deletions are rare.
@@ -109,12 +149,26 @@ actor HealthIngestor {
             }
 
             let samples = result.addedSamples.map(Self.plain)
-            working.ingest(samples, now: Date(), calendar: .current)
+            working.ingest(samples, now: Date(), calendar: .current, cutoffScopes: scopes)
             fetched += samples.count
             workingAnchor = result.newAnchor
             progress?(fetched)
 
-            if result.addedSamples.count + result.deletedObjects.count < Self.pageSize { break }
+            if result.addedSamples.count + result.deletedObjects.count < Self.pageSize {
+                let finalScopes = DeviceLifecycleStore.persistedCutoffScopes()
+                if finalScopes != scopes {
+                    scopes = finalScopes
+                    scopesChanged = true
+                    if working.needsRebuild(for: scopes) {
+                        working = ListeningAggregate()
+                        workingAnchor = nil
+                        rebuilt = true
+                        fetched = 0
+                        continue
+                    }
+                }
+                break
+            }
         }
 
         aggregate = working
@@ -122,9 +176,9 @@ actor HealthIngestor {
         if fetched > 0 || rebuilt {
             cache.save(aggregate: aggregate, anchor: anchor)
         }
-        let unchanged = skipSnapshotIfUnchanged && fetched == 0 && !rebuilt && !aggregate.isEmpty
+        let unchanged = skipSnapshotIfUnchanged && fetched == 0 && !rebuilt && !aggregate.isEmpty && !scopesChanged
         return SyncResult(
-            snapshot: unchanged ? nil : snapshot(),
+            snapshot: unchanged ? nil : snapshot(cutoffScopes: scopes),
             isEmpty: aggregate.isEmpty,
             newSamples: fetched,
             rebuilt: rebuilt
