@@ -218,8 +218,8 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
         case .bronze, .silver, .sapphire, .platinum:
             return [
                 mid, hi, mid,
-                mid, hi, sh,
-                deep, sh, deep,
+                mid, mid, sh,
+                deep, deep, sh,
             ]
         }
     }

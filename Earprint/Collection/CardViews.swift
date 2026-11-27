@@ -28,6 +28,8 @@ struct CardFaceRotation: ViewModifier, Animatable {
 private struct FoilTexturePattern: View, Equatable {
     let material: FoilMaterial
     var carbonOpacity: Double = 0.062
+    var carbonPitch: CGFloat = 7.5
+    var carbonLineWidth: CGFloat = 1.0
 
     var body: some View {
         Canvas { context, size in
@@ -77,13 +79,13 @@ private struct FoilTexturePattern: View, Equatable {
             case .carbon:
                 // Authentic 2x2 carbon-fiber twill weave.
                 var weave = Path()
-                stride(from: -size.height, to: size.width + size.height, by: 8.0).forEach { x in
+                stride(from: -size.height, to: size.width + size.height, by: carbonPitch).forEach { x in
                     weave.move(to: CGPoint(x: x, y: size.height))
                     weave.addLine(to: CGPoint(x: x + size.height, y: 0))
                     weave.move(to: CGPoint(x: x, y: 0))
                     weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
                 }
-                context.stroke(weave, with: .color(.white.opacity(carbonOpacity)), lineWidth: 0.9)
+                context.stroke(weave, with: .color(.white.opacity(carbonOpacity)), lineWidth: carbonLineWidth)
 
             case .holo:
                 // Delicate pearlescent cross-shimmer mesh.
@@ -130,7 +132,7 @@ struct FoilSurface: View {
 
             // 2. Earned tiers stay clean liquid silk except subtle carbon twill on forged Titanium obsidian.
             if rarity.material == .carbon {
-                FoilTexturePattern(material: .carbon, carbonOpacity: 0.036)
+                FoilTexturePattern(material: .carbon, carbonOpacity: 0.036, carbonPitch: 8.0, carbonLineWidth: 0.85)
                     .equatable()
             }
 
@@ -267,8 +269,8 @@ struct FoilSurface: View {
                     .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.38), location: 1.0)
                 ]
                 : [
-                    .init(color: .clear, location: 0.44),
-                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.24), location: 1.0)
+                    .init(color: .clear, location: 0.36),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.30), location: 1.0)
                 ],
             startPoint: .top,
             endPoint: .bottom
@@ -595,10 +597,15 @@ struct CardFront: View {
         let foil = proFoil ?? (surfaceRarityOverride == nil && proAccess.isUnlocked(.foilShaders)
             ? (customizationStore ?? .shared).customization(for: card.id).proFoil : nil)
         let ink = foil?.ink ?? surfaceRarity.ink
+        let pillTitle: LocalizedStringKey = badgeOverride ?? LocalizedStringKey(
+            retirement != nil && surfaceRarity == .holo
+                ? surfaceRarity.shortName.uppercased()
+                : surfaceRarity.title
+        )
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 TierBadgePill(
-                    title: badgeOverride ?? LocalizedStringKey(surfaceRarity.title),
+                    title: pillTitle,
                     ink: ink,
                     isHolo: foil == nil && surfaceRarity == .holo && badgeOverride == nil,
                     fontSize: 11,

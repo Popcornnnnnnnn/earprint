@@ -1021,8 +1021,8 @@ final class DeviceColorAndRouteTests: XCTestCase {
 
         let verticalImage = try renderHostingImage(verticalGrid, size: CGSize(width: 646, height: 618), style: .dark)
         let horizontalImage = try renderHostingImage(horizontalStack, size: CGSize(width: 410, height: 1230), style: .dark)
-        let darkHoloImage = try renderHostingImage(vaultedHolo, size: CGSize(width: 332, height: 472), style: .dark)
-        let lightHoloImage = try renderHostingImage(lightHolo, size: CGSize(width: 332, height: 472), style: .light)
+        let darkHoloImage = try renderHostingImage(vaultedHolo, size: CGSize(width: 348, height: 492), style: .dark)
+        let lightHoloImage = try renderHostingImage(lightHolo, size: CGSize(width: 348, height: 492), style: .light)
         let binder375Image = try renderHostingImage(binder375, size: CGSize(width: 375, height: 812), style: .dark)
         let pillsLightImage = try renderHostingImage(switcherAndPills, size: CGSize(width: 480, height: 190), style: .light)
 
@@ -1030,11 +1030,18 @@ final class DeviceColorAndRouteTests: XCTestCase {
             try assertImageHasVisibleContent(img)
         }
 
-        // Verify all 4 paid ProFoilStyle surfaces render non-blank content with their textures intact.
+        // Verify all 4 paid ProFoilStyle surfaces render non-blank, distinct finishes with active micro-texture strips.
+        var proStrips: [[UInt8]] = []
         for style in ProFoilStyle.allCases {
-            let proCard = CardFront(card: holoCard, proFoil: style)
-            let proImage = try renderHostingImage(proCard, size: CGSize(width: 300, height: 440), style: .dark)
+            let proSurface = FoilSurface(rarity: .obsidian, proFoil: style)
+                .frame(width: 120, height: 120)
+            let proImage = try renderHostingImage(proSurface, size: CGSize(width: 120, height: 120), style: .dark)
             try assertImageHasVisibleContent(proImage)
+            proStrips.append(try sampleBitmapBytes(proImage, width: 64, height: 64))
+        }
+        for i in 0..<(proStrips.count - 1) {
+            let maxDelta = zip(proStrips[i], proStrips[i + 1]).map { abs(Int($0) - Int($1)) }.max() ?? 0
+            XCTAssertGreaterThan(maxDelta, 20, "Pro foil finishes \(i) and \(i + 1) rendered too similarly")
         }
 
         if let dir = ProcessInfo.processInfo.environment["EARPRINT_TIER_PREVIEW_DIR"], !dir.isEmpty {
@@ -1051,7 +1058,9 @@ final class DeviceColorAndRouteTests: XCTestCase {
 
     @MainActor
     private func renderHostingImage<V: View>(_ view: V, size: CGSize, style: UIUserInterfaceStyle) throws -> UIImage {
-        let themed = view.environment(\.colorScheme, style == .light ? .light : .dark)
+        let themed = view
+            .ignoresSafeArea()
+            .environment(\.colorScheme, style == .light ? .light : .dark)
         let host = UIHostingController(rootView: themed)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.overrideUserInterfaceStyle = style
@@ -1071,29 +1080,36 @@ final class DeviceColorAndRouteTests: XCTestCase {
         return image
     }
 
-    private func assertImageHasVisibleContent(_ image: UIImage, file: StaticString = #filePath, line: UInt = #line) throws {
+    private func sampleBitmapBytes(_ image: UIImage, width: Int, height: Int, file: StaticString = #filePath, line: UInt = #line) throws -> [UInt8] {
         let cgImage = try XCTUnwrap(image.cgImage, "Expected CGImage", file: file, line: line)
         XCTAssertGreaterThan(cgImage.width, 0, file: file, line: line)
         XCTAssertGreaterThan(cgImage.height, 0, file: file, line: line)
-        let width = min(cgImage.width, 64)
-        let height = min(cgImage.height, 64)
-        var bytes = [UInt8](repeating: 0, count: width * height * 4)
-        let ctx = try XCTUnwrap(
-            CGContext(
-                data: &bytes,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width * 4,
-                space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ),
-            "Expected bitmap context",
-            file: file,
-            line: line
-        )
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let sampleWidth = min(cgImage.width, width)
+        let sampleHeight = min(cgImage.height, height)
+        var bytes = [UInt8](repeating: 0, count: sampleWidth * sampleHeight * 4)
+        try bytes.withUnsafeMutableBytes { rawBuffer in
+            let ptr = try XCTUnwrap(rawBuffer.baseAddress, "Expected buffer address", file: file, line: line)
+            let ctx = try XCTUnwrap(
+                CGContext(
+                    data: ptr,
+                    width: sampleWidth,
+                    height: sampleHeight,
+                    bitsPerComponent: 8,
+                    bytesPerRow: sampleWidth * 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ),
+                "Expected bitmap context",
+                file: file,
+                line: line
+            )
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: sampleWidth, height: sampleHeight))
+        }
+        return bytes
+    }
 
+    private func assertImageHasVisibleContent(_ image: UIImage, file: StaticString = #filePath, line: UInt = #line) throws {
+        let bytes = try sampleBitmapBytes(image, width: 64, height: 64, file: file, line: line)
         var distinctColors = Set<UInt32>()
         for i in stride(from: 0, to: bytes.count, by: 4) {
             let quantized = (UInt32(bytes[i] >> 4) << 8) | (UInt32(bytes[i + 1] >> 4) << 4) | UInt32(bytes[i + 2] >> 4)
