@@ -325,7 +325,8 @@ extension LibrarySnapshot {
                 modelKey: d.model.key,
                 kind: d.model.key.kind,
                 aliasIDs: d.aliasIDs,
-                tierAchievedDates: d.tierAchievedDates
+                tierAchievedDates: d.tierAchievedDates,
+                lastWearDate: d.last
             )
         }
     }
@@ -410,7 +411,12 @@ extension LibrarySnapshot {
         )
     }
 
-    func dossier(forCardID id: String, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
+    func dossier(
+        forCardID id: String,
+        retirement: DeviceRetirement? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> DeviceDossier? {
         guard let d = devices.first(where: { $0.id == id || $0.aliasIDs.contains(id) }) else { return nil }
         var others: [Date: Double] = [:]
         for other in devices where other.id != d.id {
@@ -447,6 +453,7 @@ extension LibrarySnapshot {
             otherDevicesDailyMinutes: others,
             sampleCount: d.sampleCount,
             lastSynced: generatedAt,
+            retirement: retirement,
             now: now,
             calendar: calendar
         )

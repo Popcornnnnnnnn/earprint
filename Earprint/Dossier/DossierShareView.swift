@@ -841,21 +841,36 @@ private struct DossierSharePosterCanvas {
         let hours = card.lifetimeMinutes / 60
         let visibleTiles = simpleVisibleTiles(s)
         return posterFrame(showsHardwareID: s.showHardwareID) {
-            Text("EARPRINT · DEVICE DOSSIER")
+            Text(dossier.isRetired ? "EARPRINT · HALL OF FAME" : "EARPRINT · DEVICE DOSSIER")
         } content: {
             VStack(spacing: 12) {
                 // Hero foil showcase banner with open-case render + optional grade/hardware
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 5) {
-                        if s.showGrade {
+                        if s.showGrade || dossier.isRetired {
                             HStack(spacing: 6) {
-                                Text("GRADE \(dossier.grade.scoreText)")
-                                    .font(.system(size: 10, weight: .black, design: .rounded))
-                                    .tracking(0.8)
+                                if s.showGrade {
+                                    Text("GRADE \(dossier.grade.scoreText)")
+                                        .font(.system(size: 10, weight: .black, design: .rounded))
+                                        .tracking(0.8)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
+                                        .foregroundStyle(.white)
+                                }
+                                if dossier.isRetired {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "archivebox.fill")
+                                            .font(.system(size: 8.5, weight: .bold))
+                                        Text("VAULTED")
+                                            .font(.system(size: 9.5, weight: .black, design: .rounded))
+                                            .tracking(0.8)
+                                    }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
                                     .background(Color.black.opacity(ink == .white ? 0.34 : 0.74), in: Capsule())
                                     .foregroundStyle(.white)
+                                }
                             }
                         }
 
@@ -898,49 +913,86 @@ private struct DossierSharePosterCanvas {
                     simpleMiddleSection(showRing: s.showRing, tiles: visibleTiles)
                 }
 
-                // Tier & Hearing summary footer card
+                // Tier & Hearing summary footer card (or Vault Career footer when retired)
                 if s.showTierSummary {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            if let next = rarity.nextTier {
-                                let remaining = max(1, Int(ceil(next.minimumHours - hours)))
-                                Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
-                            } else {
-                                Text("Max tier reached ✦")
-                                    .font(.caption.weight(.bold))
+                    if let retirement = dossier.retirement {
+                        VStack(alignment: .leading, spacing: 7) {
+                            HStack(spacing: 6) {
+                                Label(
+                                    "\(dossier.firstWear.map(DossierFormat.dot) ?? card.firstMet) – \(DossierFormat.dot(retirement.retiredAt))",
+                                    systemImage: "archivebox.fill"
+                                )
+                                .font(.caption.weight(.bold).monospacedDigit())
+                                .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                Spacer()
+                                Text("\(dossier.historyDays) days")
+                                    .font(.caption2.weight(.semibold))
                                     .foregroundStyle(accent)
                             }
-                            Spacer()
-                            Text("\(dossier.recordDays) record days")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(accent)
-                        }
-                        let tierProgress = min(max(rarity.progressToNextTier(minutes: card.lifetimeMinutes), 0), 1)
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(DossierPalette.surfaceFill)
-                                Capsule()
-                                    .fill(rarity.accent)
-                                    .frame(width: max(tierProgress > 0 ? 6 : 0, geo.size.width * tierProgress))
+                            if !retirement.farewellNote.isEmpty {
+                                Text("“\(retirement.farewellNote)”")
+                                    .font(.caption2.italic())
+                                    .foregroundStyle(DossierPalette.primaryText.opacity(0.82))
+                                    .lineLimit(2)
                             }
-                        }
-                        .frame(height: 6)
-                        HStack {
-                            Label("\(Int((dossier.nightShare * 100).rounded()))% late night", systemImage: "moon.stars.fill")
-                            Spacer()
-                            if s.showGrade {
-                                Label(LocalizedStringKey(dossier.grade.label), systemImage: "checkmark.seal.fill")
+                            HStack {
+                                Label(LocalizedStringKey(retirement.reason.title), systemImage: retirement.reason.symbol)
+                                Spacer()
+                                if s.showGrade {
+                                    Label(LocalizedStringKey(dossier.grade.label), systemImage: "checkmark.seal.fill")
+                                }
                             }
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
                         }
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(DossierPalette.dim)
+                        .padding(14)
+                        .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                if let next = rarity.nextTier {
+                                    let remaining = max(1, Int(ceil(next.minimumHours - hours)))
+                                    Text("\(remaining)h to \(Text(LocalizedStringKey(next.title)))")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
+                                } else {
+                                    Text("Max tier reached ✦")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(accent)
+                                }
+                                Spacer()
+                                Text("\(dossier.recordDays) record days")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(accent)
+                            }
+                            let tierProgress = min(max(rarity.progressToNextTier(minutes: card.lifetimeMinutes), 0), 1)
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(DossierPalette.surfaceFill)
+                                    Capsule()
+                                        .fill(rarity.accent)
+                                        .frame(width: max(tierProgress > 0 ? 6 : 0, geo.size.width * tierProgress))
+                                }
+                            }
+                            .frame(height: 6)
+                            HStack {
+                                Label("\(Int((dossier.nightShare * 100).rounded()))% late night", systemImage: "moon.stars.fill")
+                                Spacer()
+                                if s.showGrade {
+                                    Label(LocalizedStringKey(dossier.grade.label), systemImage: "checkmark.seal.fill")
+                                }
+                            }
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
+                        }
+                        .padding(14)
+                        .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
                     }
-                    .padding(14)
-                    .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
                 }
             }
         }
@@ -1124,6 +1176,10 @@ private struct DossierSharePosterCanvas {
                         if l.showFirstWear {
                             Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
                             quickStatTile("FIRST WEAR", dossier.firstWear.map(DossierFormat.dot) ?? "—")
+                        }
+                        if let retirement = dossier.retirement {
+                            Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
+                            quickStatTile("RETIRED", DossierFormat.dot(retirement.retiredAt))
                         }
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 26)
                         quickStatTile("RECORD DAYS", "\(dossier.recordDays)")
@@ -1380,7 +1436,15 @@ private struct DossierSharePosterCanvas {
                             .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.78) : DossierPalette.primaryText)
                             .lineLimit(1)
 
-                        if let tier = item.tier, item.kind == .tier || item.kind == .minted {
+                        if item.kind == .retired {
+                            Text("VAULTED")
+                                .font(.system(size: 7.5, weight: .heavy, design: .rounded))
+                                .tracking(0.6)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1.5)
+                                .background(card.rarity.accent.opacity(0.18), in: Capsule())
+                                .foregroundStyle(card.rarity.accent)
+                        } else if let tier = item.tier, item.kind == .tier || item.kind == .minted {
                             Text(LocalizedStringKey(tier.shortName.uppercased()))
                                 .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                                 .tracking(0.6)
@@ -1423,6 +1487,7 @@ private struct DossierSharePosterCanvas {
         case .longest: "flame.fill"
         case .bestDay: "crown.fill"
         case .upcoming: "flag.checkered"
+        case .retired: "archivebox.fill"
         }
     }
 
@@ -1430,7 +1495,7 @@ private struct DossierSharePosterCanvas {
         if let tier = item.tier { return tier.accent }
         switch item.kind {
         case .longest: return Theme.moderateColor
-        case .bestDay, .upcoming, .minted, .tier: return card.rarity.accent
+        case .bestDay, .upcoming, .minted, .tier, .retired: return card.rarity.accent
         case .hours: return Theme.quietColor
         }
     }

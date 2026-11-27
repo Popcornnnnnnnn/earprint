@@ -9,10 +9,12 @@ struct CollectionView: View {
     var isActiveTab: Bool = true
     var onConnectHealth: (() -> Void)? = nil
     var onPreviewFirstLaunch: (() -> Void)? = nil
-    var dossierForCard: ((HeadphoneCard) -> DeviceDossier?)? = nil
+    var dossierForCard: ((HeadphoneCard, DeviceRetirement?) -> DeviceDossier?)? = nil
 
     @State private var selected: HeadphoneCard?
     @State private var dossierCard: HeadphoneCard?
+    @State private var retireSheetCard: HeadphoneCard?
+    @AppStorage("collection.vaultExpanded") private var vaultExpanded = true
     #if DEBUG
     @State private var debugPreviewSelection: HeadphoneCard?
     @State private var debugPreviewColors = DeviceColorStore(defaults: UserDefaults(suiteName: "com.popcornnn.earprint.debug-preview") ?? .standard)
@@ -32,9 +34,29 @@ struct CollectionView: View {
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
+    @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @State private var space = LayoutSpace()
+
+    private func retirement(for card: HeadphoneCard) -> DeviceRetirement? {
+        lifecycleStore?.retirement(for: card)
+    }
+
+    private var activeCards: [HeadphoneCard] {
+        cards.filter { retirement(for: $0) == nil }
+    }
+
+    private var retiredCards: [HeadphoneCard] {
+        cards
+            .filter { retirement(for: $0) != nil }
+            .sorted { a, b in
+                let da = retirement(for: a)?.retiredAt ?? .distantPast
+                let db = retirement(for: b)?.retiredAt ?? .distantPast
+                if da != db { return da > db }
+                return a.lifetimeMinutes > b.lifetimeMinutes
+            }
+    }
 
     private var listMotionActive: Bool {
         #if DEBUG
@@ -72,20 +94,46 @@ struct CollectionView: View {
                         // Wide / iPhone Duo displays keep multi-column cards aligned clear of the hinge.
                         let grid = AdaptiveGrid(space: space, padding: 18, spacing: 14, minItemWidth: 210)
                         LazyVGrid(columns: grid.columns, spacing: 14) {
-                            ForEach(cards) { card in
+                            ForEach(activeCards) { card in
                                 verticalThumbnail(card)
                             }
                             lockedSlotVertical
                         }
                         .padding(.leading, grid.leadingPadding)
                         .padding(.trailing, grid.trailingPadding)
+
+                        if !retiredCards.isEmpty {
+                            vaultHeader
+                                .padding(.leading, grid.leadingPadding)
+                                .padding(.trailing, grid.trailingPadding)
+                            if vaultExpanded {
+                                LazyVGrid(columns: grid.columns, spacing: 14) {
+                                    ForEach(retiredCards) { card in
+                                        verticalThumbnail(card)
+                                    }
+                                }
+                                .padding(.leading, grid.leadingPadding)
+                                .padding(.trailing, grid.trailingPadding)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
                     } else {
                         // Standard iPhones show full-width horizontal collector cards.
                         LazyVStack(spacing: 14) {
-                            ForEach(cards) { card in
+                            ForEach(activeCards) { card in
                                 horizontalThumbnail(card)
                             }
                             lockedSlotHorizontal
+
+                            if !retiredCards.isEmpty {
+                                vaultHeader
+                                if vaultExpanded {
+                                    ForEach(retiredCards) { card in
+                                        horizontalThumbnail(card)
+                                    }
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+                            }
                         }
                         .padding(.horizontal, 18)
                     }
@@ -99,11 +147,15 @@ struct CollectionView: View {
 
             if let selection = selected {
                 let card = cards.first(where: { $0.matches(id: selection.id) }) ?? selection
+                let isVaultedSelection = retirement(for: card) != nil
+                let pool = isVaultedSelection ? retiredCards : activeCards
+                let scopedCards = pool.contains(where: { $0.matches(id: card.id) }) ? pool : [card]
                 CardDetail(
                     card: card,
-                    cards: cards,
+                    cards: scopedCards,
                     colorStore: colorStore,
                     routeMonitor: routeMonitor,
+                    lifecycleStore: lifecycleStore,
                     onSelectCard: { next in
                         selected = next
                     },
@@ -143,11 +195,36 @@ struct CollectionView: View {
         .fullScreenCover(item: $dossierCard) { card in
             DeviceDossierView(
                 card: card,
-                dossier: dossierForCard?(card),
+                dossier: dossierForCard?(card, retirement(for: card)),
+                dossierProvider: { ret in dossierForCard?(card, ret) },
+                activeCardCount: activeCards.count,
                 isSampleData: isSampleData
             ) {
                 dossierCard = nil
             }
+        }
+        .sheet(item: $retireSheetCard) { card in
+            let existing = retirement(for: card)
+            let d = dossierForCard?(card, existing)
+            RetireDeviceSheet(
+                card: card,
+                firstWear: d?.firstWear ?? DateText.parse(card.firstMet, dateFormat: "yyyy.MM.dd", calendar: .current),
+                lastWear: card.lastWearDate ?? d?.lastWear?.start,
+                existingRetirement: existing,
+                colorOption: colorStore?.selectedColor(for: card),
+                onSave: { newRetirement in
+                    lifecycleStore?.retire(
+                        card,
+                        at: newRetirement.retiredAt,
+                        reason: newRetirement.reason,
+                        farewellNote: newRetirement.farewellNote
+                    )
+                },
+                onUnretire: existing != nil ? {
+                    lifecycleStore?.unretire(card)
+                } : nil
+            )
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showCardTiers) {
             NavigationStack {
@@ -210,6 +287,8 @@ struct CollectionView: View {
                 Group {
                     if cards.isEmpty {
                         Text("Listening archive")
+                    } else if !retiredCards.isEmpty {
+                        Text("\(activeCards.count) active · \(retiredCards.count) vaulted · \(total.minutesText) together")
                     } else {
                         Text("\(cards.count) cards · \(total.minutesText) together")
                     }
@@ -297,9 +376,47 @@ struct CollectionView: View {
         .card()
     }
 
+    private var vaultHeader: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.snappy(duration: 0.25)) {
+                vaultExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "archivebox.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.secondaryText)
+                Text("VAULT")
+                    .font(.system(size: 11.5, weight: .heavy, design: .rounded))
+                    .tracking(1.6)
+                    .foregroundStyle(Theme.secondaryText)
+                Text("\(retiredCards.count)")
+                    .font(.caption2.weight(.bold).monospacedDigit())
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Theme.surfaceFill, in: Capsule())
+                    .foregroundStyle(Theme.primaryText)
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.tertiaryText)
+                    .rotationEffect(.degrees(vaultExpanded ? 0 : -90))
+            }
+            .padding(.top, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Vault, \(retiredCards.count) retired pairs")
+        .accessibilityValue(vaultExpanded ? "Expanded" : "Collapsed")
+    }
+
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
-        let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
+        let ret = retirement(for: card)
+        let worn = ret == nil && (routeMonitor?.isCurrentlyWorn(card) ?? false)
         let disableTilt = reduceMotion
         let isLight = colorScheme == .light
         return Button {
@@ -307,7 +424,7 @@ struct CollectionView: View {
             selected = card
         } label: {
             LiveTiltView(isActive: listMotionActive) { liveTilt in
-                CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn)
+                CardHorizontalFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, retirement: ret)
                     .overlay {
                         ScrollSheenSweep(cornerRadius: 24)
                     }
@@ -315,7 +432,7 @@ struct CollectionView: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(Theme.card)
                             .shadow(
-                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.32),
+                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
                                 radius: isLight ? 12 : 14,
                                 y: isLight ? 5 : 8
                             )
@@ -326,6 +443,9 @@ struct CollectionView: View {
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(CollectorCardPressStyle())
+        .contextMenu {
+            cardContextMenu(for: card, retirement: ret)
+        }
         .scrollTransition(.interactive(timingCurve: .easeOut), axis: .vertical) { content, phase in
             content
                 .scaleEffect(phase.isIdentity ? 1.0 : 0.955)
@@ -340,14 +460,15 @@ struct CollectionView: View {
 
     private func verticalThumbnail(_ card: HeadphoneCard) -> some View {
         let color = colorStore?.selectedColor(for: card)
-        let worn = routeMonitor?.isCurrentlyWorn(card) ?? false
+        let ret = retirement(for: card)
+        let worn = ret == nil && (routeMonitor?.isCurrentlyWorn(card) ?? false)
         let isLight = colorScheme == .light
         return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             selected = card
         } label: {
             LiveTiltView(isActive: listMotionActive) { liveTilt in
-                ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false) }
+                ScaledCard { CardFront(card: card, tilt: liveTilt, colorOption: color, isCurrentlyWorn: worn, showsChargingCase: false, retirement: ret) }
                     .overlay {
                         ScrollSheenSweep(cornerRadius: 22)
                     }
@@ -355,7 +476,7 @@ struct CollectionView: View {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .fill(Theme.card)
                             .shadow(
-                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.32),
+                                color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(ret == nil ? 0.32 : 0.20),
                                 radius: isLight ? 12 : 14,
                                 y: isLight ? 5 : 8
                             )
@@ -365,10 +486,32 @@ struct CollectionView: View {
             }
         }
         .buttonStyle(CollectorCardPressStyle())
+        .contextMenu {
+            cardContextMenu(for: card, retirement: ret)
+        }
         .scrollTransition(.interactive(timingCurve: .easeOut), axis: .vertical) { content, phase in
             content
                 .scaleEffect(phase.isIdentity ? 1.0 : 0.96)
                 .opacity(phase.isIdentity ? 1.0 : 0.88)
+        }
+    }
+
+    @ViewBuilder
+    private func cardContextMenu(for card: HeadphoneCard, retirement: DeviceRetirement?) -> some View {
+        Button("Open Dossier", systemImage: "doc.text") {
+            dossierCard = card
+        }
+        if retirement != nil {
+            Button("Edit Vault Details…", systemImage: "archivebox") {
+                retireSheetCard = card
+            }
+            Button("Restore to Active", systemImage: "arrow.uturn.backward") {
+                lifecycleStore?.unretire(card)
+            }
+        } else {
+            Button("Retire to Vault…", systemImage: "archivebox") {
+                retireSheetCard = card
+            }
         }
     }
 
@@ -1083,6 +1226,7 @@ struct CardDetail: View {
     var catalogSurfaces: [String: Rarity] = [:]
     var colorStore: DeviceColorStore? = nil
     var routeMonitor: ActiveAudioRouteMonitor? = nil
+    var lifecycleStore: DeviceLifecycleStore? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
     var openTiers: (() -> Void)? = nil
@@ -1852,8 +1996,10 @@ struct CardDetail: View {
                     .modifier(CardFaceRotation(angle: frontAngle))
 
                 if (isTop || hasTrackedFlip) && canFlip {
+                    let itemRetirement = isModelPreview ? nil : lifecycleStore?.retirement(for: item)
                     CardBack(
                         card: item,
+                        retirement: itemRetirement,
                         openDossier: !isModelPreview ? {
                             guard isTop, flipped, !hasActiveOrRecentDeckDrag else { return }
                             openDossier()
@@ -1904,7 +2050,8 @@ struct CardDetail: View {
         surfaceRarity: Rarity
     ) -> some View {
         let itemColor = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
-        let itemWorn = routeMonitor?.isCurrentlyWorn(item) ?? false
+        let itemRetirement = isModelPreview ? nil : lifecycleStore?.retirement(for: item)
+        let itemWorn = itemRetirement == nil && (routeMonitor?.isCurrentlyWorn(item) ?? false)
         let assetName = resolvedAssetName(for: item)
         let itemShowsBack = canFlip && flipState.isShowingBack(for: item.id)
         let isItemShowing3D = assetName != nil
@@ -1926,7 +2073,8 @@ struct CardDetail: View {
             showsListeningStats: !isModelPreview,
             surfaceRarityOverride: isModelPreview ? surfaceRarity : nil,
             badgeOverride: catalogBadge,
-            catalogDetail: isModelPreview ? catalogDetails[item.id] : nil
+            catalogDetail: isModelPreview ? catalogDetails[item.id] : nil,
+            retirement: itemRetirement
         )
         .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
     }
@@ -1934,7 +2082,8 @@ struct CardDetail: View {
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
         let isLight = colorScheme == .light
-        return CardBack(card: card, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
+        let itemRetirement = isModelPreview ? nil : lifecycleStore?.retirement(for: card)
+        return CardBack(card: card, retirement: itemRetirement, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
             .id(card.id)
             .background {
                 RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)

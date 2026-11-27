@@ -13,6 +13,7 @@ struct EarprintApp: App {
     @State private var routeMonitor = ActiveAudioRouteMonitor()
     @State private var proStore = ProEntitlementStore(autoStart: EarprintReleasePolicy.monetizationEnabled)
     @State private var customizationStore = SlabCustomizationStore()
+    @State private var lifecycleStore = DeviceLifecycleStore()
     @State private var paywallPrompt: PaywallPrompt?
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.system
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system
@@ -59,7 +60,7 @@ struct EarprintApp: App {
                     isActiveTab: router.tab == .collection,
                     onConnectHealth: { Task { await library.connectAndSync() } },
                     onPreviewFirstLaunch: previewFirstLaunch,
-                    dossierForCard: { library.dossier(for: $0) }
+                    dossierForCard: { card, retirement in library.dossier(for: card, retirement: retirement) }
                 )
                 .tabItem { Label("Collection", systemImage: "rectangle.stack") }
                 .tag(DeepLinkRouter.Tab.collection)
@@ -85,6 +86,7 @@ struct EarprintApp: App {
             .environment(routeMonitor)
             .environment(proStore)
             .environment(customizationStore)
+            .environment(lifecycleStore)
             .environment(\.proAccess, EarprintReleasePolicy.monetizationEnabled ? proStore.accessSnapshot : .allUnlocked)
             .environment(\.locale, resolvedLocale)
             .preferredColorScheme(resolvedColorScheme)
@@ -150,6 +152,9 @@ struct EarprintApp: App {
             .onChange(of: library.cards.map(\.id)) { _, _ in
                 syncLiveActivity()
             }
+            .onChange(of: lifecycleStore.retirements) { _, _ in
+                publishWidgets()
+            }
             .onChange(of: proStore.hasPro) { _, _ in
                 syncLiveActivity()
             }
@@ -195,7 +200,7 @@ struct EarprintApp: App {
 
     private func publishWidgets() {
         let summary = library.homeSummary
-        let cards = library.cards
+        let cards = library.cards.filter { !lifecycleStore.isRetired($0) }
         let isSample = library.isShowingSampleData
         let listening = library.snapshot
         Task.detached(priority: .utility) {

@@ -16,6 +16,7 @@ struct HomeView: View {
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(ActiveAudioRouteMonitor.self) private var routeMonitor: ActiveAudioRouteMonitor?
+    @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .headline) private var pillTitleSize: CGFloat = 15.5
@@ -107,7 +108,8 @@ struct HomeView: View {
         let currentColor = currentCard.flatMap { card in
             colorStore?.selectedColor(for: card) ?? DeviceColorOption.defaultOption(for: card.modelKey)
         }
-        let isWorn = currentCard.map { routeMonitor?.isCurrentlyWorn($0) ?? false } ?? false
+        let isRetired = currentCard.map { lifecycleStore?.isRetired($0) ?? false } ?? false
+        let isWorn = !isRetired && (currentCard.map { routeMonitor?.isCurrentlyWorn($0) ?? false } ?? false)
         let showingAllPairs = currentCard == nil && cards.count > 1
         let tiltActive = isActiveTab && !showShare && !showWrapped && !showPairPicker
         let wrappedInput = wrappedInput
@@ -142,7 +144,7 @@ struct HomeView: View {
                         let split = ColumnSplit(space: space, padding: 24, gap: 24)
                         HStack(alignment: .top, spacing: split.gap) {
                             VStack(alignment: .leading, spacing: 16) {
-                                header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
+                                header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn, isRetired: isRetired)
                                 wrappedEntry
                                 healthStatus
                                 WeeklyRhythmCard(summary: currentSummary, rarity: currentRarity)
@@ -158,7 +160,7 @@ struct HomeView: View {
                         .padding(.horizontal, split.padding)
                     } else {
                         VStack(alignment: .leading, spacing: 16) {
-                            header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn)
+                            header(card: currentCard, summary: currentSummary, rarity: currentRarity, color: currentColor, isWorn: isWorn, isRetired: isRetired)
                             wrappedEntry
                             healthStatus
                             RingsHeroCard(summary: currentSummary, rarity: currentRarity, tiltActive: tiltActive)
@@ -184,8 +186,10 @@ struct HomeView: View {
         .sheet(isPresented: $showPairPicker) {
             let allMinutes = cards.reduce(0.0) { $0 + $1.lifetimeMinutes }
             let allRarity = Rarity(minutes: allMinutes)
+            let retiredIDs = Set(cards.filter { lifecycleStore?.isRetired($0) ?? false }.map(\.id))
             RingsPairPickerSheet(
                 cards: cards,
+                retiredCardIDs: retiredIDs,
                 selectedCard: currentCard,
                 allMinutes: allMinutes,
                 allRarity: allRarity,
@@ -378,7 +382,8 @@ struct HomeView: View {
         summary: ListeningSummary,
         rarity: Rarity,
         color: DeviceColorOption?,
-        isWorn: Bool
+        isWorn: Bool,
+        isRetired: Bool = false
     ) -> some View {
         let pairName: String = if let card {
             isSampleData ? card.model : card.nickname
@@ -455,6 +460,7 @@ struct HomeView: View {
                         rarity: rarity,
                         color: color,
                         isWorn: isWorn,
+                        isRetired: isRetired,
                         name: pairName,
                         subtitle: pairSubtitle,
                         trailingSymbol: "chevron.up.chevron.down"
@@ -474,6 +480,7 @@ struct HomeView: View {
                         rarity: rarity,
                         color: color,
                         isWorn: isWorn,
+                        isRetired: isRetired,
                         name: pairName,
                         subtitle: pairSubtitle,
                         trailingSymbol: "chevron.right"
@@ -488,6 +495,7 @@ struct HomeView: View {
                     rarity: rarity,
                     color: nil,
                     isWorn: false,
+                    isRetired: false,
                     name: pairName,
                     subtitle: pairSubtitle,
                     trailingSymbol: nil
@@ -502,6 +510,7 @@ struct HomeView: View {
         rarity: Rarity,
         color: DeviceColorOption?,
         isWorn: Bool,
+        isRetired: Bool = false,
         name: String,
         subtitle: String?,
         trailingSymbol: String?
@@ -573,6 +582,11 @@ struct HomeView: View {
                         .layoutPriority(1)
                     if isWorn {
                         ActiveWearDot()
+                    } else if isRetired {
+                        Image(systemName: "archivebox.fill")
+                            .font(.system(size: 10.5, weight: .bold))
+                            .foregroundStyle(Theme.secondaryText)
+                            .accessibilityLabel("Vaulted")
                     }
                 }
 
@@ -1760,6 +1774,7 @@ private struct AllTimeArchiveCard: View {
 
 private struct RingsPairPickerSheet: View {
     let cards: [HeadphoneCard]
+    var retiredCardIDs: Set<String> = []
     let selectedCard: HeadphoneCard?
     let allMinutes: Double
     let allRarity: Rarity
@@ -1821,7 +1836,10 @@ private struct RingsPairPickerSheet: View {
                         onSelectCardID(nil)
                     }
 
-                    ForEach(cards) { item in
+                    let activeCards = cards.filter { !retiredCardIDs.contains($0.id) }
+                    let retiredCards = cards.filter { retiredCardIDs.contains($0.id) }
+
+                    ForEach(activeCards) { item in
                         let title = isSampleData ? item.model : item.nickname
                         let subtitleKey: LocalizedStringKey = (!isSampleData && item.model != title)
                             ? "\(item.model) · \(item.lifetimeMinutes.minutesText)"
@@ -1836,10 +1854,46 @@ private struct RingsPairPickerSheet: View {
                             card: item,
                             color: color,
                             isWorn: worn,
+                            isRetired: false,
                             isSelected: selectedCard?.id == item.id,
                             isLight: isLight
                         ) {
                             onSelectCardID(item.id)
+                        }
+                    }
+
+                    if !retiredCards.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "archivebox.fill")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("VAULT")
+                                .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                                .tracking(1.4)
+                        }
+                        .foregroundStyle(Theme.secondaryText)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 4)
+
+                        ForEach(retiredCards) { item in
+                            let title = isSampleData ? item.model : item.nickname
+                            let subtitleKey: LocalizedStringKey = (!isSampleData && item.model != title)
+                                ? "\(item.model) · \(item.lifetimeMinutes.minutesText)"
+                                : "\(item.sessions) sessions · \(item.lifetimeMinutes.minutesText)"
+                            let color = colorStore?.selectedColor(for: item) ?? DeviceColorOption.defaultOption(for: item.modelKey)
+
+                            pickerRow(
+                                title: LocalizedStringKey(title),
+                                subtitle: subtitleKey,
+                                rarity: item.rarity,
+                                card: item,
+                                color: color,
+                                isWorn: false,
+                                isRetired: true,
+                                isSelected: selectedCard?.id == item.id,
+                                isLight: isLight
+                            ) {
+                                onSelectCardID(item.id)
+                            }
                         }
                     }
                 }
@@ -1879,6 +1933,7 @@ private struct RingsPairPickerSheet: View {
         card: HeadphoneCard?,
         color: DeviceColorOption?,
         isWorn: Bool,
+        isRetired: Bool = false,
         isSelected: Bool,
         isLight: Bool,
         action: @escaping () -> Void
@@ -1941,6 +1996,11 @@ private struct RingsPairPickerSheet: View {
                             .layoutPriority(1)
                         if isWorn {
                             ActiveWearDot()
+                        } else if isRetired {
+                            Image(systemName: "archivebox.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Theme.secondaryText)
+                                .accessibilityLabel("Vaulted")
                         }
                     }
                     Text(subtitle)

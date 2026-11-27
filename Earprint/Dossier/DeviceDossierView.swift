@@ -37,16 +37,22 @@ private enum DossierSampleCache {
 /// interactive trend & 24-hour charts, listening habits, milestones, and hardware certificate.
 struct DeviceDossierView: View {
     let card: HeadphoneCard
-    let dossier: DeviceDossier
+    private var dossier: DeviceDossier { currentDossier }
     var onClose: (() -> Void)?
+    private let dossierProvider: ((DeviceRetirement?) -> DeviceDossier?)?
+    private let activeCardCount: Int
     private let includesHealthDetails: Bool
     private let isSampleData: Bool
+    private let isDemo: Bool
+    private let referenceDate: Date
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
+    @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
 
-    @State private var period: DossierPeriod = .month
+    @State private var currentDossier: DeviceDossier
+    @State private var period: DossierPeriod
     @State private var selectedDate: Date?
     @State private var selectedHour: Int?
     @State private var slabFlipped = false
@@ -56,14 +62,30 @@ struct DeviceDossierView: View {
     @State private var showShare = false
     @State private var shareInitialFormat: DossierShareFormat = .simple
     @State private var showSlabStudio = false
+    @State private var showRetireSheet = false
+    @State private var showFarewellBanner = false
+    @State private var dismissedInactivityNudge = false
 
-    init(card: HeadphoneCard, dossier: DeviceDossier? = nil, isSampleData: Bool = false, onClose: (() -> Void)? = nil) {
+    init(
+        card: HeadphoneCard,
+        dossier: DeviceDossier? = nil,
+        dossierProvider: ((DeviceRetirement?) -> DeviceDossier?)? = nil,
+        activeCardCount: Int = 1,
+        isSampleData: Bool = false,
+        onClose: (() -> Void)? = nil
+    ) {
         self.card = card
+        self.dossierProvider = dossierProvider
+        self.activeCardCount = activeCardCount
         // Keep fixed referenceNow for deterministic demo launches; use current date for live cards.
         let args = ProcessInfo.processInfo.arguments
         let isDemo = args.contains("-dossier") || args.contains("-dossierDemo") || args.contains("-demo")
         let referenceDate = isDemo ? DossierSample.referenceNow : max(DossierSample.referenceNow, Date())
-        self.dossier = dossier ?? DossierSampleCache.dossier(for: card, isDemo: isDemo, referenceDate: referenceDate)
+        let resolved = dossier ?? DossierSampleCache.dossier(for: card, isDemo: isDemo, referenceDate: referenceDate)
+        self.isDemo = isDemo
+        self.referenceDate = referenceDate
+        _currentDossier = State(initialValue: resolved)
+        _period = State(initialValue: resolved.isRetired ? .all : .month)
         includesHealthDetails = dossier != nil
         self.isSampleData = isSampleData
         self.onClose = onClose
@@ -71,8 +93,21 @@ struct DeviceDossierView: View {
 
     private var stats: PeriodStats { dossier.stats(period) }
     private var rarity: Rarity { card.rarity }
-    private var tiltActive: Bool { !showShare && !showSlabStudio }
+    private var tiltActive: Bool { !showShare && !showSlabStudio && !showRetireSheet }
     private var demoOverrideTilt: CGSize? { demoTilt == .zero ? nil : demoTilt }
+    private var liveRetirement: DeviceRetirement? { lifecycleStore?.retirement(for: card) }
+    private var liveLastWear: Date? { card.lastWearDate ?? dossier.lastWear?.start }
+
+    private func refreshDossier(for retirement: DeviceRetirement?) {
+        if let provided = dossierProvider?(retirement) {
+            currentDossier = provided
+        } else if !includesHealthDetails {
+            currentDossier = DeviceDossier.sample(for: card, retirement: retirement, now: referenceDate)
+        }
+        if retirement != nil {
+            period = .all
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -114,6 +149,43 @@ struct DeviceDossierView: View {
         .sheet(isPresented: $showSlabStudio) {
             CustomizeSlabSheet(card: card, dossier: dossier)
         }
+        .sheet(isPresented: $showRetireSheet) {
+            let existing = lifecycleStore?.retirement(for: card) ?? dossier.retirement
+            RetireDeviceSheet(
+                card: card,
+                firstWear: dossier.firstWear,
+                lastWear: liveLastWear,
+                existingRetirement: existing,
+                colorOption: colorStore?.selectedColor(for: card),
+                onSave: { newRetirement in
+                    let wasNew = existing == nil
+                    lifecycleStore?.retire(
+                        card,
+                        at: newRetirement.retiredAt,
+                        reason: newRetirement.reason,
+                        farewellNote: newRetirement.farewellNote
+                    )
+                    if wasNew {
+                        showFarewellBanner = true
+                    }
+                },
+                onUnretire: existing != nil ? {
+                    showFarewellBanner = false
+                    lifecycleStore?.unretire(card)
+                } : nil
+            )
+            .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            if let stored = lifecycleStore?.retirement(for: card), stored != currentDossier.retirement {
+                refreshDossier(for: stored)
+            }
+        }
+        .onChange(of: liveRetirement) { _, updated in
+            if updated != currentDossier.retirement {
+                refreshDossier(for: updated)
+            }
+        }
         .onChange(of: period) {
             selectedDate = nil
             selectedHour = nil
@@ -131,6 +203,9 @@ struct DeviceDossierView: View {
                 }
                 .foregroundStyle(DossierPalette.primaryText.opacity(0.8))
                 .padding(.top, 4)
+            }
+            if !exporting {
+                lifecycleBanner
             }
             slabStage(exporting: exporting)
                 .id("slab")
@@ -340,22 +415,167 @@ struct DeviceDossierView: View {
                 }
                 .foregroundStyle(DossierPalette.dim)
 
-                Button {
-                    showSlabStudio = true
-                } label: {
-                    Label("Customize Slab", systemImage: "wand.and.stars")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(DossierPalette.primaryText)
-                        .padding(.horizontal, 18)
-                        .frame(minHeight: 42)
-                        .background(DossierPalette.panel, in: Capsule())
-                        .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
-                        .shadow(color: Theme.cardShadow, radius: 8, y: 3)
+                HStack(spacing: 10) {
+                    Button {
+                        showSlabStudio = true
+                    } label: {
+                        Label("Customize Slab", systemImage: "wand.and.stars")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(DossierPalette.primaryText)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 42)
+                            .background(DossierPalette.panel, in: Capsule())
+                            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                            .shadow(color: Theme.cardShadow, radius: 8, y: 3)
+                    }
+                    .buttonStyle(.plain)
+
+                    if lifecycleStore != nil {
+                        Button {
+                            showRetireSheet = true
+                        } label: {
+                            Label(
+                                dossier.isRetired ? "Vaulted" : "Retire to Vault",
+                                systemImage: dossier.isRetired ? "archivebox.fill" : "archivebox"
+                            )
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(dossier.isRetired ? rarity.accent : DossierPalette.primaryText)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 42)
+                            .background(DossierPalette.panel, in: Capsule())
+                            .overlay(
+                                Capsule().strokeBorder(
+                                    dossier.isRetired ? rarity.accent.opacity(0.45) : DossierPalette.hairline,
+                                    lineWidth: 1
+                                )
+                            )
+                            .shadow(color: Theme.cardShadow, radius: 8, y: 3)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
             }
 
             lifetimeQuickStrip
+        }
+    }
+
+    @ViewBuilder
+    private var lifecycleBanner: some View {
+        if let store = lifecycleStore,
+           store.hasUnacknowledgedPostRetirementActivity(for: card, lastWear: liveLastWear),
+           let lastWear = liveLastWear {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "waveform.badge.exclamationmark")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(rarity.accent)
+                    Text("Back from retirement?")
+                        .font(.subheadline.weight(.bold))
+                    Spacer()
+                }
+                Text("New listening was recorded on \(DossierFormat.dot(lastWear)). Restore this pair to Active or keep it in the Vault?")
+                    .font(.caption)
+                    .foregroundStyle(DossierPalette.dim)
+                HStack(spacing: 8) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        store.unretire(card)
+                    } label: {
+                        Text("Restore to Active")
+                            .font(.caption.weight(.bold))
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 34)
+                            .foregroundStyle(Theme.invertedText)
+                            .background(Theme.invertedFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        store.acknowledgePostRetirementActivity(for: card, activityDate: lastWear)
+                    } label: {
+                        Text("Keep Vaulted")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 34)
+                            .foregroundStyle(DossierPalette.primaryText)
+                            .background(DossierPalette.surfaceFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+            .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(rarity.accent.opacity(0.45), lineWidth: 1))
+        } else if showFarewellBanner, dossier.isRetired {
+            HStack(spacing: 12) {
+                Image(systemName: "archivebox.fill")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(rarity.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sealed in Vault")
+                        .font(.subheadline.weight(.bold))
+                    Text("Export a Hall of Fame farewell poster.")
+                        .font(.caption)
+                        .foregroundStyle(DossierPalette.dim)
+                }
+                Spacer(minLength: 4)
+                Button {
+                    shareInitialFormat = .simple
+                    showShare = true
+                } label: {
+                    Text("Share Farewell Poster")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 34)
+                        .foregroundStyle(Theme.invertedText)
+                        .background(Theme.invertedFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(12)
+            .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(rarity.accent.opacity(0.45), lineWidth: 1))
+        } else if !dossier.isRetired,
+                  !dismissedInactivityNudge,
+                  lifecycleStore?.shouldSuggestRetirement(
+                      for: card,
+                      lastWear: liveLastWear,
+                      totalActiveCardCount: activeCardCount,
+                      now: dossier.now,
+                      calendar: dossier.calendar
+                  ) == true {
+            HStack(spacing: 10) {
+                Image(systemName: "archivebox")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DossierPalette.dim)
+                Text("Unused for 90+ days · Retire to Vault?")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
+                    .lineLimit(2)
+                Spacer(minLength: 4)
+                Button("Retire") {
+                    showRetireSheet = true
+                }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(rarity.accent)
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        dismissedInactivityNudge = true
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(DossierPalette.faint)
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(DossierPalette.panel, in: Capsule())
+            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
         }
     }
 
@@ -366,13 +586,37 @@ struct DeviceDossierView: View {
                 stripDivider
                 quickStat("FIRST WEAR", dossier.firstWear.map(DossierFormat.dot) ?? "—")
                 stripDivider
-                quickStat("LAST WEAR", dossier.lastWear.map { $0.start.dossierRelative(to: dossier.now, calendar: dossier.calendar) } ?? "—")
+                quickStat(
+                    dossier.isRetired ? "RETIRED" : "LAST WEAR",
+                    dossier.retirement.map { DossierFormat.dot($0.retiredAt) }
+                        ?? (dossier.lastWear.map { $0.start.dossierRelative(to: dossier.now, calendar: dossier.calendar) } ?? "—")
+                )
                 stripDivider
                 quickStat("RECORD DAYS", "\(dossier.recordDays) days")
             }
             .padding(.vertical, 12)
             .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+
+            if let retirement = dossier.retirement, !retirement.farewellNote.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: retirement.reason.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(rarity.accent)
+                    Text("“\(retirement.farewellNote)”")
+                        .font(.caption.italic())
+                        .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
+                        .lineLimit(2)
+                    Spacer(minLength: 4)
+                    Text(LocalizedStringKey(retirement.reason.title))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(DossierPalette.dim)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+            }
 
             HStack(spacing: 6) {
                 Image(systemName: "cpu")
@@ -810,7 +1054,17 @@ struct MilestoneTimelineCard: View {
                             Text(LocalizedStringKey(item.title))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.75) : DossierPalette.primaryText)
-                            if let tier = item.tier, item.kind == .tier || item.kind == .minted {
+                            if item.kind == .retired {
+                                Text("VAULTED")
+                                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
+                                    .tracking(0.8)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(rarity.accent.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(rarity.accent)
+                            } else if let tier = item.tier, item.kind == .tier || item.kind == .minted {
                                 Text(LocalizedStringKey(tier.shortName.uppercased()))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .tracking(0.8)
@@ -859,6 +1113,7 @@ struct MilestoneTimelineCard: View {
         case .longest: "flame.fill"
         case .bestDay: "crown.fill"
         case .upcoming: "flag.checkered"
+        case .retired: "archivebox.fill"
         }
     }
 
@@ -869,7 +1124,7 @@ struct MilestoneTimelineCard: View {
         case .bestDay: return rarity.accent
         case .hours: return Theme.quietColor
         case .upcoming: return rarity.accent
-        case .minted, .tier: return rarity.accent
+        case .minted, .tier, .retired: return rarity.accent
         }
     }
 }

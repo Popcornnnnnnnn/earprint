@@ -70,7 +70,7 @@ struct GradingSlab: View {
         let borderColors = DossierContrast.borderColors(rarity: rarity, proFoil: customization.proFoil, colorScheme: colorScheme)
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("EARPRINT · AUTHENTICATED")
+                Text(dossier.isRetired ? "EARPRINT · VAULTED" : "EARPRINT · AUTHENTICATED")
                     .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                     .tracking(1.0)
                     .foregroundStyle(accent)
@@ -142,10 +142,10 @@ struct GradingSlab: View {
     private func cardWell(foil: ProFoilStyle?) -> some View {
         ZStack {
             CardFront(card: card, tilt: tilt, colorOption: colorOption ?? colorStore?.selectedColor(for: card),
-                      showsFirstMet: showsFirstWear, proFoil: foil)
+                      showsFirstMet: showsFirstWear, proFoil: foil, retirement: dossier.retirement)
                 .environment(\.proAccess, .free)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0))
-            CardBack(card: card)
+            CardBack(card: card, retirement: dossier.retirement)
                 .modifier(CardFaceRotation(angle: flipped ? 180 : 0, isBack: true))
         }
         .scaleEffect(SlabMetrics.cardScale)
@@ -163,13 +163,26 @@ struct GradingSlab: View {
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
             if showsFirstWear {
-                Text("MINTED \(dossier.firstWear.map(DossierFormat.dot) ?? "—")")
-                    .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                if let retirement = dossier.retirement {
+                    Text("VAULTED \(DossierFormat.dot(retirement.retiredAt))")
+                        .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } else {
+                    let minted = dossier.firstWear.map(DossierFormat.dot) ?? "—"
+                    Text("MINTED \(minted)")
+                        .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
-            HoloSeal(tilt: tilt, size: 30, isAnimated: animateSeal)
-                .offset(y: -4)
+            HoloSeal(
+                tilt: tilt,
+                size: 30,
+                text: dossier.isRetired ? "EARPRINT · VAULTED · HALL OF FAME · " : "EARPRINT · AUTHENTICATED · GRADED · ",
+                isAnimated: animateSeal
+            )
+            .offset(y: -4)
         }
         .foregroundStyle(DossierPalette.faint)
         .padding(.horizontal, 6)
@@ -239,13 +252,13 @@ struct CertificateLabel: View {
         let isLight = colorScheme == .light
         let scoreStyle = DossierContrast.gradeScoreGradient(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
         let borderColors = DossierContrast.borderColors(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
-        let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata || showsFirstWear
+        let hasMiddleGrid = showsHardwareDetails || showsSourceMetadata || showsFirstWear || dossier.isRetired
         let cardPadding: CGFloat = compact ? 11 : 18
         let perfPadding: CGFloat = compact ? 5 : 14
         let notchInset: CGFloat = compact ? 17 : 24
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("EARPRINT GRADING AUTHORITY")
+                Text(dossier.isRetired ? "EARPRINT VAULT ARCHIVE" : "EARPRINT GRADING AUTHORITY")
                     .font(.system(size: compact ? 8 : 9, weight: .heavy, design: .rounded))
                     .tracking(compact ? 1.4 : 1.8)
                     .foregroundStyle(rarity.accent)
@@ -339,6 +352,16 @@ struct CertificateLabel: View {
                         }
                         GridRow {
                             engraved("SOURCE BUNDLE", hw.sourceBundleID)
+                                .gridCellColumns(2)
+                        }
+                    }
+                    if let retirement = dossier.retirement {
+                        GridRow {
+                            engraved("STATUS", AppLanguage.current.text("Vaulted · %@", AppLanguage.current.text(retirement.reason.title)))
+                            engraved("RETIRED", DossierFormat.dot(retirement.retiredAt))
+                        }
+                        if !compact && !retirement.farewellNote.isEmpty {
+                            engraved("FAREWELL NOTE", "“\(retirement.farewellNote)”")
                                 .gridCellColumns(2)
                         }
                     }

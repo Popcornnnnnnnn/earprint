@@ -162,8 +162,13 @@ final class HeadphoneLibrary: ObservableObject {
     }
 
     /// Returns a real `DeviceDossier` hydrated from Apple Health sessions, or `nil` in sample mode.
-    func dossier(for card: HeadphoneCard, now: Date = Date(), calendar: Calendar = .current) -> DeviceDossier? {
-        snapshot?.dossier(forCardID: card.id, now: now, calendar: calendar)
+    func dossier(
+        for card: HeadphoneCard,
+        retirement: DeviceRetirement? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> DeviceDossier? {
+        snapshot?.dossier(forCardID: card.id, retirement: retirement, now: now, calendar: calendar)
     }
 
     /// O(1) cached summary for either all connected headphones (`cardID == nil`) or a specific card (`cardID != nil`).
