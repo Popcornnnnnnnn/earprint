@@ -153,10 +153,10 @@ struct EarprintApp: App {
             .onChange(of: library.cards.map(\.id)) { _, _ in
                 syncLiveActivity()
             }
-            .onChange(of: lifecycleStore.retirements) { _, updated in
+            .onChange(of: lifecycleStore.retirements) { _, _ in
                 publishWidgets()
-                let cutoffs = Array(Set(updated.values.map(\.careerCutoffEnd))).sorted()
-                Task { await library.ensureCutoffsIsolated(cutoffs) }
+                let scopes = lifecycleStore.cutoffScopes
+                Task { await library.handleRetirementScopesChanged(scopes) }
             }
             .onChange(of: proStore.hasPro) { _, _ in
                 syncLiveActivity()
@@ -209,9 +209,7 @@ struct EarprintApp: App {
             isSample: library.isShowingSampleData,
             listening: library.snapshot
         )
-        Task.detached(priority: .utility) {
-            WidgetPublisher.publish(snapshot)
-        }
+        WidgetPublisher.enqueue(snapshot)
     }
 
     private func applyLaunchTab() {

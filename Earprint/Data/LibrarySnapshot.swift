@@ -60,13 +60,12 @@ struct LibrarySnapshot: Sendable {
         aggregate: ListeningAggregate,
         now: Date = Date(),
         calendar: Calendar = .current,
-        splitCutoffs: [Date] = []
+        cutoffScopes: [RetirementCutoffScope] = []
     ) {
         generatedAt = now
         totalSamples = aggregate.totalSamples
         hostSamples = aggregate.hostSamples
         invalidSamples = aggregate.invalidSamples
-        let cutoffEpochs = Array(Set(splitCutoffs.map(\.timeIntervalSince1970))).sorted()
         let sources = aggregate.devices.values
             .filter { $0.sampleCount > 0 }
             .sorted { ($0.first ?? .distantFuture, $0.key) < ($1.first ?? .distantFuture, $1.key) }
@@ -74,8 +73,17 @@ struct LibrarySnapshot: Sendable {
         devices = Dictionary(grouping: sources, by: DeviceGroup.init)
             .values
             .map { group in
-                Self.summary(for: DeviceAccumulator.combining(group, splitCutoffs: cutoffEpochs), aliasIDs: group.dropFirst().map(\.key),
-                             now: now, calendar: calendar)
+                let groupCutoffs = Array(Set(
+                    cutoffScopes
+                        .filter { scope in group.contains { scope.matches(deviceKey: $0.key, descriptor: $0.descriptor) } }
+                        .map { $0.cutoff.timeIntervalSince1970 }
+                )).sorted()
+                return Self.summary(
+                    for: DeviceAccumulator.combining(group, splitCutoffs: groupCutoffs),
+                    aliasIDs: group.dropFirst().map(\.key),
+                    now: now,
+                    calendar: calendar
+                )
             }
             .sorted { ($0.lifetimeSeconds, $0.id) > ($1.lifetimeSeconds, $1.id) }
     }
@@ -270,7 +278,6 @@ private extension DeviceAccumulator {
     /// The first accessory keeps its key. Only the snapshot combines records; the cache retains each source.
     static func combining(_ devices: [Self], splitCutoffs: [TimeInterval] = []) -> Self {
         var combined = devices[0]
-        guard devices.count > 1 else { return combined }
 
         for device in devices.dropFirst() {
             combined.sampleCount += device.sampleCount
@@ -297,6 +304,10 @@ private extension DeviceAccumulator {
             }
         }
 
+        guard devices.count > 1 || !splitCutoffs.isEmpty || combined.sessions.spans.count > 1 else {
+            return combined
+        }
+
         let spans = devices.flatMap { $0.sessions.spans }.sorted { $0.start < $1.start }
         combined.sessions = SessionSet()
         for span in spans {
@@ -307,7 +318,6 @@ private extension DeviceAccumulator {
                 listeningSeconds: span.effectiveSeconds,
                 energy: span.energy,
                 peakDecibels: span.peakDecibels,
-                dayKey: span.dayKey,
                 splitCutoffs: splitCutoffs
             )
         }
@@ -432,14 +442,41 @@ extension LibrarySnapshot {
         calendar: Calendar = .current
     ) -> DeviceDossier? {
         guard let d = devices.first(where: { $0.id == id || $0.aliasIDs.contains(id) }) else { return nil }
+        let effectiveCalendar = retirement?.retiredCalendar ?? calendar
+        let cutoff = retirement?.careerCutoffEnd
+        let cutoffDayStart = cutoff.map {
+            effectiveCalendar.dateInterval(of: .day, for: retirement?.careerEndMoment ?? $0)?.start
+                ?? effectiveCalendar.startOfDay(for: retirement?.careerEndMoment ?? $0)
+        }
         var others: [Date: Double] = [:]
         for other in devices where other.id != d.id {
-            for (dayKey, secs) in other.dailySeconds where secs > 0 {
-                let year = dayKey / 10_000
-                let month = (dayKey / 100) % 100
-                let day = dayKey % 100
-                if let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) {
-                    others[date, default: 0] += secs / 60
+            if !other.wearSessions.isEmpty {
+                for session in other.wearSessions {
+                    if let cutoff, session.start >= cutoff { continue }
+                    var cursor = session.start
+                    let sessionEnd = cutoff.map { min(session.end, $0) } ?? session.end
+                    while cursor < sessionEnd {
+                        let interval = effectiveCalendar.dateInterval(of: .day, for: cursor)
+                        let dayStart = interval?.start ?? effectiveCalendar.startOfDay(for: cursor)
+                        let dayEnd = interval?.end ?? cursor.addingTimeInterval(86_400)
+                        let sliceEnd = min(sessionEnd, dayEnd)
+                        let mins = sliceEnd.timeIntervalSince(cursor) / 60
+                        if mins > 0 {
+                            others[dayStart, default: 0] += mins
+                        }
+                        if sliceEnd <= cursor { break }
+                        cursor = sliceEnd
+                    }
+                }
+            } else {
+                for (dayKey, secs) in other.dailySeconds where secs > 0 {
+                    let year = dayKey / 10_000
+                    let month = (dayKey / 100) % 100
+                    let day = dayKey % 100
+                    if let date = effectiveCalendar.date(from: DateComponents(year: year, month: month, day: day)) {
+                        if let cutoffDayStart, date > cutoffDayStart { continue }
+                        others[date, default: 0] += secs / 60
+                    }
                 }
             }
         }
@@ -471,7 +508,7 @@ extension LibrarySnapshot {
             liveLastSampleStart: d.lastSampleStart,
             liveLastSampleEnd: d.last,
             now: now,
-            calendar: calendar
+            calendar: effectiveCalendar
         )
     }
 
@@ -600,6 +637,22 @@ enum DateText {
             return format(date, dateFormat: "MMM d", calendar: calendar)
         }
         return dotted(date, calendar: calendar)
+    }
+
+    /// Formats a dossier date range in `calendar` so travel never shifts archived dates.
+    static func range(_ start: Date, _ end: Date, calendar: Calendar, locale: Locale = AppLanguage.current.locale) -> String {
+        if calendar.isDate(start, equalTo: end, toGranularity: .month) {
+            let startText = formatTemplate(start, template: "MMM d", calendar: calendar, locale: locale)
+            return "\(startText) – \(calendar.component(.day, from: end))"
+        }
+        if calendar.isDate(start, equalTo: end, toGranularity: .year) {
+            let startText = formatTemplate(start, template: "MMM d", calendar: calendar, locale: locale)
+            let endText = formatTemplate(end, template: "MMM d", calendar: calendar, locale: locale)
+            return "\(startText) – \(endText)"
+        }
+        let startText = formatTemplate(start, template: "MMM y", calendar: calendar, locale: locale)
+        let endText = formatTemplate(end, template: "MMM y", calendar: calendar, locale: locale)
+        return "\(startText) – \(endText)"
     }
 
     /// "Nov 12 – 18" or "Oct 29 – Nov 4" for the last 7 local days.

@@ -36,12 +36,16 @@ struct DossierTrendChart: View {
         }
     }
 
+    private var redactsAllTimeStart: Bool {
+        !showsMintedMarker && stats.period == .all
+    }
+
     private var title: String {
         switch stats.period {
         case .week: "Last 7 days"
         case .month: "Last 30 days"
         case .year: "Last 12 months"
-        case .all: "Since minted · by \(unitName)"
+        case .all: redactsAllTimeStart ? "All time" : "Since minted · by \(unitName)"
         }
     }
 
@@ -51,13 +55,15 @@ struct DossierTrendChart: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Eyebrow(selected.map { bucketTitle($0) } ?? title)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text((selected?.minutes ?? average).minutesText)
+                        let primaryValue = selected?.minutes ?? (redactsAllTimeStart ? stats.totalMinutes : average)
+                        let subtitle = selected == nil ? (redactsAllTimeStart ? "" : "avg / \(unitName)") : ""
+                        Text(primaryValue.minutesText)
                             .font(.system(.title, design: .rounded, weight: .heavy))
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
-                            .contentTransition(.numericText(value: selected?.minutes ?? average))
-                        Text(selected == nil ? "avg / \(unitName)" : "")
+                            .contentTransition(.numericText(value: primaryValue))
+                        Text(subtitle)
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(DossierPalette.dim)
                             .lineLimit(1)
@@ -128,7 +134,7 @@ struct DossierTrendChart: View {
                 }
             }
 
-            if average > 0 {
+            if average > 0 && !redactsAllTimeStart {
                 RuleMark(y: .value("Average", average / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .foregroundStyle(DossierPalette.faint)
@@ -167,6 +173,7 @@ struct DossierTrendChart: View {
                 }
             }
         }
+        .chartXAxis(redactsAllTimeStart ? .hidden : .automatic)
         .chartXAxis {
             AxisMarks(values: xValues) { value in
                 AxisValueLabel(format: xFormat, centered: true)

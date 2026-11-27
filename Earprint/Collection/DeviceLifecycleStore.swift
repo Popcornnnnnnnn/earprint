@@ -203,6 +203,37 @@ struct DeviceRetirement: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+/// Identifies a retired headphone card and its known HealthKit device aliases so session cutoffs apply only to that pair.
+struct RetirementCutoffScope: Codable, Equatable, Hashable, Sendable {
+    var cardID: String
+    var aliasIDs: [String]
+    var modelName: String?
+    var nickname: String?
+    var cutoff: Date
+
+    func matches(deviceKey: String, descriptor: DeviceDescriptor?) -> Bool {
+        if deviceKey == cardID || aliasIDs.contains(deviceKey) {
+            return true
+        }
+        guard let modelName, let nickname, let descriptor else { return false }
+        let resolved = HeadphoneModelCatalog.resolve(descriptor)
+        guard let productID = resolved.productID,
+              let product = HeadphoneModelCatalog.byProductID[productID],
+              product.key.collectibleArtwork != nil,
+              let rawName = DeviceDescriptor.clean(descriptor.name) else {
+            return false
+        }
+        return product.marketingName == modelName
+            && Self.normalizedNickname(rawName) == Self.normalizedNickname(nickname)
+    }
+
+    static func normalizedNickname(_ name: String) -> String {
+        name.lowercased()
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
+    }
+}
+
 /// Persists which headphone cards are retired into the Vault, keyed by `card.id` and matched across `aliasIDs`.
 @MainActor
 @Observable
@@ -211,25 +242,63 @@ final class DeviceLifecycleStore {
     static let inactiveNudgeThresholdDays = 90
 
     private nonisolated static let storageKey = "earprint.deviceRetirements.v1"
+    private nonisolated static let scopesStorageKey = "earprint.deviceRetirementScopes.v1"
     private let defaults: UserDefaults
     private(set) var retirements: [String: DeviceRetirement]
+    private var cutoffScopesByID: [String: RetirementCutoffScope]
 
-    nonisolated static func persistedCutoffs(defaults: UserDefaults = .standard) -> [Date] {
-        guard let data = defaults.data(forKey: storageKey),
-              let stored = try? JSONDecoder().decode([String: DeviceRetirement].self, from: data) else {
-            return []
+    var cutoffScopes: [RetirementCutoffScope] {
+        cutoffScopesByID.values.sorted { ($0.cardID, $0.cutoff) < ($1.cardID, $1.cutoff) }
+    }
+
+    nonisolated static func persistedCutoffScopes(defaults: UserDefaults = .standard) -> [RetirementCutoffScope] {
+        var byID: [String: RetirementCutoffScope] = [:]
+        if let scopeData = defaults.data(forKey: scopesStorageKey),
+           let storedScopes = try? JSONDecoder().decode([String: RetirementCutoffScope].self, from: scopeData) {
+            byID = storedScopes
         }
-        return Array(Set(stored.values.map(\.careerCutoffEnd))).sorted()
+        if let data = defaults.data(forKey: storageKey),
+           let stored = try? JSONDecoder().decode([String: DeviceRetirement].self, from: data) {
+            for (key, retirement) in stored where byID[key] == nil {
+                byID[key] = RetirementCutoffScope(
+                    cardID: key,
+                    aliasIDs: [],
+                    modelName: nil,
+                    nickname: nil,
+                    cutoff: retirement.sanitized.careerCutoffEnd
+                )
+            }
+            byID = byID.filter { stored[$0.key] != nil }
+        }
+        return byID.values.sorted { ($0.cardID, $0.cutoff) < ($1.cardID, $1.cutoff) }
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let loadedRetirements: [String: DeviceRetirement]
         if let data = defaults.data(forKey: Self.storageKey),
            let stored = try? JSONDecoder().decode([String: DeviceRetirement].self, from: data) {
-            retirements = stored.mapValues(\.sanitized)
+            loadedRetirements = stored.mapValues(\.sanitized)
         } else {
-            retirements = [:]
+            loadedRetirements = [:]
         }
+        var loadedScopes: [String: RetirementCutoffScope] = [:]
+        if let scopeData = defaults.data(forKey: Self.scopesStorageKey),
+           let storedScopes = try? JSONDecoder().decode([String: RetirementCutoffScope].self, from: scopeData) {
+            loadedScopes = storedScopes
+        }
+        for (key, retirement) in loadedRetirements where loadedScopes[key] == nil {
+            loadedScopes[key] = RetirementCutoffScope(
+                cardID: key,
+                aliasIDs: [],
+                modelName: nil,
+                nickname: nil,
+                cutoff: retirement.careerCutoffEnd
+            )
+        }
+        loadedScopes = loadedScopes.filter { loadedRetirements[$0.key] != nil }
+        self.retirements = loadedRetirements
+        self.cutoffScopesByID = loadedScopes
     }
 
     func retirement(for card: HeadphoneCard) -> DeviceRetirement? {
@@ -265,7 +334,15 @@ final class DeviceLifecycleStore {
         }
         for alias in card.aliasIDs {
             retirements.removeValue(forKey: alias)
+            cutoffScopesByID.removeValue(forKey: alias)
         }
+        cutoffScopesByID[card.id] = RetirementCutoffScope(
+            cardID: card.id,
+            aliasIDs: card.aliasIDs,
+            modelName: card.model,
+            nickname: card.nickname,
+            cutoff: normalized.careerCutoffEnd
+        )
         retirements[card.id] = normalized
         persist()
     }
@@ -288,8 +365,14 @@ final class DeviceLifecycleStore {
 
     func unretire(_ card: HeadphoneCard) {
         var changed = retirements.removeValue(forKey: card.id) != nil
+        if cutoffScopesByID.removeValue(forKey: card.id) != nil {
+            changed = true
+        }
         for alias in card.aliasIDs {
             if retirements.removeValue(forKey: alias) != nil {
+                changed = true
+            }
+            if cutoffScopesByID.removeValue(forKey: alias) != nil {
                 changed = true
             }
         }
@@ -301,10 +384,19 @@ final class DeviceLifecycleStore {
     func acknowledgePostRetirementActivity(for card: HeadphoneCard, activityDate: Date) {
         guard var current = retirement(for: card) else { return }
         current.acknowledgedActivityAt = activityDate
+        let normalized = current.sanitized
         for alias in card.aliasIDs {
             retirements.removeValue(forKey: alias)
+            cutoffScopesByID.removeValue(forKey: alias)
         }
-        retirements[card.id] = current.sanitized
+        cutoffScopesByID[card.id] = RetirementCutoffScope(
+            cardID: card.id,
+            aliasIDs: card.aliasIDs,
+            modelName: card.model,
+            nickname: card.nickname,
+            cutoff: normalized.careerCutoffEnd
+        )
+        retirements[card.id] = normalized
         persist()
     }
 
@@ -353,6 +445,9 @@ final class DeviceLifecycleStore {
     private func persist() {
         if let data = try? JSONEncoder().encode(retirements) {
             defaults.set(data, forKey: Self.storageKey)
+        }
+        if let scopeData = try? JSONEncoder().encode(cutoffScopesByID) {
+            defaults.set(scopeData, forKey: Self.scopesStorageKey)
         }
     }
 }

@@ -48,8 +48,6 @@ struct SessionSet: Codable, Equatable, Sendable {
         var listeningSeconds: Double = 0
         var energy: Double = 0
         var peakDecibels: Double = 0
-        /// Local calendar day (`yyyymmdd`) so midnight boundaries keep archived sessions isolated from next-day wear.
-        var dayKey: Int? = nil
 
         var duration: TimeInterval { end - start }
         var effectiveSeconds: Double { listeningSeconds > 0 ? listeningSeconds : duration }
@@ -65,15 +63,10 @@ struct SessionSet: Codable, Equatable, Sendable {
     private static func canMerge(
         lhsStart: TimeInterval,
         lhsEnd: TimeInterval,
-        lhsDayKey: Int?,
         rhsStart: TimeInterval,
         rhsEnd: TimeInterval,
-        rhsDayKey: Int?,
         splitCutoffs: [TimeInterval]
     ) -> Bool {
-        if let lhsDayKey, let rhsDayKey, lhsDayKey != rhsDayKey {
-            return false
-        }
         for cutoff in splitCutoffs {
             let lhsBefore = lhsStart < cutoff && lhsEnd <= cutoff
             let rhsBefore = rhsStart < cutoff && rhsEnd <= cutoff
@@ -93,7 +86,6 @@ struct SessionSet: Codable, Equatable, Sendable {
         listeningSeconds: Double? = nil,
         energy: Double = 0,
         peakDecibels: Double = 0,
-        dayKey: Int? = nil,
         splitCutoffs: [TimeInterval] = []
     ) {
         let end = max(start, end)
@@ -102,8 +94,8 @@ struct SessionSet: Codable, Equatable, Sendable {
         if let last = spans.last, start >= last.start {
             if start - last.end <= gap,
                Self.canMerge(
-                   lhsStart: last.start, lhsEnd: last.end, lhsDayKey: last.dayKey,
-                   rhsStart: start, rhsEnd: end, rhsDayKey: dayKey,
+                   lhsStart: last.start, lhsEnd: last.end,
+                   rhsStart: start, rhsEnd: end,
                    splitCutoffs: splitCutoffs
                ) {
                 let idx = spans.count - 1
@@ -111,11 +103,8 @@ struct SessionSet: Codable, Equatable, Sendable {
                 spans[idx].listeningSeconds = last.effectiveSeconds + addedListening
                 spans[idx].energy += energy
                 spans[idx].peakDecibels = max(last.peakDecibels, peakDecibels)
-                if spans[idx].dayKey == nil {
-                    spans[idx].dayKey = dayKey
-                }
             } else {
-                spans.append(Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels, dayKey: dayKey))
+                spans.append(Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels))
             }
             return
         }
@@ -129,19 +118,19 @@ struct SessionSet: Codable, Equatable, Sendable {
         if first > 0,
            start - spans[first - 1].end <= gap,
            Self.canMerge(
-               lhsStart: spans[first - 1].start, lhsEnd: spans[first - 1].end, lhsDayKey: spans[first - 1].dayKey,
-               rhsStart: start, rhsEnd: end, rhsDayKey: dayKey,
+               lhsStart: spans[first - 1].start, lhsEnd: spans[first - 1].end,
+               rhsStart: start, rhsEnd: end,
                splitCutoffs: splitCutoffs
            ) {
             first -= 1
         }
-        var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels, dayKey: dayKey)
+        var merged = Span(start: start, end: end, listeningSeconds: addedListening, energy: energy, peakDecibels: peakDecibels)
         var last = first
         while last < spans.count,
               spans[last].start - merged.end <= gap,
               Self.canMerge(
-                  lhsStart: merged.start, lhsEnd: merged.end, lhsDayKey: merged.dayKey,
-                  rhsStart: spans[last].start, rhsEnd: spans[last].end, rhsDayKey: spans[last].dayKey,
+                  lhsStart: merged.start, lhsEnd: merged.end,
+                  rhsStart: spans[last].start, rhsEnd: spans[last].end,
                   splitCutoffs: splitCutoffs
               ) {
             merged.start = min(merged.start, spans[last].start)
@@ -149,7 +138,6 @@ struct SessionSet: Codable, Equatable, Sendable {
             merged.listeningSeconds += spans[last].effectiveSeconds
             merged.energy += spans[last].energy
             merged.peakDecibels = max(merged.peakDecibels, spans[last].peakDecibels)
-            merged.dayKey = merged.dayKey ?? spans[last].dayKey
             last += 1
         }
         spans.replaceSubrange(first..<last, with: [merged])
@@ -213,12 +201,15 @@ struct ListeningAggregate: Codable, Sendable {
 
     var isEmpty: Bool { devices.isEmpty }
 
-    func hasSpanCrossing(cutoffs: [Date]) -> Bool {
-        let epochs = cutoffs.map(\.timeIntervalSince1970)
-        guard !epochs.isEmpty else { return false }
+    func hasSpanCrossing(scopes: [RetirementCutoffScope]) -> Bool {
+        guard !scopes.isEmpty else { return false }
         for device in devices.values {
+            let deviceCutoffs = scopes
+                .filter { $0.matches(deviceKey: device.key, descriptor: device.descriptor) }
+                .map { $0.cutoff.timeIntervalSince1970 }
+            guard !deviceCutoffs.isEmpty else { continue }
             for span in device.sessions.spans {
-                if epochs.contains(where: { span.start < $0 && span.end > $0 }) {
+                if deviceCutoffs.contains(where: { span.start < $0 && span.end > $0 }) {
                     return true
                 }
             }
@@ -230,10 +221,9 @@ struct ListeningAggregate: Codable, Sendable {
         _ samples: [RawListeningSample],
         now: Date = Date(),
         calendar: Calendar = .current,
-        splitCutoffs: [Date] = []
+        cutoffScopes: [RetirementCutoffScope] = []
     ) {
         let slotCutoff = now.addingTimeInterval(-Double(Self.slotRetentionDays) * 86_400).timeIntervalSince1970
-        let cutoffEpochs = Array(Set(splitCutoffs.map(\.timeIntervalSince1970))).sorted()
         var dayCache = DayCache(calendar: calendar)
 
         for sample in samples {
@@ -273,32 +263,46 @@ struct ListeningAggregate: Codable, Sendable {
                 acc.names.append(name)
             }
 
-            // Split across local days and saved retirement cutoffs before merging sessions so archival careers stay isolated across time zones.
+            // Split across local calendar days for daily totals while preserving the 5-minute session rule.
             var cursor = sample.start
             while cursor < end {
                 let (dayKey, dayEnd) = dayCache.day(containing: cursor)
-                let cursorEpoch = cursor.timeIntervalSince1970
-                var pieceEnd = min(end, dayEnd)
-                let pieceEndEpoch = pieceEnd.timeIntervalSince1970
-                if let nextCutoff = cutoffEpochs.first(where: { $0 > cursorEpoch && $0 < pieceEndEpoch }) {
-                    pieceEnd = Date(timeIntervalSince1970: nextCutoff)
-                }
+                let pieceEnd = min(end, dayEnd)
                 if pieceEnd <= cursor { break }
                 let pieceSeconds = pieceEnd.timeIntervalSince(cursor)
                 if pieceSeconds > 0 {
                     acc.daily[dayKey, default: 0] += pieceSeconds
+                }
+                cursor = pieceEnd
+            }
+
+            // Isolate sessions only across retirement cutoffs matching this physical device.
+            let deviceCutoffs = Array(Set(
+                cutoffScopes
+                    .filter { $0.matches(deviceKey: key, descriptor: sample.device ?? acc.descriptor) }
+                    .map { $0.cutoff.timeIntervalSince1970 }
+            )).sorted()
+            var sessionCursor = sample.start.timeIntervalSince1970
+            let sampleEndEpoch = end.timeIntervalSince1970
+            while sessionCursor < sampleEndEpoch {
+                var pieceEnd = sampleEndEpoch
+                if let nextCutoff = deviceCutoffs.first(where: { $0 > sessionCursor && $0 < pieceEnd }) {
+                    pieceEnd = nextCutoff
+                }
+                if pieceEnd <= sessionCursor { break }
+                let pieceSeconds = pieceEnd - sessionCursor
+                if pieceSeconds > 0 {
                     acc.sessions.insert(
-                        start: cursorEpoch,
-                        end: pieceEnd.timeIntervalSince1970,
+                        start: sessionCursor,
+                        end: pieceEnd,
                         gap: Self.sessionGap,
                         listeningSeconds: pieceSeconds,
                         energy: HearingBudget.energy(decibels: sample.decibels, seconds: pieceSeconds),
                         peakDecibels: sample.decibels,
-                        dayKey: dayKey,
-                        splitCutoffs: cutoffEpochs
+                        splitCutoffs: deviceCutoffs
                     )
                 }
-                cursor = pieceEnd
+                sessionCursor = pieceEnd
             }
 
             // Split across 15-minute slots (recent samples only).

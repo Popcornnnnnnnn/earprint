@@ -346,14 +346,22 @@ final class DeviceLifecycleTests: XCTestCase {
             RawListeningSample(start: postMidnightStart, end: postMidnightEnd, decibels: 90, device: maxDev),
         ], now: now, calendar: cal)
 
-        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: cal)
-        let cards = snapshot.cards(now: now, calendar: cal)
-        let card = cards[0]
+        let liveSnapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: cal)
+        let card = liveSnapshot.cards(now: now, calendar: cal)[0]
 
         let defaults = UserDefaults(suiteName: "MidnightEnergyTests.\(UUID().uuidString)")!
         let store = DeviceLifecycleStore(defaults: defaults)
         store.retire(card, at: retireDayNoon, reason: .upgraded, farewellNote: "", calendar: cal)
         let retirement = store.retirement(for: card)!
+        let scopes = DeviceLifecycleStore.persistedCutoffScopes(defaults: defaults)
+
+        var retiredAgg = ListeningAggregate()
+        retiredAgg.ingest([
+            RawListeningSample(start: morningStart, end: morningEnd, decibels: 60, device: maxDev),
+            RawListeningSample(start: preMidnightStart, end: preMidnightEnd, decibels: 60, device: maxDev),
+            RawListeningSample(start: postMidnightStart, end: postMidnightEnd, decibels: 90, device: maxDev),
+        ], now: now, calendar: cal, cutoffScopes: scopes)
+        let snapshot = LibrarySnapshot(aggregate: retiredAgg, now: now, calendar: cal, cutoffScopes: scopes)
 
         let dossier = snapshot.dossier(forCardID: card.id, retirement: retirement, now: now, calendar: cal)!
         XCTAssertEqual(dossier.lifetimeMinutes, 1859.0 / 60, accuracy: 0.02)
@@ -617,6 +625,7 @@ final class DeviceLifecycleTests: XCTestCase {
 
         let maxDevPrimary = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "la-max-1")
         let maxDevAlias = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "la-max-2")
+        let otherDev = DeviceDescriptor(name: "Daily Pro", manufacturer: "Apple Inc.", model: "0x2024", localIdentifier: "la-pro-1")
         let utcRet = DeviceRetirement(
             retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2),
             timeZoneIdentifier: "UTC",
@@ -630,31 +639,101 @@ final class DeviceLifecycleTests: XCTestCase {
         let postEnd = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 0, minute: 5, second: 0))!
         let now = date(2026, 9, 3, hour: 12)
 
+        // Pre-retirement ingestion with empty scopes merges aliases under live 5-min rule,
+        // and keeps other pairs unsplit even across UTC/local midnight.
+        var preRetired = ListeningAggregate()
+        preRetired.ingest([
+            RawListeningSample(start: preStart, end: preEnd, decibels: 60, device: maxDevPrimary),
+            RawListeningSample(start: postStart, end: postEnd, decibels: 90, device: maxDevAlias),
+            RawListeningSample(start: preStart, end: preEnd, decibels: 64, device: otherDev),
+            RawListeningSample(start: postStart, end: postEnd, decibels: 64, device: otherDev),
+        ], now: now, calendar: laCal, cutoffScopes: [])
+
+        let preSnapshot = LibrarySnapshot(aggregate: preRetired, now: now, calendar: laCal, cutoffScopes: [])
+        let liveMaxCard = try XCTUnwrap(preSnapshot.cards(now: now, calendar: laCal).first { $0.modelKey == .airpodsMax })
+        // Pure 5-min live session rule merges both before retirement without midnight splitting.
+        let preMaxDossier = try XCTUnwrap(preSnapshot.dossier(forCardID: liveMaxCard.id, retirement: nil, now: now, calendar: laCal))
+        XCTAssertEqual(preMaxDossier.sessions.count, 1)
+        XCTAssertGreaterThan(preMaxDossier.averageDecibels, 80)
+
+        let suite = "CrossTZCutoffTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = DeviceLifecycleStore(defaults: defaults)
+        store.saveRetirement(utcRet, for: liveMaxCard)
+        let scopes = DeviceLifecycleStore.persistedCutoffScopes(defaults: defaults)
+        XCTAssertEqual(scopes.count, 1)
+
+        // Even when source accumulators had no crossing (samples arrived on separate aliases),
+        // refreshing the snapshot with the new cutoff scopes isolates the merged alias session.
+        XCTAssertFalse(preRetired.hasSpanCrossing(scopes: scopes))
+        let postSaveSnapshot = LibrarySnapshot(aggregate: preRetired, now: now, calendar: laCal, cutoffScopes: scopes)
+        let savedDossier = try XCTUnwrap(postSaveSnapshot.dossier(forCardID: liveMaxCard.id, retirement: utcRet, now: now, calendar: laCal))
+        XCTAssertEqual(savedDossier.sessions.count, 1)
+        XCTAssertEqual(savedDossier.lifetimeMinutes, 119.0 / 60, accuracy: 0.05)
+        XCTAssertEqual(savedDossier.averageDecibels, 60.0, accuracy: 0.05)
+        XCTAssertTrue(store.hasUnacknowledgedPostRetirementActivity(for: liveMaxCard, lastWearEnd: liveMaxCard.lastWearDate, lastWearStart: liveMaxCard.lastWearStartDate))
+
+        // Unrelated other pair stays on a single continuous 5-min session even when Max is retired.
+        let proCard = try XCTUnwrap(postSaveSnapshot.cards(now: now, calendar: laCal).first { $0.modelKey == .airpodsPro })
+        let proDossier = try XCTUnwrap(postSaveSnapshot.dossier(forCardID: proCard.id, retirement: nil, now: now, calendar: laCal))
+        XCTAssertEqual(proDossier.sessions.count, 1)
+
+        // Single-device pre-retirement span crossing cutoff is detected by hasSpanCrossing(scopes:)
+        // and split cleanly upon isolated re-ingestion.
         var unsplit = ListeningAggregate()
         unsplit.ingest([
             RawListeningSample(start: preStart, end: preEnd, decibels: 60, device: maxDevPrimary),
             RawListeningSample(start: postStart, end: postEnd, decibels: 90, device: maxDevPrimary),
         ], now: now, calendar: laCal)
-        XCTAssertTrue(unsplit.hasSpanCrossing(cutoffs: [utcRet.careerCutoffEnd]))
+        XCTAssertTrue(unsplit.hasSpanCrossing(scopes: scopes))
 
         var isolated = ListeningAggregate()
         isolated.ingest([
             RawListeningSample(start: preStart, end: preEnd, decibels: 60, device: maxDevPrimary),
             RawListeningSample(start: postStart, end: postEnd, decibels: 90, device: maxDevAlias),
-        ], now: now, calendar: laCal, splitCutoffs: [utcRet.careerCutoffEnd])
-        XCTAssertFalse(isolated.hasSpanCrossing(cutoffs: [utcRet.careerCutoffEnd]))
+        ], now: now, calendar: laCal, cutoffScopes: scopes)
+        XCTAssertFalse(isolated.hasSpanCrossing(scopes: scopes))
+    }
 
-        let snapshot = LibrarySnapshot(aggregate: isolated, now: now, calendar: laCal, splitCutoffs: [utcRet.careerCutoffEnd])
-        let card = try XCTUnwrap(snapshot.cards(now: now, calendar: laCal).first)
-        let dossier = try XCTUnwrap(snapshot.dossier(forCardID: card.id, retirement: utcRet, now: now, calendar: laCal))
-        XCTAssertEqual(dossier.sessions.count, 1)
-        XCTAssertEqual(dossier.lifetimeMinutes, 119.0 / 60, accuracy: 0.05)
-        XCTAssertEqual(dossier.averageDecibels, 60.0, accuracy: 0.05)
+    @MainActor
+    func testRetiredDossierWearShareClipsOtherPairAttendanceInRetirementCalendar() throws {
+        var laCal = Calendar(identifier: .gregorian)
+        laCal.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let maxDev = DeviceDescriptor(name: "Studio Max", manufacturer: "Apple Inc.", model: "0x200A", localIdentifier: "share-max")
+        let proDev = DeviceDescriptor(name: "Daily Pro", manufacturer: "Apple Inc.", model: "0x2024", localIdentifier: "share-pro")
 
-        let defaults = UserDefaults(suiteName: "CrossTZCutoffTests.\(UUID().uuidString)")!
-        let store = DeviceLifecycleStore(defaults: defaults)
-        store.saveRetirement(utcRet, for: card)
-        XCTAssertTrue(store.hasUnacknowledgedPostRetirementActivity(for: card, lastWearEnd: card.lastWearDate, lastWearStart: card.lastWearStartDate))
+        let utcRet = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2),
+            timeZoneIdentifier: "UTC",
+            reason: .other,
+            farewellNote: ""
+        )
+        // Pair A worn 60m on Sep 2 UTC (12:00Z-13:00Z).
+        let maxStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 12, minute: 0))!
+        let maxEnd = maxStart.addingTimeInterval(3600)
+        // Pair B worn in LA late afternoon on Sep 2 LA (23:30Z-00:30Z: 30m pre-cutoff, 30m post-cutoff)
+        // and evening Sep 2 LA (01:00Z-02:00Z Sep 3 UTC: 60m all post-cutoff).
+        let proBridgeStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 2, hour: 23, minute: 30))!
+        let proBridgeEnd = proBridgeStart.addingTimeInterval(3600)
+        let proEveningStart = utcCalendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 1, minute: 0))!
+        let proEveningEnd = proEveningStart.addingTimeInterval(3600)
+        let now = date(2026, 9, 4, hour: 12)
+
+        var agg = ListeningAggregate()
+        agg.ingest([
+            RawListeningSample(start: maxStart, end: maxEnd, decibels: 64, device: maxDev),
+            RawListeningSample(start: proBridgeStart, end: proBridgeEnd, decibels: 64, device: proDev),
+            RawListeningSample(start: proEveningStart, end: proEveningEnd, decibels: 64, device: proDev),
+        ], now: now, calendar: laCal)
+
+        let snapshot = LibrarySnapshot(aggregate: agg, now: now, calendar: laCal)
+        let maxCard = try XCTUnwrap(snapshot.cards(now: now, calendar: laCal).first { $0.modelKey == .airpodsMax })
+        let dossier = try XCTUnwrap(snapshot.dossier(forCardID: maxCard.id, retirement: utcRet, now: now, calendar: laCal))
+
+        // Total wear across both pairs on Sep 2 UTC before cutoff = 60m (Max) + 30m (Pro) = 90m.
+        XCTAssertEqual(dossier.stats(.all).allDevicesMinutes, 90, accuracy: 0.1)
+        XCTAssertEqual(dossier.stats(.all).share, 60.0 / 90.0, accuracy: 0.01)
     }
 
     @MainActor
@@ -694,7 +773,7 @@ final class DeviceLifecycleTests: XCTestCase {
     }
 
     @MainActor
-    func testLongFarewellRedactsSpanAndHistoryDaysAndPreservesZhHansRhythmCaption() throws {
+    func testLongFarewellRedactsSpanAndHistoryDaysAcrossPeriodsAndTimezoneRange() throws {
         let maxCard = SampleCards.all[1]
         var localCal = Calendar(identifier: .gregorian)
         localCal.timeZone = .current
@@ -711,7 +790,7 @@ final class DeviceLifecycleTests: XCTestCase {
         var hiddenOpts = DossierShareOptions.default
         hiddenOpts.long.showFirstWear = false
         hiddenOpts.long.showSourceMetadata = true
-        let hiddenPages = DossierShareRenderer.renderPages(
+        let hiddenAllPages = DossierShareRenderer.renderPages(
             card: maxCard,
             dossier: retiredDossier,
             period: .all,
@@ -723,16 +802,68 @@ final class DeviceLifecycleTests: XCTestCase {
             locale: Locale(identifier: "en"),
             scale: 3
         )
-        XCTAssertEqual(hiddenPages.count, 4)
+        XCTAssertEqual(hiddenAllPages.count, 4)
 
-        let habitsText = try recognizeText(fromPNG: hiddenPages[2].pngData, languages: ["en-US"])
-        XCTAssertTrue(habitsText.contains("active days"), "Expected active days tile in Habits OCR: \(habitsText)")
-        XCTAssertFalse(habitsText.contains("/ \(retiredDossier.stats(.all).spanDays)"), "Hidden spanDays leaked in Habits OCR: \(habitsText)")
+        let rhythmAllText = try recognizeText(fromPNG: hiddenAllPages[1].pngData, languages: ["en-US"])
+        XCTAssertFalse(rhythmAllText.contains("daily avg"), "Hidden DAILY AVG appeared in .all Rhythm OCR: \(rhythmAllText)")
+        XCTAssertFalse(rhythmAllText.contains("since minted"), "Hidden 'Since minted' appeared in .all Rhythm OCR: \(rhythmAllText)")
 
-        let certText = try recognizeText(fromPNG: hiddenPages[3].pngData, languages: ["en-US"])
-        XCTAssertTrue(certText.contains("record days"), "Expected record days label in Certificate OCR: \(certText)")
-        XCTAssertFalse(certText.contains("of \(retiredDossier.historyDays) days"), "Hidden historyDays leaked in Certificate OCR: \(certText)")
+        let habitsAllText = try recognizeText(fromPNG: hiddenAllPages[2].pngData, languages: ["en-US"])
+        XCTAssertTrue(habitsAllText.contains("active days"), "Expected active days tile in Habits OCR: \(habitsAllText)")
+        XCTAssertFalse(habitsAllText.contains("/ \(retiredDossier.stats(.all).spanDays)"), "Hidden spanDays leaked in Habits OCR: \(habitsAllText)")
 
+        let certAllText = try recognizeText(fromPNG: hiddenAllPages[3].pngData, languages: ["en-US"])
+        XCTAssertTrue(certAllText.contains("record days"), "Expected record days label in Certificate OCR: \(certAllText)")
+        XCTAssertFalse(certAllText.contains("of \(retiredDossier.historyDays) days"), "Hidden historyDays leaked in Certificate OCR: \(certAllText)")
+
+        // Short-lived pair (first worn 3 days before retirement -> spanDays = 4 in .week) must also redact '/ 4' and 'DAILY AVG' in .week.
+        let shortStart = date(2026, 8, 30, hour: 12)
+        let shortEndSession = date(2026, 9, 2, hour: 14)
+        let utcRet = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 9, day: 2),
+            timeZoneIdentifier: "UTC",
+            reason: .other,
+            farewellNote: ""
+        )
+        let shortDossier = DeviceDossier(
+            id: "short-max",
+            nickname: "Short Max",
+            symbol: "airpodsmax",
+            serial: 2,
+            hardware: DossierSample.hardware(for: maxCard),
+            sessions: [
+                WearSession(start: shortStart, minutes: 30, averageDecibels: 64, peakDecibels: 70, isEstimated: false),
+                WearSession(start: shortEndSession, minutes: 45, averageDecibels: 66, peakDecibels: 72, isEstimated: false),
+            ],
+            otherDevicesDailyMinutes: [:],
+            sampleCount: 2,
+            lastSynced: date(2026, 9, 3, hour: 10),
+            retirement: utcRet,
+            now: date(2026, 9, 3, hour: 10),
+            calendar: utcCalendar
+        )
+        XCTAssertEqual(shortDossier.stats(.week).spanDays, 4)
+
+        let hiddenWeekPages = DossierShareRenderer.renderPages(
+            card: maxCard,
+            dossier: shortDossier,
+            period: .week,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: hiddenOpts,
+            scheme: .dark,
+            locale: Locale(identifier: "en"),
+            scale: 3
+        )
+        XCTAssertEqual(hiddenWeekPages.count, 4)
+        let weekRhythmText = try recognizeText(fromPNG: hiddenWeekPages[1].pngData, languages: ["en-US"])
+        XCTAssertFalse(weekRhythmText.contains("daily avg"), "Hidden DAILY AVG leaked in .week Rhythm OCR: \(weekRhythmText)")
+        XCTAssertTrue(weekRhythmText.contains("wears"), "Expected WEARS tile in redacted Rhythm OCR: \(weekRhythmText)")
+        let weekHabitsText = try recognizeText(fromPNG: hiddenWeekPages[2].pngData, languages: ["en-US"])
+        XCTAssertFalse(weekHabitsText.contains("/ 4"), "Hidden 4-day span leaked in .week Habits OCR: \(weekHabitsText)")
+
+        // Localized zh-Hans Rhythm caption + timezone-anchored date range.
         var zhOpts = DossierShareOptions.default
         zhOpts.long.showFirstWear = true
         let zhPages = DossierShareRenderer.renderPages(
@@ -751,6 +882,27 @@ final class DeviceLifecycleTests: XCTestCase {
         let rhythmZhText = try recognizeText(fromPNG: zhPages[1].pngData, languages: ["zh-Hans", "en-US"])
         XCTAssertFalse(rhythmZhText.contains("wears in"), "Expected localized Rhythm caption, got English: \(rhythmZhText)")
         XCTAssertTrue(rhythmZhText.contains("共聆听"), "Expected Simplified Chinese Rhythm caption: \(rhythmZhText)")
+
+        let utcRange = DateText.range(date(2026, 8, 27, hour: 0), date(2026, 9, 2, hour: 23), calendar: utcCalendar, locale: Locale(identifier: "en_US"))
+        XCTAssertEqual(utcRange, "Aug 27 – Sep 2")
+    }
+
+    func testWidgetSnapshotStoreRejectsStaleSnapshotWrites() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("widget-stale-guard-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let newerTime = date(2026, 9, 3, hour: 12)
+        let olderTime = date(2026, 9, 3, hour: 11)
+        let emptyCards: [HeadphoneCard] = []
+        let newer = WidgetSnapshot(summary: SampleData.summary, cards: emptyCards, isSample: false, now: newerTime)
+        let olderWithCards = WidgetSnapshot(summary: SampleData.summary, cards: SampleCards.all, isSample: false, now: olderTime)
+
+        XCTAssertTrue(try WidgetSnapshotStore.save(newer, to: url))
+        XCTAssertFalse(try WidgetSnapshotStore.save(olderWithCards, to: url))
+        let loaded = try XCTUnwrap(WidgetSnapshotStore.load(from: url))
+        XCTAssertEqual(loaded.cards.count, 0)
+        XCTAssertEqual(loaded.generatedAt, newerTime)
     }
 
     private func recognizeText(fromPNG data: Data, languages: [String]) throws -> String {

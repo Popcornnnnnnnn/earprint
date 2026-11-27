@@ -25,6 +25,7 @@ actor HealthIngestor {
     private var anchor: HKQueryAnchor?
     private var observer: HKObserverQuery?
     private var syncing = false
+    private var lastSnapshotScopes: [RetirementCutoffScope] = []
 
     init(
         store: HKHealthStore = HKHealthStore(),
@@ -54,26 +55,31 @@ actor HealthIngestor {
     static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     /// Snapshot from the disk cache, available instantly at launch.
-    func cachedSnapshot(now: Date = Date()) -> LibrarySnapshot? {
-        aggregate.isEmpty ? nil : LibrarySnapshot(
+    func cachedSnapshot(now: Date = Date(), cutoffScopes: [RetirementCutoffScope]? = nil) -> LibrarySnapshot? {
+        guard !aggregate.isEmpty else { return nil }
+        let scopes = cutoffScopes ?? DeviceLifecycleStore.persistedCutoffScopes()
+        lastSnapshotScopes = scopes
+        return LibrarySnapshot(
             aggregate: aggregate,
             now: now,
             calendar: .current,
-            splitCutoffs: DeviceLifecycleStore.persistedCutoffs()
+            cutoffScopes: scopes
         )
     }
 
-    func snapshot(now: Date = Date()) -> LibrarySnapshot {
-        LibrarySnapshot(
+    func snapshot(now: Date = Date(), cutoffScopes: [RetirementCutoffScope]? = nil) -> LibrarySnapshot {
+        let scopes = cutoffScopes ?? DeviceLifecycleStore.persistedCutoffScopes()
+        lastSnapshotScopes = scopes
+        return LibrarySnapshot(
             aggregate: aggregate,
             now: now,
             calendar: .current,
-            splitCutoffs: DeviceLifecycleStore.persistedCutoffs()
+            cutoffScopes: scopes
         )
     }
 
-    func needsRebuild(for cutoffs: [Date]) -> Bool {
-        aggregate.hasSpanCrossing(cutoffs: cutoffs)
+    func needsRebuild(for scopes: [RetirementCutoffScope]) -> Bool {
+        aggregate.hasSpanCrossing(scopes: scopes)
     }
 
     /// Whether iOS still needs to present the HealthKit permission sheet for read access.
@@ -100,12 +106,13 @@ actor HealthIngestor {
         syncing = true
         defer { syncing = false }
 
-        let splitCutoffs = DeviceLifecycleStore.persistedCutoffs()
+        let scopes = DeviceLifecycleStore.persistedCutoffScopes()
+        let scopesChanged = lastSnapshotScopes != scopes
         var rebuilt = anchor == nil
         var fetched = 0
         var working = aggregate
         var workingAnchor = anchor
-        if !rebuilt && working.hasSpanCrossing(cutoffs: splitCutoffs) {
+        if !rebuilt && working.hasSpanCrossing(scopes: scopes) {
             working = ListeningAggregate()
             workingAnchor = nil
             rebuilt = true
@@ -129,7 +136,7 @@ actor HealthIngestor {
             }
 
             let samples = result.addedSamples.map(Self.plain)
-            working.ingest(samples, now: Date(), calendar: .current, splitCutoffs: splitCutoffs)
+            working.ingest(samples, now: Date(), calendar: .current, cutoffScopes: scopes)
             fetched += samples.count
             workingAnchor = result.newAnchor
             progress?(fetched)
@@ -142,9 +149,9 @@ actor HealthIngestor {
         if fetched > 0 || rebuilt {
             cache.save(aggregate: aggregate, anchor: anchor)
         }
-        let unchanged = skipSnapshotIfUnchanged && fetched == 0 && !rebuilt && !aggregate.isEmpty
+        let unchanged = skipSnapshotIfUnchanged && fetched == 0 && !rebuilt && !aggregate.isEmpty && !scopesChanged
         return SyncResult(
-            snapshot: unchanged ? nil : snapshot(),
+            snapshot: unchanged ? nil : snapshot(cutoffScopes: scopes),
             isEmpty: aggregate.isEmpty,
             newSamples: fetched,
             rebuilt: rebuilt

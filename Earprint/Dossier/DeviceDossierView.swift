@@ -50,6 +50,7 @@ struct DeviceDossierView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
 
@@ -758,11 +759,11 @@ struct DeviceDossierView: View {
         VStack(alignment: .leading, spacing: 18) {
             DossierSectionHeader(index: 1, title: "Airtime", trailing: AppLanguage.current.text(period.title).uppercased(), accent: rarity.accent)
             if exporting {
-                Text(DossierFormat.range(stats.start, stats.end))
+                Text(DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(DossierPalette.dim)
             } else {
-                PeriodSwitcher(period: $period, rarity: rarity, rangeText: DossierFormat.range(stats.start, stats.end))
+                PeriodSwitcher(period: $period, rarity: rarity, rangeText: DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))
                 dataSourceNote.foregroundStyle(DossierPalette.dim)
             }
             AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))

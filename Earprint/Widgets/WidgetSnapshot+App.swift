@@ -118,6 +118,22 @@ extension WidgetSnapshot {
 }
 
 enum WidgetPublisher {
+    private static let queue = DispatchQueue(label: "com.earprint.widget-publisher", qos: .utility)
+    private static let stateLock = NSLock()
+    private static var latestGeneration: UInt64 = 0
+
+    static func enqueue(_ snapshot: WidgetSnapshot) {
+        let generation: UInt64 = stateLock.withLock {
+            latestGeneration &+= 1
+            return latestGeneration
+        }
+        queue.async {
+            let current: UInt64 = stateLock.withLock { latestGeneration }
+            guard generation == current else { return }
+            publish(snapshot)
+        }
+    }
+
     /// Writes the snapshot to the App Group and reloads widgets if it changed.
     static func publish(_ snapshot: WidgetSnapshot) {
         do {

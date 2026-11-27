@@ -58,7 +58,8 @@ enum DossierShareRenderer {
             isSampleData: isSampleData,
             options: options,
             customization: customization?.sanitized,
-            posterScheme: scheme
+            posterScheme: scheme,
+            locale: locale
         )
 
         switch format {
@@ -746,6 +747,7 @@ private struct DossierSharePosterCanvas {
     let options: DossierShareOptions
     var customization: CardCustomization? = nil
     let posterScheme: ColorScheme
+    var locale: Locale = AppLanguage.current.locale
 
     private var displayCard: HeadphoneCard { dossier.cardSnapshot(from: card) }
     private var displayRarity: Rarity { dossier.rarity }
@@ -1269,7 +1271,11 @@ private struct DossierSharePosterCanvas {
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
                         quickStatTile("WEAR SHARE", "\(Int((stats.share * 100).rounded()))%")
                         Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 24)
-                        quickStatTile("DAILY AVG", stats.dailyAverage.minutesText)
+                        if l.showFirstWear {
+                            quickStatTile("DAILY AVG", stats.dailyAverage.minutesText)
+                        } else {
+                            quickStatTile("WEARS", "\(stats.sessionCount)")
+                        }
                     }
                     .padding(.vertical, 8)
                     .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -1280,7 +1286,7 @@ private struct DossierSharePosterCanvas {
                     DossierTrendChart(
                         stats: stats,
                         rarity: rarity,
-                        firstWear: dossier.firstWear,
+                        firstWear: l.showFirstWear ? dossier.firstWear : nil,
                         selection: .constant(nil),
                         showsInteractionHint: false,
                         showsMintedMarker: l.showFirstWear,
@@ -1310,7 +1316,7 @@ private struct DossierSharePosterCanvas {
                                 if !l.showFirstWear && period == .all {
                                     Text("\(stats.sessionCount) wears")
                                 } else {
-                                    Text("\(stats.sessionCount) wears in \(DossierFormat.range(stats.start, stats.end))")
+                                    Text("\(stats.sessionCount) wears in \(DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))")
                                 }
                             }
                             .font(.caption2)
@@ -1332,9 +1338,9 @@ private struct DossierSharePosterCanvas {
         let budgetPct = Int((stats.weeklyDose * 100).rounded())
         let loudPct = Int((stats.loudShare * 100).rounded())
         let longestMinutes = stats.longest?.minutes ?? displayCard.longestMinutes
-        let activeDaysValue = (!l.showFirstWear && period == .all)
-            ? "\(stats.activeDays)"
-            : "\(stats.activeDays) / \(max(1, stats.spanDays))"
+        let activeDaysValue = l.showFirstWear
+            ? "\(stats.activeDays) / \(max(1, stats.spanDays))"
+            : "\(stats.activeDays)"
         return longFrame(page: .habits, index: index, total: total) {
             VStack(spacing: 7) {
                 if l.showWearHabits && l.showHearingHealth {

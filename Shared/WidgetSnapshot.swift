@@ -213,9 +213,16 @@ enum WidgetSnapshotStore {
         return d
     }
 
+    private static let saveLock = NSLock()
+
     /// Reads the latest snapshot. Nil when the app never wrote one, or the version does not match.
     static func load() -> WidgetSnapshot? {
-        guard let url = fileURL, let data = try? Data(contentsOf: url),
+        guard let url = fileURL else { return nil }
+        return load(from: url)
+    }
+
+    static func load(from url: URL) -> WidgetSnapshot? {
+        guard let data = try? Data(contentsOf: url),
               let snapshot = try? decoder.decode(WidgetSnapshot.self, from: data),
               snapshot.version == WidgetSnapshot.currentVersion else { return nil }
         return snapshot
@@ -226,14 +233,23 @@ enum WidgetSnapshotStore {
     @discardableResult
     static func save(_ snapshot: WidgetSnapshot) throws -> Bool {
         guard let url = fileURL else { throw StoreError.noAppGroup }
-        // Compare without `generatedAt` so re-publishing identical data does not burn the reload budget.
-        if var old = load() {
-            old.generatedAt = snapshot.generatedAt
-            if old == snapshot { return false }
+        return try save(snapshot, to: url, reload: reloadWidgets)
+    }
+
+    @discardableResult
+    static func save(_ snapshot: WidgetSnapshot, to url: URL, reload: () -> Void = {}) throws -> Bool {
+        try saveLock.withLock {
+            // Reject snapshots older than the persisted one so out-of-order publishes never resurrect retired cards.
+            if var old = load(from: url) {
+                if snapshot.generatedAt < old.generatedAt { return false }
+                // Compare without `generatedAt` so re-publishing identical data does not burn the reload budget.
+                old.generatedAt = snapshot.generatedAt
+                if old == snapshot { return false }
+            }
+            try encoder.encode(snapshot).write(to: url, options: .atomic)
+            reload()
+            return true
         }
-        try encoder.encode(snapshot).write(to: url, options: .atomic)
-        reloadWidgets()
-        return true
     }
 
     static func reloadWidgets() {
