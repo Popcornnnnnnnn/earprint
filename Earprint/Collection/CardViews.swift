@@ -320,25 +320,6 @@ struct TierBadgePill: View {
     }
 }
 
-/// Subtle soft studio lightbox lift behind headphone artwork.
-struct StudioHeadphoneLift: View {
-    var diameter: CGFloat = 148
-
-    var body: some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    colors: [.white.opacity(0.20), .clear],
-                    center: .center,
-                    startRadius: 4,
-                    endRadius: diameter * 0.55
-                )
-            )
-            .frame(width: diameter, height: diameter)
-            .allowsHitTesting(false)
-    }
-}
-
 /// Knife-edge specular glass rim for collector cards; full rainbow prism ring on 2,000h `.holo`.
 struct CardSpecularBorder: View {
     var cornerRadius: CGFloat
@@ -543,12 +524,9 @@ struct CardHorizontalFront: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .offset(x: tilt.width * 2.5, y: tilt.height * 1.8)
 
-                ZStack {
-                    StudioHeadphoneLift(diameter: 120)
-                    HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
-                }
-                .frame(width: 120, height: 120)
-                .offset(x: -tilt.width * 7, y: -tilt.height * 5)
+                HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: false)
+                    .frame(width: 120, height: 120)
+                    .offset(x: -tilt.width * 7, y: -tilt.height * 5)
             }
         }
         .foregroundStyle(ink)
@@ -621,17 +599,12 @@ struct CardFront: View {
 
             Spacer()
 
-            ZStack {
-                if showSymbol {
-                    StudioHeadphoneLift(diameter: showsChargingCase ? 172 : 152)
-                }
-                HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
-                                 usesProductArtwork: usesProductArtwork)
-            }
-            .frame(height: showsChargingCase ? 186 : 165)
-            .opacity(showSymbol ? 1 : 0)
-            .offset(x: tilt.width * -8, y: tilt.height * -8)
-            .frame(maxWidth: .infinity)
+            HeadphoneArtwork(card: card, colorOption: colorOption, showsChargingCase: showsChargingCase,
+                             usesProductArtwork: usesProductArtwork)
+                .frame(height: showsChargingCase ? 186 : 165)
+                .opacity(showSymbol ? 1 : 0)
+                .offset(x: tilt.width * -8, y: tilt.height * -8)
+                .frame(maxWidth: .infinity)
 
             Spacer()
 
