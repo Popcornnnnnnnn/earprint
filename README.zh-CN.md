@@ -1,9 +1,5 @@
 <div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="Earprint/Assets.xcassets/AppIcon.appiconset/AppIcon-Dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="Earprint/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png">
-    <img alt="Earprint 应用图标" src="Earprint/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png" width="96">
-  </picture>
+  <img alt="Earprint 应用图标" src="docs/showcase/app-icon.png" width="96">
 
   <h1>Earprint</h1>
   <p>
