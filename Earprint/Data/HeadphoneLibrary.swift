@@ -187,7 +187,7 @@ final class HeadphoneLibrary: ObservableObject {
         var summary = SampleData.summary
         summary.periodLabel = DateText.weekRange(endingAt: now, calendar: calendar)
         if let parsed = DateText.parse("2026.10.30", dateFormat: "yyyy.MM.dd", calendar: calendar) {
-            summary.firstUse = DateText.monthDay(parsed, calendar: calendar)
+            summary.firstUse = DateText.dotted(parsed, calendar: calendar)
         }
         return summary
     }
@@ -196,7 +196,7 @@ final class HeadphoneLibrary: ObservableObject {
         guard let parsed = DateText.parse(dottedDate, dateFormat: "yyyy.MM.dd", calendar: calendar) else {
             return dottedDate
         }
-        return DateText.monthDay(parsed, calendar: calendar)
+        return DateText.dotted(parsed, calendar: calendar)
     }
 
     private static func sampleSummary(for card: HeadphoneCard, now: Date, calendar: Calendar) -> ListeningSummary {
@@ -247,7 +247,7 @@ final class HeadphoneLibrary: ObservableObject {
         let earliestFirst = cards
             .compactMap { DateText.parse($0.firstMet, dateFormat: "yyyy.MM.dd", calendar: calendar) }
             .min()
-            .map { DateText.monthDay($0, calendar: calendar) } ?? "—"
+            .map { DateText.dotted($0, calendar: calendar) } ?? "—"
 
         return ListeningSummary(
             deviceName: AppLanguage.current.text("All Headphones"),

@@ -116,6 +116,101 @@ enum DossierShareRenderer {
         guard let uiImage = renderer.uiImage, let data = uiImage.pngData() else { return nil }
         return DossierShareImage(id: id, pageLabel: label, fileStem: fileStem, uiImage: uiImage, pngData: data)
     }
+
+    static func renderPagesAsync(
+        card: HeadphoneCard,
+        dossier: DeviceDossier,
+        period: DossierPeriod,
+        color: DeviceColorOption?,
+        isSampleData: Bool,
+        format: DossierShareFormat,
+        options: DossierShareOptions = .default,
+        customization: CardCustomization? = nil,
+        scheme: ColorScheme,
+        locale: Locale = .current,
+        scale: CGFloat = 3
+    ) async -> [DossierShareImage] {
+        let sanitizedModel = card.model
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+        let canvas = DossierSharePosterCanvas(
+            card: card,
+            dossier: dossier,
+            period: period,
+            color: color,
+            isSampleData: isSampleData,
+            options: options,
+            customization: customization?.sanitized,
+            posterScheme: scheme,
+            locale: locale
+        )
+
+        let effectiveScale = options.is4K ? options.scale : scale
+        switch format {
+        case .simple:
+            guard let page = await renderPageAsync(
+                id: 0,
+                label: "Summary",
+                fileStem: "Earprint-\(sanitizedModel)-Summary",
+                scheme: scheme,
+                locale: locale,
+                scale: effectiveScale,
+                content: canvas.simpleOnePagePoster
+            ) else {
+                return []
+            }
+            return [page]
+
+        case .long:
+            let pages = options.long.effectivePages
+            let total = pages.count
+            var results: [DossierShareImage] = []
+            results.reserveCapacity(total)
+            for (index, page) in pages.enumerated() {
+                if Task.isCancelled { return [] }
+                let stem = "Earprint-\(sanitizedModel)-\(String(format: "%02d", index + 1))-\(page.fileSlug)"
+                if let rendered = await renderPageAsync(
+                    id: index,
+                    label: page.labelKey,
+                    fileStem: stem,
+                    scheme: scheme,
+                    locale: locale,
+                    scale: effectiveScale,
+                    content: canvas.longPageView(for: page, index: index, total: total)
+                ) {
+                    results.append(rendered)
+                }
+                await Task.yield()
+            }
+            return results
+        }
+    }
+
+    private static func renderPageAsync<Content: View>(
+        id: Int,
+        label: LocalizedStringKey,
+        fileStem: String,
+        scheme: ColorScheme,
+        locale: Locale,
+        scale: CGFloat,
+        content: Content
+    ) async -> DossierShareImage? {
+        let renderer = ImageRenderer(
+            content: content
+                .frame(width: pageSize.width, height: pageSize.height)
+                .environment(\.locale, locale)
+                .environment(\.colorScheme, scheme)
+                .dynamicTypeSize(.medium)
+        )
+        renderer.scale = scale
+        renderer.isOpaque = true
+        guard let uiImage = renderer.uiImage else { return nil }
+        let data = await Task.detached(priority: .userInitiated) {
+            uiImage.pngData()
+        }.value
+        guard let data else { return nil }
+        return DossierShareImage(id: id, pageLabel: label, fileStem: fileStem, uiImage: uiImage, pngData: data)
+    }
 }
 
 struct DossierShareSheet: View {
@@ -129,6 +224,8 @@ struct DossierShareSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var envColorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
     @Namespace private var switcherNamespace
@@ -216,12 +313,24 @@ struct DossierShareSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    formatSwitcher
-                    customizeButton
-                    posterThemeToggle
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        formatSwitcher
+                        HStack(spacing: 8) {
+                            customizeButton
+                            posterThemeToggle
+                            Spacer()
+                        }
+                    }
+                    .padding(.top, 6)
+                } else {
+                    HStack(spacing: 8) {
+                        formatSwitcher
+                        customizeButton
+                        posterThemeToggle
+                    }
+                    .padding(.top, 6)
                 }
-                .padding(.top, 6)
 
                 if isCurrentFormatCustomized {
                     customizedStatusBanner
@@ -286,7 +395,7 @@ struct DossierShareSheet: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DossierIconPressStyle())
         .accessibilityLabel("Customize details")
     }
 
@@ -298,15 +407,18 @@ struct DossierShareSheet: View {
             Spacer()
             Button("Reset") {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.snappy(duration: 0.22)) {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) {
                     resetCurrentFormat()
                 }
             }
             .font(.caption.weight(.bold))
             .foregroundStyle(Theme.primaryText)
+            .padding(.horizontal, 6)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, 2)
         .background(Theme.surfaceFill, in: Capsule())
         .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
     }
@@ -323,7 +435,7 @@ struct DossierShareSheet: View {
     private var posterThemeToggle: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.snappy(duration: 0.22)) {
+            withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) {
                 posterScheme = activePosterScheme == .dark ? .light : .dark
             }
         } label: {
@@ -334,21 +446,27 @@ struct DossierShareSheet: View {
                 .background(Theme.surfaceFill, in: Circle())
                 .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DossierIconPressStyle())
         .accessibilityLabel(activePosterScheme == .light ? "Light poster" : "Dark poster")
+        .accessibilityHint("Switches between light and dark poster")
     }
 
     // MARK: - Format Switcher
 
     private var formatSwitcher: some View {
-        HStack(spacing: 6) {
+        let isAX = dynamicTypeSize.isAccessibilitySize
+        let layout = isAX
+            ? AnyLayout(VStackLayout(spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 6))
+
+        return layout {
             ForEach(DossierShareFormat.allCases) { option in
                 let selected = format == option
                 Button {
                     guard format != option else { return }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     activePageIndex = 0
-                    withAnimation(.snappy(duration: 0.24)) {
+                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
                         format = option
                     }
                 } label: {
@@ -363,24 +481,37 @@ struct DossierShareSheet: View {
                             .minimumScaleFactor(0.8)
                             .foregroundStyle(selected ? Theme.invertedText.opacity(0.68) : Theme.secondaryText)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 38)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundStyle(selected ? Theme.invertedText : Theme.primaryText.opacity(0.85))
                     .background {
                         if selected {
-                            Capsule()
-                                .fill(Theme.invertedFill)
-                                .matchedGeometryEffect(id: "shareFormatPill", in: switcherNamespace)
+                            if reduceMotion {
+                                Capsule().fill(Theme.invertedFill)
+                            } else {
+                                Capsule()
+                                    .fill(Theme.invertedFill)
+                                    .matchedGeometryEffect(id: "shareFormatPill", in: switcherNamespace)
+                            }
                         }
                     }
                     .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DossierIconPressStyle())
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
         .padding(4)
-        .background(Theme.surfaceFill, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+        .background {
+            if isAX {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.surfaceFill)
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+            } else {
+                Capsule()
+                    .fill(Theme.surfaceFill)
+                    .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+            }
+        }
     }
 
     private func formatSubtitle(for option: DossierShareFormat) -> LocalizedStringKey {
@@ -464,9 +595,10 @@ struct DossierShareSheet: View {
                             Capsule()
                                 .fill(page.id == safeIndex ? dossier.rarity.accent : Theme.primaryText.opacity(0.25))
                                 .frame(width: page.id == safeIndex ? 18 : 6, height: 6)
-                                .animation(.snappy(duration: 0.22), value: safeIndex)
+                                .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: safeIndex)
                         }
                     }
+                    .accessibilityHidden(true)
 
                     if activePages.indices.contains(safeIndex) {
                         Text("\(safeIndex + 1) / \(activePages.count) · \(Text(activePages[safeIndex].pageLabel))")
@@ -525,7 +657,7 @@ struct DossierShareSheet: View {
         await Task.yield()
         guard !Task.isCancelled else { return }
 
-        let rendered = DossierShareRenderer.renderPages(
+        let rendered = await DossierShareRenderer.renderPagesAsync(
             card: card,
             dossier: dossier,
             period: period,
@@ -769,22 +901,23 @@ private struct DossierSharePosterCanvas {
         let isLight = posterScheme == .light
         let fg: Color = isLight ? Color(red: 0.075, green: 0.080, blue: 0.110) : .white
         let canvasBg = isLight ? Color(red: 0.960, green: 0.964, blue: 0.976) : Color(red: 0.035, green: 0.035, blue: 0.055)
+        let frameAccent = DossierContrast.accentColor(rarity: displayRarity, proFoil: customization?.proFoil, colorScheme: posterScheme)
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 pageTag()
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
                     .tracking(1.6)
-                    .foregroundStyle(displayRarity.accent)
+                    .foregroundStyle(frameAccent)
                 Spacer()
                 Text(LocalizedStringKey(displayRarity.title))
                     .font(.system(size: 9, weight: .heavy, design: .rounded))
                     .tracking(1.0)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3.5)
-                    .background(displayRarity.accent.opacity(0.16), in: Capsule())
-                    .overlay(Capsule().strokeBorder(displayRarity.accent.opacity(0.45), lineWidth: 0.9))
-                    .foregroundStyle(displayRarity.accent)
+                    .background(frameAccent.opacity(0.16), in: Capsule())
+                    .overlay(Capsule().strokeBorder(frameAccent.opacity(0.45), lineWidth: 0.9))
+                    .foregroundStyle(frameAccent)
             }
 
             content()
@@ -795,7 +928,7 @@ private struct DossierSharePosterCanvas {
                     HStack(spacing: 5) {
                         Image(systemName: "ear.fill")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(displayRarity.accent)
+                            .foregroundStyle(frameAccent)
                         Text("Earprint")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                         Text("· \(card.model)")
@@ -843,7 +976,7 @@ private struct DossierSharePosterCanvas {
         let snapshotCard = displayCard
         let foil = customization?.proFoil
         let ink = foil?.ink ?? rarity.ink
-        let accent = foil?.accent ?? rarity.accent
+        let accent = DossierContrast.accentColor(rarity: rarity, proFoil: foil, colorScheme: posterScheme)
         let hours = snapshotCard.lifetimeMinutes / 60
         let visibleTiles = simpleVisibleTiles(s)
         return posterFrame(showsHardwareID: s.showHardwareID) {
@@ -997,8 +1130,8 @@ private struct DossierSharePosterCanvas {
                                     Capsule()
                                         .fill(DossierPalette.surfaceFill)
                                     Capsule()
-                                        .fill(rarity.accent)
-                                        .frame(width: max(tierProgress > 0 ? 6 : 0, geo.size.width * tierProgress))
+                                        .fill(accent)
+                                        .frame(width: min(geo.size.width, max(tierProgress > 0 ? 4 : 0, geo.size.width * tierProgress)))
                                 }
                             }
                             .frame(height: 6)
@@ -1025,7 +1158,7 @@ private struct DossierSharePosterCanvas {
         let snapshotCard = displayCard
         var tiles: [MetricTileItem] = []
         if s.showSessions {
-            tiles.append(MetricTileItem(id: "sessions", label: "Sessions", value: "\(snapshotCard.sessions)", valueColor: DossierPalette.primaryText))
+            tiles.append(MetricTileItem(id: "sessions", label: "Wears", value: "\(snapshotCard.sessions)", valueColor: DossierPalette.primaryText))
         }
         if s.showLongestWear {
             tiles.append(MetricTileItem(id: "longest", label: "Longest", value: snapshotCard.longestMinutes.minutesText, valueColor: DossierPalette.primaryText))
@@ -1034,8 +1167,8 @@ private struct DossierSharePosterCanvas {
             tiles.append(MetricTileItem(
                 id: "avg",
                 label: "Avg level",
-                value: "\(Int(snapshotCard.averageDecibels.rounded())) dB",
-                valueColor: Theme.levelColor(db: snapshotCard.averageDecibels, colorScheme: posterScheme)
+                value: "\(Int(snapshotCard.averageDecibels.rounded())) dB(A)",
+                valueColor: Theme.levelTextColor(db: snapshotCard.averageDecibels)
             ))
         }
         if s.showFirstWear {
@@ -1078,7 +1211,7 @@ private struct DossierSharePosterCanvas {
                         .opacity(0.72)
                     Text("listening")
                         .font(.system(size: 9))
-                        .opacity(0.5)
+                        .opacity(0.68)
                 }
             }
             .frame(width: 138, height: 138)
@@ -1290,9 +1423,10 @@ private struct DossierSharePosterCanvas {
                         selection: .constant(nil),
                         showsInteractionHint: false,
                         showsMintedMarker: l.showFirstWear,
-                        chartHeight: 132
+                        chartHeight: 132,
+                        calendar: dossier.calendar
                     )
-                    .dossierTile(tint: rarity.accent)
+                    .dossierTile()
                 }
 
                 if l.showDayClock {
@@ -1316,7 +1450,7 @@ private struct DossierSharePosterCanvas {
                             }
                             Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(nightPct > 20 ? Theme.moderateColor : Color.adaptive(light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1), dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)))
+                                .foregroundStyle(nightPct > 25 ? Theme.moderateText : DossierPalette.dim)
                             Group {
                                 if !l.showFirstWear {
                                     Text("\(stats.sessionCount) wears")
@@ -1330,7 +1464,7 @@ private struct DossierSharePosterCanvas {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .dossierTile(tint: rarity.glow)
+                    .dossierTile()
                 }
             }
         }
@@ -1349,26 +1483,32 @@ private struct DossierSharePosterCanvas {
         return longFrame(page: .habits, index: index, total: total) {
             VStack(spacing: 7) {
                 if l.showWearHabits && l.showHearingHealth {
+                    let accent = DossierContrast.accentColor(rarity: rarity, proFoil: nil, colorScheme: posterScheme)
                     HStack(spacing: 8) {
-                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: rarity.accent)
+                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
                     .frame(height: 62)
 
                     HStack(spacing: 8) {
-                        posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels, colorScheme: posterScheme))
-                        posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loudColor : Theme.quietColor)
+                        posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelTextColor(db: stats.averageDecibels))
+                        posterMetricTile(
+                            "WHO weekly dose",
+                            "\(budgetPct)%",
+                            valueColor: stats.weeklyDose < 0.5 ? Theme.quietText : (stats.weeklyDose < 1 ? Theme.moderateText : Theme.loudText)
+                        )
                     }
                     .frame(height: 62)
 
                     HStack(spacing: 8) {
-                        posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
+                        posterMetricTile("Time in ≥80 dB wears", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateText : DossierPalette.primaryText)
                         posterMetricTile("Active days", activeDaysValue)
                     }
                     .frame(height: 62)
                 } else if l.showWearHabits {
+                    let accent = DossierContrast.accentColor(rarity: rarity, proFoil: nil, colorScheme: posterScheme)
                     HStack(spacing: 8) {
-                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: rarity.accent)
+                        posterMetricTile("Longest single wear", longestMinutes.minutesText, valueColor: accent)
                         posterMetricTile("Avg session", stats.averagePerWear.minutesText)
                     }
                     .frame(height: 68)
@@ -1377,18 +1517,22 @@ private struct DossierSharePosterCanvas {
                         .frame(height: 68)
                 } else if l.showHearingHealth {
                     HStack(spacing: 8) {
-                        posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelColor(db: stats.averageDecibels, colorScheme: posterScheme))
-                        posterMetricTile("WHO weekly dose", "\(budgetPct)%", valueColor: budgetPct > 80 ? Theme.loudColor : Theme.quietColor)
+                        posterMetricTile("Avg loudness", "\(Int(stats.averageDecibels.rounded())) dB(A)", valueColor: Theme.levelTextColor(db: stats.averageDecibels))
+                        posterMetricTile(
+                            "WHO weekly dose",
+                            "\(budgetPct)%",
+                            valueColor: stats.weeklyDose < 0.5 ? Theme.quietText : (stats.weeklyDose < 1 ? Theme.moderateText : Theme.loudText)
+                        )
                     }
                     .frame(height: 68)
 
-                    posterMetricTile("Loud sessions ≥80 dB", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateColor : DossierPalette.primaryText)
+                    posterMetricTile("Time in ≥80 dB(A) avg wears", "\(loudPct)%", valueColor: loudPct > 15 ? Theme.moderateText : DossierPalette.primaryText)
                         .frame(height: 68)
                 }
 
                 if l.showGradeBreakdown {
                     GradeBreakdown(grade: dossier.grade, accent: rarity.accent)
-                        .dossierTile(tint: rarity.accent)
+                        .dossierTile()
                 }
             }
         }
@@ -1539,7 +1683,7 @@ private struct DossierSharePosterCanvas {
 
                         Spacer(minLength: 6)
 
-                        Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DateText.dotted(item.date, calendar: dossier.calendar))
+                        Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort(calendar: dossier.calendar)) : DateText.dotted(item.date, calendar: dossier.calendar))
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundStyle(item.isFuture ? rarity.accent.opacity(0.85) : DossierPalette.dim)
                             .lineLimit(1)

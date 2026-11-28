@@ -419,7 +419,6 @@ final class IntegrationRegressionTests: XCTestCase {
             colorStore: DeviceColorStore(defaults: UserDefaults(suiteName: "CardDetailRenderTest") ?? .standard),
             onSelectCard: { _ in },
             openDossier: {},
-            openTiers: {},
             close: {}
         )
         .preferredColorScheme(.dark)

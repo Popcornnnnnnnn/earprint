@@ -71,12 +71,33 @@
         }
       }
     },
+    "%@%lld%% %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$lld%% %3$@"
+          }
+        }
+      }
+    },
     "%@, graded %@, %@. %@, product ID %@.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "%@，评分 %@，%@。%@，产品编号 %@。"
+          }
+        }
+      }
+    },
+    "%@/d": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/天"
           }
         }
       }
@@ -111,12 +132,24 @@
         }
       }
     },
-    "%lld dB": {
+    "%lld dB(A) · 7-day avg": {
+      "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld dB"
+            "value": "%lld dB(A) · 近 7 天均值"
+          }
+        }
+      }
+    },
+    "%lld dB(A) · Day avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dB(A) · 当日均值"
           }
         }
       }
@@ -138,6 +171,56 @@
             "state": "translated",
             "value": "%lld 天前"
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days ago"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld earlier milestones": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另有 %lld 个早期里程碑"
+          }
+        }
+      }
+    },
+    "%lld hours, %lld hours to %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已聆听 %1$lld 小时，距%3$@还差 %2$lld 小时"
+          }
+        }
+      }
+    },
+    "%lld milestones in between": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中间另有 %lld 个里程碑"
+          }
         }
       }
     },
@@ -151,12 +234,41 @@
         }
       }
     },
+    "%lld months": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个月"
+          }
+        }
+      }
+    },
     "%lld months ago": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld 个月前"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld month ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld months ago"
+                }
+              }
+            }
           }
         }
       }
@@ -176,7 +288,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已解锁 %lld / %lld 款"
+            "value": "已解锁 %1$lld / %2$lld 项"
           }
         }
       }
@@ -197,6 +309,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 副耳机"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pair"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pairs"
+                }
+              }
+            }
           }
         }
       }
@@ -266,7 +396,25 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld 次聆听"
+            "value": "%lld 次佩戴"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld wear"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld wears"
+                }
+              }
+            }
           }
         }
       }
@@ -288,6 +436,35 @@
             "state": "translated",
             "value": "%lld 年前"
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld year ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld years ago"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld%% late (22:00–04:00)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜 %lld%%（22:00–04:00）"
+          }
         }
       }
     },
@@ -307,6 +484,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "世界卫生组织参考限额的 %lld%%"
+          }
+        }
+      }
+    },
+    "%lld%% of limit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "限额的 %lld%%"
+          }
+        }
+      }
+    },
+    "%lld%% of your listening happens after 10 pm.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 的聆听发生在晚 10 点之后。"
+          }
+        }
+      }
+    },
+    "%lld%% of your listening is before 8 am.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 的聆听发生在早 8 点之前。"
+          }
+        }
+      }
+    },
+    "%lld%% of your listening is on the way to and from work.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 的聆听发生在通勤路上。"
           }
         }
       }
@@ -357,6 +574,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "距 %2$@ 还差 %1$lld 小时"
+          }
+        }
+      }
+    },
+    "%lldh to %@ tier": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距 %2$@ 等级还差 %1$lld 小时"
           }
         }
       }
@@ -421,6 +649,28 @@
         }
       }
     },
+    "1 earlier milestone": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另有 1 个早期里程碑"
+          }
+        }
+      }
+    },
+    "1 milestone in between": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中间另有 1 个里程碑"
+          }
+        }
+      }
+    },
     "1 page": {
       "localizations": {
         "zh-Hans": {
@@ -447,6 +697,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "百小时音乐与通话的默契伙伴"
+          }
+        }
+      }
+    },
+    "12-month share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12 个月占比"
           }
         }
       }
@@ -492,11 +752,23 @@
       }
     },
     "28-DAY EARPRINT": {
+      "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "近 28 天声纹"
+            "value": "近 28 天耳印"
+          }
+        }
+      }
+    },
+    "28-Day Earprint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "28 天耳印"
           }
         }
       }
@@ -507,6 +779,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "近 28 天聆听图谱"
+          }
+        }
+      }
+    },
+    "30-day share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 天占比"
+          }
+        }
+      }
+    },
+    "30D EAR GRADE": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 天护耳评分"
           }
         }
       }
@@ -601,6 +894,27 @@
         }
       }
     },
+    "7-day WHO dose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天 WHO 剂量"
+          }
+        }
+      }
+    },
+    "7-day WHO safe-listening dose, %lld percent of 40 hours per week at 80 decibels": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 天 WHO 安全聆听剂量，占每周 80 分贝 40 小时上限的 %lld%%"
+          }
+        }
+      }
+    },
     "7-day exposure across all pairs · WHO reference: 40 hours at 80 dB(A)": {
       "localizations": {
         "zh-Hans": {
@@ -621,6 +935,27 @@
         }
       }
     },
+    "7-day share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 天占比"
+          }
+        }
+      }
+    },
+    "7-day total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 天总计"
+          }
+        }
+      }
+    },
     "7d": {
       "localizations": {
         "zh-Hans": {
@@ -637,6 +972,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "常伴左右的日常主力耳机"
+          }
+        }
+      }
+    },
+    "ALL-TIME": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计"
           }
         }
       }
@@ -676,7 +1022,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "极境冰蓝"
+            "value": "极地冰蓝"
           }
         }
       }
@@ -771,6 +1117,27 @@
         }
       }
     },
+    "All Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间"
+          }
+        }
+      }
+    },
+    "All Time · by %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间 · 按 %@"
+          }
+        }
+      }
+    },
     "All aggregation happens locally. There is no account, no cloud upload, no ads, and no analytics tracking.": {
       "localizations": {
         "zh-Hans": {
@@ -791,6 +1158,17 @@
         }
       }
     },
+    "All time · %lld months": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间 · %lld 个月"
+          }
+        }
+      }
+    },
     "All-Day Listener": {
       "localizations": {
         "zh-Hans": {
@@ -801,12 +1179,43 @@
         }
       }
     },
+    "All-Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间"
+          }
+        }
+      }
+    },
+    "All-Time Archive": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间归档"
+          }
+        }
+      }
+    },
     "All-time listening": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "累计聆听"
+          }
+        }
+      }
+    },
+    "All-time share": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总收听占比"
           }
         }
       }
@@ -991,6 +1400,58 @@
         }
       }
     },
+    "Avg %@ / day": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均 %@"
+          }
+        }
+      }
+    },
+    "Avg %@ / month": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月均 %@"
+          }
+        }
+      }
+    },
+    "Avg %@ / week": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周均 %@"
+          }
+        }
+      }
+    },
+    "Avg / day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均时长"
+          }
+        }
+      }
+    },
+    "Avg / wear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次均值"
+          }
+        }
+      }
+    },
     "Avg level": {
       "localizations": {
         "zh-Hans": {
@@ -1017,6 +1478,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "平均单次"
+          }
+        }
+      }
+    },
+    "Avg volume": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量"
+          }
+        }
+      }
+    },
+    "Avg weekly WHO dose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周均 WHO 剂量"
+          }
+        }
+      }
+    },
+    "Avg weekly WHO dose · 40h @ 80 dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周均 WHO 剂量 · 80 dB(A) 40 小时"
           }
         }
       }
@@ -1107,6 +1601,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "背景"
+          }
+        }
+      }
+    },
+    "Bars scaled to peak · Color = dB(A) · Tap an hour": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按峰值比例显示 · 颜色表示 dB(A) · 点按查看时段"
+          }
+        }
+      }
+    },
+    "Bars scaled to peak · Color = dB(A) · Tap or hold": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柱长按峰值缩放 · 颜色表音量 · 点按或长按"
           }
         }
       }
@@ -1391,6 +1906,17 @@
         }
       }
     },
+    "Career": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生涯概览"
+          }
+        }
+      }
+    },
     "Certificate": {
       "localizations": {
         "zh-Hans": {
@@ -1587,12 +2113,34 @@
         }
       }
     },
+    "Color = dB(A) · Drag to inspect": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色即音量 · 拖动查看"
+          }
+        }
+      }
+    },
     "Commute Soundtracker": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "通勤听众"
+          }
+        }
+      }
+    },
+    "Computed locally from Apple Health · Updated %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据在本地由 Apple 健康计算 · 更新于 %@"
           }
         }
       }
@@ -1818,7 +2366,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "深海钴蓝"
+            "value": "深钴蓝"
           }
         }
       }
@@ -1933,6 +2481,28 @@
         }
       }
     },
+    "Days worn": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "佩戴天数"
+          }
+        }
+      }
+    },
+    "Deduction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扣分"
+          }
+        }
+      }
+    },
     "Deep Purple tier": {
       "localizations": {
         "zh-Hans": {
@@ -1999,6 +2569,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "开发者工具"
+          }
+        }
+      }
+    },
+    "Device & Bundle ID": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备与来源标识"
           }
         }
       }
@@ -2083,6 +2663,17 @@
         }
       }
     },
+    "Drag bars to inspect": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动柱条查看"
+          }
+        }
+      }
+    },
     "Drag to tilt": {
       "localizations": {
         "zh-Hans": {
@@ -2098,7 +2689,18 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "聆听评分"
+            "value": "护耳评分"
+          }
+        }
+      }
+    },
+    "EARPRINT ARCHIVE": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT 档案"
           }
         }
       }
@@ -2119,6 +2721,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "EARPRINT 评分档案"
+          }
+        }
+      }
+    },
+    "EARPRINT VAULT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EARPRINT 典藏"
           }
         }
       }
@@ -2204,11 +2817,12 @@
       }
     },
     "Ear Grade": {
+      "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "聆听评分"
+            "value": "护耳评分"
           }
         }
       }
@@ -2305,6 +2919,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Earprint 年度回顾"
+          }
+        }
+      }
+    },
+    "Earprint habit score · Last 30 Days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 聆听习惯评分 · 近 30 天"
           }
         }
       }
@@ -2549,6 +3174,17 @@
         }
       }
     },
+    "Factor": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评估项"
+          }
+        }
+      }
+    },
     "Farewell note": {
       "localizations": {
         "zh-Hans": {
@@ -2605,6 +3241,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "翻转卡片"
+          }
+        }
+      }
+    },
+    "Flip to card front": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻转至卡片正面"
           }
         }
       }
@@ -2704,7 +3350,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "冰川青釉"
+            "value": "冰川青"
           }
         }
       }
@@ -2714,7 +3360,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "金卡"
+            "value": "金色"
           }
         }
       }
@@ -2999,6 +3645,17 @@
         }
       }
     },
+    "Hearing Health": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "听力健康"
+          }
+        }
+      }
+    },
     "Hearing budget": {
       "localizations": {
         "zh-Hans": {
@@ -3105,6 +3762,17 @@
         }
       }
     },
+    "Impact": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扣分"
+          }
+        }
+      }
+    },
     "Independent App Notice": {
       "localizations": {
         "zh-Hans": {
@@ -3185,6 +3853,39 @@
         }
       }
     },
+    "Last 12 Months": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 12 个月"
+          }
+        }
+      }
+    },
+    "Last 30 Days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 30 天"
+          }
+        }
+      }
+    },
+    "Last 7 Days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天"
+          }
+        }
+      }
+    },
     "Last 7 days": {
       "localizations": {
         "zh-Hans": {
@@ -3230,7 +3931,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "累计时长"
+            "value": "累计概况"
           }
         }
       }
@@ -3335,6 +4036,17 @@
         }
       }
     },
+    "Listening over time for this pair": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此耳机的聆听时长趋势"
+          }
+        }
+      }
+    },
     "Listening rings, WHO weekly budgets, and Ear Grade scores are for personal informational purposes only and are not a medical device.": {
       "localizations": {
         "zh-Hans": {
@@ -3411,6 +4123,17 @@
         }
       }
     },
+    "Longest Wear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长单次佩戴"
+          }
+        }
+      }
+    },
     "Longest session": {
       "localizations": {
         "zh-Hans": {
@@ -3436,7 +4159,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最长单次聆听"
+            "value": "最长单次佩戴"
           }
         }
       }
@@ -3456,17 +4179,51 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "较响"
+            "value": "偏响"
           }
         }
       }
     },
-    "Loud sessions ≥80 dB": {
+    "Loud 76+": {
+      "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "高音量聆听 ≥80 dB"
+            "value": "偏响 76+"
+          }
+        }
+      }
+    },
+    "Loud 76+ dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偏响 76+ dB(A)"
+          }
+        }
+      }
+    },
+    "Loud average": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均偏响"
+          }
+        }
+      }
+    },
+    "Loud avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偏响均值"
           }
         }
       }
@@ -3671,6 +4428,16 @@
         }
       }
     },
+    "Minted %@ · %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "铸造于 %1$@ · %2$@"
+          }
+        }
+      }
+    },
     "Minted on your very first listen": {
       "localizations": {
         "zh-Hans": {
@@ -3721,6 +4488,28 @@
         }
       }
     },
+    "Moderate average": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均适中"
+          }
+        }
+      }
+    },
+    "Moderate avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适中均值"
+          }
+        }
+      }
+    },
     "Modified: cropped front render; simplified geometry to ~45k tris, normalized, converted to USDZ, compressed textures (source FBX provenance via Andrea Balbo).": {
       "localizations": {
         "zh-Hans": {
@@ -3767,6 +4556,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "月"
+          }
+        }
+      }
+    },
+    "Monthly Breakdown": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按月明细"
+          }
+        }
+      }
+    },
+    "Monthly archive": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按月归档"
           }
         }
       }
@@ -3921,6 +4732,27 @@
         }
       }
     },
+    "No deduction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无扣分"
+          }
+        }
+      }
+    },
+    "No deduction · Not medical advice.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无扣分 · 非医疗建议。"
+          }
+        }
+      }
+    },
     "No headphone samples found in Apple Health. If you denied access, enable it in Settings › Health › Data Access › Earprint.": {
       "localizations": {
         "zh-Hans": {
@@ -4061,6 +4893,103 @@
         }
       }
     },
+    "Of 12m total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占近 12 个月总计"
+          }
+        }
+      }
+    },
+    "Of 30d total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占近 30 天总计"
+          }
+        }
+      }
+    },
+    "Of 7d total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占近 7 天总计"
+          }
+        }
+      }
+    },
+    "Of all listening": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占全部聆听"
+          }
+        }
+      }
+    },
+    "Of all pairs": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占全部耳机"
+          }
+        }
+      }
+    },
+    "Of all-time total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占总时长"
+          }
+        }
+      }
+    },
+    "Oldest inside → latest outside": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由内向外由旧至新"
+          }
+        }
+      }
+    },
+    "Oldest inside → latest · Tap an hour": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由内向外由旧至新 · 点按查看时段"
+          }
+        }
+      }
+    },
+    "Oldest inside → out": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由内向外"
+          }
+        }
+      }
+    },
     "One ring per day, newest on the outside. Midnight is at the top.": {
       "localizations": {
         "zh-Hans": {
@@ -4141,6 +5070,17 @@
         }
       }
     },
+    "PEAK HOUR": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高峰时段"
+          }
+        }
+      }
+    },
     "PLATINUM · MASTER": {
       "localizations": {
         "zh-Hans": {
@@ -4166,7 +5106,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "极光棱镜 · 传说"
+            "value": "棱镜极光 · 传说"
           }
         }
       }
@@ -4406,7 +5346,40 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "较轻"
+            "value": "轻柔"
+          }
+        }
+      }
+    },
+    "Quiet <66": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔 <66"
+          }
+        }
+      }
+    },
+    "Quiet average": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均轻柔"
+          }
+        }
+      }
+    },
+    "Quiet avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔均值"
           }
         }
       }
@@ -4613,6 +5586,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在渲染动态卡片"
+          }
+        }
+      }
+    },
+    "Replay your %@ listening story": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重温你的 %@ 聆听故事"
+          }
+        }
+      }
+    },
+    "Replay your listening story": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重温你的聆听故事"
           }
         }
       }
@@ -4852,7 +5846,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "银铝"
+            "value": "银色"
           }
         }
       }
@@ -4902,7 +5896,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "烟熏钛碳"
+            "value": "烟熏钛"
           }
         }
       }
@@ -5033,6 +6027,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存封存信息"
+          }
+        }
+      }
+    },
+    "Scaled to peak · Color = dB(A) · Tap an hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按峰值缩放 · 颜色 = dB(A) · 点按时段"
           }
         }
       }
@@ -5207,6 +6212,28 @@
         }
       }
     },
+    "Show all %lld milestones": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开全部 %lld 个里程碑"
+          }
+        }
+      }
+    },
+    "Show fewer": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起"
+          }
+        }
+      }
+    },
     "Silver": {
       "localizations": {
         "zh-Hans": {
@@ -5253,6 +6280,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "自 %@"
+          }
+        }
+      }
+    },
+    "Since minted · by %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自铸造以来 · 按%@"
           }
         }
       }
@@ -5657,6 +6694,17 @@
         }
       }
     },
+    "Technical Details": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "技术详情"
+          }
+        }
+      }
+    },
     "Thank you for supporting Earprint.": {
       "localizations": {
         "zh-Hans": {
@@ -5737,12 +6785,45 @@
         }
       }
     },
+    "Time in ≥80 dB wears": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "≥80 dB 时段时长占比"
+          }
+        }
+      }
+    },
+    "Time in ≥80 dB(A) wears": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "≥80 dB(A) 聆听占比"
+          }
+        }
+      }
+    },
     "Time listened": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "聆听时长"
+          }
+        }
+      }
+    },
+    "Time of Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全天时段分布"
           }
         }
       }
@@ -5969,6 +7050,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "封存于 %@"
+          }
+        }
+      }
+    },
+    "Value": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数值"
           }
         }
       }
@@ -6215,12 +7307,34 @@
         }
       }
     },
+    "Wear Profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "佩戴特征"
+          }
+        }
+      }
+    },
     "Wear habits": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "佩戴习惯"
+          }
+        }
+      }
+    },
+    "Wears / day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均佩戴"
           }
         }
       }
@@ -6236,11 +7350,65 @@
       }
     },
     "Weekly WHO dose": {
+      "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每周声音暴露"
+            "value": "周均 WHO 剂量"
+          }
+        }
+      }
+    },
+    "Weekly WHO dose (40h/wk · 80 dB(A))": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周 WHO 剂量（80 dB(A) · 40 小时/周）"
+          }
+        }
+      }
+    },
+    "Weekly WHO dose · 30d avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周 WHO 剂量 · 近 30 天均值"
+          }
+        }
+      }
+    },
+    "Weekly WHO dose · 40h @ 80 dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周 WHO 剂量 · 80 dB(A) 40 小时"
+          }
+        }
+      }
+    },
+    "Weekly WHO dose · 80 dB(A)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周 WHO 剂量 · 80 dB(A)"
+          }
+        }
+      }
+    },
+    "Weekly WHO equiv. · 40h @ 80 dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等效每周 WHO 剂量 · 80 dB(A) 40 小时"
           }
         }
       }
@@ -6355,6 +7523,16 @@
         }
       }
     },
+    "Your headphones keep you company all day long.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的耳机全天陪伴着你。"
+          }
+        }
+      }
+    },
     "Your listening rhythm": {
       "localizations": {
         "zh-Hans": {
@@ -6391,6 +7569,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的购买正在等待确认。"
+          }
+        }
+      }
+    },
+    "Your year in review": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年度聆听回顾"
           }
         }
       }
@@ -6485,16 +7674,6 @@
         }
       }
     },
-    "peak %lld dB": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "峰值 %lld dB"
-          }
-        }
-      }
-    },
     "sessions": {
       "localizations": {
         "zh-Hans": {
@@ -6521,6 +7700,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "自卡片生成以来"
+          }
+        }
+      }
+    },
+    "today": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
           }
         }
       }
@@ -6575,12 +7765,2014 @@
         }
       }
     },
+    "yesterday": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨天"
+          }
+        }
+      }
+    },
     "“%@”": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "“%@”"
+          }
+        }
+      }
+    },
+    "Not medical advice.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非医疗建议。"
+          }
+        }
+      }
+    },
+    "Mod 66–75": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适中 66–75"
+          }
+        }
+      }
+    },
+    "7-day WHO dose · 40h @ 80 dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天 WHO 剂量 · 80 dB(A) 40 小时"
+          }
+        }
+      }
+    },
+    "Tap Flip to turn · swipe to switch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按「翻面」翻卡 · 左右滑动切换"
+          }
+        }
+      }
+    },
+    "Tap Flip to turn": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按「翻面」翻卡"
+          }
+        }
+      }
+    },
+    "%@ / day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / 天"
+          }
+        }
+      }
+    },
+    "Inspect Ear Grade": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看护耳评分"
+          }
+        }
+      }
+    },
+    "30-day value": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 30 天数值"
+          }
+        }
+      }
+    },
+    "No deductions across %lld factors": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项指标均无扣分"
+          }
+        }
+      }
+    },
+    "decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分贝"
+          }
+        }
+      }
+    },
+    "All %lld pairs": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部 %lld 副"
+          }
+        }
+      }
+    },
+    "%lldh to %@ · %lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距 %2$@ 还差 %1$lld 小时 · %3$lld%%"
+          }
+        }
+      }
+    },
+    "%lld hours, %lld percent toward %@, %lld hours to go": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 小时，距离 %3$@ 已完成 %2$lld%%，还差 %4$lld 小时"
+          }
+        }
+      }
+    },
+    "Show all %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看全部 %lld 项"
+          }
+        }
+      }
+    },
+    "SELECTED": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前选中"
+          }
+        }
+      }
+    },
+    "%@, %lld percent, %lld hours to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，已完成 %2$lld%%，距 %4$@ 还差 %3$lld 小时"
+          }
+        }
+      }
+    },
+    "%@, max tier reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，已达最高等级"
+          }
+        }
+      }
+    },
+    "Share of listening": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听占比"
+          }
+        }
+      }
+    },
+    "Bar = avg daily time · Color = dB(A) · Tap an hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柱长 = 日均时长 · 颜色 = dB(A) · 点击小时查看"
+          }
+        }
+      }
+    },
+    "Starts at 10.0 · Deductions round to 0.1 using the WHO 40h @ 80 dB(A) weekly reference.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "满分 10.0 · 按 WHO 每周 80 dB(A) 40 小时参考扣分并精确到 0.1。"
+          }
+        }
+      }
+    },
+    "Overview": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "概览"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动"
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃"
+          }
+        }
+      }
+    },
+    "Show Front": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示正面"
+          }
+        }
+      }
+    },
+    "Flip": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻面"
+          }
+        }
+      }
+    },
+    "Customize": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义"
+          }
+        }
+      }
+    },
+    "Vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存"
+          }
+        }
+      }
+    },
+    "Show card front": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示卡片正面"
+          }
+        }
+      }
+    },
+    "Flip slab": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻转展盒"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
+          }
+        }
+      }
+    },
+    "Open %@ 3D Card": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 %@ 3D 卡片"
+          }
+        }
+      }
+    },
+    "Double-tap to toggle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点两下切换"
+          }
+        }
+      }
+    },
+    "28-day avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天均值"
+          }
+        }
+      }
+    },
+    "28 days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天"
+          }
+        }
+      }
+    },
+    "7-day avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天均值"
+          }
+        }
+      }
+    },
+    "Day avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当日均值"
+          }
+        }
+      }
+    },
+    "Total": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总计"
+          }
+        }
+      }
+    },
+    "Wears": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "佩戴次数"
+          }
+        }
+      }
+    },
+    "ALL TIME": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部时间"
+          }
+        }
+      }
+    },
+    "Last 28 days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 28 天"
+          }
+        }
+      }
+    },
+    "Final 28 days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后 28 天"
+          }
+        }
+      }
+    },
+    "%@ preserved": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存 %@"
+          }
+        }
+      }
+    },
+    "Max tier reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已达最高等级"
+          }
+        }
+      }
+    },
+    "Peak": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值"
+          }
+        }
+      }
+    },
+    "Avg": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "均值"
+          }
+        }
+      }
+    },
+    "Max": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长"
+          }
+        }
+      }
+    },
+    "Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时长"
+          }
+        }
+      }
+    },
+    "Moderate 66–75": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适中 66–75"
+          }
+        }
+      }
+    },
+    "Oldest inside → out · Arc = duration · Tap an hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内圈最早 → 外圈最新 · 弧长 = 时长 · 点击小时"
+          }
+        }
+      }
+    },
+    "Oldest inside → out · Tap an hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内圈最早 → 外圈最新 · 点击小时"
+          }
+        }
+      }
+    },
+    "Daily hours · Color = dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日时长 · 颜色 = dB(A)"
+          }
+        }
+      }
+    },
+    "Release to clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "松开清除"
+          }
+        }
+      }
+    },
+    "Tap center to clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击中心清除"
+          }
+        }
+      }
+    },
+    "Tap center or hour to clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击中心或小时清除"
+          }
+        }
+      }
+    },
+    "Comparing %@ vs %lld dB(A) avg · Tap center to clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对比 %1$@ 与 %2$lld dB(A) 均值 · 点击中心清除"
+          }
+        }
+      }
+    },
+    "Computed locally from Apple Health": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据在本地由 Apple 健康计算"
+          }
+        }
+      }
+    },
+    "%@ Earprint Wrapped": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Earprint 年度回顾"
+          }
+        }
+      }
+    },
+    "%lld%% during rush hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 集中在通勤高峰"
+          }
+        }
+      }
+    },
+    "%lld%% late night (22:00–04:00)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 在深夜 (22:00–04:00)"
+          }
+        }
+      }
+    },
+    "%lld%% before 8 am": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% 在早 8 点前"
+          }
+        }
+      }
+    },
+    "Balanced across the day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全天分布均衡"
+          }
+        }
+      }
+    },
+    "No headphones yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无耳机记录"
+          }
+        }
+      }
+    },
+    "%lld pairs · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 副 · %2$@"
+          }
+        }
+      }
+    },
+    "%lld%% of time": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占时长 %lld%%"
+          }
+        }
+      }
+    },
+    "%@ / %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$lld"
+          }
+        }
+      }
+    },
+    "Card %@ of %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$@ 张，共 %2$lld 张"
+          }
+        }
+      }
+    },
+    "Brushed Mist": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雾银拉丝"
+          }
+        }
+      }
+    },
+    "Arctic Ice": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极地冰蓝"
+          }
+        }
+      }
+    },
+    "Glacier Teal": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冰川青"
+          }
+        }
+      }
+    },
+    "Deep Cobalt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深钴蓝"
+          }
+        }
+      }
+    },
+    "Smoked Titanium": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "烟熏钛"
+          }
+        }
+      }
+    },
+    "Prism Aurora": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棱镜极光"
+          }
+        }
+      }
+    },
+    "PRISTINE": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "满分典范"
+          }
+        }
+      }
+    },
+    "GEM MINT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极佳"
+          }
+        }
+      }
+    },
+    "MINT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "优秀"
+          }
+        }
+      }
+    },
+    "NEAR MINT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "良好"
+          }
+        }
+      }
+    },
+    "EXCELLENT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较佳"
+          }
+        }
+      }
+    },
+    "VERY GOOD": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚可"
+          }
+        }
+      }
+    },
+    "WELL WORN": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偏高"
+          }
+        }
+      }
+    },
+    "UNGRADED": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未评分"
+          }
+        }
+      }
+    },
+    "Last worn %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次佩戴：%@"
+          }
+        }
+      }
+    },
+    "Retired %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封存于 %@"
+          }
+        }
+      }
+    },
+    "Avg / calendar day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日均（自然日）"
+          }
+        }
+      }
+    },
+    "vs prev 7d": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前 7 天"
+          }
+        }
+      }
+    },
+    "vs prev 30d": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前 30 天"
+          }
+        }
+      }
+    },
+    "vs prev yr": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较前一年"
+          }
+        }
+      }
+    },
+    "Daily hours · Drag to inspect": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日时长 · 滑动查看详情"
+          }
+        }
+      }
+    },
+    "Weekly hours · Drag to inspect": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周时长 · 滑动查看详情"
+          }
+        }
+      }
+    },
+    "Monthly hours · Drag to inspect": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每月时长 · 滑动查看详情"
+          }
+        }
+      }
+    },
+    "Best day · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高日 · %@"
+          }
+        }
+      }
+    },
+    "Best · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高 · %@"
+          }
+        }
+      }
+    },
+    "Peak sample %lld dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值采样 %lld dB(A)"
+          }
+        }
+      }
+    },
+    "No loudness samples in this period": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该时段暂无音量采样"
+          }
+        }
+      }
+    },
+    "Relative to period peak": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相对该时段峰值"
+          }
+        }
+      }
+    },
+    "Apple Health span": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康记录跨度"
+          }
+        }
+      }
+    },
+    "All %lld recorded days · synced %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部 %1$lld 天记录 · 同步于 %2$@"
+          }
+        }
+      }
+    },
+    "%lld of %lld recorded days · synced %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld 天记录 · 同步于 %3$@"
+          }
+        }
+      }
+    },
+    "How it’s graded": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评分说明"
+          }
+        }
+      }
+    },
+    "Last 30 Days · Start at 10.0": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 30 天 · 满分 10.0"
+          }
+        }
+      }
+    },
+    "Not enough listening in the last 30 days to compute a grade.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 30 天聆听数据不足，暂无法评分。"
+          }
+        }
+      }
+    },
+    "Wears avg ≥80 dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均 ≥80 dB(A) 的时长占比"
+          }
+        }
+      }
+    },
+    "Late-night (22:00–04:00)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜聆听 (22:00–04:00)"
+          }
+        }
+      }
+    },
+    "Minus %.1f points": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扣 %.1f 分"
+          }
+        }
+      }
+    },
+    "Week of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 当周"
+          }
+        }
+      }
+    },
+    "wk of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 当周"
+          }
+        }
+      }
+    },
+    "day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天"
+          }
+        }
+      }
+    },
+    "week": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周"
+          }
+        }
+      }
+    },
+    "%lld wears · max %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 次佩戴 · 最长 %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld wears": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld 次佩戴"
+          }
+        }
+      }
+    },
+    "%lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%%"
+          }
+        }
+      }
+    },
+    "First wear · %1$@ · %2$@ tier": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次佩戴 · %1$@ · %2$@ 等级"
+          }
+        }
+      }
+    },
+    "Same day as minting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成卡片当日达成"
+          }
+        }
+      }
+    },
+    "1 day after minting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成卡片后 1 天"
+          }
+        }
+      }
+    },
+    "%lld days after minting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成卡片后 %lld 天"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day after minting"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days after minting"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 小时"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hour"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hours"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%@ tier": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 等级"
+          }
+        }
+      }
+    },
+    "Card upgraded at %lldh": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计 %lld 小时升级"
+          }
+        }
+      }
+    },
+    "%@ in one go": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次佩戴 %@"
+          }
+        }
+      }
+    },
+    "%1$@ across %2$lld wears": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld 次累计 %1$@"
+          }
+        }
+      }
+    },
+    "%@ to go · at your pace": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按当前节奏还差 %@"
+          }
+        }
+      }
+    },
+    "Clear selection": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除选中"
+          }
+        }
+      }
+    },
+    "No listening data": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无聆听数据"
+          }
+        }
+      }
+    },
+    "Peak hour %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高峰时段 %@"
+          }
+        }
+      }
+    },
+    "28-day Earprint dial, oldest ring inside to newest outside": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "28 天耳印表盘，最旧在内圈，最新在外圈"
+          }
+        }
+      }
+    },
+    "%@ Earprint dial, oldest ring inside to newest outside": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@耳印表盘，最旧在内圈，最新在外圈"
+          }
+        }
+      }
+    },
+    "%@, %@ Earprint dial": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@耳印表盘"
+          }
+        }
+      }
+    },
+    "Swipe up or down to inspect hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上下轻扫查看各小时"
+          }
+        }
+      }
+    },
+    "Swipe up or down to inspect daily bars": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上下轻扫查看每日柱状图"
+          }
+        }
+      }
+    },
+    "Swipe up or down to inspect weekly bars": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上下轻扫查看每周柱状图"
+          }
+        }
+      }
+    },
+    "Swipe up or down to inspect monthly bars": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上下轻扫查看每月柱状图"
+          }
+        }
+      }
+    },
+    "Double-tap to flip slab, or use actions to inspect Ear Grade": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点两下翻转展盒，或通过操作查看护耳评分"
+          }
+        }
+      }
+    },
+    "Double-tap to show front, or use actions to inspect Ear Grade": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点两下显示正面，或通过操作查看护耳评分"
+          }
+        }
+      }
+    },
+    "%@ total, %@ daily average": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总计 %1$@，日均 %2$@"
+          }
+        }
+      }
+    },
+    "%@ total, %lld of %lld days active": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总计 %1$@，活跃 %2$lld / %3$lld 天"
+          }
+        }
+      }
+    },
+    "%lld percent late night, 22:00 to 04:00": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜聆听占比 %lld%%，22:00 至 04:00"
+          }
+        }
+      }
+    },
+    "Average weekly WHO safe-listening dose, %lld percent of 40 hours per week at 80 decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周均 WHO 安全聆听剂量，占每周 80 分贝 40 小时上限的 %lld%%"
+          }
+        }
+      }
+    },
+    "Loudness key: quiet under 66, moderate 66 to 75, loud 76 plus decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音量图例：低于 66 分贝为轻柔，66 至 75 分贝为适中，76 分贝及以上为偏响"
+          }
+        }
+      }
+    },
+    "Daily average dashed line. Loudness key: quiet under 66, moderate 66 to 75, loud 76 plus decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "虚线为日均时长。音量图例：低于 66 分贝为轻柔，66 至 75 分贝为适中，76 分贝及以上为偏响"
+          }
+        }
+      }
+    },
+    "average %lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均 %lld 分贝"
+          }
+        }
+      }
+    },
+    "longest wear %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最长佩戴 %@"
+          }
+        }
+      }
+    },
+    "%@, %@, %lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@，%3$lld 分贝"
+          }
+        }
+      }
+    },
+    "%@, %@ a day, %lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，日均 %2$@，%3$lld 分贝"
+          }
+        }
+      }
+    },
+    "%@, %lld decibels average": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，平均 %2$lld 分贝"
+          }
+        }
+      }
+    },
+    "%@, %@, %lld wears, longest %@, %lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@，%3$lld 次佩戴，最长 %4$@，%5$lld 分贝"
+          }
+        }
+      }
+    },
+    "%@, %@, back face, %@ in last 28 days, lifetime %@, %lld wears%@%@, graded %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@，背面，近 28 天聆听 %3$@，累计 %4$@，%5$lld 次佩戴%6$@%7$@，评分 %8$@"
+          }
+        }
+      }
+    },
+    "Vaulted · %@, %@, %@ preserved": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已封存 · %1$@，%2$@，留存 %3$@"
+          }
+        }
+      }
+    },
+    "Habit score · Not a hearing test": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聆听习惯评分 · 非听力检测"
+          }
+        }
+      }
+    },
+    "No data": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无数据"
+          }
+        }
+      }
+    },
+    "History read": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已读取记录"
+          }
+        }
+      }
+    },
+    "Average volume (lifetime)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均音量（累计）"
+          }
+        }
+      }
+    },
+    "DEVICE NAME": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备名称"
+          }
+        }
+      }
+    },
+    "%lldm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld分"
+          }
+        }
+      }
+    },
+    "%@h %lldm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@时%2$lld分"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld%% %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ %1$lld%%"
+          }
+        }
+      }
+    },
+    "Peak sample %lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值采样 %lld 分贝"
+          }
+        }
+      }
+    },
+    "%1$lld decibels average, %2$@ zone. Scale: quiet under 66, moderate 66 to 75, loud 76 plus decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均 %1$lld 分贝，属于%2$@区间。分级标准：66 分贝以下为轻柔，66 至 75 分贝为适中，76 分贝及以上为偏响"
+          }
+        }
+      }
+    },
+    "%@, %@, 30-day Ear Grade %@ out of 10, %@, %@, %lld wears, since %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@，30 天护耳评分 %3$@（满分 10），%4$@，累计 %5$@，%6$lld 次佩戴，始于 %7$@"
+          }
+        }
+      }
+    },
+    "Bar = avg daily time · Tap or drag an hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柱高 = 日均时长 · 轻点或滑动查看时段"
+          }
+        }
+      }
+    },
+    "Earprint habit score starting at 10.0 · Deductions round to 0.1; dose uses the WHO 40h @ 80 dB(A) weekly reference.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earprint 习惯评分满分 10.0 · 扣分按 0.1 四舍五入；剂量以 WHO 80 dB(A) 每周 40 小时为基准。"
+          }
+        }
+      }
+    },
+    "Bronze": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青铜"
+          }
+        }
+      }
+    },
+    "Gold": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金色"
+          }
+        }
+      }
+    },
+    "PRISM AURORA": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棱镜极光"
+          }
+        }
+      }
+    },
+    "%lld decibels": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分贝"
+          }
+        }
+      }
+    },
+    "Up %lld percent %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@上升 %1$lld%%"
+          }
+        }
+      }
+    },
+    "Down %lld percent %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@下降 %1$lld%%"
+          }
+        }
+      }
+    },
+    "%@, %@ a day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，日均 %2$@"
+          }
+        }
+      }
+    },
+    "%@, No listening data": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，暂无聆听数据"
+          }
+        }
+      }
+    },
+    "%@, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@，%2$@"
+          }
+        }
+      }
+    },
+    "%lld dB(A)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dB(A)"
+          }
+        }
+      }
+    },
+    "Opens full device dossier": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开完整设备档案"
+          }
+        }
+      }
+    },
+    "Late night (22–04)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深夜（22–04）"
+          }
+        }
+      }
+    },
+    "30-day habit score · Not a hearing test": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 30 天习惯评分 · 非听力检测"
+          }
+        }
+      }
+    },
+    "%@ to go · at your 30-day pace": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还差 %@ · 按近 30 天节奏"
+          }
+        }
+      }
+    },
+    "Period share": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周期占比"
+          }
+        }
+      }
+    },
+    "Tap or drag an hour": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点或拖动任意小时查看"
+          }
+        }
+      }
+    },
+    "Share of all listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占总聆听时长"
+          }
+        }
+      }
+    },
+    "Avg ≥80 dB(A) time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "均响 ≥80 dB(A) 时长"
           }
         }
       }
