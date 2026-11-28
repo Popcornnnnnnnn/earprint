@@ -286,6 +286,32 @@ final class DossierShareOptionsTests: XCTestCase {
         XCTAssertFalse(certWithoutMilestonesText.contains("milestones"))
         XCTAssertTrue(certWithoutMilestonesText.contains("earprint archive"))
 
+        var certHWNoSource = page4Custom
+        certHWNoSource.long.showCertificate = true
+        certHWNoSource.long.showMilestones = false
+        certHWNoSource.long.showHardwareID = true
+        certHWNoSource.long.showFirstWear = false
+        certHWNoSource.long.showSourceMetadata = false
+        let certHWOnlyPages = DossierShareRenderer.renderPages(
+            card: card,
+            dossier: dossier,
+            period: .month,
+            color: color,
+            isSampleData: false,
+            format: .long,
+            options: certHWNoSource,
+            scheme: .dark,
+            locale: locale,
+            scale: 3
+        )
+        XCTAssertEqual(certHWOnlyPages.count, 1)
+        let certHWOnlyText = try recognizeNormalizedText(fromPNG: certHWOnlyPages[0].pngData)
+        XCTAssertTrue(certHWOnlyText.contains(dossier.hardware.productID.lowercased()))
+        XCTAssertFalse(certHWOnlyText.contains("recorded by"))
+        XCTAssertFalse(certHWOnlyText.contains(dossier.hardware.sourceName.lowercased()))
+        XCTAssertFalse(certHWOnlyText.contains("source bundle"))
+        XCTAssertFalse(certHWOnlyText.contains("minted"))
+
         page4Custom.long.showCertificate = false
         page4Custom.long.showMilestones = true
         let milestonesOnly = DossierShareRenderer.renderPages(

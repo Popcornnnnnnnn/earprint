@@ -614,7 +614,7 @@ struct CertificateLabel: View {
                                 engraved("MODEL", hw.modelName)
                                 if showsFirstWear {
                                     engraved("MINTED", dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—")
-                                } else {
+                                } else if showsSourceMetadata {
                                     engraved("RECORDED BY", hw.sourceName)
                                 }
                             }
@@ -632,7 +632,7 @@ struct CertificateLabel: View {
                                 engraved("COLLECTION NUMBER", String(format: "#%04d", card.serial))
                                 if let retirement = dossier.retirement {
                                     engraved("RETIRED", retirement.formattedRetiredDate)
-                                } else {
+                                } else if showsFirstWear {
                                     engraved("RECORDED BY", hw.sourceName)
                                 }
                             }
