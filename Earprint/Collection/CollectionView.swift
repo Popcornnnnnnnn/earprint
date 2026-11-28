@@ -230,9 +230,6 @@ struct CollectionView: View {
                     },
                     openDossier: {
                         dossierCardID = PresentedCardID(id: liveCard.id)
-                    },
-                    openTiers: {
-                        showCardTiers = true
                     }
                 ) {
                     selected = nil
@@ -260,7 +257,7 @@ struct CollectionView: View {
         }
         .foregroundStyle(Theme.primaryText)
         .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
-        .animation(.easeInOut(duration: 0.22), value: hidesTabBar)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: hidesTabBar)
         .fullScreenCover(item: $dossierCardID) { presented in
             if let liveCard = resolveCard(id: presented.id) {
                 DeviceDossierView(
@@ -436,7 +433,8 @@ struct CollectionView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(Theme.secondaryText)
                                 .padding(.horizontal, 16)
-                                .frame(minHeight: 36)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
                         }
                     }
                 }
@@ -452,7 +450,7 @@ struct CollectionView: View {
     private var vaultHeader: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.snappy(duration: 0.25)) {
+            withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) {
                 vaultExpanded.toggle()
             }
         } label: {
@@ -479,11 +477,13 @@ struct CollectionView: View {
                     .rotationEffect(.degrees(vaultExpanded ? 0 : -90))
             }
             .padding(.top, 8)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Vault, \(retiredCards.count) retired pairs")
         .accessibilityValue(vaultExpanded ? "Expanded" : "Collapsed")
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func horizontalThumbnail(_ card: HeadphoneCard) -> some View {
@@ -1231,11 +1231,11 @@ struct CardDetail: View {
     var lifecycleStore: DeviceLifecycleStore? = nil
     var onSelectCard: (HeadphoneCard) -> Void = { _ in }
     var openDossier: () -> Void = {}
-    var openTiers: (() -> Void)? = nil
     let close: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("cardDetail.hasSeenFlipHint") private var hasSeenFlipHint = false
     @State private var showsFlipHintThisVisit = false
     @State private var flipState = CardDeckFlipState()
@@ -1265,6 +1265,7 @@ struct CardDetail: View {
     @State private var isDismissing = false
     @State private var holdsMotionHub = false
     @State private var showColorBar = ProcessInfo.processInfo.arguments.contains("-showColors")
+    @State private var isScrubbingBackDial = false
     @State private var space = LayoutSpace()
 
     private var flipped: Bool { flipState.isShowingBack(for: card.id) }
@@ -1379,7 +1380,7 @@ struct CardDetail: View {
                     startRadius: 20,
                     endRadius: 340
                 )
-                .animation(.easeInOut(duration: 0.35), value: card.id)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: card.id)
             }
             .ignoresSafeArea()
             .opacity(appeared ? 1 : 0)
@@ -1414,7 +1415,8 @@ struct CardDetail: View {
             dragTilt = .zero
             modelInteractionTilt = nil
             showColorBar = false
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
+            isScrubbingBackDial = false
+            withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.92)) {
                 deckPosition = CGFloat(activeIndex)
             }
             schedule3DSettleIfNeeded()
@@ -1426,13 +1428,14 @@ struct CardDetail: View {
                 overlayCardIndex = newIndex
             }
             if abs(deckPosition - CGFloat(newIndex)) > 0.001 {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.92)) {
                     deckPosition = CGFloat(newIndex)
                 }
             }
         }
         .onChange(of: flipped) { _, isFlipped in
             if !isFlipped {
+                isScrubbingBackDial = false
                 schedule3DSettleIfNeeded()
             }
         }
@@ -1453,7 +1456,7 @@ struct CardDetail: View {
                 holdsMotionHub = true
                 MotionHub.shared.acquire()
             }
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { appeared = true }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.86)) { appeared = true }
             Task { await prewarmNeighbors(around: activeIndex) }
             Task { await runDemoIfNeeded() }
         }
@@ -1522,8 +1525,8 @@ struct CardDetail: View {
     /// Horizontal swipe across the card or stage deals to neighboring cards.
     /// Evaluates translation in `.global` space on stationary containers so card movement never feeds back
     /// into gesture deltas, and tracks liveness via `@GestureState` so system cancellations recover cleanly.
-    private func cardNavigationSwipe(updating gestureActive: GestureState<Bool>) -> some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+    private func cardNavigationSwipe(updating gestureActive: GestureState<Bool>, minimumDistance: CGFloat = 12) -> some Gesture {
+        DragGesture(minimumDistance: minimumDistance, coordinateSpace: .global)
             .updating(gestureActive) { _, active, _ in
                 active = true
             }
@@ -1580,7 +1583,7 @@ struct CardDetail: View {
                     selectCard(at: target)
                     return
                 }
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.92)) {
                     deckPosition = CGFloat(activeIndex)
                 }
                 schedule3DSettleIfNeeded()
@@ -1594,7 +1597,7 @@ struct CardDetail: View {
         dragOriginTranslationX = 0
         lastDeckDragEndTime = .now
         MotionHub.shared.setScrolling(false, source: "cardDeck")
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.92)) {
             deckPosition = CGFloat(activeIndex)
         }
         schedule3DSettleIfNeeded()
@@ -1879,7 +1882,7 @@ struct CardDetail: View {
                 }),
             isEnabled: !flipped
         )
-        .simultaneousGesture(cardNavigationSwipe(updating: $isFlippedCardDragActive), isEnabled: flipped)
+        .simultaneousGesture(cardNavigationSwipe(updating: $isFlippedCardDragActive, minimumDistance: 26), isEnabled: flipped && !isScrubbingBackDial)
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.8), trigger: flipHapticCount)
     }
 
@@ -1999,20 +2002,16 @@ struct CardDetail: View {
 
                 if (isTop || hasTrackedFlip) && canFlip {
                     let itemRetirement = isModelPreview ? nil : lifecycleStore?.retirement(for: item)
-                    CardBack(
+                    cardBackContainer(
                         card: item,
+                        tilt: activeTilt,
                         retirement: itemRetirement,
                         openDossier: !isModelPreview ? {
                             guard isTop, flipped, !hasActiveOrRecentDeckDrag else { return }
                             openDossier()
                         } : nil,
-                        openTiers: !isModelPreview ? openTiers.map { action in
-                            {
-                                guard isTop, flipped, !hasActiveOrRecentDeckDrag else { return }
-                                action()
-                            }
-                        } : nil,
-                        flip: isTop ? { flip() } : nil
+                        flip: isTop ? { flip() } : nil,
+                        onDialScrubChanged: isTop ? { isScrubbingBackDial = $0 } : nil
                     )
                     .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
                     .allowsHitTesting(isTop && flipped)
@@ -2033,14 +2032,17 @@ struct CardDetail: View {
                         radius: isTop ? 24 : 16,
                         y: isTop ? 16 : 12
                     )
-                    .animation(.easeOut(duration: 0.25), value: isTop)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isTop)
                     .rotation3DEffect(.degrees(frontAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             }
             .scaleEffect(scale)
-            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .frame(
+                width: CardMetrics.size.width * scale,
+                height: (dynamicTypeSize.isAccessibilitySize && showsBackFace ? 560 : CardMetrics.size.height) * scale
+            )
             .rotation3DEffect(.degrees(Double(activeTilt.width) * 12), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
             .rotation3DEffect(.degrees(Double(-activeTilt.height) * 12), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-            .animation(.easeOut(duration: 0.25), value: usesLiveTilt)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: usesLiveTilt)
             .allowsHitTesting(isTop)
         }
     }
@@ -2081,11 +2083,55 @@ struct CardDetail: View {
         .contentShape(RoundedRectangle(cornerRadius: CardMetrics.corner))
     }
 
+    @ViewBuilder
+    private func cardBackContainer(
+        card item: HeadphoneCard,
+        tilt: CGSize = .zero,
+        retirement: DeviceRetirement?,
+        openDossier: (() -> Void)?,
+        flip: (() -> Void)? = nil,
+        onDialScrubChanged: ((Bool) -> Void)? = nil
+    ) -> some View {
+        let backView = CardBack(
+            card: item,
+            tilt: tilt,
+            retirement: retirement,
+            openDossier: openDossier,
+            flip: flip,
+            onDialScrubChanged: onDialScrubChanged
+        )
+        if dynamicTypeSize.isAccessibilitySize {
+            ScrollView(.vertical, showsIndicators: true) {
+                backView
+                    .environment(\.cardAllowsReflow, true)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(width: CardMetrics.size.width)
+            .frame(minHeight: CardMetrics.size.height, maxHeight: 560)
+            .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
+        } else if dynamicTypeSize >= .xLarge {
+            ScrollView(.vertical, showsIndicators: true) {
+                backView
+                    .environment(\.cardAllowsReflow, true)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
+            .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
+        } else {
+            backView
+                .environment(\.cardAllowsReflow, false)
+        }
+    }
+
     private func backCard(scale: CGFloat) -> some View {
         let scale = max(scale, 0.3)
         let isLight = colorScheme == .light
         let itemRetirement = isModelPreview ? nil : lifecycleStore?.retirement(for: card)
-        return CardBack(card: card, retirement: itemRetirement, openDossier: isModelPreview ? nil : openDossier, openTiers: isModelPreview ? nil : openTiers)
+        return cardBackContainer(
+            card: card,
+            retirement: itemRetirement,
+            openDossier: isModelPreview ? nil : openDossier
+        )
             .id(card.id)
             .background {
                 RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
@@ -2093,7 +2139,11 @@ struct CardDetail: View {
                     .shadow(color: isLight ? Theme.cardShadow : card.rarity.glow.opacity(0.4), radius: 24, y: 14)
             }
             .scaleEffect(scale)
-            .frame(width: CardMetrics.size.width * scale, height: CardMetrics.size.height * scale)
+            .frame(width: CardMetrics.size.width * scale)
+            .frame(
+                minHeight: CardMetrics.size.height * scale,
+                maxHeight: (dynamicTypeSize.isAccessibilitySize ? 560 : CardMetrics.size.height) * scale
+            )
             .opacity(appeared ? 1 : 0)
     }
 
@@ -2102,10 +2152,10 @@ struct CardDetail: View {
         return VStack(spacing: 8) {
             if showHints {
                 if canFlip && deckCards.count > 1 {
-                    Text("Tap to flip · swipe to switch")
+                    Text(flipped ? "Tap Flip to turn · swipe to switch" : "Tap to flip · swipe to switch")
                         .font(.caption)
                 } else if canFlip {
-                    Text("Tap card to flip")
+                    Text(flipped ? "Tap Flip to turn" : "Tap card to flip")
                         .font(.caption)
                 } else if isModelPreview && deckCards.count > 1 {
                     Text("Swipe to browse models")
@@ -2139,7 +2189,7 @@ struct CardDetail: View {
                         .frame(width: idx == activeIndex ? 16 : 6, height: 6)
                 }
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: activeIndex)
+            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: activeIndex)
         } else {
             Text("\(activeIndex + 1) / \(deckCards.count)")
                 .font(.caption2.weight(.semibold).monospacedDigit())
@@ -2175,7 +2225,7 @@ struct CardDetail: View {
                 }
             }
             .opacity(appeared ? 1 : 0)
-            .animation(.spring(response: 0.30, dampingFraction: 0.84), value: showColorBar)
+            .animation(reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.84), value: showColorBar)
         }
     }
 
@@ -2257,7 +2307,7 @@ struct CardDetail: View {
         // Side by side already shows both faces, and Model Gallery catalog cards have no stats back.
         guard canFlip, !hasActiveOrRecentDeckDrag, !isDeckSettlingMidFlight else { return }
         flipHapticCount += 1
-        withAnimation(.snappy(duration: 0.38, extraBounce: 0)) {
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.16) : .snappy(duration: 0.38, extraBounce: 0)) {
             flipState.toggle(cardID: card.id, direction: direction)
             dragTilt = .zero
         }

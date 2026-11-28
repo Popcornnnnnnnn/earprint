@@ -130,6 +130,17 @@ enum Rarity: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var displayName: String {
+        switch self {
+        case .holo: "Prism Aurora"
+        case .obsidian: "Smoked Titanium"
+        case .platinum: "Deep Cobalt"
+        case .sapphire: "Glacier Teal"
+        case .silver: "Arctic Ice"
+        case .bronze: "Brushed Mist"
+        }
+    }
+
     var shortName: String {
         switch self {
         case .holo: "Prism"

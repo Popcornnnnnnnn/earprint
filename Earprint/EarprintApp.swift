@@ -77,6 +77,7 @@ struct EarprintApp: App {
                     statusMessage: library.state == .idle ? nil : library.statusMessage,
                     isLoading: library.isLoading,
                     isActiveTab: router.tab == .rings,
+                    lastSynced: library.snapshot?.generatedAt,
                     onConnectHealth: { Task { await library.connectAndSync() } }
                 )
                 .tabItem { Label("Rings", systemImage: "circle.hexagongrid") }

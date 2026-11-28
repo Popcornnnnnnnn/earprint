@@ -12,6 +12,7 @@ struct ListeningSummary: Equatable {
     var deviceModel: String
     var deviceSymbol: String = "airpodspro"
     var periodLabel: String
+    var periodEndDate: Date? = nil
     var grid: ListeningGrid {
         didSet {
             if grid != oldValue {
@@ -29,6 +30,8 @@ struct ListeningSummary: Equatable {
 
     // Precomputed grid-derived metrics so SwiftUI body passes stay O(1) with zero per-frame pow/log10 scans.
     private(set) var has28DayData: Bool = false
+    private(set) var monthMinutes: Double = 0
+    private(set) var monthDecibels: Double = 0
     private(set) var weekMinutes: Double = 0
     private(set) var weekDecibels: Double = 0
     private(set) var computedWeeklyBudget: Double = 0
@@ -40,6 +43,7 @@ struct ListeningSummary: Equatable {
         deviceModel: String,
         deviceSymbol: String = "airpodspro",
         periodLabel: String,
+        periodEndDate: Date? = nil,
         grid: ListeningGrid,
         lifetimeMinutes: Double,
         sessions: Int,
@@ -52,6 +56,7 @@ struct ListeningSummary: Equatable {
         self.deviceModel = deviceModel
         self.deviceSymbol = deviceSymbol
         self.periodLabel = periodLabel
+        self.periodEndDate = periodEndDate
         self.grid = grid
         self.lifetimeMinutes = lifetimeMinutes
         self.sessions = sessions
@@ -75,6 +80,7 @@ struct ListeningSummary: Equatable {
             deviceModel: AppLanguage.current.text("Apple Health"),
             deviceSymbol: "headphones",
             periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            periodEndDate: now,
             grid: ListeningGrid(
                 minutes: Array(repeating: Array(repeating: 0.0, count: 24), count: 28),
                 decibels: Array(repeating: Array(repeating: 0.0, count: 24), count: 28)
@@ -93,6 +99,7 @@ struct ListeningSummary: Equatable {
         let start7 = max(0, totalDays - 7)
 
         var total28 = 0.0
+        var monthEnergy = 0.0
         var night = 0.0
         var commute = 0.0
         var morning = 0.0
@@ -121,15 +128,17 @@ struct ListeningSummary: Equatable {
                 if h == 7 || h == 8 || h == 17 || h == 18 { commute += v }
                 if h >= 5 && h <= 7 { morning += v }
 
+                let hasDB = h < dayDB.count && dayDB[h] > 0
+                let hourEnergy = hasDB ? pow(10, dayDB[h] / 10) * v : 0
+                monthEnergy += hourEnergy
+
                 if isInLast7 {
                     thisDayMin += v
                     weekMin += v
-                    if h < dayDB.count {
-                        let db = dayDB[h]
-                        let e = pow(10, db / 10) * v
-                        thisDayEnergy += e
-                        weekEnergy += e
-                        weekDose += HearingBudget.dose(decibels: db, seconds: v * 60)
+                    if hasDB {
+                        thisDayEnergy += hourEnergy
+                        weekEnergy += hourEnergy
+                        weekDose += HearingBudget.dose(decibels: dayDB[h], seconds: v * 60)
                     }
                 }
             }
@@ -143,6 +152,8 @@ struct ListeningSummary: Equatable {
         }
 
         has28DayData = total28 > 0
+        monthMinutes = total28
+        monthDecibels = (total28 > 0 && monthEnergy > 0) ? 10 * log10(monthEnergy / total28) : 0
         weekMinutes = weekMin
         weekDecibels = (weekMin > 0 && weekEnergy > 0) ? 10 * log10(weekEnergy / weekMin) : 0
         computedWeeklyBudget = weekDose
@@ -181,6 +192,14 @@ struct ListeningSummary: Equatable {
             case .allDay: "🎧"
             }
         }
+        var symbol: String {
+            switch self {
+            case .nightOwl: "moon.stars.fill"
+            case .commuter: "tram.fill"
+            case .earlyBird: "sunrise.fill"
+            case .allDay: "headphones"
+            }
+        }
         var title: String {
             switch self {
             case .nightOwl: "Night Owl"
@@ -191,10 +210,18 @@ struct ListeningSummary: Equatable {
         }
         var detail: String {
             switch self {
-            case .nightOwl(let s): "\(Int(s * 100))% of your listening happens after 10 pm."
-            case .commuter(let s): "\(Int(s * 100))% of your listening is on the way to and from work."
-            case .earlyBird(let s): "\(Int(s * 100))% of your listening is before 8 am."
-            case .allDay: "Your headphones keep you company all day long."
+            case .nightOwl(let s): AppLanguage.current.text("%lld%% of your listening happens after 10 pm.", Int((s * 100).rounded()))
+            case .commuter(let s): AppLanguage.current.text("%lld%% of your listening is on the way to and from work.", Int((s * 100).rounded()))
+            case .earlyBird(let s): AppLanguage.current.text("%lld%% of your listening is before 8 am.", Int((s * 100).rounded()))
+            case .allDay: AppLanguage.current.text("Your headphones keep you company all day long.")
+            }
+        }
+        var shortDetail: String {
+            switch self {
+            case .nightOwl(let s): AppLanguage.current.text("%lld%% late night (22:00–04:00)", Int((s * 100).rounded()))
+            case .commuter(let s): AppLanguage.current.text("%lld%% during rush hours", Int((s * 100).rounded()))
+            case .earlyBird(let s): AppLanguage.current.text("%lld%% before 8 am", Int((s * 100).rounded()))
+            case .allDay: AppLanguage.current.text("Balanced across the day")
             }
         }
     }
@@ -229,15 +256,16 @@ enum SampleData {
         }
 
         return ListeningSummary(
-            deviceName: "🧸's AirPods Pro",
+            deviceName: "AirPods Pro 2",
             deviceModel: "AirPods Pro 2 · USB-C",
             periodLabel: "Nov 12 – 18",
+            periodEndDate: Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 18, hour: 23, minute: 40)),
             grid: ListeningGrid(minutes: minutes, decibels: decibels),
             lifetimeMinutes: 188 * 60 + 22,
             sessions: 269,
             averageSessionMinutes: 42,
             longestSessionMinutes: 220,
-            firstUse: "Oct 30"
+            firstUse: "2026.07.15"
         )
     }()
 }
@@ -257,9 +285,13 @@ struct SplitMix64 {
 }
 
 extension Double {
-    /// 2820 minutes -> "47h 0m"
+    /// 2820 minutes -> "47h 0m", 149418 minutes -> "2,490h 18m"
     var minutesText: String {
         let total = Int(self.rounded())
-        return total >= 60 ? "\(total / 60)h \(total % 60)m" : "\(total)m"
+        guard total >= 60 else { return AppLanguage.current.text("%lldm", total) }
+        let hours = total / 60
+        let mins = total % 60
+        let hoursText = hours >= 1000 ? hours.formatted() : "\(hours)"
+        return AppLanguage.current.text("%@h %lldm", hoursText, mins)
     }
 }

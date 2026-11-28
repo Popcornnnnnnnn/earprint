@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Design size of a card. Thumbnails render at this size and scale down, so every card looks identical at any size.
 enum CardMetrics {
@@ -11,25 +12,35 @@ struct CardFaceRotation: ViewModifier, Animatable {
     var angle: Double
     var isBack = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var animatableData: Double {
         get { angle }
         set { angle = newValue }
     }
 
     func body(content: Content) -> some View {
-        let showsFront = cos(angle * .pi / 180) > 0
-        content
-            .opacity(showsFront == isBack ? 0 : 1)
-            .rotation3DEffect(.degrees(angle + (isBack ? 180 : 0)), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+        if reduceMotion {
+            let normalized = abs(angle).truncatingRemainder(dividingBy: 360) / 180.0
+            let t = min(max(normalized > 1 ? 2 - normalized : normalized, 0), 1)
+            content.opacity(isBack ? t : (1 - t))
+        } else {
+            let showsFront = cos(angle * .pi / 180) > 0
+            content
+                .opacity(showsFront == isBack ? 0 : 1)
+                .rotation3DEffect(.degrees(angle + (isBack ? 180 : 0)), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+        }
     }
 }
 
 /// Static micro-texture for `FoilSurface`, isolated as `Equatable` so tilt changes never redraw the Canvas.
 private struct FoilTexturePattern: View, Equatable {
     let material: FoilMaterial
+    var inkColor: Color = .white
     var carbonOpacity: Double = 0.062
     var carbonPitch: CGFloat = 7.5
     var carbonLineWidth: CGFloat = 1.0
+    var holoOpacity: Double = 0.055
 
     var body: some View {
         Canvas { context, size in
@@ -85,7 +96,7 @@ private struct FoilTexturePattern: View, Equatable {
                     weave.move(to: CGPoint(x: x, y: 0))
                     weave.addLine(to: CGPoint(x: x + size.height, y: size.height))
                 }
-                context.stroke(weave, with: .color(.white.opacity(carbonOpacity)), lineWidth: carbonLineWidth)
+                context.stroke(weave, with: .color(inkColor.opacity(carbonOpacity)), lineWidth: carbonLineWidth)
 
             case .holo:
                 // Delicate pearlescent cross-shimmer mesh.
@@ -94,7 +105,7 @@ private struct FoilTexturePattern: View, Equatable {
                     shimmer.move(to: CGPoint(x: x, y: size.height))
                     shimmer.addLine(to: CGPoint(x: x + size.height, y: 0))
                 }
-                context.stroke(shimmer, with: .color(.white.opacity(0.055)), lineWidth: 0.8)
+                context.stroke(shimmer, with: .color(inkColor.opacity(holoOpacity)), lineWidth: 0.8)
             }
         }
     }
@@ -269,8 +280,8 @@ struct FoilSurface: View {
                     .init(color: Color(red: 0.03, green: 0.04, blue: 0.11).opacity(0.38), location: 1.0)
                 ]
                 : [
-                    .init(color: .clear, location: 0.36),
-                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.30), location: 1.0)
+                    .init(color: .clear, location: 0.30),
+                    .init(color: Color(red: 0.03, green: 0.04, blue: 0.09).opacity(0.38), location: 1.0)
                 ],
             startPoint: .top,
             endPoint: .bottom
@@ -298,7 +309,7 @@ struct TierBadgePill: View {
                 .font(.system(size: fontSize, weight: .heavy, design: .rounded))
                 .tracking(tracking)
                 .lineLimit(1)
-                .minimumScaleFactor(0.58)
+                .minimumScaleFactor(0.72)
                 .allowsTightening(true)
         }
         .padding(.horizontal, horizontalPadding)
@@ -328,6 +339,10 @@ struct CardSpecularBorder: View {
     var tilt: CGSize = .zero
     var usesPrismRim: Bool = true
     var glow: Color? = nil
+    var isBackFace: Bool = false
+    var isRetired: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -335,36 +350,60 @@ struct CardSpecularBorder: View {
         let accentGlow = glow ?? rarity.glow
         ZStack {
             if isHoloRim {
+                let isLightPlate = ink != .white
+                let backLightPrism: [Color] = [
+                    Color(red: 0.05, green: 0.56, blue: 0.62),
+                    Color(red: 0.18, green: 0.36, blue: 0.82),
+                    Color(red: 0.48, green: 0.20, blue: 0.78),
+                    Color(red: 0.76, green: 0.14, blue: 0.48),
+                    Color(red: 0.36, green: 0.58, blue: 0.78),
+                    Color(red: 0.05, green: 0.56, blue: 0.62)
+                ]
+                let rimColors = (isBackFace && colorScheme == .light) ? backLightPrism : rarity.prismRimColors
+                let rimWidth: CGFloat = isBackFace ? (isLightPlate ? 1.3 : 1.15) : (isLightPlate ? 1.5 : 1.75)
+                let rimOpacity: Double = isBackFace
+                    ? (isRetired ? 0.58 : (isLightPlate ? 0.68 : 0.60))
+                    : (isLightPlate ? 0.76 : 0.92)
                 shape.strokeBorder(
                     AngularGradient(
-                        colors: rarity.prismRimColors,
+                        colors: rimColors,
                         center: .center,
                         angle: .degrees(Double(tilt.width) * 75 + Double(tilt.height) * 40)
                     ),
-                    lineWidth: 2.0
+                    lineWidth: rimWidth
                 )
-                shape.strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(0.55), .clear, .white.opacity(0.28)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.75
-                )
+                .opacity(rimOpacity)
+                if isBackFace && isLightPlate {
+                    shape.strokeBorder(Color.black.opacity(0.08), lineWidth: 0.75)
+                } else {
+                    shape.strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(isLightPlate ? 0.35 : 0.55), .clear, .white.opacity(isLightPlate ? 0.18 : 0.28)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.75
+                    )
+                }
             } else {
-                shape.strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            ink == .white ? Color.white.opacity(0.50) : Color.black.opacity(0.14),
-                            ink == .white ? Color.white.opacity(0.14) : Color.black.opacity(0.05),
-                            accentGlow.opacity(0.36),
-                            ink == .white ? Color.white.opacity(0.24) : Color.black.opacity(0.14)
-                        ],
-                        startPoint: UnitPoint(x: 0.15 + tilt.width * 0.45, y: 0.0 + tilt.height * 0.35),
-                        endPoint: UnitPoint(x: 0.85 + tilt.width * 0.45, y: 1.0 + tilt.height * 0.35)
-                    ),
-                    lineWidth: 1.35
-                )
+                ZStack {
+                    shape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                ink == .white ? Color.white.opacity(0.50) : accentGlow.opacity(0.42),
+                                ink == .white ? Color.white.opacity(0.14) : accentGlow.opacity(0.18),
+                                ink == .white ? accentGlow.opacity(0.36) : accentGlow.opacity(0.48),
+                                ink == .white ? Color.white.opacity(0.24) : accentGlow.opacity(0.28)
+                            ],
+                            startPoint: UnitPoint(x: 0.15 + tilt.width * 0.45, y: 0.0 + tilt.height * 0.35),
+                            endPoint: UnitPoint(x: 0.85 + tilt.width * 0.45, y: 1.0 + tilt.height * 0.35)
+                        ),
+                        lineWidth: 1.35
+                    )
+                    if isBackFace && ink != .white {
+                        shape.strokeBorder(Color.black.opacity(0.08), lineWidth: 0.75)
+                    }
+                }
             }
         }
         .allowsHitTesting(false)
@@ -501,7 +540,7 @@ struct CardHorizontalFront: View {
                         .padding(.top, 2)
 
                     HStack(spacing: 6) {
-                        Text("\(card.sessions) sessions")
+                        Text("\(card.sessions) wears")
                         if let retirement {
                             if !card.firstMet.isEmpty {
                                 Text("·")
@@ -566,6 +605,7 @@ struct CardFront: View {
     var catalogDetail: String? = nil
     var proFoil: ProFoilStyle? = nil
     var retirement: DeviceRetirement? = nil
+    var isEmbeddedInSlab: Bool = false
 
     @Environment(\.proAccess) private var proAccess
     @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
@@ -581,19 +621,31 @@ struct CardFront: View {
                 : surfaceRarity.title
         )
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                TierBadgePill(
-                    title: pillTitle,
-                    ink: ink,
-                    isHolo: foil == nil && surfaceRarity == .holo && badgeOverride == nil,
-                    fontSize: 11,
-                    tracking: 1.5
-                )
-                Spacer()
-                if let retirement {
-                    VaultedCardBadge(ink: ink, reason: retirement.reason)
-                } else if isCurrentlyWorn {
-                    ActiveWearDot()
+            if isEmbeddedInSlab {
+                HStack {
+                    Spacer()
+                    if let retirement {
+                        VaultedCardBadge(ink: ink, reason: retirement.reason)
+                    } else if isCurrentlyWorn {
+                        ActiveWearDot()
+                    }
+                }
+                .frame(minHeight: 8)
+            } else {
+                HStack {
+                    TierBadgePill(
+                        title: pillTitle,
+                        ink: ink,
+                        isHolo: foil == nil && surfaceRarity == .holo && badgeOverride == nil,
+                        fontSize: 11,
+                        tracking: 1.5
+                    )
+                    Spacer()
+                    if let retirement {
+                        VaultedCardBadge(ink: ink, reason: retirement.reason)
+                    } else if isCurrentlyWorn {
+                        ActiveWearDot()
+                    }
                 }
             }
 
@@ -610,18 +662,18 @@ struct CardFront: View {
 
             if showsListeningStats {
                 Text(card.model)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: isEmbeddedInSlab ? 16 : 17, weight: .bold))
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
                 Text(card.lifetimeMinutes.minutesText)
-                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .font(.system(size: isEmbeddedInSlab ? 30 : 42, weight: isEmbeddedInSlab ? .heavy : .black, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
                     .padding(.top, 2)
 
                 HStack {
-                    Label("\(card.sessions)", systemImage: "ear")
+                    Label(isEmbeddedInSlab ? "\(card.sessions) wears" : "\(card.sessions)", systemImage: "ear")
                     Spacer()
                     if showsFirstMet {
                         if let retirement {
@@ -633,8 +685,8 @@ struct CardFront: View {
                         }
                     }
                 }
-                .font(.system(size: 12, weight: .semibold))
-                .opacity(0.76)
+                .font(.system(size: isEmbeddedInSlab ? 13.5 : 12, weight: .semibold))
+                .opacity(isEmbeddedInSlab ? 0.86 : 0.76)
                 .padding(.top, 6)
             } else {
                 Text(card.model)
@@ -671,181 +723,670 @@ struct CardFront: View {
 
 struct CardBack: View {
     let card: HeadphoneCard
+    var tilt: CGSize = .zero
+    var proFoil: ProFoilStyle? = nil
     var retirement: DeviceRetirement? = nil
     var openDossier: (() -> Void)? = nil
-    var openTiers: (() -> Void)? = nil
     var flip: (() -> Void)? = nil
+    var onDialScrubChanged: ((Bool) -> Void)? = nil
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.cardAllowsReflow) private var cardAllowsReflow
+    @Environment(\.proAccess) private var proAccess
+    @Environment(SlabCustomizationStore.self) private var customizationStore: SlabCustomizationStore?
+    @ScaledMetric(relativeTo: .subheadline) private var titleSize: CGFloat = 16.5
+    @ScaledMetric(relativeTo: .headline) private var dialValueSize: CGFloat = 18.5
+    @ScaledMetric(relativeTo: .subheadline) private var specValueSize: CGFloat = 14.5
+    @ScaledMetric(relativeTo: .caption) private var metaSize: CGFloat = 12.0
+    @ScaledMetric(relativeTo: .caption2) private var microSize: CGFloat = 11.5
+    @State private var selectedHour: Int? = nil
+    @GestureState private var isDialDragActive = false
 
     var body: some View {
         let isLight = colorScheme == .light
-        VStack(alignment: .leading, spacing: 8) {
-            if let flip {
-                stats
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: flip)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityAction(named: Text("Flip card"), flip)
-            } else {
-                stats
-            }
-            HStack(spacing: 16) {
-                tierProgress
+        let foil = proFoil ?? (proAccess.isUnlocked(.foilShaders)
+            ? (customizationStore ?? .shared).customization(for: card.id).proFoil : nil)
+        let surfaceAccent = DossierContrast.accentColor(rarity: card.rarity, proFoil: foil, colorScheme: colorScheme)
+        let allowsReflow = cardAllowsReflow && dynamicTypeSize >= .xLarge
+
+        let cardContent = VStack(alignment: .leading, spacing: 0) {
+            upperContent(foil: foil, surfaceAccent: surfaceAccent, isLight: isLight, allowsReflow: allowsReflow)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+                .padding(.top, 9)
+
+            let footerLayout = allowsReflow
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+
+            footerLayout {
+                tierProgress(surfaceAccent: surfaceAccent, isLight: isLight, allowsReflow: allowsReflow)
                     .frame(maxWidth: .infinity, alignment: .leading)
+
                 if let openDossier {
-                    Button(action: openDossier) {
-                        Label("Dossier", systemImage: "doc.text")
-                            .font(.system(size: 12, weight: .semibold))
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 44)
-                            .background(Theme.surfaceFillStrong, in: Capsule())
-                            .contentShape(Capsule())
+                    let dossierInk: Color = (!isLight && foil == nil && card.rarity == .holo)
+                        ? Color(red: 1.0, green: 0.64, blue: 0.86)
+                        : surfaceAccent
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        openDossier()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Dossier")
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: allowsReflow ? microSize : min(microSize, 12), weight: .bold))
+                                .accessibilityHidden(true)
+                        }
+                        .font(.system(size: allowsReflow ? metaSize : min(metaSize, 15), weight: .bold, design: .rounded))
+                        .foregroundStyle(dossierInk)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .background {
+                            if isLight {
+                                ZStack {
+                                    Capsule().fill(Color.white.opacity(0.90))
+                                    Capsule().fill(surfaceAccent.opacity(0.11))
+                                }
+                                .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
+                            } else {
+                                Capsule().fill(surfaceAccent.opacity(0.14))
+                            }
+                        }
+                        .overlay(
+                            Capsule().strokeBorder(
+                                isLight ? surfaceAccent.opacity(0.36) : surfaceAccent.opacity(0.34),
+                                lineWidth: 0.9
+                            )
+                        )
+                        .frame(maxWidth: allowsReflow ? .infinity : nil, minHeight: 44)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(CardControlPressStyle())
+                    .fixedSize(horizontal: !allowsReflow, vertical: false)
+                    .layoutPriority(1)
+                    .accessibilityHint("Opens full device dossier")
                 }
             }
+            .frame(minHeight: 44)
+            .frame(height: allowsReflow ? nil : 44)
+            .padding(.top, 8)
         }
         .foregroundStyle(Theme.primaryText)
-        .padding(20)
-        .frame(width: CardMetrics.size.width, height: CardMetrics.size.height)
-        .background(
-            ZStack {
-                Theme.card
-                RadialGradient(colors: [card.rarity.glow.opacity(isLight ? 0.16 : 0.35), .clear], center: .top, startRadius: 0, endRadius: 320)
-            }
-        )
+        .padding(.horizontal, 18)
+        .padding(.top, 15)
+        .padding(.bottom, 15)
+        .frame(minWidth: CardMetrics.size.width, maxWidth: allowsReflow ? .infinity : CardMetrics.size.width)
+        .frame(minHeight: CardMetrics.size.height, maxHeight: allowsReflow ? nil : CardMetrics.size.height)
+        .background(reversePlateSurface(foil: foil, isLight: isLight))
         .clipShape(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: CardMetrics.corner, style: .continuous)
-            .strokeBorder(LinearGradient(colors: card.rarity.baseColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2))
-    }
-
-    private var stats: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("STATS").font(.system(size: 11, weight: .heavy)).tracking(2).opacity(0.6)
-                Spacer()
-                Text(card.model)
-                    .font(.system(size: 11, weight: .semibold))
-                    .opacity(0.6)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-
-            ZStack {
-                EarprintGlyph(grid: card.grid, showHourLabels: false)
-                    .equatable()
-                VStack(spacing: 0) {
-                    Text("4 weeks").font(.system(size: 10, weight: .semibold)).opacity(0.65)
-                    Text("listening").font(.system(size: 10)).opacity(0.55)
-                }
-            }
-            .frame(height: 150)
-            .frame(maxWidth: .infinity)
-
-            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-                GridRow {
-                    stat("Lifetime", card.lifetimeMinutes, unit: .minutes)
-                    stat("Sessions", Double(card.sessions), unit: .count)
-                }
-                GridRow {
-                    stat("Longest", card.longestMinutes, unit: .minutes)
-                    stat("Avg level", card.averageDecibels, unit: .decibels)
-                }
-            }
-
-            Spacer(minLength: 0)
+        .overlay(
+            CardSpecularBorder(
+                cornerRadius: CardMetrics.corner,
+                rarity: card.rarity,
+                ink: isLight ? .black : .white,
+                tilt: tilt,
+                usesPrismRim: foil == nil,
+                glow: foil?.glow,
+                isBackFace: true,
+                isRetired: retirement != nil
+            )
+        )
+        .onChange(of: card.id) { _, _ in
+            selectedHour = nil
+            onDialScrubChanged?(false)
         }
-    }
-
-    private enum Unit { case minutes, count, decibels }
-
-    private func stat(_ title: LocalizedStringKey, _ value: Double, unit: Unit) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 11)).opacity(0.58)
-            Group {
-                switch unit {
-                case .minutes: Text(value.minutesText)
-                case .count: Text("\(Int(value))")
-                case .decibels: value > 0 ? Text("\(Int(value)) dB") : Text(verbatim: "—")
-                }
-            }
-            .font(.system(size: 20, weight: .bold, design: .rounded))
-            .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.70)
+        .onChange(of: retirement) { _, _ in
+            selectedHour = nil
+            onDialScrubChanged?(false)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Theme.surfaceFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
+        .onChange(of: isDialDragActive) { _, active in
+            onDialScrubChanged?(active)
+        }
+        .onDisappear {
+            onDialScrubChanged?(false)
+        }
 
-    @ViewBuilder private var tierProgress: some View {
-        let content = tierProgressBody
-        if let openTiers {
-            Button(action: openTiers) {
-                content
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("View all card tiers")
+        if let flip {
+            cardContent
+                .accessibilityElement(children: .contain)
+                .accessibilityAction(named: Text("Flip card"), flip)
         } else {
-            content
+            cardContent
         }
     }
 
-    @ViewBuilder private var tierProgressBody: some View {
-        if let retirement {
+    private func upperContent(foil: ProFoilStyle?, surfaceAccent: Color, isLight: Bool, allowsReflow: Bool) -> some View {
+        let tierLabel = foil != nil ? foil!.shortName : AppLanguage.current.text(card.rarity.displayName)
+        let tierDisplay = tierLabel.uppercased()
+        let monthMinutes = card.grid.last28Minutes
+        let monthDB = card.grid.last28AverageDecibels
+        let avgWearMinutes = card.sessions > 0 ? card.lifetimeMinutes / Double(card.sessions) : nil
+        let dialSubtitle: LocalizedStringKey = retirement != nil ? "Final 28 days" : "Last 28 days"
+        let dialWindowLabel = AppLanguage.current.text(retirement != nil ? "Final 28 days" : "Last 28 days")
+        let canInspectDial = (openDossier != nil || flip != nil)
+
+        let headerLayout = allowsReflow
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+
+        let headerBlock = headerLayout {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Image(systemName: "archivebox.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(card.rarity.accent)
-                    Text("Vaulted · \(Text(LocalizedStringKey(retirement.reason.title)))")
-                        .font(.system(size: 11, weight: .semibold))
+                Text(card.model)
+                    .font(.system(size: allowsReflow ? titleSize : min(titleSize, 20), weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(allowsReflow ? 2 : 1)
+                    .minimumScaleFactor(0.8)
+                    .accessibilityAddTraits(.isHeader)
+
+                HStack(spacing: 5) {
+                    Text(String(format: "#%04d", card.serial))
+                        .foregroundStyle(Theme.secondaryText)
+                    Text("·")
+                        .foregroundStyle(Theme.tertiaryText)
+                    Text(verbatim: tierDisplay)
+                        .foregroundStyle(surfaceAccent)
+                }
+                .font(.system(size: allowsReflow ? metaSize : min(metaSize, 14.5), weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(String(format: "#%04d", card.serial)), \(tierLabel)")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let flip {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    flip()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "rectangle.2.swap")
+                            .font(.system(size: allowsReflow ? metaSize : 12.5, weight: .semibold))
+                        Text("Flip")
+                            .font(.system(size: allowsReflow ? metaSize : 12.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(Theme.primaryText.opacity(0.84))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5.5)
+                    .background(
+                        Capsule().fill(isLight ? Color.white.opacity(0.55) : Color.white.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule().strokeBorder(
+                            isLight ? Color.black.opacity(0.14) : Color.white.opacity(0.22),
+                            lineWidth: 0.9
+                        )
+                    )
+                    .frame(minWidth: 44, minHeight: 44, alignment: allowsReflow ? .leading : .trailing)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(CardControlPressStyle())
+                .accessibilityLabel("Show card front")
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+
+        let dialSide: CGFloat = 178
+        let dialView = ZStack {
+            EarprintGlyph(
+                grid: card.grid,
+                showHourLabels: true,
+                highlightedHour: selectedHour,
+                forcedColorScheme: colorScheme,
+                dynamicTypeSize: dynamicTypeSize
+            )
+            .equatable()
+            .frame(width: dialSide, height: dialSide)
+
+            VStack(spacing: 1.5) {
+                if let hour = selectedHour {
+                    let hStats = EarprintDialMath.hourSummary(grid: card.grid, hour: hour)
+                    Text(String(format: "%02d:00", hour))
+                        .font(.system(size: min(dialValueSize, 17.0), weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .contentTransition(reduceMotion ? .identity : .numericText())
+                    Text("\(hStats.avgMinutesPerDay.minutesText) / day")
+                        .font(.system(size: min(microSize, 11.5), weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                    if hStats.avgDB > 0 {
+                        HStack(spacing: 3.5) {
+                            Circle()
+                                .fill(Theme.levelColor(db: hStats.avgDB, colorScheme: colorScheme))
+                                .frame(width: 5.5, height: 5.5)
+                            Text("\(Int(hStats.avgDB.rounded())) dB(A)")
+                                .font(.system(size: min(microSize, 11.5), weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.primaryText)
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
+                    }
+                } else {
+                    Text(monthMinutes.minutesText)
+                        .font(.system(size: min(dialValueSize, 17.0), weight: .heavy, design: .rounded))
+                        .tracking(-0.5)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .contentTransition(reduceMotion ? .identity : .numericText())
+                    Text(dialSubtitle)
+                        .font(.system(size: min(microSize, 11.5), weight: .medium, design: .rounded))
+                        .tracking(-0.2)
+                        .foregroundStyle(Theme.secondaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
-                Text(retirement.formattedRetiredDate)
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .opacity(0.65)
             }
-        } else {
-            let hours = card.lifetimeMinutes / 60
-            if let next = card.rarity.nextTierHours {
-                let remaining = max(1, Int(ceil(next - hours)))
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Text("\(remaining)h to next tier")
-                            .font(.system(size: 11, weight: .semibold))
-                            .opacity(0.75)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        if openTiers != nil {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 10))
-                                .opacity(0.55)
+            .frame(maxWidth: EarprintDialMath.innerWellWidth(side: dialSide, showHourLabels: true, dayCount: card.grid.days))
+        }
+        .frame(width: dialSide, height: dialSide)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            headerBlock
+
+            Spacer(minLength: 8)
+
+            VStack(spacing: 8) {
+                if canInspectDial {
+                    dialView
+                        .contentShape(Circle())
+                        .onTapGesture { location in
+                            selectedHour = EarprintDialMath.selectHour(
+                                at: location,
+                                size: dialSide,
+                                current: selectedHour,
+                                toggle: true,
+                                dayCount: card.grid.days
+                            )
                         }
-                    }
-                    ProgressView(value: card.rarity.progressToNextTier(minutes: card.lifetimeMinutes))
-                        .tint(card.rarity.accent)
+                        .gesture(
+                            LongPressGesture(minimumDuration: 0.25)
+                                .sequenced(before: DragGesture(minimumDistance: 0))
+                                .updating($isDialDragActive) { value, state, _ in
+                                    if case .second(true, _) = value {
+                                        state = true
+                                    }
+                                }
+                                .onChanged { value in
+                                    if case .second(true, let drag?) = value {
+                                        selectedHour = EarprintDialMath.selectHour(
+                                            at: drag.location,
+                                            size: dialSide,
+                                            current: selectedHour,
+                                            toggle: false,
+                                            dayCount: card.grid.days
+                                        )
+                                    }
+                                }
+                        )
+                        .sensoryFeedback(.selection, trigger: selectedHour)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(dialWindowLabel) Earprint dial, oldest ring inside to newest outside")
+                        .accessibilityValue(
+                            EarprintDialMath.accessibilityValue(
+                                grid: card.grid,
+                                selectedHour: selectedHour,
+                                totalMinutes: monthMinutes,
+                                averageDB: monthDB > 0 ? monthDB : nil,
+                                formatMinutes: { $0.minutesText }
+                            )
+                        )
+                        .accessibilityHint("Swipe up or down to inspect hours")
+                        .accessibilityAdjustableAction { direction in
+                            selectedHour = EarprintDialMath.adjustedHour(current: selectedHour, direction: direction)
+                        }
+                        .dialClearAccessibilityAction(isActive: selectedHour != nil) {
+                            selectedHour = nil
+                        }
+                        .frame(maxWidth: .infinity)
+                } else {
+                    dialView
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(monthMinutes.minutesText), \(dialWindowLabel) Earprint dial")
+                        .frame(maxWidth: .infinity)
                 }
-            } else {
-                HStack(spacing: 5) {
-                    Text("Max tier reached ✦")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(card.rarity.accent)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    if openTiers != nil {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                            .foregroundStyle(card.rarity.accent.opacity(0.7))
+
+                VStack(spacing: 4) {
+                    LoudnessLegendRow(compact: true, compactLabels: false, allowsStacking: allowsReflow, showsUnit: true)
+
+                    if canInspectDial {
+                        let dialCue: LocalizedStringKey = selectedHour != nil
+                            ? "Tap center or hour to clear"
+                            : "Tap or drag an hour"
+                        Text(dialCue)
+                            .font(.system(size: allowsReflow ? microSize : min(microSize, 11.5), weight: .medium))
+                            .foregroundStyle(Theme.secondaryText)
+                            .lineLimit(allowsReflow ? 2 : 1)
+                            .minimumScaleFactor(0.90)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityHidden(true)
                     }
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 7) {
+                Text("ALL TIME")
+                    .font(.system(size: allowsReflow ? microSize : 11.5, weight: .bold, design: .rounded))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+            }
+            .padding(.bottom, 5)
+
+            Group {
+                if allowsReflow {
+                    VStack(alignment: .leading, spacing: 8) {
+                        specColumn(
+                            title: "Longest wear",
+                            value: card.longestMinutes > 0 ? card.longestMinutes.minutesText : "—",
+                            position: .leading,
+                            allowsReflow: true
+                        )
+                        specColumn(
+                            title: "Avg / wear",
+                            value: avgWearMinutes?.minutesText ?? "—",
+                            position: .middle,
+                            allowsReflow: true
+                        )
+                        specColumn(
+                            title: "Avg volume",
+                            value: card.averageDecibels > 0 ? "\(Int(card.averageDecibels.rounded()))" : "—",
+                            unit: card.averageDecibels > 0 ? "dB(A)" : nil,
+                            spokenUnit: card.averageDecibels > 0 ? AppLanguage.current.text("decibels") : nil,
+                            position: .trailing,
+                            allowsReflow: true
+                        )
+                    }
+                } else {
+                    HStack(spacing: 0) {
+                        specColumn(
+                            title: "Longest wear",
+                            value: card.longestMinutes > 0 ? card.longestMinutes.minutesText : "—",
+                            position: .leading,
+                            allowsReflow: false
+                        )
+                        specDivider
+                        specColumn(
+                            title: "Avg / wear",
+                            value: avgWearMinutes?.minutesText ?? "—",
+                            position: .middle,
+                            allowsReflow: false
+                        )
+                        specDivider
+                        specColumn(
+                            title: "Avg volume",
+                            value: card.averageDecibels > 0 ? "\(Int(card.averageDecibels.rounded()))" : "—",
+                            unit: card.averageDecibels > 0 ? "dB(A)" : nil,
+                            spokenUnit: card.averageDecibels > 0 ? AppLanguage.current.text("decibels") : nil,
+                            position: .trailing,
+                            allowsReflow: false
+                        )
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
+    }
+
+    private enum SpecColumnPosition {
+        case leading
+        case middle
+        case trailing
+    }
+
+    private func specColumn(
+        title: String,
+        value: String,
+        unit: String? = nil,
+        spokenUnit: String? = nil,
+        position: SpecColumnPosition = .leading,
+        allowsReflow: Bool
+    ) -> some View {
+        let leadingPad: CGFloat = allowsReflow ? 0 : (position == .leading ? 0 : 8)
+        let trailingPad: CGFloat = allowsReflow ? 0 : (position == .trailing ? 0 : 8)
+        let spokenValue = spokenUnit.map { "\(value) \($0)" } ?? "\(value)\(unit.map { " \($0)" } ?? "")"
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(.system(size: allowsReflow ? specValueSize : min(specValueSize, 18), weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.primaryText)
+                if let unit {
+                    Text(unit)
+                        .font(.system(size: allowsReflow ? microSize : min(microSize, 11.8), weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+
+            Text(LocalizedStringKey(title))
+                .font(.system(size: allowsReflow ? microSize : min(microSize, 11.8), weight: .medium))
+                .foregroundStyle(Theme.secondaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.90)
+        }
+        .padding(.leading, leadingPad)
+        .padding(.trailing, trailingPad)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: "\(AppLanguage.current.text(title)), \(spokenValue)"))
+    }
+
+    private var specDivider: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(width: 1)
+            .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func reversePlateSurface(foil: ProFoilStyle?, isLight: Bool) -> some View {
+        let colors = foil?.baseColors ?? card.rarity.baseColors
+        let hi = colors.indices.contains(1) ? colors[1] : (foil?.glow ?? card.rarity.glow)
+        let sh = colors.indices.contains(2) ? colors[2] : hi
+        let material = foil?.material ?? card.rarity.material
+        let sheen = foil?.sheenOpacity ?? card.rarity.sheenOpacity
+        let surfaceAccent = DossierContrast.accentColor(rarity: card.rarity, proFoil: foil, colorScheme: colorScheme)
+        let calmBackdrop = isLight ? Color(red: 0.96, green: 0.965, blue: 0.98) : Color(red: 0.055, green: 0.058, blue: 0.095)
+        let isHoloPlate = foil == nil && card.rarity == .holo
+
+        ZStack {
+            LinearGradient(
+                colors: isLight
+                    ? [Color(red: 0.968, green: 0.978, blue: 0.986), Color(red: 0.916, green: 0.934, blue: 0.954)]
+                    : [Color(red: 0.088, green: 0.092, blue: 0.138), Color(red: 0.068, green: 0.072, blue: 0.112)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            LinearGradient(
+                colors: isLight
+                    ? (isHoloPlate ? [hi.opacity(0.18), .clear, sh.opacity(0.12)] : [hi.opacity(0.24), .clear, sh.opacity(0.17)])
+                    : [hi.opacity(0.36), hi.opacity(0.06), sh.opacity(0.24)],
+                startPoint: UnitPoint(x: 0.10 + tilt.width * 0.20, y: 0.0 + tilt.height * 0.15),
+                endPoint: UnitPoint(x: 0.90 + tilt.width * 0.20, y: 1.0 + tilt.height * 0.15)
+            )
+
+            if material == .carbon && !isLight {
+                FoilTexturePattern(material: .carbon, carbonOpacity: 0.025, carbonPitch: 8.0, carbonLineWidth: 0.85)
+                    .equatable()
+            } else if foil == nil && card.rarity == .holo {
+                ZStack {
+                    FoilTexturePattern(
+                        material: .holo,
+                        inkColor: isLight ? surfaceAccent : .white,
+                        holoOpacity: isLight ? 0.020 : 0.024
+                    )
+                    .equatable()
+                    LinearGradient(
+                        colors: card.rarity.baseColors.map { $0.opacity(isLight ? 0.08 : 0.11) },
+                        startPoint: UnitPoint(x: 0.05 + tilt.width * 0.35, y: 0.05),
+                        endPoint: UnitPoint(x: 0.95 + tilt.width * 0.35, y: 0.95)
+                    )
+                }
+                .mask(
+                    RadialGradient(
+                        colors: [.clear, .clear, .black.opacity(0.50), .black],
+                        center: .center,
+                        startRadius: 84,
+                        endRadius: 175
+                    )
+                )
+            }
+
+            RadialGradient(
+                colors: [calmBackdrop.opacity(isLight ? 0.56 : 0.58), .clear],
+                center: UnitPoint(x: 0.5, y: 0.52),
+                startRadius: 24,
+                endRadius: isLight ? 205 : 145
+            )
+
+            if isHoloPlate {
+                LinearGradient(
+                    colors: [.clear, calmBackdrop.opacity(isLight ? 0.62 : 0.34)],
+                    startPoint: UnitPoint(x: 0.5, y: 0.52),
+                    endPoint: .bottom
+                )
+                if !isLight {
+                    LinearGradient(
+                        colors: [calmBackdrop.opacity(0.42), .clear],
+                        startPoint: .top,
+                        endPoint: UnitPoint(x: 0.5, y: 0.28)
+                    )
+                }
+            }
+
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0.28),
+                    .init(color: Color.white.opacity((isLight ? 0.13 : 0.065) * (0.6 + sheen * 0.5)), location: 0.50),
+                    .init(color: .clear, location: 0.72)
+                ],
+                startPoint: UnitPoint(x: -0.10 + tilt.width * 0.45, y: 0.0 + tilt.height * 0.30),
+                endPoint: UnitPoint(x: 1.05 + tilt.width * 0.45, y: 0.95 + tilt.height * 0.30)
+            )
+            .blendMode(.softLight)
+        }
+    }
+
+    @ViewBuilder private func tierProgress(surfaceAccent: Color, isLight: Bool, allowsReflow: Bool) -> some View {
+        tierProgressBody(surfaceAccent: surfaceAccent, isLight: isLight, allowsReflow: allowsReflow)
+    }
+
+    @ViewBuilder private func tierProgressBody(surfaceAccent: Color, isLight: Bool, allowsReflow: Bool) -> some View {
+            if let retirement {
+                VStack(alignment: .leading, spacing: 2.5) {
+                    HStack(spacing: 5) {
+                        Text("VAULTED")
+                            .font(.system(size: allowsReflow ? microSize : min(microSize, 11.5), weight: .bold, design: .rounded))
+                            .tracking(0.35)
+                            .foregroundStyle(Theme.primaryText.opacity(0.84))
+                            .padding(.horizontal, 6.5)
+                            .padding(.vertical, 2.5)
+                            .background(isLight ? Color.black.opacity(0.085) : Color.white.opacity(0.14), in: Capsule())
+                            .overlay(Capsule().strokeBorder(isLight ? Color.black.opacity(0.14) : Color.white.opacity(0.20), lineWidth: 0.65))
+                        Text(retirement.formattedRetiredDate)
+                            .font(.system(size: allowsReflow ? metaSize : min(metaSize, 12.0), weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.88)
+                    }
+                    Text("\(card.lifetimeMinutes.minutesText) preserved")
+                        .font(.system(size: allowsReflow ? metaSize : min(metaSize, 12.5), weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.primaryText.opacity(0.88))
+                        .lineLimit(allowsReflow ? 2 : 1)
+                        .minimumScaleFactor(0.88)
+                }
+                .frame(minHeight: 34, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Vaulted · \(Text(LocalizedStringKey(retirement.reason.title))), \(retirement.formattedRetiredDate), \(card.lifetimeMinutes.minutesText) preserved")
+            } else {
+                let hours = card.lifetimeMinutes / 60
+                let progress = card.rarity.progressToNextTier(minutes: card.lifetimeMinutes)
+                if let nextTier = card.rarity.nextTier {
+                    let displayedHours = min(Int(nextTier.minimumHours) - 1, Int(hours.rounded()))
+                    let remaining = max(1, Int(nextTier.minimumHours) - displayedHours)
+                    let tierPct = Int((progress * 100).rounded())
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4.5) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(surfaceAccent)
+                                .accessibilityHidden(true)
+                            Text("\(remaining)h to \(AppLanguage.current.text(nextTier.shortName))")
+                                .foregroundStyle(Theme.primaryText.opacity(0.88))
+                        }
+                        .font(.system(size: allowsReflow ? metaSize : 12.0, weight: .semibold, design: .rounded))
+                        .lineLimit(allowsReflow ? 2 : 1)
+                        .minimumScaleFactor(0.85)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(Text(verbatim: AppLanguage.current.text("%lld hours, %lld percent toward %@, %lld hours to go", displayedHours, tierPct, AppLanguage.current.text(nextTier.shortName), remaining)))
+
+                        GeometryReader { geo in
+                            let w = max(0, geo.size.width)
+                            let fillW = (w > 0 && progress > 0) ? min(w, max(6.0, w * progress)) : 0
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(isLight ? Color.black.opacity(0.14) : Color.white.opacity(0.16))
+                                    .overlay(
+                                        Capsule().strokeBorder(
+                                            isLight ? Color.black.opacity(0.08) : Color.white.opacity(0.10),
+                                            lineWidth: 0.5
+                                        )
+                                    )
+                                if fillW > 0 {
+                                    Capsule()
+                                        .fill(surfaceAccent)
+                                        .frame(width: fillW)
+                                }
+                            }
+                            .clipShape(Capsule())
+                            .frame(height: 6)
+                        }
+                        .frame(height: 6)
+                        .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 34, alignment: .leading)
+                } else {
+                    Label("Max tier reached", systemImage: "sparkles")
+                        .lineLimit(allowsReflow ? 2 : 1)
+                        .minimumScaleFactor(0.85)
+                        .font(.system(size: allowsReflow ? metaSize : min(metaSize, 15), weight: .bold, design: .rounded))
+                        .foregroundStyle(surfaceAccent)
+                }
+            }
+    }
+}
+
+private struct CardAllowsReflowKey: EnvironmentKey {
+    static let defaultValue: Bool = true
+}
+
+extension EnvironmentValues {
+    var cardAllowsReflow: Bool {
+        get { self[CardAllowsReflowKey.self] }
+        set { self[CardAllowsReflowKey.self] = newValue }
     }
 }
 
@@ -856,6 +1397,8 @@ struct ScaledCard<Content: View>: View {
     var body: some View {
         GeometryReader { geo in
             content
+                .dynamicTypeSize(.medium)
+                .environment(\.cardAllowsReflow, false)
                 .scaleEffect(geo.size.width / CardMetrics.size.width, anchor: .topLeading)
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
@@ -865,46 +1408,62 @@ struct ScaledCard<Content: View>: View {
 
 /// Tactile press-in 3D tilt/scale spring for collector cards in the Collection list.
 struct CollectorCardPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.968 : 1.0)
+            .scaleEffect(reduceMotion ? 1.0 : (configuration.isPressed ? 0.968 : 1.0))
             .rotation3DEffect(
-                .degrees(configuration.isPressed ? 3.2 : 0),
+                .degrees(reduceMotion ? 0 : (configuration.isPressed ? 3.2 : 0)),
                 axis: (x: 1, y: 0, z: 0),
                 perspective: 0.7
             )
             .brightness(configuration.isPressed ? 0.03 : 0)
-            .animation(.spring(response: 0.24, dampingFraction: 0.72), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.72), value: configuration.isPressed)
+    }
+}
+
+private struct CardControlPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.68 : 1.0)
+            .scaleEffect(reduceMotion ? 1.0 : (configuration.isPressed ? 0.95 : 1.0))
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
 /// Scroll-driven diagonal specular glint that sweeps smoothly across a collector card as it moves through the viewport.
 struct ScrollSheenSweep: View {
     var cornerRadius: CGFloat = 24
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Color.clear
-            .overlay {
-                LinearGradient(
-                    colors: [.clear, .white.opacity(0.09), .white.opacity(0.26), .white.opacity(0.09), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 210)
-                .rotationEffect(.degrees(20))
-                .scaleEffect(y: 2.4)
-                .visualEffect { content, proxy in
-                    let frame = proxy.frame(in: .scrollView(axis: .vertical))
-                    let bounds = proxy.bounds(of: .scrollView(axis: .vertical)) ?? CGRect(x: 0, y: 0, width: 390, height: 800)
-                    let progress = bounds.height > 0 ? (frame.midY / bounds.height) * 2 - 1 : 0
-                    let clamped = max(-1.3, min(1.3, progress))
-                    return content
-                        .offset(x: clamped * 220)
-                        .opacity(max(0, 1 - abs(clamped) * 0.72))
+        if !reduceMotion {
+            Color.clear
+                .overlay {
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.09), .white.opacity(0.26), .white.opacity(0.09), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: 210)
+                    .rotationEffect(.degrees(20))
+                    .scaleEffect(y: 2.4)
+                    .visualEffect { content, proxy in
+                        let frame = proxy.frame(in: .scrollView(axis: .vertical))
+                        let bounds = proxy.bounds(of: .scrollView(axis: .vertical)) ?? CGRect(x: 0, y: 0, width: 390, height: 800)
+                        let progress = bounds.height > 0 ? (frame.midY / bounds.height) * 2 - 1 : 0
+                        let clamped = max(-1.3, min(1.3, progress))
+                        return content
+                            .offset(x: clamped * 220)
+                            .opacity(max(0, 1 - abs(clamped) * 0.72))
+                    }
                 }
-            }
-            .blendMode(.overlay)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .allowsHitTesting(false)
+                .blendMode(.overlay)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .allowsHitTesting(false)
+        }
     }
 }

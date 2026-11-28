@@ -52,6 +52,30 @@ enum DossierPeriod: String, CaseIterable, Identifiable {
         case .all: "All"
         }
     }
+    var windowTitle: String {
+        switch self {
+        case .week: "Last 7 Days"
+        case .month: "Last 30 Days"
+        case .year: "Last 12 Months"
+        case .all: "All Time"
+        }
+    }
+    var shareCaption: String {
+        switch self {
+        case .week: "Period share"
+        case .month: "Period share"
+        case .year: "Period share"
+        case .all: "Share of all listening"
+        }
+    }
+    var shortPrevLabel: String {
+        switch self {
+        case .week: "vs prev 7d"
+        case .month: "vs prev 30d"
+        case .year: "vs prev yr"
+        case .all: "since minted"
+        }
+    }
     /// Rolling window length in days; nil means since first wear.
     var days: Int? {
         switch self {
@@ -169,9 +193,11 @@ struct EarGrade {
 
     let score: Double
     let factors: [Factor]
+    var hasRecentData: Bool = true
 
     var label: String {
-        switch score {
+        guard hasRecentData else { return "UNGRADED" }
+        return switch score {
         case 9.95...: "PRISTINE"
         case 9..<9.95: "GEM MINT"
         case 8..<9: "MINT"
@@ -181,7 +207,7 @@ struct EarGrade {
         default: "WELL WORN"
         }
     }
-    var scoreText: String { String(format: "%.1f", score) }
+    var scoreText: String { hasRecentData ? String(format: "%.1f", score) : "—" }
 }
 
 struct CareerRow: Identifiable, Hashable {
@@ -232,6 +258,8 @@ struct DeviceDossier: Identifiable {
     let grade: EarGrade
     let milestones: [DossierMilestone]
     let careerRows: [CareerRow]
+    /// Cached 28-day × 24-hour listening grid ending on `calendar.startOfDay(for: now)` so vaulted glyphs reflect the archived cutoff without rebuilding per tilt frame.
+    let recentFourWeekGrid: ListeningGrid
 
     /// - Parameter otherDevicesDailyMinutes: minutes on *other* headphones keyed by start of day.
     init(id: String, nickname: String, symbol: String, serial: Int, hardware: DossierHardware,
@@ -278,7 +306,7 @@ struct DeviceDossier: Identifiable {
         }
 
         let normalizedOthers: [Date: Double]
-        if let retirement {
+        if retirement != nil {
             let cutoffDay = effectiveCalendar.startOfDay(for: effectiveNow)
             if effectiveCalendar.timeZone != calendar.timeZone {
                 var remapped: [Date: Double] = [:]
@@ -317,7 +345,7 @@ struct DeviceDossier: Identifiable {
         let monthStats = periods[.month]!
         let monthHourTotal = monthStats.hours.reduce(0) { $0 + $1.minutes }
         let night = monthHourTotal > 0
-            ? monthStats.hours.filter { $0.hour < 5 }.reduce(0) { $0 + $1.minutes } / monthHourTotal
+            ? monthStats.hours.filter { $0.hour >= 22 || $0.hour <= 3 }.reduce(0) { $0 + $1.minutes } / monthHourTotal
             : 0
 
         self.lifetimeMinutes = lifetime
@@ -338,6 +366,7 @@ struct DeviceDossier: Identifiable {
             calendar: effectiveCalendar
         )
         self.careerRows = Self.buildCareerRows(sessions: sortedSessions, calendar: effectiveCalendar)
+        self.recentFourWeekGrid = Self.buildRecentFourWeekGrid(days: days, now: effectiveNow, calendar: effectiveCalendar)
     }
 
     func stats(_ period: DossierPeriod) -> PeriodStats { periods[period]! }
@@ -349,13 +378,12 @@ struct DeviceDossier: Identifiable {
     var lastWear: WearSession? { sessions.last }
     var historyDays: Int { days.count }
 
-    /// 28-day × 24-hour listening grid ending on `calendar.startOfDay(for: now)` so vaulted glyphs reflect the archived cutoff.
-    var recentFourWeekGrid: ListeningGrid {
+    private static func buildRecentFourWeekGrid(days: [DayStat], now: Date, calendar: Calendar) -> ListeningGrid {
         let dayCount = LibrarySnapshot.gridDays
         var minutes = Array(repeating: Array(repeating: 0.0, count: 24), count: dayCount)
         var decibels = minutes
         let endDay = calendar.dateInterval(of: .day, for: now)?.start ?? calendar.startOfDay(for: now)
-        let firstGridDay = Self.addingCalendarDays(-(dayCount - 1), to: endDay, calendar: calendar)
+        let firstGridDay = addingCalendarDays(-(dayCount - 1), to: endDay, calendar: calendar)
         let byDate = Dictionary(uniqueKeysWithValues: days.map { ($0.date, $0) })
         var cursor = firstGridDay
         for offset in 0..<dayCount {
@@ -366,7 +394,7 @@ struct DeviceDossier: Identifiable {
                 }
             }
             let nextCursor = calendar.dateInterval(of: .day, for: cursor)?.end
-                ?? Self.addingCalendarDays(1, to: cursor, calendar: calendar)
+                ?? addingCalendarDays(1, to: cursor, calendar: calendar)
             if nextCursor <= cursor { break }
             cursor = nextCursor
         }
@@ -387,17 +415,20 @@ struct DeviceDossier: Identifiable {
     }
 
     private static func buildGrade(recent: PeriodStats, fallbackDecibels: Double, nightShare: Double) -> EarGrade {
-        let db = recent.totalMinutes > 0 ? recent.averageDecibels : fallbackDecibels
-        let volume = max(0, db - 55) * 0.12
-        let dose = min(3, recent.weeklyDose * 2.5)
-        let loud = min(2, recent.loudShare * 8)
-        let night = min(0.6, nightShare * 0.8)
+        guard recent.totalMinutes > 0 else {
+            return EarGrade(score: 0, factors: [], hasRecentData: false)
+        }
+        let db = recent.averageDecibels > 0 ? recent.averageDecibels : fallbackDecibels
+        let volume = (max(0, db - 66) * 0.14 * 10).rounded() / 10
+        let dose = (min(3, recent.weeklyDose * 2.5) * 10).rounded() / 10
+        let loud = (min(2, recent.loudShare * 8) * 10).rounded() / 10
+        let night = (min(0.6, nightShare * 0.8) * 10).rounded() / 10
         let score = max(1, min(10, ((10 - volume - dose - loud - night) * 10).rounded() / 10))
         return EarGrade(score: score, factors: [
-            .init(name: "Average volume", value: "\(Int(db.rounded())) dB(A)", penalty: volume, severity: min(1, volume / 3)),
-            .init(name: "Weekly WHO dose", value: "\(Int((recent.weeklyDose * 100).rounded()))%", penalty: dose, severity: min(1, dose / 3)),
-            .init(name: "Loud sessions ≥80 dB", value: "\(Int((recent.loudShare * 100).rounded()))%", penalty: loud, severity: min(1, loud / 2)),
-            .init(name: "Late-night share", value: "\(Int((nightShare * 100).rounded()))%", penalty: night, severity: min(1, night / 0.6)),
+            .init(name: recent.averageDecibels > 0 ? "Average volume" : "Average volume (lifetime)", value: "\(Int(db.rounded())) dB(A)", penalty: volume, severity: min(1, volume / 3)),
+            .init(name: "Avg weekly WHO dose", value: AppLanguage.current.text("%lld%% of limit", Int((recent.weeklyDose * 100).rounded())), penalty: dose, severity: min(1, dose / 3)),
+            .init(name: "Avg ≥80 dB(A) time", value: AppLanguage.current.text("%lld%% of time", Int((recent.loudShare * 100).rounded())), penalty: loud, severity: min(1, loud / 2)),
+            .init(name: "Late night (22–04)", value: AppLanguage.current.text("%lld%% of time", Int((nightShare * 100).rounded())), penalty: night, severity: min(1, night / 0.6)),
         ])
     }
 
@@ -417,8 +448,8 @@ struct DeviceDossier: Identifiable {
         if let first = sessions.first {
             let firstDayStart = calendar.startOfDay(for: first.start)
             result.append(
-                .init(id: "minted", kind: .minted, date: first.start, title: "Minted",
-                      detail: "First wear · \(first.minutes.minutesText)", tier: .bronze)
+                .init(id: "minted", kind: .minted, date: first.start, title: AppLanguage.current.text("Minted"),
+                      detail: AppLanguage.current.text("First wear · %1$@ · %2$@ tier", first.minutes.minutesText, AppLanguage.current.text(Rarity.bronze.displayName)), tier: .bronze)
             )
             var cumulative = 0.0
             for session in sessions {
@@ -427,23 +458,25 @@ struct DeviceDossier: Identifiable {
                 for mark in hourMarks where before < mark * 60 && cumulative >= mark * 60 {
                     let date = session.start.addingTimeInterval((mark * 60 - before) * 60)
                     let delta = Self.calendarDayDelta(from: firstDayStart, to: date, calendar: calendar)
-                    let dayDetail = delta == 0 ? "Same day as minting" : (delta == 1 ? "1 day after minting" : "\(delta) days after minting")
-                    result.append(.init(id: "h\(Int(mark))", kind: .hours, date: date, title: "\(Int(mark)) hours",
+                    let dayDetail = delta == 0
+                        ? AppLanguage.current.text("Same day as minting")
+                        : (delta == 1 ? AppLanguage.current.text("1 day after minting") : AppLanguage.current.text("%lld days after minting", delta))
+                    result.append(.init(id: "h\(Int(mark))", kind: .hours, date: date, title: AppLanguage.current.text("%lld hours", Int(mark)),
                                         detail: dayDetail))
                 }
                 for (mark, tier) in tiers where before < mark * 60 && cumulative >= mark * 60 {
                     let date = session.start.addingTimeInterval((mark * 60 - before) * 60)
-                    result.append(.init(id: "t\(tier.rawValue)", kind: .tier, date: date, title: "\(tier.shortName) tier",
-                                        detail: "Card upgraded at \(Int(mark))h", tier: tier))
+                    result.append(.init(id: "t\(tier.rawValue)", kind: .tier, date: date, title: AppLanguage.current.text("%@ tier", AppLanguage.current.text(tier.displayName)),
+                                        detail: AppLanguage.current.text("Card upgraded at %lldh", Int(mark)), tier: tier))
                 }
             }
             if let longest = longestSession {
-                result.append(.init(id: "longest", kind: .longest, date: longest.start, title: "Longest wear",
-                                    detail: "\(longest.minutes.minutesText) in one go\(longest.isEstimated ? " · est." : "")"))
+                result.append(.init(id: "longest", kind: .longest, date: longest.start, title: AppLanguage.current.text("Longest wear"),
+                                    detail: AppLanguage.current.text("%@ in one go", longest.minutes.minutesText)))
             }
             if let best = bestDay, best.minutes > 0 {
-                result.append(.init(id: "bestDay", kind: .bestDay, date: best.date.addingTimeInterval(20 * 3600), title: "Biggest day",
-                                    detail: "\(best.minutes.minutesText) across \(best.sessions) wears"))
+                result.append(.init(id: "bestDay", kind: .bestDay, date: best.date.addingTimeInterval(20 * 3600), title: AppLanguage.current.text("Biggest day"),
+                                    detail: AppLanguage.current.text("%1$@ across %2$lld wears", best.minutes.minutesText, best.sessions)))
             }
         }
         if let retirement {
@@ -457,7 +490,7 @@ struct DeviceDossier: Identifiable {
                 id: "retired",
                 kind: .retired,
                 date: retirement.careerEndMoment,
-                title: "Retired to Vault",
+                title: AppLanguage.current.text("Retired to Vault"),
                 detail: detail,
                 tier: finalTier
             ))
@@ -469,8 +502,8 @@ struct DeviceDossier: Identifiable {
             let eta = now.addingTimeInterval(daysLeft * 86400)
             let tier = tiers.first { $0.0 * 60 == next }?.1
             result.append(.init(id: "next", kind: .upcoming, date: eta,
-                                title: tier.map { "\($0.shortName) tier" } ?? "\(Int(next / 60)) hours",
-                                detail: "\((next - lifetimeMinutes).minutesText) to go · at your pace", tier: tier, isFuture: true))
+                                title: tier.map { AppLanguage.current.text("%@ tier", AppLanguage.current.text($0.shortName)) } ?? AppLanguage.current.text("%lld hours", Int(next / 60)),
+                                detail: AppLanguage.current.text("%@ to go · at your 30-day pace", (next - lifetimeMinutes).minutesText), tier: tier, isFuture: true))
         }
         return result.sorted { $0.date < $1.date }
     }
@@ -484,7 +517,7 @@ struct DeviceDossier: Identifiable {
         }
         return groups.keys.sorted(by: >).map { month in
             let list = groups[month]!
-            let label = DateText.format(month, dateFormat: "MMM ’yy", calendar: calendar, locale: Locale.current).uppercased()
+            let label = DateText.shortMonthYear(month, calendar: calendar, locale: AppLanguage.current.locale).uppercased()
             return CareerRow(id: month, label: label,
                              minutes: list.reduce(0) { $0 + $1.minutes }, sessions: list.count,
                              longest: list.map(\.minutes).max() ?? 0, averageDecibels: Self.energyAverage(list))
@@ -636,10 +669,18 @@ struct DeviceDossier: Identifiable {
         let firstDay = days.first?.date ?? nowDay
         let lastDay = days.last?.date ?? firstDay
         let today = max(lastDay, nowDay)
-        let start = period.days.map { Self.addingCalendarDays(-($0 - 1), to: today, calendar: calendar) } ?? firstDay
+        let start: Date = switch period {
+        case .week, .month: Self.addingCalendarDays(-(period.days! - 1), to: today, calendar: calendar)
+        case .year: calendar.date(byAdding: .month, value: -11, to: calendar.dateInterval(of: .month, for: today)!.start)!
+        case .all: firstDay
+        }
 
         // Single linear pass over sorted `days` for range totals, previous period, active days, and 24h bins.
-        let prevStart = period.days.map { Self.addingCalendarDays(-$0, to: start, calendar: calendar) }
+        let prevStart: Date? = switch period {
+        case .week, .month: Self.addingCalendarDays(-period.days!, to: start, calendar: calendar)
+        case .year: calendar.date(byAdding: .month, value: -12, to: start)!
+        case .all: nil
+        }
         var total = 0.0
         var all = 0.0
         var energy = 0.0
@@ -714,15 +755,13 @@ struct DeviceDossier: Identifiable {
             let e = hourEnergy[h]
             return HourStat(hour: h, minutes: m, averageDecibels: m > 0 ? 10 * log10(e / m) : 0)
         }
-        var doseSum = 0.0
         var loud = 0.0
         var peakDB = 0.0
         for s in periodSessions {
-            doseSum += s.minutes / allowedWeeklyMinutes(db: s.averageDecibels)
             if s.averageDecibels >= 80 { loud += s.minutes }
             if s.peakDecibels > peakDB { peakDB = s.peakDecibels }
         }
-        let dose = doseSum / max(1, Double(span) / 7)
+        let dose = HearingBudget.dose(energy: energy * 60) / max(1, Double(span) / 7)
 
         return PeriodStats(period: period, start: start, end: now, totalMinutes: total, allDevicesMinutes: all,
                            previousMinutes: previous, sessions: periodSessions,

@@ -124,7 +124,7 @@ struct LibrarySnapshot: Sendable {
             let activeSeconds = span.effectiveSeconds
             guard activeSeconds > 0 else { return nil }
             let avgDB = span.averageDecibels ?? fallbackDB
-            let peakDB = span.peakDecibels > 0 ? max(span.peakDecibels, avgDB) : avgDB
+            let peakDB = span.peakDecibels > 0 ? max(span.peakDecibels, avgDB) : 0
             return WearSession(
                 start: Date(timeIntervalSince1970: span.start),
                 minutes: activeSeconds / 60,
@@ -347,7 +347,7 @@ extension LibrarySnapshot {
                 symbol: d.model.resolvedSymbol,
                 lifetimeMinutes: d.lifetimeSeconds / 60,
                 sessions: d.sessionCount,
-                longestMinutes: d.longestSession / 60,
+                longestMinutes: d.wearSessions.map(\.minutes).max() ?? (d.longestSession / 60),
                 averageDecibels: (d.averageDecibels ?? 0).rounded(),
                 firstMet: d.first.map { DateText.dotted($0, calendar: calendar) } ?? "—",
                 lastUsed: d.last.map { DateText.relativeDay($0, now: now, calendar: calendar) } ?? "—",
@@ -417,12 +417,13 @@ extension LibrarySnapshot {
             deviceModel: AppLanguage.current.text("%lld pairs", devices.count),
             deviceSymbol: "headphones",
             periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            periodEndDate: now,
             grid: ListeningGrid(minutes: combinedMinutes, decibels: combinedDecibels),
             lifetimeMinutes: totalLifetimeSeconds / 60,
             sessions: totalSessions,
             averageSessionMinutes: avgSession / 60,
             longestSessionMinutes: longest / 60,
-            firstUse: earliestFirst.map { DateText.monthDay($0, calendar: calendar) } ?? "—",
+            firstUse: earliestFirst.map { DateText.dotted($0, calendar: calendar) } ?? "—",
             weeklyBudgetOverride: totalBudget
         )
     }
@@ -433,12 +434,13 @@ extension LibrarySnapshot {
             deviceModel: d.model.marketingName,
             deviceSymbol: d.model.resolvedSymbol,
             periodLabel: DateText.weekRange(endingAt: now, calendar: calendar),
+            periodEndDate: now,
             grid: d.grid,
             lifetimeMinutes: d.lifetimeSeconds / 60,
             sessions: d.sessionCount,
             averageSessionMinutes: d.averageSession / 60,
             longestSessionMinutes: d.longestSession / 60,
-            firstUse: d.first.map { DateText.monthDay($0, calendar: calendar) } ?? "—",
+            firstUse: d.first.map { DateText.dotted($0, calendar: calendar) } ?? "—",
             weeklyBudgetOverride: d.weeklyBudget
         )
     }
@@ -672,7 +674,10 @@ enum DateText {
     static func range(_ start: Date, _ end: Date, calendar: Calendar, locale: Locale = AppLanguage.current.locale) -> String {
         if calendar.isDate(start, equalTo: end, toGranularity: .month) {
             let startText = formatTemplate(start, template: "MMM d", calendar: calendar, locale: locale)
-            return "\(startText) – \(calendar.component(.day, from: end))"
+            let endDay = locale.identifier.hasPrefix("zh")
+                ? formatTemplate(end, template: "d", calendar: calendar, locale: locale)
+                : "\(calendar.component(.day, from: end))"
+            return "\(startText) – \(endDay)"
         }
         if calendar.isDate(start, equalTo: end, toGranularity: .year) {
             let startText = formatTemplate(start, template: "MMM d", calendar: calendar, locale: locale)

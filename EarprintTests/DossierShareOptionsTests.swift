@@ -93,7 +93,7 @@ final class DossierShareOptionsTests: XCTestCase {
         XCTAssertTrue(defaultText.contains("grade"), "Expected grade in default Simple OCR: \(defaultText)")
         XCTAssertTrue(defaultText.contains(dossier.grade.label.lowercased()))
         XCTAssertTrue(defaultText.contains(dossier.hardware.productID.lowercased()))
-        XCTAssertTrue(defaultText.contains("sessions"))
+        XCTAssertTrue(defaultText.contains("wears"))
         XCTAssertTrue(defaultText.contains("longest"))
         XCTAssertTrue(defaultText.contains("avg level"))
         XCTAssertTrue(defaultText.contains("first wear"))
@@ -125,7 +125,7 @@ final class DossierShareOptionsTests: XCTestCase {
         XCTAssertFalse(customText.contains("grade"), "Hidden grade appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains(dossier.grade.label.lowercased()), "Hidden grade label appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains(dossier.hardware.productID.lowercased()), "Hidden productID appeared in OCR: \(customText)")
-        XCTAssertFalse(customText.contains("sessions"), "Hidden sessions appeared in OCR: \(customText)")
+        XCTAssertFalse(customText.contains("wears"), "Hidden wears appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("first wear"), "Hidden first wear appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains(card.firstMet.lowercased()), "Hidden firstMet date appeared in OCR: \(customText)")
         XCTAssertFalse(customText.contains("record days"), "Hidden tier summary appeared in OCR: \(customText)")
@@ -151,7 +151,7 @@ final class DossierShareOptionsTests: XCTestCase {
         let hiddenMetricsText = try recognizeNormalizedText(fromPNG: hiddenMetricsPages[0].pngData)
         XCTAssertFalse(hiddenMetricsText.contains("longest"))
         XCTAssertFalse(hiddenMetricsText.contains("avg level"))
-        XCTAssertTrue(hiddenMetricsText.contains("sessions"))
+        XCTAssertTrue(hiddenMetricsText.contains("wears"))
         XCTAssertTrue(hiddenMetricsText.contains("first wear"))
 
         options.simple.reset()
@@ -170,7 +170,7 @@ final class DossierShareOptionsTests: XCTestCase {
         let resetText = try recognizeNormalizedText(fromPNG: resetPages[0].pngData)
         XCTAssertTrue(resetText.contains("grade"))
         XCTAssertTrue(resetText.contains(dossier.hardware.productID.lowercased()))
-        XCTAssertTrue(resetText.contains("sessions"))
+        XCTAssertTrue(resetText.contains("wears"))
         XCTAssertTrue(resetText.contains("first wear"))
         XCTAssertTrue(resetText.contains("record days"))
     }
@@ -284,7 +284,7 @@ final class DossierShareOptionsTests: XCTestCase {
         )
         let certWithoutMilestonesText = try recognizeNormalizedText(fromPNG: certWithoutMilestones[0].pngData)
         XCTAssertFalse(certWithoutMilestonesText.contains("milestones"))
-        XCTAssertTrue(certWithoutMilestonesText.contains("earprint grading authority"))
+        XCTAssertTrue(certWithoutMilestonesText.contains("earprint archive"))
 
         page4Custom.long.showCertificate = false
         page4Custom.long.showMilestones = true
@@ -301,7 +301,7 @@ final class DossierShareOptionsTests: XCTestCase {
             scale: 3
         )
         let milestonesOnlyText = try recognizeNormalizedText(fromPNG: milestonesOnly[0].pngData)
-        XCTAssertFalse(milestonesOnlyText.contains("earprint grading authority"))
+        XCTAssertFalse(milestonesOnlyText.contains("earprint archive"))
         XCTAssertTrue(milestonesOnlyText.contains("milestones"))
 
         options.long.reset()

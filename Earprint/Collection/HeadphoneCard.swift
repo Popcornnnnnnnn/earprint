@@ -39,14 +39,14 @@ enum SampleCards {
             cal.date(from: DateComponents(year: y, month: m, day: d, hour: 12)) ?? Date()
         }
         return [
-            HeadphoneCard(id: "pro2", nickname: "🧸's AirPods Pro", model: "AirPods Pro 2 · USB-C", symbol: "airpodspro",
-                          lifetimeMinutes: 188 * 60 + 22, sessions: 269, longestMinutes: 220, averageDecibels: 58,
-                          firstMet: "2026.10.30", lastUsed: "Today", serial: 1, grid: base.grid,
+            HeadphoneCard(id: "pro2", nickname: "AirPods Pro 2", model: "AirPods Pro 2 · USB-C", symbol: "airpodspro",
+                          lifetimeMinutes: 188 * 60 + 22, sessions: 269, longestMinutes: 220, averageDecibels: 64,
+                          firstMet: "2026.07.15", lastUsed: "Today", serial: 1, grid: base.grid,
                           modelKey: .airpodsPro, kind: .earbuds,
                           tierAchievedDates: [
-                              .bronze: day(2026, 10, 30),
-                              .silver: day(2026, 11, 2),
-                              .sapphire: day(2026, 11, 14)
+                              .bronze: day(2026, 7, 15),
+                              .silver: day(2026, 8, 22),
+                              .sapphire: day(2026, 10, 18)
                           ],
                           lastWearDate: day(2026, 11, 18)),
             HeadphoneCard(id: "max", nickname: "Studio Max", model: "AirPods Max", symbol: "airpodsmax",

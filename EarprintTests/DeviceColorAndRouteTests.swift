@@ -1057,6 +1057,214 @@ final class DeviceColorAndRouteTests: XCTestCase {
     }
 
     @MainActor
+    func testRenderUIAuditSnapshotsIfRequested() throws {
+        let dossierCard = SampleCards.all[0]
+        let sampleDossier = DeviceDossier.sample(for: dossierCard, now: DossierSample.referenceNow)
+        let dossierAllStats = sampleDossier.stats(.all)
+
+        var activeCard = dossierCard
+        activeCard.grid = sampleDossier.recentFourWeekGrid
+        activeCard.lifetimeMinutes = sampleDossier.lifetimeMinutes
+        activeCard.sessions = sampleDossier.sessions.count
+        activeCard.longestMinutes = sampleDossier.longestSession?.minutes ?? activeCard.longestMinutes
+        activeCard.averageDecibels = sampleDossier.averageDecibels.rounded()
+
+        var auditSummary = SampleData.summary
+        auditSummary.deviceName = activeCard.nickname
+        auditSummary.deviceModel = activeCard.model
+        auditSummary.deviceSymbol = activeCard.symbol
+        auditSummary.lifetimeMinutes = sampleDossier.lifetimeMinutes
+        auditSummary.sessions = sampleDossier.sessions.count
+        auditSummary.averageSessionMinutes = dossierAllStats.averagePerWear
+        auditSummary.longestSessionMinutes = activeCard.longestMinutes
+        auditSummary.grid = sampleDossier.recentFourWeekGrid
+        auditSummary.periodEndDate = DossierSample.referenceNow
+        auditSummary.periodLabel = DateText.weekRange(endingAt: DossierSample.referenceNow, calendar: sampleDossier.calendar)
+        auditSummary.firstUse = activeCard.firstMet
+        auditSummary.weeklyBudgetOverride = nil
+
+        var streak = 0
+        var longestStreak = 0
+        var prevActiveDate: Date? = nil
+        var weekDoses: [Date: Double] = [:]
+        for day in sampleDossier.days {
+            if day.minutes > 0 {
+                if let prev = prevActiveDate,
+                   let next = sampleDossier.calendar.date(byAdding: .day, value: 1, to: prev),
+                   sampleDossier.calendar.isDate(day.date, inSameDayAs: next) {
+                    streak += 1
+                } else {
+                    streak = 1
+                }
+                longestStreak = max(longestStreak, streak)
+                prevActiveDate = day.date
+            }
+            if let weekStart = sampleDossier.calendar.dateInterval(of: .weekOfYear, for: day.date)?.start {
+                let db = day.averageDecibels > 0 ? day.averageDecibels : 70
+                let dose = day.minutes > 0 ? (day.minutes / 60.0) / 40.0 * pow(2.0, (db - 80.0) / 3.0) : 0
+                weekDoses[weekStart, default: 0] += dose
+            }
+        }
+        let safeWeeks = max(1, weekDoses.values.filter { $0 <= 1.0 }.count)
+
+        let auditWrapped = WrappedSummary(
+            year: 2026,
+            totalMinutes: dossierAllStats.allDevicesMinutes,
+            totalSessions: Int((Double(sampleDossier.sessions.count) / max(dossierAllStats.share, 0.01)).rounded()),
+            activeDays: sampleDossier.recordDays,
+            topDeviceName: activeCard.nickname,
+            topDeviceModel: activeCard.model,
+            topDeviceKey: activeCard.modelKey,
+            topDeviceSymbol: activeCard.symbol,
+            topDeviceMinutes: sampleDossier.lifetimeMinutes,
+            topCard: activeCard,
+            peakMonth: 10,
+            peakMonthMinutes: 1_860,
+            longestStreakDays: max(1, longestStreak),
+            averageDecibels: sampleDossier.averageDecibels,
+            persona: auditSummary.persona,
+            whoSafeWeeksCount: safeWeeks
+        )
+
+        var auditCards = SampleCards.all
+        if auditCards.count >= 3 {
+            let remMins = max(0, dossierAllStats.allDevicesMinutes - sampleDossier.lifetimeMinutes)
+            let remSessions = max(0, auditWrapped.totalSessions - sampleDossier.sessions.count)
+            let secondMins = (remMins * 0.62).rounded()
+            let secondSessions = Int((Double(remSessions) * 0.62).rounded())
+            auditCards[0] = activeCard
+            auditCards[1].lifetimeMinutes = secondMins
+            auditCards[1].sessions = secondSessions
+            auditCards[2].lifetimeMinutes = max(0, remMins - secondMins)
+            auditCards[2].sessions = max(0, remSessions - secondSessions)
+        }
+
+        let homeView = HomeView(
+            summary: auditSummary,
+            primaryCard: activeCard,
+            cards: auditCards,
+            isSampleData: false,
+            isActiveTab: true,
+            lastSynced: DossierSample.referenceNow,
+            wrappedSummaryOverride: auditWrapped
+        )
+
+        var maxHolo = SampleCards.all.count > 1 ? SampleCards.all[1] : SampleCards.all[0]
+        var studioMins = Array(repeating: Array(repeating: 0.0, count: 24), count: 28)
+        var studioDB = Array(repeating: Array(repeating: 0.0, count: 24), count: 28)
+        for day in 0..<28 {
+            let isWeekend = day % 7 == 0 || day % 7 == 6
+            studioMins[day][20] = 14 + Double((day * 5) % 14)
+            studioDB[day][20] = (day % 5 == 0) ? 74 : 65
+            studioMins[day][21] = 18 + Double((day * 7) % 16)
+            studioDB[day][21] = (day % 6 == 0) ? 78 : ((day % 3 == 0) ? 70 : 64)
+            if day % 2 == 0 {
+                studioMins[day][22] = 16 + Double((day * 3) % 12)
+                studioDB[day][22] = (day % 7 == 0) ? 77 : 63
+            }
+            if day % 3 != 1 {
+                studioMins[day][14] = 10 + Double((day * 5) % 10)
+                studioDB[day][14] = 61
+            }
+            if isWeekend {
+                studioMins[day][15] = 14 + Double((day * 3) % 10)
+                studioDB[day][15] = 67
+                studioMins[day][23] = 12
+                studioDB[day][23] = 62
+            }
+        }
+        maxHolo.grid = ListeningGrid(minutes: studioMins, decibels: studioDB)
+        maxHolo.lifetimeMinutes = 2490 * 60 + 18
+        maxHolo.sessions = 3420
+        maxHolo.serial = 2
+        let backRetirement = DeviceRetirement(
+            retiredDay: DeviceRetirement.CalendarDay(year: 2026, month: 7, day: 14),
+            timeZoneIdentifier: "UTC",
+            reason: .upgraded,
+            farewellNote: ""
+        )
+        let cardBackPair = HStack(spacing: 20) {
+            CardBack(
+                card: activeCard,
+                tilt: CGSize(width: 0.22, height: -0.14),
+                openDossier: {},
+                flip: {}
+            )
+            CardBack(
+                card: maxHolo,
+                tilt: CGSize(width: -0.18, height: 0.12),
+                retirement: backRetirement,
+                openDossier: {},
+                flip: {}
+            )
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 22)
+
+        let dossierOverview = DeviceDossierView(
+            card: dossierCard,
+            dossier: sampleDossier,
+            isSampleData: false,
+            initialTab: .overview
+        )
+        let dossierActivity = DeviceDossierView(
+            card: dossierCard,
+            dossier: sampleDossier,
+            isSampleData: false,
+            initialTab: .activity
+        )
+        let dossierCertificate = DeviceDossierView(
+            card: dossierCard,
+            dossier: sampleDossier,
+            isSampleData: false,
+            initialTab: .certificate
+        )
+
+        let ringsDark = try renderHostingImage(homeView, size: CGSize(width: 393, height: 1360), style: .dark)
+        let ringsLight = try renderHostingImage(homeView, size: CGSize(width: 393, height: 1360), style: .light)
+        let backDark = try renderHostingImage(
+            cardBackPair.background(Color(red: 0.04, green: 0.04, blue: 0.06)),
+            size: CGSize(width: 656, height: 484),
+            style: .dark
+        )
+        let backLight = try renderHostingImage(
+            cardBackPair.background(Color(red: 0.95, green: 0.95, blue: 0.97)),
+            size: CGSize(width: 656, height: 484),
+            style: .light
+        )
+        let overviewDark = try renderHostingImage(dossierOverview, size: CGSize(width: 393, height: 1390), style: .dark)
+        let overviewLight = try renderHostingImage(dossierOverview, size: CGSize(width: 393, height: 1390), style: .light)
+        let activityDark = try renderHostingImage(dossierActivity, size: CGSize(width: 393, height: 1650), style: .dark)
+        let activityLight = try renderHostingImage(dossierActivity, size: CGSize(width: 393, height: 1650), style: .light)
+        let certDark = try renderHostingImage(dossierCertificate, size: CGSize(width: 393, height: 1040), style: .dark)
+        let certLight = try renderHostingImage(dossierCertificate, size: CGSize(width: 393, height: 1040), style: .light)
+
+        let outputs: [(String, UIImage)] = [
+            ("rings-dark.png", ringsDark),
+            ("rings-light.png", ringsLight),
+            ("card-back-dark.png", backDark),
+            ("card-back-light.png", backLight),
+            ("dossier-overview-dark.png", overviewDark),
+            ("dossier-overview-light.png", overviewLight),
+            ("dossier-activity-dark.png", activityDark),
+            ("dossier-activity-light.png", activityLight),
+            ("dossier-certificate-dark.png", certDark),
+            ("dossier-certificate-light.png", certLight),
+        ]
+        for (_, img) in outputs {
+            try assertImageHasVisibleContent(img)
+        }
+
+        if let dir = ProcessInfo.processInfo.environment["EARPRINT_UI_AUDIT_DIR"], !dir.isEmpty {
+            let folder = URL(fileURLWithPath: dir, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for (name, img) in outputs {
+                try XCTUnwrap(img.pngData()).write(to: folder.appendingPathComponent(name))
+            }
+        }
+    }
+
+    @MainActor
     private func renderHostingImage<V: View>(_ view: V, size: CGSize, style: UIUserInterfaceStyle) throws -> UIImage {
         let themed = view
             .ignoresSafeArea()

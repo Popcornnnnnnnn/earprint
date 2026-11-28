@@ -33,8 +33,25 @@ private enum DossierSampleCache {
     }
 }
 
+/// Top-level sections inside `DeviceDossierView`.
+enum DossierTab: String, CaseIterable, Identifiable {
+    case overview
+    case activity
+    case certificate
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .overview: "Overview"
+        case .activity: "Activity"
+        case .certificate: "Certificate"
+        }
+    }
+}
+
 /// Full-screen dossier for a single headphone: PSA-style grading slab, period airtime,
-/// interactive trend & 24-hour charts, listening habits, milestones, and hardware certificate.
+/// interactive trend & 24-hour charts, hearing health, milestones, and hardware certificate.
 struct DeviceDossierView: View {
     let card: HeadphoneCard
     private var dossier: DeviceDossier { currentDossier }
@@ -50,17 +67,21 @@ struct DeviceDossierView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.locale) private var locale
     @Environment(DeviceColorStore.self) private var colorStore: DeviceColorStore?
     @Environment(DeviceLifecycleStore.self) private var lifecycleStore: DeviceLifecycleStore?
 
+    @ScaledMetric(relativeTo: .title3) private var careerStatSize: CGFloat = 24
     @State private var currentDossier: DeviceDossier
+    @State private var activeTab: DossierTab
     @State private var period: DossierPeriod
     @State private var selectedDate: Date?
     @State private var selectedHour: Int?
     @State private var slabFlipped = false
     @State private var demoTilt: CGSize = .zero
-    @State private var showStickyIdentity = false
+    @State private var isScrolled = false
     @State private var demoStarted = false
     @State private var showShare = false
     @State private var shareInitialFormat: DossierShareFormat = .simple
@@ -68,6 +89,10 @@ struct DeviceDossierView: View {
     @State private var showRetireSheet = false
     @State private var showFarewellBanner = false
     @State private var dismissedInactivityNudge = false
+    @State private var showMonthlyBreakdown = false
+    @State private var showTechnicalDetails = false
+    @State private var viewportWidth: CGFloat = 393
+    @Namespace private var tabNamespace
 
     private struct RefreshKey: Equatable {
         let cardID: String
@@ -86,6 +111,7 @@ struct DeviceDossierView: View {
         activeCardCount: Int = 1,
         librarySyncToken: Date? = nil,
         isSampleData: Bool = false,
+        initialTab: DossierTab = .overview,
         onClose: (() -> Void)? = nil
     ) {
         self.card = card
@@ -100,6 +126,12 @@ struct DeviceDossierView: View {
         self.isDemo = isDemo
         self.referenceDate = referenceDate
         _currentDossier = State(initialValue: resolved)
+        var resolvedTab = initialTab
+        if let i = args.firstIndex(of: "-dossierTab"), i + 1 < args.count,
+           let parsed = DossierTab(rawValue: args[i + 1]) {
+            resolvedTab = parsed
+        }
+        _activeTab = State(initialValue: resolvedTab)
         _period = State(initialValue: resolved.isRetired ? .all : .month)
         includesHealthDetails = dossier != nil
         self.isSampleData = isSampleData
@@ -142,26 +174,39 @@ struct DeviceDossierView: View {
         }
     }
 
+    private var headerAccent: Color {
+        DossierContrast.accentColor(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
+    }
+
     var body: some View {
         ZStack {
             backdrop
             ScrollViewReader { proxy in
                 ScrollView {
-                    dossierContent(exporting: false)
-                    .padding(.top, 8)
-                    .padding(.bottom, 48)
+                    dossierContent
+                        .padding(.top, 12)
+                        .padding(.bottom, 48)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.automatic)
                 .pauseMotionWhileScrolling("dossier")
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                    if width > 0 { viewportWidth = width }
+                }
                 .onScrollGeometryChange(for: Bool.self) { geo in
-                    (geo.contentOffset.y + geo.contentInsets.top) > 380
-                } action: { _, shouldShow in
-                    if showStickyIdentity != shouldShow {
-                        showStickyIdentity = shouldShow
+                    (geo.contentOffset.y + geo.contentInsets.top) > 12
+                } action: { _, scrolled in
+                    if isScrolled != scrolled {
+                        isScrolled = scrolled
                     }
                 }
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    topBar(proxy: proxy)
+                    topBar
+                }
+                .onChange(of: activeTab) { _, _ in
+                    isScrolled = false
+                    withAnimation(.none) {
+                        proxy.scrollTo("top", anchor: .top)
+                    }
                 }
                 .task {
                     await handleLaunchArguments(proxy: proxy)
@@ -220,40 +265,123 @@ struct DeviceDossierView: View {
         }
     }
 
-    private func dossierContent(exporting: Bool) -> some View {
-        VStack(spacing: 22) {
-            if exporting {
-                HStack {
-                    Text("Device Dossier")
-                        .font(.system(.headline, design: .rounded, weight: .bold))
-                    Spacer()
-                    dataSourceNote
-                }
-                .foregroundStyle(DossierPalette.primaryText.opacity(0.8))
-                .padding(.top, 4)
+    private var dossierContent: some View {
+        VStack(spacing: 18) {
+            Color.clear.frame(height: 0).id("top")
+            dataSourceNote
+
+            switch activeTab {
+            case .overview:
+                overviewContent
+            case .activity:
+                activityContent
+            case .certificate:
+                certificateContent
             }
-            if !exporting {
-                lifecycleBanner
-            }
-            slabStage(exporting: exporting)
-                .id("slab")
-            if exporting {
-                CardBack(card: displayCard, retirement: dossier.retirement)
-            }
-            airtimeSection(exporting: exporting)
-                .padding(.top, 10)
-                .id("airtime")
-            rhythmSection(exporting: exporting)
-                .padding(.top, 10)
-                .id("charts")
-            habitsSection.padding(.top, 10).id("habits")
-            milestonesSection.padding(.top, 10).id("milestones")
-            certificateSection(exporting: exporting)
-                .padding(.top, 10)
-                .id("certificate")
-            if includesHealthDetails && !exporting { footerNote }
         }
         .padding(.horizontal, 18)
+        .frame(maxWidth: 680)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var overviewContent: some View {
+        let unlocked = dossier.milestones.filter { !$0.isFuture }.count
+        return VStack(spacing: 18) {
+            lifecycleBanner
+            slabStage
+                .id("slab")
+            careerSummaryCard
+                .id("career")
+            MilestoneTimelineCard(
+                milestones: dossier.milestones,
+                rarity: rarity,
+                calendar: dossier.calendar,
+                showsHeader: true,
+                unlockedCount: unlocked,
+                previewLimit: 4,
+                referenceDate: dossier.now
+            )
+            .id("milestones")
+        }
+    }
+
+    private var activityContent: some View {
+        VStack(spacing: 18) {
+            PeriodSwitcher(
+                period: $period,
+                rarity: rarity
+            )
+            ActivityListeningCard(
+                stats: stats,
+                rarity: rarity,
+                firstWear: dossier.firstWear,
+                selection: $selectedDate,
+                rangeText: DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: AppLanguage.current.locale),
+                chartHeight: 168,
+                calendar: dossier.calendar
+            )
+            .dossierTile()
+            .id("charts")
+            HearingHealthCard(stats: stats)
+                .dossierTile()
+                .id("habits")
+            timeOfDayCard
+                .id("clock")
+            SessionProfileCard(stats: stats, rarity: rarity, calendar: dossier.calendar)
+                .dossierTile()
+            if !dossier.careerRows.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    if period != .all {
+                        HStack(spacing: 8) {
+                            Text("All Time")
+                                .font(.caption.weight(.bold))
+                                .tracking(0.6)
+                                .textCase(.uppercase)
+                                .foregroundStyle(DossierPalette.dim)
+                                .lineLimit(1)
+                                .accessibilityAddTraits(.isHeader)
+                            Rectangle()
+                                .fill(DossierPalette.hairline)
+                                .frame(height: 1)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(.top, 4)
+                    }
+
+                    MonthlyBreakdownCard(
+                        dossier: dossier,
+                        isExpanded: $showMonthlyBreakdown
+                    )
+                }
+                .id("lifetime")
+            }
+        }
+    }
+
+    private var certificateContent: some View {
+        VStack(spacing: 18) {
+            CertificateLabel(
+                card: displayCard,
+                dossier: dossier,
+                animateSeal: tiltActive && activeTab == .certificate,
+                isInteractive: true,
+                liveTiltActive: tiltActive && activeTab == .certificate,
+                demoOverrideTilt: demoOverrideTilt
+            )
+            .id("certificate")
+
+            GradeBreakdown(grade: dossier.grade, accent: rarity.accent, rarity: rarity, showsScoreHeader: true)
+                .dossierTile()
+                .id("grade")
+
+            TechnicalDetailsCard(
+                dossier: dossier,
+                showsHealthProvenance: includesHealthDetails || isDemo,
+                isExpanded: $showTechnicalDetails
+            )
+
+            if includesHealthDetails { footerNote }
+        }
     }
 
     @ViewBuilder
@@ -270,230 +398,394 @@ struct DeviceDossierView: View {
     @ViewBuilder
     private var rawDataSourceNote: some View {
         if isSampleData {
-            Text("Sample data").font(.caption)
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles")
+                    .font(.caption2.weight(.semibold))
+                    .accessibilityHidden(true)
+                Text("Sample data")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(Theme.moderateText)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(Theme.moderateColor.opacity(0.14), in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(Theme.moderateColor.opacity(0.32), lineWidth: 0.75)
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
         } else if !includesHealthDetails {
-            Text("Dossier details are illustrative.").font(.caption)
+            Text("Dossier details are illustrative.")
+                .font(.caption)
+                .foregroundStyle(DossierPalette.dim)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    // MARK: - Backdrop & Sticky Header
+    // MARK: - Backdrop & Header
 
     private var backdrop: some View {
         let isLight = colorScheme == .light
         return ZStack {
             DossierPalette.ink.ignoresSafeArea()
             RadialGradient(
-                colors: [rarity.glow.opacity(isLight ? 0.14 : 0.24), rarity.accent.opacity(isLight ? 0.04 : 0.06), .clear],
-                center: UnitPoint(x: 0.5, y: 0.14),
+                colors: [headerAccent.opacity(isLight ? 0.04 : 0.06), .clear],
+                center: UnitPoint(x: 0.5, y: 0.08),
                 startRadius: 20,
-                endRadius: 420
+                endRadius: 380
             )
             .ignoresSafeArea()
         }
     }
 
-    private func topBar(proxy: ScrollViewProxy) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
-                    proxy.scrollTo("slab", anchor: .top)
-                }
-            } label: {
-                if showStickyIdentity {
-                    HStack(spacing: 10) {
-                        ZStack {
+    private var topBar: some View {
+        let tabSelectionAccent = headerAccent
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    ZStack {
+                        if colorScheme == .light {
                             Circle()
-                                .fill(rarity.foil)
-                                .frame(width: 28, height: 28)
-                            if card.modelKey.collectionArtwork != nil {
-                                HeadphoneArtwork(
-                                    card: card,
-                                    colorOption: colorStore?.selectedColor(for: card),
-                                    showsChargingCase: false,
-                                    showsShadow: false
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Theme.artworkWellLightTop, Theme.artworkWellLightBottom],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                                .frame(width: 22, height: 22)
-                            } else {
-                                Image(systemName: card.symbol)
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(rarity.ink)
-                            }
+                                .frame(width: 32, height: 32)
+                                .overlay(Circle().strokeBorder(Color.black.opacity(0.16), lineWidth: 0.75))
+                        } else {
+                            Circle()
+                                .fill(Color.white.opacity(0.08))
+                                .frame(width: 32, height: 32)
+                                .overlay(Circle().strokeBorder(DossierPalette.hairline, lineWidth: 1))
                         }
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(card.model)
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        if card.modelKey.collectionArtwork != nil {
+                            HeadphoneArtwork(
+                                card: card,
+                                colorOption: colorStore?.selectedColor(for: card),
+                                showsChargingCase: false,
+                                showsShadow: false
+                            )
+                            .frame(width: 22, height: 22)
+                            .shadow(color: colorScheme == .light ? .black.opacity(0.16) : .clear, radius: 1.5, y: 1)
+                        } else {
+                            Image(systemName: card.symbol)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(DossierPalette.primaryText)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(card.model)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(DossierPalette.primaryText)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                            .minimumScaleFactor(0.8)
+                            .accessibilityAddTraits(.isHeader)
+                        if dossier.retirement != nil {
+                            HStack(spacing: 4) {
+                                Image(systemName: "archivebox.fill")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .accessibilityHidden(true)
+                                Text("Vaulted")
+                            }
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(1)
+                        } else {
+                            Text("Active")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(DossierPalette.dim)
                                 .lineLimit(1)
                         }
                     }
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                } else {
-                    HStack(spacing: 7) {
-                        Circle()
-                            .fill(rarity.accent)
-                            .frame(width: 7, height: 7)
-                            .shadow(color: rarity.glow, radius: 4)
-                        Text(AppLanguage.current.text("DOSSIER · #%04d", card.serial))
-                            .font(.system(.caption, design: .monospaced, weight: .bold))
-                            .tracking(1.4)
-                            .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
+                }
+                .accessibilityElement(children: .combine)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 4) {
+                    Button {
+                        showShare = true
+                    } label: {
+                        topBarIcon("square.and.arrow.up")
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(DossierPalette.surfaceFill, in: Capsule())
-                    .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
-                    .transition(.opacity)
+                    .buttonStyle(DossierIconPressStyle())
+                    .accessibilityLabel("Share dossier")
+
+                    Button {
+                        if let onClose { onClose() } else { dismiss() }
+                    } label: {
+                        topBarIcon("xmark", alignment: .trailing)
+                    }
+                    .buttonStyle(DossierIconPressStyle())
+                    .accessibilityLabel("Close dossier")
                 }
             }
-            .buttonStyle(.plain)
 
-            Spacer(minLength: 8)
-
-            if showStickyIdentity {
-                HStack(spacing: 5) {
-                    Text("GRADE")
-                        .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                        .tracking(1)
-                        .foregroundStyle(DossierPalette.dim)
-                    Text(dossier.grade.scoreText)
-                        .font(.system(.subheadline, design: .rounded, weight: .black))
-                        .foregroundStyle(rarity.accent)
+            let tabButtons = HStack(spacing: 0) {
+                ForEach(DossierTab.allCases) { tab in
+                    let isSelected = activeTab == tab
+                    Button {
+                        withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
+                            activeTab = tab
+                        }
+                    } label: {
+                        Text(tab.title)
+                            .font(.subheadline.weight(isSelected ? .bold : .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .foregroundStyle(isSelected ? DossierPalette.primaryText : DossierPalette.dim)
+                            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 12 : 5)
+                            .frame(minHeight: 44)
+                            .overlay(alignment: .bottom) {
+                                if isSelected {
+                                    if reduceMotion {
+                                        Capsule()
+                                            .fill(tabSelectionAccent)
+                                            .frame(height: 2.5)
+                                    } else {
+                                        Capsule()
+                                            .fill(tabSelectionAccent)
+                                            .frame(height: 2.5)
+                                            .matchedGeometryEffect(id: "dossierTabUnderline", in: tabNamespace)
+                                    }
+                                }
+                            }
+                            .modifier(TabWidthModifier(isScrollableAX: dynamicTypeSize.isAccessibilitySize))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(DossierPalette.surfaceFill, in: Capsule())
-                .overlay(Capsule().strokeBorder(rarity.accent.opacity(0.3), lineWidth: 1))
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
+            .sensoryFeedback(.selection, trigger: activeTab)
 
-            Button {
-                showShare = true
-            } label: {
-                topBarIcon("square.and.arrow.up")
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    tabButtons
+                }
+            } else {
+                tabButtons
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Share dossier")
-
-            Button {
-                if let onClose { onClose() } else { dismiss() }
-            } label: {
-                topBarIcon("xmark")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close dossier")
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 0)
         .background {
-            if showStickyIdentity {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(DossierPalette.ink.opacity(0.68))
-                    .overlay(alignment: .bottom) {
-                        Rectangle().fill(DossierPalette.hairline).frame(height: 1)
-                    }
-                    .ignoresSafeArea(edges: .top)
+            Group {
+                if reduceTransparency {
+                    Rectangle().fill(DossierPalette.ink)
+                } else {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .overlay(DossierPalette.ink.opacity(colorScheme == .light ? 0.72 : 0.68))
+                }
             }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(DossierPalette.hairline)
+                    .frame(height: 1)
+                    .opacity(isScrolled ? 1 : 0.70)
+            }
+            .ignoresSafeArea(edges: .top)
         }
-        .animation(.snappy(duration: 0.25), value: showStickyIdentity)
     }
 
-    private func topBarIcon(_ symbol: String) -> some View {
+    private func topBarIcon(_ symbol: String, alignment: Alignment = .center) -> some View {
         Image(systemName: symbol)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
-            .frame(width: 34, height: 34)
-            .background(DossierPalette.surfaceFill, in: Circle())
-            .overlay(Circle().strokeBorder(DossierPalette.hairline, lineWidth: 1))
-            .frame(minWidth: 44, minHeight: 44)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(DossierPalette.primaryText)
+            .frame(width: 40, height: 40)
+            .background(Theme.card, in: Circle())
+            .overlay(Circle().strokeBorder(Theme.controlStroke, lineWidth: colorScheme == .light ? 1.0 : 0.75))
+            .shadow(color: colorScheme == .light ? Theme.cardShadow.opacity(0.65) : .clear, radius: 6, y: 2)
+            .frame(width: 44, height: 44, alignment: alignment)
             .contentShape(Rectangle())
     }
 
     // MARK: - Hero Slab Stage
 
-    private func slabStage(exporting: Bool) -> some View {
-        VStack(spacing: 16) {
+    private var slabStage: some View {
+        let slabScale = min(1.0, max(0.85, (viewportWidth - 52) / SlabMetrics.width))
+        return VStack(spacing: 16) {
+            if dynamicTypeSize.isAccessibilitySize {
+                let grade = dossier.grade
+                let axScoreColor: Color = grade.hasRecentData
+                    ? DossierContrast.accentColor(rarity: dossier.rarity, proFoil: nil, colorScheme: colorScheme)
+                    : DossierPalette.dim
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(displayCard.model)
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(DossierPalette.primaryText)
+                            Text(verbatim: AppLanguage.current.text(dossier.rarity.displayName).uppercased())
+                                .font(.caption.weight(.bold))
+                                .tracking(0.4)
+                                .foregroundStyle(headerAccent)
+                        }
+                        Spacer(minLength: 8)
+                        Button {
+                            withAnimation(reduceMotion ? nil : .snappy(duration: 0.28)) {
+                                activeTab = .certificate
+                            }
+                        } label: {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("30D EAR GRADE")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(DossierPalette.dim)
+                                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                                    Text(grade.scoreText)
+                                        .font(.title3.weight(.heavy))
+                                        .monospacedDigit()
+                                        .foregroundStyle(axScoreColor)
+                                    if grade.hasRecentData {
+                                        Text(verbatim: "/10")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(DossierPalette.dim)
+                                    }
+                                }
+                                Text(LocalizedStringKey(grade.label))
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(axScoreColor)
+                            }
+                            .frame(minHeight: 44, alignment: .trailing)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Rectangle()
+                        .fill(DossierPalette.hairline)
+                        .frame(height: 1)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(displayCard.lifetimeMinutes.minutesText)
+                            .font(.title2.weight(.heavy))
+                            .monospacedDigit()
+                            .foregroundStyle(DossierPalette.primaryText)
+                        Text("\(displayCard.sessions) wears")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .dossierTile()
+            }
+
             LiveTiltView(
-                isActive: !exporting && tiltActive && !showStickyIdentity,
-                overrideTilt: exporting ? .zero : demoOverrideTilt
+                isActive: tiltActive && activeTab == .overview,
+                overrideTilt: demoOverrideTilt
             ) { slabTilt in
                 GradingSlab(
                     card: displayCard,
                     dossier: dossier,
                     tilt: slabTilt,
-                    flipped: !exporting && slabFlipped,
-                    animateSeal: !exporting && tiltActive && !showStickyIdentity
+                    flipped: slabFlipped,
+                    animateSeal: tiltActive && activeTab == .overview,
+                    onInspectGrade: {
+                        withAnimation(reduceMotion ? nil : .snappy(duration: 0.28)) {
+                            activeTab = .certificate
+                        }
+                    }
                 )
-                    .rotation3DEffect(.degrees(Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-                    .rotation3DEffect(.degrees(Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+                    .rotation3DEffect(.degrees(reduceMotion ? 0 : Double(slabTilt.width) * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+                    .rotation3DEffect(.degrees(reduceMotion ? 0 : Double(-slabTilt.height) * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
             }
+            .frame(width: SlabMetrics.width, height: SlabMetrics.height)
+            .scaleEffect(slabScale)
+            .frame(width: SlabMetrics.width * slabScale, height: SlabMetrics.height * slabScale)
             .onTapGesture {
-                withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.65, dampingFraction: 0.78)) {
+                    slabFlipped.toggle()
+                }
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(slabFlipped ? "Double-tap to show front, or use actions to inspect Ear Grade" : "Double-tap to flip slab, or use actions to inspect Ear Grade")
+            .accessibilityAction(named: Text("Flip slab")) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.65, dampingFraction: 0.78)) {
                     slabFlipped.toggle()
                 }
             }
             .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.75), trigger: slabFlipped)
-            .padding(.top, 4)
 
-            if !exporting {
-                HStack(spacing: 8) {
-                    Image(systemName: "hand.tap")
-                        .font(.caption2.weight(.semibold))
-                    Text(slabFlipped ? "Tap slab to view front" : "Tap slab to flip · tilt phone for foil")
-                        .font(.caption)
+            let stackActions = lifecycleStore != nil
+                ? dynamicTypeSize >= .xLarge
+                : dynamicTypeSize >= .xxLarge
+            let actionLayout = stackActions
+                ? AnyLayout(VStackLayout(spacing: 10))
+                : AnyLayout(HStackLayout(spacing: 8))
+
+            actionLayout {
+                Button {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.65, dampingFraction: 0.78)) {
+                        slabFlipped.toggle()
+                    }
+                } label: {
+                    Label(slabFlipped ? "Show Front" : "Flip", systemImage: "rectangle.2.swap")
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                         .multilineTextAlignment(.center)
+                        .foregroundStyle(DossierPalette.primaryText)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: stackActions ? .infinity : nil, minHeight: 44)
+                        .background(Theme.card, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.controlStroke, lineWidth: 1))
+                        .shadow(color: Theme.cardShadow, radius: 6, y: 2)
                 }
-                .foregroundStyle(DossierPalette.dim)
+                .buttonStyle(DossierIconPressStyle())
 
-                let actionLayout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(spacing: 10))
-                    : AnyLayout(HStackLayout(spacing: 10))
+                Button {
+                    showSlabStudio = true
+                } label: {
+                    Label("Customize", systemImage: "slider.horizontal.3")
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(DossierPalette.primaryText)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: stackActions ? .infinity : nil, minHeight: 44)
+                        .background(Theme.card, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.controlStroke, lineWidth: 1))
+                        .shadow(color: Theme.cardShadow, radius: 6, y: 2)
+                }
+                .buttonStyle(DossierIconPressStyle())
 
-                actionLayout {
+                if lifecycleStore != nil {
                     Button {
-                        showSlabStudio = true
+                        showRetireSheet = true
                     } label: {
-                        Label("Customize Slab", systemImage: "wand.and.stars")
-                            .font(.subheadline.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(DossierPalette.primaryText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 42)
-                            .background(DossierPalette.panel, in: Capsule())
-                            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
-                            .shadow(color: Theme.cardShadow, radius: 8, y: 3)
-                    }
-                    .buttonStyle(.plain)
-
-                    if lifecycleStore != nil {
-                        Button {
-                            showRetireSheet = true
-                        } label: {
-                            Label(
-                                dossier.isRetired ? "Vaulted" : "Retire to Vault",
-                                systemImage: dossier.isRetired ? "archivebox.fill" : "archivebox"
+                        Label(
+                            dossier.isRetired ? "Vaulted" : "Vault",
+                            systemImage: dossier.isRetired ? "archivebox.fill" : "archivebox"
+                        )
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(dossier.isRetired ? headerAccent : DossierPalette.primaryText)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: stackActions ? .infinity : nil, minHeight: 44)
+                        .background(Theme.card, in: Capsule())
+                        .overlay(
+                            Capsule().strokeBorder(
+                                dossier.isRetired ? headerAccent.opacity(0.60) : Theme.controlStroke,
+                                lineWidth: 1
                             )
-                            .font(.subheadline.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(dossier.isRetired ? rarity.accent : DossierPalette.primaryText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 42)
-                            .background(DossierPalette.panel, in: Capsule())
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    dossier.isRetired ? rarity.accent.opacity(0.45) : DossierPalette.hairline,
-                                    lineWidth: 1
-                                )
-                            )
-                            .shadow(color: Theme.cardShadow, radius: 8, y: 3)
-                        }
-                        .buttonStyle(.plain)
+                        )
+                        .shadow(color: Theme.cardShadow, radius: 6, y: 2)
                     }
+                    .buttonStyle(DossierIconPressStyle())
                 }
             }
-
-            lifetimeQuickStrip
         }
     }
 
@@ -529,7 +821,7 @@ struct DeviceDossierView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 6)
-                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 34)
+                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 44)
                             .foregroundStyle(Theme.invertedText)
                             .background(Theme.invertedFill, in: Capsule())
                     }
@@ -543,7 +835,7 @@ struct DeviceDossierView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 6)
-                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 34)
+                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 44)
                             .foregroundStyle(DossierPalette.primaryText)
                             .background(DossierPalette.surfaceFill, in: Capsule())
                     }
@@ -582,7 +874,7 @@ struct DeviceDossierView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 34)
+                        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 44)
                         .foregroundStyle(Theme.invertedText)
                         .background(Theme.invertedFill, in: Capsule())
                 }
@@ -600,290 +892,307 @@ struct DeviceDossierView: View {
                       now: dossier.now,
                       calendar: dossier.calendar
                   ) == true {
-            HStack(spacing: 10) {
-                Image(systemName: "archivebox")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(DossierPalette.dim)
-                Text("Unused for 90+ days · Retire to Vault?")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
-                Spacer(minLength: 4)
-                Button("Retire") {
-                    showRetireSheet = true
-                }
-                .font(.caption.weight(.bold))
-                .foregroundStyle(rarity.accent)
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) {
-                        dismissedInactivityNudge = true
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "archivebox")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(DossierPalette.dim)
+                            .accessibilityHidden(true)
+                        Text("Unused for 90+ days · Retire to Vault?")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
+                            .lineLimit(3)
                     }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(DossierPalette.faint)
-                        .frame(width: 26, height: 26)
+                    HStack(spacing: 8) {
+                        Button("Retire") {
+                            showRetireSheet = true
+                        }
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(rarity.accent)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                        Spacer(minLength: 4)
+                        Button {
+                            withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
+                                dismissedInactivityNudge = true
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(DossierPalette.faint)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dismiss")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Dismiss")
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "archivebox")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DossierPalette.dim)
+                        .accessibilityHidden(true)
+                    Text("Unused for 90+ days · Retire to Vault?")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
+                        .lineLimit(2)
+                    Spacer(minLength: 4)
+                    Button("Retire") {
+                        showRetireSheet = true
+                    }
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(rarity.accent)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    Button {
+                        withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
+                            dismissedInactivityNudge = true
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(DossierPalette.faint)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss")
+                }
+                .padding(.leading, 12)
+                .padding(.trailing, 4)
+                .padding(.vertical, 2)
+                .background(DossierPalette.panel, in: Capsule())
+                .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(DossierPalette.panel, in: Capsule())
-            .overlay(Capsule().strokeBorder(DossierPalette.hairline, lineWidth: 1))
         }
     }
 
-    private var lifetimeQuickStrip: some View {
-        let firstWearText = dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—"
-        let thirdTitle: LocalizedStringKey = dossier.isRetired ? "RETIRED" : "LAST WEAR"
-        let thirdValue = dossier.retirement.map(\.formattedRetiredDate)
-            ?? (dossier.lastWear.map { $0.start.dossierRelative(to: dossier.now, calendar: dossier.calendar) } ?? "—")
+    private var careerSummaryCard: some View {
+        let allStats = dossier.stats(.all)
+        let wearsPerDayText = allStats.sessionsPerDay >= 10
+            ? "\(Int(allStats.sessionsPerDay.rounded()))"
+            : String(format: "%.1f", allStats.sessionsPerDay)
+        let isAX = dynamicTypeSize.isAccessibilitySize
+        let careerHeaderLayout = isAX
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
 
-        return VStack(spacing: 10) {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: 10) {
-                    HStack(spacing: 0) {
-                        quickStat("LIFETIME", dossier.lifetimeMinutes.minutesText, accent: rarity.accent)
-                        stripDivider
-                        quickStat("FIRST WEAR", firstWearText)
-                    }
-                    Rectangle().fill(DossierPalette.hairline).frame(height: 1).padding(.horizontal, 12)
-                    HStack(spacing: 0) {
-                        quickStat(thirdTitle, thirdValue)
-                        stripDivider
-                        quickStat("RECORD DAYS", "\(dossier.recordDays) days")
+        return VStack(alignment: .leading, spacing: 14) {
+            careerHeaderLayout {
+                Text("Lifetime")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(DossierPalette.primaryText)
+                    .accessibilityAddTraits(.isHeader)
+                if !isAX { Spacer(minLength: 8) }
+                Group {
+                    if let retirement = dossier.retirement {
+                        Text("Retired \(retirement.formattedRetiredDate)")
+                    } else if let lastWear = dossier.lastWear {
+                        Text("Last worn \(lastWear.start.dossierRelative(to: dossier.now, calendar: dossier.calendar))")
                     }
                 }
-                .padding(.vertical, 12)
-                .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(DossierPalette.dim)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+
+            let avgDayLabel: LocalizedStringKey = dossier.recordDays == allStats.spanDays ? "Avg / day" : "Avg / calendar day"
+            if isAX {
+                VStack(alignment: .leading, spacing: 10) {
+                    careerCell("Active days", "\(dossier.recordDays)", isLeading: true)
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                    careerCell(avgDayLabel, allStats.dailyAverage.minutesText, isLeading: true)
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                    careerCell("Wears / day", wearsPerDayText, isLeading: true)
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                    if allStats.share > 0 && allStats.share < 0.995 {
+                        careerCell("Share of all listening", "\(Int((allStats.share * 100).rounded()))%", isLeading: true)
+                    } else {
+                        careerCell("Avg / wear", allStats.sessionCount > 0 ? allStats.averagePerWear.minutesText : "—", isLeading: true)
+                    }
+                }
             } else {
-                HStack(spacing: 0) {
-                    quickStat("LIFETIME", dossier.lifetimeMinutes.minutesText, accent: rarity.accent)
-                    stripDivider
-                    quickStat("FIRST WEAR", firstWearText)
-                    stripDivider
-                    quickStat(thirdTitle, thirdValue)
-                    stripDivider
-                    quickStat("RECORD DAYS", "\(dossier.recordDays) days")
+                VStack(spacing: 12) {
+                    HStack(spacing: 0) {
+                        careerCell("Active days", "\(dossier.recordDays)", isLeading: true)
+                        careerCell(avgDayLabel, allStats.dailyAverage.minutesText, isLeading: false)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                    HStack(spacing: 0) {
+                        careerCell("Wears / day", wearsPerDayText, isLeading: true)
+                        if allStats.share > 0 && allStats.share < 0.995 {
+                            careerCell("Share of all listening", "\(Int((allStats.share * 100).rounded()))%", isLeading: false)
+                        } else {
+                            careerCell("Avg / wear", allStats.sessionCount > 0 ? allStats.averagePerWear.minutesText : "—", isLeading: false)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, 12)
-                .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
+                .overlay(alignment: .center) {
+                    Rectangle()
+                        .fill(DossierPalette.hairline)
+                        .frame(width: 1)
+                }
             }
 
             if let retirement = dossier.retirement, !retirement.farewellNote.isEmpty {
-                let farewellContainer = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
-                    : AnyLayout(HStackLayout(spacing: 8))
-                farewellContainer {
-                    HStack(spacing: 8) {
-                        Image(systemName: retirement.reason.symbol)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(rarity.accent)
+                Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: retirement.reason.symbol)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(headerAccent)
+                        .padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("“\(retirement.farewellNote)”")
-                            .font(.caption.italic())
-                            .foregroundStyle(DossierPalette.primaryText.opacity(0.86))
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                            .font(.footnote.italic())
+                            .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
                             .fixedSize(horizontal: false, vertical: true)
+                        Text(LocalizedStringKey(retirement.reason.title))
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
                     }
-                    if !dynamicTypeSize.isAccessibilitySize {
-                        Spacer(minLength: 4)
-                    }
-                    Text(LocalizedStringKey(retirement.reason.title))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(DossierPalette.dim)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(DossierPalette.panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
             }
-
-            HStack(spacing: 6) {
-                Image(systemName: "cpu")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(rarity.accent.opacity(0.85))
-                Text("\(dossier.hardware.manufacturer) · \(dossier.hardware.productID)")
-                    .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(DossierPalette.primaryText.opacity(0.75))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                if let fw = dossier.hardware.firmwareVersion {
-                    Text("· FW \(fw)")
-                        .font(.system(.caption2, design: .monospaced, weight: .medium))
-                        .foregroundStyle(DossierPalette.dim)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                Spacer(minLength: 4)
-                Text(dossier.hardware.sourceName)
-                    .font(.system(.caption2, design: .monospaced, weight: .medium))
-                    .foregroundStyle(DossierPalette.faint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .padding(.horizontal, 6)
         }
+        .dossierTile()
     }
 
-    private var stripDivider: some View {
-        Rectangle().fill(DossierPalette.hairline).frame(width: 1, height: 28)
-    }
-
-    private func quickStat(_ label: LocalizedStringKey, _ value: String, accent: Color = DossierPalette.primaryText) -> some View {
-        VStack(spacing: 3) {
-            Text(label)
-                .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                .tracking(1.1)
-                .foregroundStyle(DossierPalette.faint)
+    private func careerCell(
+        _ title: LocalizedStringKey,
+        _ value: String,
+        unit: String? = nil,
+        valueColor: Color = DossierPalette.primaryText,
+        dotColor: Color? = nil,
+        isLeading: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                if let dotColor {
+                    Circle()
+                        .fill(dotColor)
+                        .frame(width: 6.5, height: 6.5)
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(value)
+                        .font(.system(size: dynamicTypeSize.isAccessibilitySize ? careerStatSize : min(careerStatSize, 26), weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(valueColor)
+                    if let unit {
+                        Text(unit)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(DossierPalette.dim)
+                    }
+                }
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
-            Text(value)
-                .font(.system(.footnote, design: .rounded, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(accent)
+            }
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(DossierPalette.dim)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 4)
-        .frame(maxWidth: .infinity)
+        .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : (isLeading ? 0 : 12))
+        .padding(.trailing, dynamicTypeSize.isAccessibilitySize ? 0 : (isLeading ? 12 : 0))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: - 01 Airtime
+    private var timeOfDayCard: some View {
+        let lateNightMinutes = stats.hours
+            .filter { $0.hour >= 22 || $0.hour <= 3 }
+            .reduce(0.0) { $0 + $1.minutes }
+        let periodNightShare = stats.totalMinutes > 0 ? lateNightMinutes / stats.totalMinutes : 0
+        let nightPct = Int((periodNightShare * 100).rounded())
+        let nightIconColor: Color = nightPct > 25
+            ? Theme.moderateText
+            : (colorScheme == .light ? Color(red: 0.22, green: 0.28, blue: 0.54) : Color(red: 0.58, green: 0.66, blue: 0.94))
 
-    private func airtimeSection(exporting: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            DossierSectionHeader(index: 1, title: "Airtime", trailing: AppLanguage.current.text(period.title).uppercased(), accent: rarity.accent)
-            if exporting {
-                Text(DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(DossierPalette.dim)
-            } else {
-                PeriodSwitcher(period: $period, rarity: rarity, rangeText: DateText.range(stats.start, stats.end, calendar: dossier.calendar, locale: locale))
-                dataSourceNote.foregroundStyle(DossierPalette.dim)
-            }
-            AirtimeHero(stats: stats, rarity: rarity, otherDeviceCount: max(0, SampleCards.all.count - 1))
-                .frame(maxWidth: .infinity)
-        }
-    }
+        let headerLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
 
-    // MARK: - 02 Rhythm & Charts
-
-    private func rhythmSection(exporting: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 2, title: "Rhythm", trailing: AppLanguage.current.text(stats.period.title).uppercased(), accent: rarity.accent)
-
-            DossierTrendChart(stats: stats, rarity: rarity, firstWear: dossier.firstWear,
-                              selection: exporting ? .constant(nil) : $selectedDate, showsInteractionHint: !exporting)
-                .dossierTile(tint: rarity.accent)
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Eyebrow("24-hour clock")
-                        Text("When you wear it")
-                            .font(.system(.headline, design: .rounded, weight: .bold))
-                    }
-                    Spacer()
-                    let lateNightMinutes = stats.hours
-                        .filter { $0.hour >= 22 || $0.hour <= 3 }
-                        .reduce(0.0) { $0 + $1.minutes }
-                    let periodNightShare = stats.totalMinutes > 0 ? lateNightMinutes / stats.totalMinutes : 0
-                    let nightPct = Int((periodNightShare * 100).rounded())
-                    let moonColor = Color.adaptive(
-                        light: UIColor(red: 0.28, green: 0.36, blue: 0.78, alpha: 1),
-                        dark: UIColor(red: 0.65, green: 0.72, blue: 1, alpha: 1)
-                    )
-                    Label("\(nightPct)% late night", systemImage: "moon.stars.fill")
-                        .font(.system(.caption2, design: .rounded, weight: .bold))
-                        .lineLimit(1)
-                        .foregroundStyle(nightPct > 20 ? Theme.moderateColor : moonColor)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(DossierPalette.surfaceFill, in: Capsule())
+        return VStack(alignment: .leading, spacing: 14) {
+            headerLayout {
+                Text("Time of Day")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(DossierPalette.primaryText)
+                    .accessibilityAddTraits(.isHeader)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+                HStack(spacing: 5) {
+                    Image(systemName: "moon.stars.fill")
+                        .foregroundStyle(nightIconColor)
+                        .accessibilityHidden(true)
+                    Text("\(nightPct)% late (22:00–04:00)")
+                        .foregroundStyle(nightPct > 25 ? Theme.moderateText : DossierPalette.dim)
                 }
-
-                DayClock(stats: stats, rarity: rarity, selectedHour: exporting ? .constant(nil) : $selectedHour)
-                    .frame(maxWidth: 300)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-
-                if !exporting {
-                    Text("Tap or press-drag any hour · bar color shows loudness")
-                        .font(.caption2)
-                        .foregroundStyle(DossierPalette.faint)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-            .dossierTile(tint: rarity.glow)
-            .padding(.top, 6)
-            .id("clock")
-        }
-    }
-
-    // MARK: - 03 Habits & Lifetime
-
-    private var habitsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 3, title: "Habits & Hearing", trailing: AppLanguage.current.text("%lld wears", stats.sessionCount), accent: rarity.accent)
-
-            HabitsBento(stats: stats, dossier: dossier, rarity: rarity)
-
-            LifetimeLedgerCard(dossier: dossier, rarity: rarity)
-                .padding(.top, 6)
-                .id("lifetime")
-        }
-    }
-
-    // MARK: - 04 Milestones
-
-    private var milestonesSection: some View {
-        let unlocked = dossier.milestones.filter { !$0.isFuture }.count
-        return VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 4, title: "Milestones", trailing: AppLanguage.current.text("%lld unlocked", unlocked), accent: rarity.accent)
-            MilestoneTimelineCard(milestones: dossier.milestones, rarity: rarity, calendar: dossier.calendar)
-        }
-    }
-
-    // MARK: - 05 Certificate & Grade
-
-    private func certificateSection(exporting: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            DossierSectionHeader(index: 5, title: "Certificate", trailing: dossier.hardware.productID, accent: rarity.accent)
-            LiveTiltView(
-                isActive: !exporting && tiltActive && showStickyIdentity,
-                overrideTilt: exporting ? .zero : demoOverrideTilt
-            ) { liveTilt in
-                CertificateLabel(
-                    card: displayCard,
-                    dossier: dossier,
-                    tilt: liveTilt,
-                    animateSeal: !exporting && !showShare && showStickyIdentity
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(DossierPalette.surfaceFill, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .strokeBorder(DossierPalette.hairline, lineWidth: 0.75)
                 )
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(nightPct) percent late night, 22:00 to 04:00")
             }
-            GradeBreakdown(grade: dossier.grade, accent: rarity.accent)
-                .dossierTile(tint: rarity.accent)
-                .id("grade")
+
+            DayClock(stats: stats, rarity: rarity, selectedHour: $selectedHour)
+                .frame(maxWidth: 248)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 2)
+
+            let peakRaw = stats.peakHour?.minutes ?? 0
+            let peakDisp = stats.spanDays > 1 ? peakRaw / Double(stats.spanDays) : peakRaw
+            let captionText: String = if let h = selectedHour, stats.hours[h].minutes > 0, stats.hours[h].averageDecibels > 0 {
+                "\(DossierFormat.hourLabel(h)) · \(Int(stats.hours[h].averageDecibels.rounded())) dB(A) · \(AppLanguage.current.text("Tap center to clear"))"
+            } else if selectedHour != nil {
+                AppLanguage.current.text("Tap center or hour to clear")
+            } else if peakDisp > 0 {
+                AppLanguage.current.text("Bar = avg daily time · Tap or drag an hour")
+            } else {
+                AppLanguage.current.text("Relative to period peak")
+            }
+            Text(verbatim: captionText)
+                .font(.caption)
+                .foregroundStyle(DossierPalette.dim)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
         }
+        .dossierTile()
     }
 
     private var footerNote: some View {
         HStack(spacing: 6) {
             Image(systemName: "lock.shield.fill")
-                .font(.caption2)
-            Text("Computed locally from Apple Health · stays on your iPhone")
-                .font(.caption2)
+                .font(.footnote)
+                .accessibilityHidden(true)
+            Text("Computed locally from Apple Health")
+                .font(.footnote)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(0.85)
         }
-        .foregroundStyle(DossierPalette.faint)
+        .foregroundStyle(DossierPalette.dim)
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Launch arguments (-dossierScroll / -dossierDemo)
+    // MARK: - Launch arguments (-dossierTab / -dossierScroll / -dossierDemo)
 
     private func handleLaunchArguments(proxy: ScrollViewProxy) async {
         let args = ProcessInfo.processInfo.arguments
@@ -893,8 +1202,21 @@ struct DeviceDossierView: View {
             period = p
         }
 
+        if let i = args.firstIndex(of: "-dossierTab"), i + 1 < args.count,
+           let tab = DossierTab(rawValue: args[i + 1]) {
+            activeTab = tab
+        }
+
         if let i = args.firstIndex(of: "-dossierScroll"), i + 1 < args.count {
             let target = args[i + 1]
+            switch target {
+            case "airtime", "charts", "clock", "habits", "lifetime":
+                activeTab = .activity
+            case "certificate", "grade":
+                activeTab = .certificate
+            default:
+                activeTab = .overview
+            }
             try? await Task.sleep(for: .milliseconds(350))
             withAnimation(.none) {
                 proxy.scrollTo(target, anchor: .top)
@@ -928,7 +1250,8 @@ struct DeviceDossierView: View {
     }
 
     private func runDemoSequence(proxy: ScrollViewProxy) async {
-        // 1. Subtle tilt shimmer on the acrylic grading slab.
+        // 1. Subtle tilt shimmer on the acrylic grading slab in Overview.
+        activeTab = .overview
         try? await Task.sleep(for: .milliseconds(450))
         for step in 0..<36 {
             let t = Double(step) / 35
@@ -938,23 +1261,23 @@ struct DeviceDossierView: View {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { demoTilt = .zero }
         try? await Task.sleep(for: .milliseconds(250))
 
-        // 2. Scroll to Airtime and cycle periods so ring + numeric transitions animate.
-        withAnimation(.easeInOut(duration: 0.7)) {
-            proxy.scrollTo("airtime", anchor: .top)
+        // 2. Switch to Activity and cycle periods so ring + numeric transitions animate.
+        withAnimation(.snappy(duration: 0.25)) {
+            activeTab = .activity
         }
-        try? await Task.sleep(for: .milliseconds(900))
+        try? await Task.sleep(for: .milliseconds(600))
         for nextPeriod in [DossierPeriod.week, .year, .all, .month] {
             withAnimation(.spring(response: 0.48, dampingFraction: 0.8)) {
                 period = nextPeriod
             }
-            try? await Task.sleep(for: .milliseconds(850))
+            try? await Task.sleep(for: .milliseconds(800))
         }
 
         // 3. Scroll to the 30-day trend chart and scrub across active bars.
-        withAnimation(.easeInOut(duration: 0.7)) {
+        withAnimation(.easeInOut(duration: 0.6)) {
             proxy.scrollTo("charts", anchor: .top)
         }
-        try? await Task.sleep(for: .milliseconds(800))
+        try? await Task.sleep(for: .milliseconds(700))
         let scrubBuckets = stats.buckets.filter { $0.minutes > 0 }
         let stepCount = min(8, scrubBuckets.count)
         if stepCount > 0 {
@@ -965,130 +1288,283 @@ struct DeviceDossierView: View {
             }
         }
         selectedDate = nil
-        try? await Task.sleep(for: .milliseconds(450))
+        try? await Task.sleep(for: .milliseconds(400))
 
-        // 4. Briefly scroll to Habits & Certificate to conclude.
-        withAnimation(.easeInOut(duration: 0.8)) {
-            proxy.scrollTo("habits", anchor: .top)
+        // 4. Switch to Certificate tab to conclude.
+        withAnimation(.snappy(duration: 0.3)) {
+            activeTab = .certificate
         }
         try? await Task.sleep(for: .milliseconds(900))
     }
 }
 
-// MARK: - Lifetime & Career Ledger
+private struct DossierDisclosurePressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-private struct LifetimeLedgerCard: View {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Monthly Breakdown
+
+private struct MonthlyBreakdownCard: View {
     let dossier: DeviceDossier
-    let rarity: Rarity
+    @Binding var isExpanded: Bool
 
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Eyebrow("Lifetime ledger")
-                    Text(dossier.lifetimeMinutes.minutesText)
-                        .font(.system(.title2, design: .rounded, weight: .heavy))
-                        .monospacedDigit()
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
+                    isExpanded.toggle()
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(dossier.recordDays) record days")
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(rarity.accent)
-                    Text("\(dossier.sessions.count) total wears · \(Int(dossier.averageDecibels.rounded())) dB(A)")
-                        .font(.caption2)
-                        .foregroundStyle(DossierPalette.dim)
-                }
-            }
+            } label: {
+                HStack(spacing: 8) {
+                    let headerTextLayout = dynamicTypeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                        : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
 
-            HStack(spacing: 12) {
-                dateBlock(
-                    title: "FIRST WEAR",
-                    primary: dossier.firstWear.map { DateText.dotted($0, calendar: dossier.calendar) } ?? "—",
-                    secondary: dossier.firstWear.map { $0.dossierRelative(to: dossier.now, calendar: dossier.calendar) } ?? ""
-                )
-                dateBlock(
-                    title: "LAST WEAR",
-                    primary: dossier.lastWear.map { $0.start.dossierRelative(to: dossier.now, calendar: dossier.calendar) } ?? "—",
-                    secondary: dossier.lastWear.map { "\($0.start.dossierTime) · \($0.minutes.minutesText)" } ?? ""
-                )
-            }
-
-            if !dossier.careerRows.isEmpty {
-                Rectangle().fill(DossierPalette.hairline).frame(height: 1)
-
-                VStack(spacing: 8) {
-                    HStack(spacing: 6) {
-                        Text("MONTH").frame(width: 58, alignment: .leading)
-                        Text("TIME").frame(maxWidth: .infinity, alignment: .trailing)
-                        Text("WEARS").frame(width: 44, alignment: .trailing)
-                        Text("MAX").frame(width: 52, alignment: .trailing)
-                        Text("AVG").frame(width: 46, alignment: .trailing)
+                    headerTextLayout {
+                        Text("Monthly Breakdown")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(DossierPalette.primaryText)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                            .minimumScaleFactor(0.82)
+                            .accessibilityAddTraits(.isHeader)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Spacer(minLength: 8)
+                        }
+                        Text("\(dossier.careerRows.count) months")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                            .layoutPriority(1)
                     }
-                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                    .tracking(1.1)
-                    .foregroundStyle(DossierPalette.faint)
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Spacer(minLength: 8)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(DossierPalette.dim)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .frame(minHeight: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(DossierDisclosurePressStyle())
+            .sensoryFeedback(.selection, trigger: isExpanded)
+            .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
+            .accessibilityHint("Double-tap to toggle")
 
-                    ForEach(dossier.careerRows.prefix(6)) { row in
-                        HStack(spacing: 6) {
-                            Text(row.label)
-                                .font(.system(.caption, design: .monospaced, weight: .bold))
-                                .foregroundStyle(DossierPalette.primaryText.opacity(0.88))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .frame(width: 58, alignment: .leading)
-                            Text(row.minutes.minutesText)
-                                .font(.system(.caption, design: .rounded, weight: .bold))
-                                .monospacedDigit()
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            Text("\(row.sessions)")
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(DossierPalette.dim)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .frame(width: 44, alignment: .trailing)
-                            Text(row.longest.minutesText)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(DossierPalette.dim)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .frame(width: 52, alignment: .trailing)
-                            Text("\(Int(row.averageDecibels.rounded())) dB")
-                                .font(.system(.caption, design: .monospaced, weight: .semibold))
-                                .foregroundStyle(Theme.levelColor(db: row.averageDecibels, colorScheme: colorScheme))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .frame(width: 46, alignment: .trailing)
+            if isExpanded {
+                VStack(spacing: 10) {
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+
+                    if dynamicTypeSize >= .xxLarge {
+                        ForEach(Array(dossier.careerRows.enumerated()), id: \.element.id) { index, row in
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack {
+                                    Text(row.label)
+                                        .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                                        .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
+                                    Spacer()
+                                    Text(row.minutes.minutesText)
+                                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                        .monospacedDigit()
+                                }
+                                HStack(spacing: 8) {
+                                    Text("\(row.sessions) wears · max \(row.longest.minutesText)")
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(DossierPalette.dim)
+                                    Spacer()
+                                    Text("\(Int(row.averageDecibels.rounded())) dB(A)")
+                                        .font(.system(.caption, design: .monospaced, weight: .semibold))
+                                        .foregroundStyle(Theme.levelTextColor(db: row.averageDecibels))
+                                }
+                            }
+                            .accessibilityElement(children: .combine)
+                            if index < dossier.careerRows.count - 1 {
+                                Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+                            }
+                        }
+                    } else {
+                        Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 8) {
+                            GridRow {
+                                Text("Month")
+                                    .gridColumnAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("Time")
+                                Text("Wears")
+                                Text("Max")
+                                Text("Avg")
+                            }
+                            .font(.system(.caption2, design: .rounded, weight: .semibold))
+                            .foregroundStyle(DossierPalette.dim)
+                            .accessibilityHidden(true)
+
+                            ForEach(dossier.careerRows) { row in
+                                GridRow {
+                                    Text(row.label)
+                                        .font(.system(.caption, design: .monospaced, weight: .semibold))
+                                        .foregroundStyle(DossierPalette.primaryText.opacity(0.9))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(row.minutes.minutesText)
+                                        .font(.system(.caption, design: .rounded, weight: .bold))
+                                        .monospacedDigit()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Text("\(row.sessions)")
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(DossierPalette.dim)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Text(row.longest.minutesText)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(DossierPalette.dim)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Text("\(Int(row.averageDecibels.rounded())) dB(A)")
+                                        .font(.system(.caption, design: .monospaced, weight: .semibold))
+                                        .foregroundStyle(Theme.levelTextColor(db: row.averageDecibels))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(row.label), \(row.minutes.minutesText), \(row.sessions) wears, longest \(row.longest.minutesText), \(Int(row.averageDecibels.rounded())) decibels")
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
             }
         }
-        .dossierTile()
+        .dossierTile(padding: 0)
+    }
+}
+
+// MARK: - Technical Details Card
+
+private struct TechnicalDetailsCard: View {
+    let dossier: DeviceDossier
+    let showsHealthProvenance: Bool
+    @Binding var isExpanded: Bool
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let hw = dossier.hardware
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    let headerTextLayout = dynamicTypeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                        : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+
+                    headerTextLayout {
+                        Text("Technical Details")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(DossierPalette.primaryText)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                            .minimumScaleFactor(0.85)
+                            .layoutPriority(1)
+                            .accessibilityAddTraits(.isHeader)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Spacer()
+                        }
+                        Text("Device & Bundle ID")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DossierPalette.dim)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    }
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Spacer(minLength: 8)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(DossierPalette.dim)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .frame(minHeight: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(DossierDisclosurePressStyle())
+            .sensoryFeedback(.selection, trigger: isExpanded)
+            .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
+            .accessibilityHint("Double-tap to toggle")
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Rectangle().fill(DossierPalette.hairline).frame(height: 1)
+
+                    let showsHardwareRow = (hw.hardwareVersion?.isEmpty == false) && (hw.firmwareVersion?.isEmpty == false)
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 10) {
+                            detailCell("DEVICE NAME", hw.deviceName)
+                            if showsHardwareRow, let hv = hw.hardwareVersion {
+                                detailCell("HARDWARE", hv)
+                            }
+                            detailCell("SOURCE BUNDLE", hw.sourceBundleID)
+                        }
+                    } else {
+                        Grid(alignment: .topLeading, horizontalSpacing: 14, verticalSpacing: 10) {
+                            GridRow {
+                                detailCell("DEVICE NAME", hw.deviceName)
+                                if showsHardwareRow, let hv = hw.hardwareVersion {
+                                    detailCell("HARDWARE", hv)
+                                }
+                            }
+                            GridRow {
+                                detailCell("SOURCE BUNDLE", hw.sourceBundleID)
+                                    .gridCellColumns(showsHardwareRow ? 2 : 1)
+                            }
+                        }
+                    }
+
+                    if showsHealthProvenance {
+                        Text("Collection numbers follow the order of first listening dates in Apple Health.")
+                            .font(.caption)
+                            .foregroundStyle(DossierPalette.dim)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
+            }
+        }
+        .dossierTile(padding: 0)
     }
 
-    private func dateBlock(title: LocalizedStringKey, primary: String, secondary: String) -> some View {
+    private func detailCell(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                .tracking(1.1)
-                .foregroundStyle(DossierPalette.faint)
-            Text(primary)
-                .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                .lineLimit(1)
-            Text(secondary)
-                .font(.caption2)
+                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .tracking(0.6)
                 .foregroundStyle(DossierPalette.dim)
-                .lineLimit(1)
+            Text(value)
+                .font(.system(.footnote, design: .monospaced, weight: .semibold))
+                .foregroundStyle(DossierPalette.primaryText.opacity(0.92))
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
         }
-        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DossierPalette.surfaceFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(DossierPalette.hairline, lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
 }
@@ -1099,12 +1575,64 @@ struct MilestoneTimelineCard: View {
     let milestones: [DossierMilestone]
     let rarity: Rarity
     var calendar: Calendar = .current
+    var showsHeader: Bool = false
+    var unlockedCount: Int? = nil
+    var previewLimit: Int? = nil
+    var referenceDate: Date? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .caption2) private var badgeFontSize: CGFloat = 11
+    @State private var isExpanded = false
 
     var body: some View {
+        let accent = DossierContrast.accentColor(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
+        let hasMore = previewLimit != nil && milestones.count > (previewLimit ?? 0)
+        let visibleMilestones = (hasMore && !isExpanded) ? Self.previewMilestones(from: milestones, limit: previewLimit!) : milestones
+        let hiddenGapCount = (hasMore && !isExpanded) ? max(0, milestones.count - visibleMilestones.count) : 0
+        let refYear = referenceDate.map { calendar.component(.year, from: $0) }
+        let isAX = dynamicTypeSize.isAccessibilitySize
+
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(milestones.enumerated()), id: \.element.id) { index, item in
-                let isLast = index == milestones.count - 1
+            if showsHeader {
+                let unlocked = unlockedCount ?? milestones.filter { !$0.isFuture }.count
+                let countText: LocalizedStringKey = unlocked < milestones.count
+                    ? "\(unlocked) of \(milestones.count) unlocked"
+                    : "\(unlocked) unlocked"
+                let milestoneHeaderLayout = isAX
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                    : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+
+                milestoneHeaderLayout {
+                    Text("Milestones")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(DossierPalette.primaryText)
+                        .accessibilityAddTraits(.isHeader)
+                    if !isAX { Spacer() }
+                    Text(countText)
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(DossierPalette.dim)
+                }
+                .padding(.bottom, 16)
+            }
+
+            ForEach(Array(visibleMilestones.enumerated()), id: \.element.id) { index, item in
+                let isLast = index == visibleMilestones.count - 1
+                let hasGapAfter = index == 0 && hiddenGapCount > 0
                 let nodeColor = color(for: item)
+                let dateText: String = if item.isFuture {
+                    if let refYear, calendar.component(.year, from: item.date) != refYear {
+                        AppLanguage.current.text("ETA %@", DateText.formatTemplate(item.date, template: "MMM d, yyyy", calendar: calendar, locale: AppLanguage.current.locale))
+                    } else {
+                        AppLanguage.current.text("ETA %@", item.date.dossierShort(calendar: calendar))
+                    }
+                } else if let refYear, calendar.component(.year, from: item.date) == refYear {
+                    item.date.dossierShort(calendar: calendar)
+                } else {
+                    DateText.formatTemplate(item.date, template: "MMM d, yyyy", calendar: calendar, locale: AppLanguage.current.locale)
+                }
 
                 HStack(alignment: .top, spacing: 14) {
                     VStack(spacing: 0) {
@@ -1115,81 +1643,164 @@ struct MilestoneTimelineCard: View {
                                     .frame(width: 28, height: 28)
                             } else {
                                 Circle()
-                                    .fill(nodeColor.opacity(0.18))
+                                    .fill(nodeColor.opacity(0.16))
                                     .frame(width: 28, height: 28)
-                                    .overlay(Circle().strokeBorder(nodeColor.opacity(0.75), lineWidth: 1.2))
+                                    .overlay(Circle().strokeBorder(nodeColor.opacity(0.75), lineWidth: 1.4))
                             }
                             Image(systemName: icon(for: item.kind))
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(item.isFuture ? nodeColor.opacity(0.75) : nodeColor)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(item.isFuture ? nodeColor.opacity(0.8) : nodeColor)
+                                .accessibilityHidden(true)
                         }
 
                         if !isLast {
-                            let nextIsFuture = milestones[index + 1].isFuture
                             Rectangle()
-                                .fill(nextIsFuture ? DossierPalette.hairline : nodeColor.opacity(0.28))
-                                .frame(width: 1.5)
-                                .frame(minHeight: 28)
-                                .padding(.vertical, 3)
+                                .fill(colorScheme == .light ? Color.black.opacity(0.16) : Color.white.opacity(0.16))
+                                .frame(width: 1.0)
+                                .frame(minHeight: hasGapAfter ? 11 : 28, maxHeight: .infinity)
+                                .padding(.top, 3)
+                                .padding(.bottom, hasGapAfter ? 0 : 3)
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(LocalizedStringKey(item.title))
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.75) : DossierPalette.primaryText)
-                            if item.kind == .retired {
-                                Text("VAULTED")
-                                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                                    .tracking(0.8)
-                                    .lineLimit(1)
-                                    .fixedSize()
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(rarity.accent.opacity(0.18), in: Capsule())
-                                    .foregroundStyle(rarity.accent)
-                            } else if let tier = item.tier, item.kind == .tier || item.kind == .minted {
-                                Text(LocalizedStringKey(tier.shortName.uppercased()))
-                                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                                    .tracking(0.8)
-                                    .lineLimit(1)
-                                    .fixedSize()
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(tier.accent.opacity(0.18), in: Capsule())
-                                    .foregroundStyle(tier.accent)
-                            } else if item.isFuture {
-                                Text("NEXT")
-                                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                                    .tracking(0.8)
-                                    .lineLimit(1)
-                                    .fixedSize()
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(rarity.accent.opacity(0.18), in: Capsule())
-                                    .foregroundStyle(rarity.accent)
+                        if isAX {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(verbatim: item.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.78) : DossierPalette.primaryText)
+                                    if item.kind == .retired {
+                                        milestoneBadge("VAULTED", color: accent)
+                                    } else if item.isFuture {
+                                        milestoneBadge("NEXT", color: accent)
+                                    }
+                                }
+                                Text(dateText)
+                                    .font(.footnote.weight(.medium))
+                                    .monospacedDigit()
+                                    .foregroundStyle(item.isFuture ? accent : DossierPalette.dim)
                             }
-                            Spacer(minLength: 8)
-                            Text(item.isFuture ? AppLanguage.current.text("ETA %@", item.date.dossierShort) : DateText.dotted(item.date, calendar: calendar))
-                                .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                                .foregroundStyle(item.isFuture ? rarity.accent.opacity(0.8) : DossierPalette.dim)
-                                .lineLimit(1)
-                                .fixedSize()
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(verbatim: item.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(item.isFuture ? DossierPalette.primaryText.opacity(0.78) : DossierPalette.primaryText)
+                                if item.kind == .retired {
+                                    milestoneBadge("VAULTED", color: accent)
+                                } else if item.isFuture {
+                                    milestoneBadge("NEXT", color: accent)
+                                }
+                                Spacer(minLength: 8)
+                                Text(dateText)
+                                    .font(.footnote.weight(.medium))
+                                    .monospacedDigit()
+                                    .foregroundStyle(item.isFuture ? accent : DossierPalette.dim)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
                         }
                         if !item.detail.isEmpty {
-                            Text(LocalizedStringKey(item.detail))
-                                .font(.caption)
+                            Text(verbatim: item.detail)
+                                .font(.footnote)
                                 .foregroundStyle(DossierPalette.dim)
                         }
                     }
                     .padding(.top, 3)
-                    .padding(.bottom, isLast ? 2 : 14)
+                    .padding(.bottom, isLast ? 2 : (hasGapAfter ? 8 : 16))
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityElement(children: .combine)
+
+                if hasGapAfter {
+                    let railColor = colorScheme == .light ? Color.black.opacity(0.16) : Color.white.opacity(0.16)
+                    let dotColor = colorScheme == .light ? Color.black.opacity(0.28) : Color.white.opacity(0.28)
+                    let gapLabel = hiddenGapCount == 1
+                        ? AppLanguage.current.text("1 milestone in between")
+                        : AppLanguage.current.text("%lld milestones in between", hiddenGapCount)
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 14) {
+                            VStack(spacing: 3) {
+                                ForEach(0..<3, id: \.self) { _ in
+                                    Circle()
+                                        .fill(dotColor)
+                                        .frame(width: 2.5, height: 2.5)
+                                }
+                            }
+                            .frame(width: 28)
+
+                            Text(verbatim: gapLabel)
+                                .font(.caption2.weight(.medium))
+                                .monospacedDigit()
+                                .foregroundStyle(DossierPalette.dim)
+                        }
+                        .padding(.vertical, 4)
+
+                        Rectangle()
+                            .fill(railColor)
+                            .frame(width: 1.0, height: 11)
+                            .frame(width: 28)
+                            .padding(.bottom, 3)
+                    }
+                }
+            }
+
+            if hasMore {
+                Rectangle()
+                    .fill(DossierPalette.hairline)
+                    .frame(height: 1)
+                    .padding(.top, 12)
+                Button {
+                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(isExpanded ? AppLanguage.current.text("Show fewer") : AppLanguage.current.text("Show all %lld", milestones.count))
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(accent)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(accent)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(DossierDisclosurePressStyle())
+                .sensoryFeedback(.selection, trigger: isExpanded)
+                .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
             }
         }
-        .dossierTile(tint: rarity.accent)
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, hasMore ? 7 : 18)
+        .dossierTile(padding: 0)
+    }
+
+    private static func previewMilestones(from milestones: [DossierMilestone], limit: Int) -> [DossierMilestone] {
+        guard limit > 0, milestones.count > limit else { return milestones }
+        guard limit > 1, let first = milestones.first else { return Array(milestones.prefix(limit)) }
+        let tail = milestones.suffix(limit - 1)
+        if tail.contains(where: { $0.id == first.id }) {
+            return Array(milestones.suffix(limit))
+        }
+        return [first] + tail
+    }
+
+    private func milestoneBadge(_ label: LocalizedStringKey, color: Color) -> some View {
+        Text(label)
+            .font(.system(size: min(badgeFontSize, 14), weight: .bold, design: .rounded))
+            .tracking(0.4)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(colorScheme == .light ? 0.14 : 0.16), in: Capsule())
+            .overlay(Capsule().strokeBorder(color.opacity(0.24), lineWidth: 0.75))
+            .foregroundStyle(color)
     }
 
     private func icon(for kind: DossierMilestone.Kind) -> String {
@@ -1205,13 +1816,23 @@ struct MilestoneTimelineCard: View {
     }
 
     private func color(for item: DossierMilestone) -> Color {
-        if let tier = item.tier { return tier.accent }
+        let accent = DossierContrast.accentColor(rarity: rarity, proFoil: nil, colorScheme: colorScheme)
         switch item.kind {
-        case .longest: return Theme.moderateColor
-        case .bestDay: return rarity.accent
-        case .hours: return Theme.quietColor
-        case .upcoming: return rarity.accent
-        case .minted, .tier, .retired: return rarity.accent
+        case .longest, .bestDay: return Theme.trophyGold
+        case .retired: return DossierPalette.dim
+        case .upcoming, .minted, .tier, .hours: return accent
+        }
+    }
+}
+
+private struct TabWidthModifier: ViewModifier {
+    let isScrollableAX: Bool
+
+    func body(content: Content) -> some View {
+        if isScrollableAX {
+            content.fixedSize(horizontal: true, vertical: false)
+        } else {
+            content.frame(maxWidth: .infinity)
         }
     }
 }
